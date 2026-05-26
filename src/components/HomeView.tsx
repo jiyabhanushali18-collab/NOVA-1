@@ -1,0 +1,292 @@
+import React from 'react';
+import { ScreenId } from '../types';
+import { recentActivity, products } from '../data';
+
+interface HomeViewProps {
+  onNavigate: (screen: ScreenId) => void;
+  userName: string;
+  wishlist?: string[];
+  onToggleWishlist?: (productId: string) => void;
+  onSelectProduct?: (productId: string) => void;
+}
+
+export const HomeView: React.FC<HomeViewProps> = ({ 
+  onNavigate, 
+  userName,
+  wishlist = [],
+  onToggleWishlist,
+  onSelectProduct
+}) => {
+  return (
+    <div className="space-y-6">
+      {/* Greeting Section */}
+      <section className="mt-4 animate-fade-in">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          Hello, {userName}! <span className="text-amber-400">✨</span>
+        </h1>
+        <p className="text-slate-600 mt-1 leading-relaxed">
+          Your AI + AR Fashion Assistant<br />is ready to help you.
+        </p>
+      </section>
+
+      {/* Explore Splash / Onboarding demo shortcuts */}
+      <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between gap-2.5 shadow-sm transform transition-all">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-indigo-100/80 flex items-center justify-center text-indigo-600">
+            <span className="material-symbols-outlined text-xl">info</span>
+          </div>
+          <div className="leading-tight text-left">
+            <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wide leading-none">NOVA Tour Guide</h4>
+            <span className="text-[10px] text-indigo-600 mt-1.5 block font-medium">Replay Splash demo or Onboarding tour at any time!</span>
+          </div>
+        </div>
+        <div className="flex gap-1.5 shrink-0">
+          <button 
+            onClick={() => onNavigate('splash')}
+            className="bg-white hover:bg-indigo-50/40 text-[9px] text-indigo-600 border border-indigo-200 py-1.5 px-3 rounded-lg font-black uppercase transition-all whitespace-nowrap cursor-pointer"
+          >
+            Splash
+          </button>
+          <button 
+            onClick={() => onNavigate('onboarding')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-[9px] text-white py-1.5 px-3 rounded-lg font-black uppercase transition-all shadow-sm shadow-indigo-600/20 whitespace-nowrap cursor-pointer"
+          >
+            Tour
+          </button>
+        </div>
+      </div>
+
+      {/* Featured AI Assistant Banner */}
+      <section 
+        onClick={() => onNavigate('chat')}
+        className="glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
+      >
+        <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl group-hover:bg-indigo-300/40 transition-colors duration-500"></div>
+        <div className="flex justify-between items-center relative z-10">
+          <div className="max-w-[60%]">
+            <div className="inline-flex items-center space-x-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full mb-3 border border-white/80 shadow-sm">
+              <span className="material-symbols-outlined text-indigo-600 text-base leading-none">smart_toy</span>
+              <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">AI Assistant Active</span>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 leading-tight mb-2">Ask Nova<br />Anything</h2>
+            <button className="mt-2 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined leading-none">arrow_forward</span>
+            </button>
+          </div>
+          <div className="w-24 h-24 relative">
+            <div className="absolute inset-0 bg-indigo-500/20 rounded-full glowing-orb blur-xl"></div>
+            <img 
+              alt="AI Orb Graphic" 
+              className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white/50 shadow-inner" 
+              referrerPolicy="no-referrer"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRI_2PkIuIET98Vtd_Z4Cvw0v9wPJLXlnMX3mquVp45cp3jG9GW7sgdgts-0w-exCrdM25YgcpDUp2k1EYmd0-CTc996Jvhz3WD539u2w4nftKt_Yzi0b3jX-ORJI_b4aUCrhmHTomG7WtoJqs-Bwe0QFLG_P02NQlVWJW2yWqiv8L58woM7eJCkeSWG1djrKWstUOovzPSuwD3idWjoAYSyKN6_BbsFKb1yGoW2UymI4_mY7BQZZognmKHnXq2oX5QEB9dbPqkqke"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Explore NOVA Grid */}
+      <section>
+        <div className="flex justify-between items-end mb-4">
+          <h2 className="text-base font-semibold text-slate-900 flex items-center">
+            <span className="material-symbols-outlined text-indigo-600 mr-2 text-xl leading-none">explore</span>
+            Explore NOVA
+          </h2>
+          <button 
+            onClick={() => onNavigate('profile')}
+            className="text-xs font-semibold text-indigo-600 flex items-center hover:underline"
+          >
+            Shortcuts <span className="material-symbols-outlined text-sm ml-1 leading-none">edit</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Item 1: AI Assistant */}
+          <div 
+            onClick={() => onNavigate('chat')}
+            className="glass-panel rounded-2xl p-4 flex flex-col items-start hover:shadow-md cursor-pointer transition-all duration-300 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3 text-purple-700 border border-white/80">
+              <span className="material-symbols-outlined leading-none">psychology</span>
+            </div>
+            <h3 className="font-bold text-slate-800 mb-1">AI Assistant</h3>
+            <p className="text-[11px] text-slate-500 leading-normal mb-4">Get intelligent answers and style guidance.</p>
+            <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
+              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
+            </div>
+          </div>
+
+          {/* Item 2: Smart Vision */}
+          <div 
+            onClick={() => onNavigate('scan-outfit')}
+            className="glass-panel rounded-2xl p-4 flex flex-col items-start hover:shadow-md cursor-pointer transition-all duration-300 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center mb-3 text-indigo-700 border border-white/80">
+              <span className="material-symbols-outlined leading-none">visibility</span>
+            </div>
+            <h3 className="font-bold text-slate-800 mb-1">Smart Vision</h3>
+            <p className="text-[11px] text-slate-500 leading-normal mb-4">Analyze, detect and understand with AI.</p>
+            <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
+              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
+            </div>
+          </div>
+
+          {/* Item 3: Camera Scan */}
+          <div 
+            onClick={() => onNavigate('camera-scan')}
+            className="glass-panel rounded-2xl p-4 flex flex-col items-start hover:shadow-md cursor-pointer transition-all duration-300 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center mb-3 text-sky-700 border border-white/80">
+              <span className="material-symbols-outlined leading-none">photo_camera</span>
+            </div>
+            <h3 className="font-bold text-slate-800 mb-1">Camera Scan</h3>
+            <p className="text-[11px] text-slate-500 leading-normal mb-4">Scan outfits or items in real-time.</p>
+            <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
+              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
+            </div>
+          </div>
+
+          {/* Item 4: AR Try-On */}
+          <div 
+            onClick={() => onNavigate('ar-tryon')}
+            className="glass-panel rounded-2xl p-4 flex flex-col items-start hover:shadow-md cursor-pointer transition-all duration-300 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center mb-3 text-pink-700 border border-white/80">
+              <span className="material-symbols-outlined leading-none">checkroom</span>
+            </div>
+            <h3 className="font-bold text-slate-800 mb-1">AR Try-On</h3>
+            <p className="text-[11px] text-slate-500 leading-normal mb-4">Try outfits virtually with AR.</p>
+            <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
+              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Curated Showroom Section */}
+      <section className="animate-fade-in">
+        <div className="flex justify-between items-end mb-4">
+          <h2 className="text-base font-semibold text-slate-900 flex items-center">
+            <span className="material-symbols-outlined text-indigo-600 mr-2 text-xl leading-none">local_mall</span>
+            NOVA Showroom
+          </h2>
+          <span className="text-[10px] text-indigo-700 font-extrabold bg-indigo-50/70 px-2 py-0.5 rounded-full border border-indigo-100/30">
+            {Object.keys(products).length} Drops
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {Object.values(products).map((product) => {
+            const isWishlisted = wishlist.includes(product.id);
+            return (
+              <div 
+                key={product.id}
+                onClick={() => {
+                  if (onSelectProduct) {
+                    onSelectProduct(product.id);
+                  } else {
+                    onNavigate('product-details');
+                  }
+                }}
+                className="glass-panel rounded-2xl p-3 flex flex-col hover:shadow-md cursor-pointer transition-all duration-300 group relative border border-white/30"
+              >
+                {/* Wishlist Heart Icon overlay */}
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onToggleWishlist) {
+                      onToggleWishlist(product.id);
+                    }
+                  }}
+                  className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${
+                    isWishlisted 
+                      ? 'bg-rose-50 text-rose-500 border border-rose-100' 
+                      : 'bg-white/85 text-slate-450 hover:text-rose-500 hover:bg-white'
+                  }`}
+                  title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}>
+                    {isWishlisted ? 'favorite' : 'favorite_border'}
+                  </span>
+                </button>
+
+                <div className="h-44 rounded-xl bg-slate-50/70 mb-2.5 overflow-hidden flex items-center justify-center relative border border-slate-100">
+                  <img 
+                    src={product.imageUrl} 
+                    alt={product.name} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                  {product.badge && (
+                    <span className="absolute bottom-2 left-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                      {product.badge}
+                    </span>
+                  )}
+                </div>
+
+                <div className="leading-tight flex-grow flex flex-col justify-between">
+                  <div>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">
+                      {product.category}
+                    </span>
+                    <h4 className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                      {product.name}
+                    </h4>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-2.5">
+                    <span className="text-xs font-black text-indigo-700">₹{product.price.toLocaleString()}</span>
+                    <span className="text-[9px] font-bold text-slate-500 flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[10px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      {product.rating}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Recent Activity Section */}
+      <section>
+        <div className="flex justify-between items-end mb-4">
+          <h2 className="text-base font-semibold text-slate-900">Recent Activity</h2>
+          <button 
+            onClick={() => onNavigate('scan-outfit')}
+            className="text-xs font-semibold text-indigo-600 flex items-center hover:underline"
+          >
+            View All <span className="material-symbols-outlined text-sm ml-1 leading-none">chevron_right</span>
+          </button>
+        </div>
+        <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
+          {recentActivity.map((activity) => (
+            <div 
+              key={activity.id}
+              onClick={() => {
+                if (activity.badge === 'AR Try-On') onNavigate('ar-tryon');
+                else if (activity.badge === 'Camera Scan') onNavigate('camera-scan');
+                else onNavigate('scan-outfit');
+              }}
+              className="flex-none w-36 group cursor-pointer"
+            >
+              <div className="h-48 rounded-2xl overflow-hidden relative shadow-sm border border-white/40 mb-2">
+                <img 
+                  alt={activity.name} 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  referrerPolicy="no-referrer"
+                  src={activity.imageUrl}
+                />
+                <div className={`absolute top-2.5 left-2.5 ${activity.color} backdrop-blur-md text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center shadow-sm`}>
+                  <span className="material-symbols-outlined text-[10px] mr-1 leading-none">{activity.icon}</span> 
+                  {activity.badge}
+                </div>
+              </div>
+              <h4 className="text-sm font-semibold text-slate-800 truncate">{activity.name}</h4>
+              <p className="text-[11px] text-slate-500 truncate">{activity.time}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+};
