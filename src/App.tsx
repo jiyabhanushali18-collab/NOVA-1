@@ -12,6 +12,7 @@ import { ProductDetailsView } from './components/ProductDetailsView';
 import { ScanOutfitView } from './components/ScanOutfitView';
 import { ChatView } from './components/ChatView';
 import { CartView } from './components/CartView';
+import { ShowroomView } from './components/ShowroomView';
 import { AuthView } from './components/AuthView';
 import { SplashView } from './components/SplashView';
 import { OnboardingView } from './components/OnboardingView';
@@ -242,6 +243,23 @@ export default function App() {
             selectedProductId={selectedProductId}
           />
         );
+      case 'showroom':
+        return (
+          <ShowroomView 
+            onNavigate={setScreen}
+            wishlist={wishlist}
+            onToggleWishlist={handleToggleWishlist}
+            onSelectProduct={(id) => {
+              setSelectedProductId(id);
+              const prod = products[id];
+              if (prod && prod.colors && prod.colors.length > 0) {
+                setSelectedColor(prod.colors[0]);
+              }
+              setScreen('product-details');
+            }}
+            cartItemsCount={countCartTotalItems()}
+          />
+        );
       case 'scan-outfit':
         return <ScanOutfitView onNavigate={setScreen} />;
       case 'chat':
@@ -304,6 +322,7 @@ export default function App() {
     if (tab === 'ar' && (screen === 'ar-tryon' || screen === 'tryon-result')) return true;
     if (tab === 'chat' && screen === 'chat') return true;
     if (tab === 'profile' && screen === 'profile') return true;
+    if (tab === 'showroom' && (screen === 'showroom' || screen === 'cart')) return true;
     return false;
   };
 
@@ -369,7 +388,7 @@ export default function App() {
 
             {/* Quick Shopping Cart widget */}
             <button 
-              onClick={() => setScreen('cart')}
+              onClick={() => setScreen('showroom')}
               className="w-10 h-10 rounded-full bg-indigo-50/40 flex items-center justify-center relative hover:bg-indigo-50 transition-colors border border-indigo-100/40"
             >
               <span className="material-symbols-outlined text-indigo-600 text-[20px]">local_mall</span>

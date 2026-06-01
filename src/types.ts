@@ -8,6 +8,7 @@ export type ScreenId =
   | 'scan-outfit'
   | 'chat'
   | 'cart'
+  | 'showroom'
   | 'login'
   | 'signup'
   | 'splash'

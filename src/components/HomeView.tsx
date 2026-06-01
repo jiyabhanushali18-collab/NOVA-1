@@ -162,89 +162,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* Dynamic Curated Showroom Section */}
-      <section className="animate-fade-in">
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="text-base font-semibold text-slate-900 flex items-center">
-            <span className="material-symbols-outlined text-indigo-600 mr-2 text-xl leading-none">local_mall</span>
-            NOVA Showroom
-          </h2>
-          <span className="text-[10px] text-indigo-700 font-extrabold bg-indigo-50/70 px-2 py-0.5 rounded-full border border-indigo-100/30">
-            {Object.keys(products).length} Drops
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {Object.values(products).map((product) => {
-            const isWishlisted = wishlist.includes(product.id);
-            return (
-              <div 
-                key={product.id}
-                onClick={() => {
-                  if (onSelectProduct) {
-                    onSelectProduct(product.id);
-                  } else {
-                    onNavigate('product-details');
-                  }
-                }}
-                className="glass-panel rounded-2xl p-3 flex flex-col hover:shadow-md cursor-pointer transition-all duration-300 group relative border border-white/30"
-              >
-                {/* Wishlist Heart Icon overlay */}
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onToggleWishlist) {
-                      onToggleWishlist(product.id);
-                    }
-                  }}
-                  className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${
-                    isWishlisted 
-                      ? 'bg-rose-50 text-rose-500 border border-rose-100' 
-                      : 'bg-white/85 text-slate-450 hover:text-rose-500 hover:bg-white'
-                  }`}
-                  title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-                >
-                  <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}>
-                    {isWishlisted ? 'favorite' : 'favorite_border'}
-                  </span>
-                </button>
-
-                <div className="h-44 rounded-xl bg-slate-50/70 mb-2.5 overflow-hidden flex items-center justify-center relative border border-slate-100">
-                  <img 
-                    src={product.imageUrl} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  {product.badge && (
-                    <span className="absolute bottom-2 left-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                      {product.badge}
-                    </span>
-                  )}
-                </div>
-
-                <div className="leading-tight flex-grow flex flex-col justify-between">
-                  <div>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">
-                      {product.category}
-                    </span>
-                    <h4 className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                      {product.name}
-                    </h4>
-                  </div>
-
-                  <div className="flex justify-between items-center mt-2.5">
-                    <span className="text-xs font-black text-indigo-700">₹{product.price.toLocaleString()}</span>
-                    <span className="text-[9px] font-bold text-slate-500 flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[10px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      {product.rating}
-                    </span>
-                  </div>
-                </div>
+      {/* NOVA Showroom CTA */}
+      <section>
+        <button 
+          onClick={() => onNavigate('showroom')}
+          className="w-full glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300"
+        >
+          <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl group-hover:bg-indigo-300/40 transition-colors duration-500"></div>
+          <div className="flex justify-between items-center relative z-10">
+            <div className="max-w-[70%] text-left">
+              <div className="inline-flex items-center space-x-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full mb-3 border border-white/80 shadow-sm">
+                <span className="material-symbols-outlined text-indigo-600 text-base leading-none">local_mall</span>
+                <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">Explore</span>
               </div>
-            );
-          })}
-        </div>
+              <h2 className="text-2xl font-bold text-slate-800 leading-tight mb-1">NOVA Showroom</h2>
+              <p className="text-sm text-slate-600">Browse all products & drops →</p>
+            </div>
+            <div className="text-3xl">📦</div>
+          </div>
+        </button>
       </section>
 
       {/* Recent Activity Section */}
