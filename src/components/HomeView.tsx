@@ -9,6 +9,7 @@ interface HomeViewProps {
   recentActivity?: any[];
   onToggleWishlist?: (productId: string) => void;
   onSelectProduct?: (productId: string) => void;
+  isDarkMode?: boolean;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ 
@@ -17,36 +18,37 @@ export const HomeView: React.FC<HomeViewProps> = ({
   wishlist = [],
   recentActivity = [],
   onToggleWishlist,
-  onSelectProduct
+  onSelectProduct,
+  isDarkMode = false
 }) => {
   const activityList = recentActivity;
   return (
     <div className="space-y-6">
       {/* Greeting Section */}
       <section className="mt-4 animate-fade-in">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <h1 className={`text-3xl font-bold tracking-tight flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
           Hello, {userName}! <span className="text-amber-400">✨</span>
         </h1>
-        <p className="text-slate-600 mt-1 leading-relaxed">
+        <p className={`mt-1 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
           Your AI + AR Fashion Assistant<br />is ready to help you.
         </p>
       </section>
 
       {/* Explore Splash / Onboarding demo shortcuts */}
-      <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between gap-2.5 shadow-sm transform transition-all">
+      <div className={`border rounded-2xl p-4 flex items-center justify-between gap-2.5 shadow-sm transform transition-all ${isDarkMode ? 'bg-indigo-950/40 border-indigo-800/30' : 'bg-indigo-50/70 border-indigo-100'}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-100/80 flex items-center justify-center text-indigo-600">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-indigo-900/60 text-indigo-300' : 'bg-indigo-100/80 text-indigo-600'}`}>
             <span className="material-symbols-outlined text-xl">info</span>
           </div>
           <div className="leading-tight text-left">
-            <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wide leading-none">NOVA Tour Guide</h4>
-            <span className="text-[10px] text-indigo-600 mt-1.5 block font-medium">Replay Splash demo or Onboarding tour at any time!</span>
+            <h4 className={`text-xs font-black uppercase tracking-wide leading-none ${isDarkMode ? 'text-indigo-200' : 'text-indigo-900'}`}>NOVA Tour Guide</h4>
+            <span className={`text-[10px] mt-1.5 block font-medium ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>Replay Splash demo or Onboarding tour at any time!</span>
           </div>
         </div>
         <div className="flex gap-1.5 shrink-0">
           <button 
             onClick={() => onNavigate('splash')}
-            className="bg-white hover:bg-indigo-50/40 text-[9px] text-indigo-600 border border-indigo-200 py-1.5 px-3 rounded-lg font-black uppercase transition-all whitespace-nowrap cursor-pointer"
+            className={`text-[9px] py-1.5 px-3 rounded-lg font-black uppercase transition-all whitespace-nowrap cursor-pointer border ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' : 'bg-white hover:bg-indigo-50/40 text-indigo-600 border-indigo-200'}`}
           >
             Splash
           </button>
@@ -71,7 +73,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span className="material-symbols-outlined text-indigo-600 text-base leading-none">smart_toy</span>
               <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">AI Assistant Active</span>
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 leading-tight mb-2">Ask Nova<br />Anything</h2>
+            <h2 className={`text-2xl font-bold leading-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Ask Nova<br />Anything</h2>
             <button className="mt-2 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
               <span className="material-symbols-outlined leading-none">arrow_forward</span>
             </button>
@@ -91,7 +93,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Explore NOVA Grid */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className="text-base font-semibold text-slate-900 flex items-center">
+          <h2 className={`text-base font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
             <span className="material-symbols-outlined text-indigo-600 mr-2 text-xl leading-none">explore</span>
             Explore NOVA
           </h2>
@@ -111,8 +113,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3 text-purple-700 border border-white/80">
               <span className="material-symbols-outlined leading-none">psychology</span>
             </div>
-            <h3 className="font-bold text-slate-800 mb-1">AI Assistant</h3>
-            <p className="text-[11px] text-slate-500 leading-normal mb-4">Get intelligent answers and style guidance.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>AI Assistant</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Get intelligent answers and style guidance.</p>
             <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -126,8 +128,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center mb-3 text-indigo-700 border border-white/80">
               <span className="material-symbols-outlined leading-none">visibility</span>
             </div>
-            <h3 className="font-bold text-slate-800 mb-1">Smart Vision</h3>
-            <p className="text-[11px] text-slate-500 leading-normal mb-4">Analyze, detect and understand with AI.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Smart Vision</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Analyze, detect and understand with AI.</p>
             <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -141,8 +143,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center mb-3 text-sky-700 border border-white/80">
               <span className="material-symbols-outlined leading-none">photo_camera</span>
             </div>
-            <h3 className="font-bold text-slate-800 mb-1">Camera Scan</h3>
-            <p className="text-[11px] text-slate-500 leading-normal mb-4">Scan outfits or items in real-time.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Camera Scan</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Scan outfits or items in real-time.</p>
             <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -156,8 +158,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center mb-3 text-pink-700 border border-white/80">
               <span className="material-symbols-outlined leading-none">checkroom</span>
             </div>
-            <h3 className="font-bold text-slate-800 mb-1">AR Try-On</h3>
-            <p className="text-[11px] text-slate-500 leading-normal mb-4">Try outfits virtually with AR.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>AR Try-On</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Try outfits virtually with AR.</p>
             <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -178,8 +180,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="material-symbols-outlined text-indigo-600 text-base leading-none">local_mall</span>
                 <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">Explore</span>
               </div>
-              <h2 className="text-2xl font-bold text-slate-800 leading-tight mb-1">NOVA Showroom</h2>
-              <p className="text-sm text-slate-600">Browse all products & drops →</p>
+              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>NOVA Showroom</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Browse all products & drops →</p>
             </div>
             <div className="text-3xl">📦</div>
           </div>
@@ -189,7 +191,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Recent Activity Section */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className="text-base font-semibold text-slate-900">Recent Activity</h2>
+          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Recent Activity</h2>
           <button 
             onClick={() => onNavigate('scan-outfit')}
             className="text-xs font-semibold text-indigo-600 flex items-center hover:underline"
@@ -240,8 +242,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     </button>
                   )}
                 </div>
-                <h4 className="text-sm font-semibold text-slate-800 truncate">{activity.name}</h4>
-                <p className="text-[11px] text-slate-500 truncate">{activity.time}</p>
+                <h4 className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{activity.name}</h4>
+                <p className={`text-[11px] truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{activity.time}</p>
               </div>
             );
           })}

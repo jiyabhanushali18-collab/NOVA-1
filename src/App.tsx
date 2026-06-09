@@ -225,6 +225,7 @@ export default function App() {
             wishlist={wishlist}
             recentActivity={recentActivityState}
             onToggleWishlist={handleToggleWishlist}
+            isDarkMode={isDarkMode}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
               const prod = products[id];
@@ -295,6 +296,7 @@ export default function App() {
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
             selectedProductId={selectedProductId}
+            isDarkMode={isDarkMode}
           />
         );
       case 'showroom':
@@ -303,6 +305,7 @@ export default function App() {
             onNavigate={navigate}
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
+            isDarkMode={isDarkMode}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
               const prod = products[id];
@@ -326,10 +329,11 @@ export default function App() {
             onUpdateQuantity={handleUpdateQuantity}
             onRemoveItem={handleRemoveItem}
             onClearCart={handleClearCart}
+            isDarkMode={isDarkMode}
           />
         );
       default:
-        return <HomeView userName={userName} onNavigate={navigate} recentActivity={recentActivityState} />;
+        return <HomeView userName={userName} onNavigate={navigate} recentActivity={recentActivityState} isDarkMode={isDarkMode} />;
     }
   };
 

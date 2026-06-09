@@ -7,6 +7,7 @@ interface CartViewProps {
   onUpdateQuantity: (idx: number, dQ: number) => void;
   onRemoveItem: (idx: number) => void;
   onClearCart: () => void;
+  isDarkMode?: boolean;
 }
 
 export const CartView: React.FC<CartViewProps> = ({
@@ -14,7 +15,8 @@ export const CartView: React.FC<CartViewProps> = ({
   cartItems,
   onUpdateQuantity,
   onRemoveItem,
-  onClearCart
+  onClearCart,
+  isDarkMode = false
 }) => {
   const [step, setStep] = useState<'cart' | 'address' | 'payment' | 'completed'>('cart');
   const [couponCode, setCouponCode] = useState('');
@@ -63,21 +65,25 @@ export const CartView: React.FC<CartViewProps> = ({
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-slate-800">Order Confirmed!</h2>
-          <p className="text-xs text-slate-500 leading-normal max-w-xs mx-auto">
+          <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Order Confirmed!</h2>
+          <p className={`text-xs leading-normal max-w-xs mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             Thank you for purchasing. Your styling coordinates have been saved, and your parcel is being packed by hand!
           </p>
         </div>
 
         {/* Order specs tracker details */}
-        <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 max-w-sm mx-auto text-left space-y-3 shadow-inner">
+        <div className={`border rounded-2xl p-4 max-w-sm mx-auto text-left space-y-3 shadow-inner ${
+          isDarkMode
+            ? 'bg-slate-800/30 border-slate-700/30'
+            : 'bg-slate-50 border-slate-150'
+        }`}>
           <div className="flex justify-between text-xs font-bold font-mono">
-            <span className="text-slate-400">ORDER NO.</span>
-            <span className="text-slate-800">#NV-{(1000 + Math.floor(Math.random() * 9000))}</span>
+            <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>ORDER NO.</span>
+            <span className={isDarkMode ? 'text-slate-100' : 'text-slate-800'}>#NV-{(1000 + Math.floor(Math.random() * 9000))}</span>
           </div>
-          <div className="h-px bg-slate-200"></div>
+          <div className={isDarkMode ? 'bg-slate-700/30' : 'bg-slate-200'}></div>
           
-          <ul className="text-xs space-y-1.5 font-bold font-sans text-slate-700">
+          <ul className={`text-xs space-y-1.5 font-bold font-sans ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
             <li className="flex items-center gap-2 text-[11px]"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 10:35 AM — Order Created</li>
             <li className="flex items-center gap-2 text-[11px]"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span> 10:40 AM — Packing shipment</li>
             <li className="flex items-center gap-2 text-[11px] text-slate-400 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Courier dispatched (standard 2-3 days)</li>
@@ -106,15 +112,19 @@ export const CartView: React.FC<CartViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Stepper HUD progress */}
-      <section className="flex items-center justify-between px-2 pt-2 border-b border-slate-100 pb-3">
+      <section className={`flex items-center justify-between px-2 pt-2 pb-3 border-b ${
+        isDarkMode
+          ? 'border-slate-700/30'
+          : 'border-slate-100'
+      }`}>
         <div className="flex items-center gap-1">
           <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${step === 'cart' ? 'bg-indigo-600 text-white shadow' : 'bg-green-100 text-green-700 font-extrabold'}`}>
             {step !== 'cart' ? '✓' : '1'}
           </div>
-          <span className={`text-[10px] font-bold ${step === 'cart' ? 'text-indigo-600' : 'text-slate-400'}`}>Bag</span>
+          <span className={`text-[10px] font-bold ${step === 'cart' ? 'text-indigo-600' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Bag</span>
         </div>
         
-        <div className="flex-1 h-px bg-slate-200 mx-2"></div>
+        <div className={`flex-1 h-px mx-2 ${isDarkMode ? 'bg-slate-700/30' : 'bg-slate-200'}`}></div>
 
         <div className="flex items-center gap-1">
           <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
@@ -122,16 +132,16 @@ export const CartView: React.FC<CartViewProps> = ({
           }`}>
             {step === 'completed' || step === 'payment' ? '✓' : '2'}
           </div>
-          <span className={`text-[10px] font-bold ${step === 'address' ? 'text-indigo-600' : 'text-slate-400'}`}>Address</span>
+          <span className={`text-[10px] font-bold ${step === 'address' ? 'text-indigo-600' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Address</span>
         </div>
 
-        <div className="flex-1 h-px bg-slate-200 mx-2"></div>
+        <div className={`flex-1 h-px mx-2 ${isDarkMode ? 'bg-slate-700/30' : 'bg-slate-200'}`}></div>
 
         <div className="flex items-center gap-1">
           <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${step === 'payment' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-200 text-slate-500'}`}>
             3
           </div>
-          <span className={`text-[10px] font-bold ${step === 'payment' ? 'text-indigo-600' : 'text-slate-400'}`}>Payment</span>
+          <span className={`text-[10px] font-bold ${step === 'payment' ? 'text-indigo-600' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Payment</span>
         </div>
       </section>
 
@@ -139,7 +149,9 @@ export const CartView: React.FC<CartViewProps> = ({
       {step === 'cart' && (
         <div className="space-y-6 animate-fade-in">
           {cartItems.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 space-y-4">
+            <div className={`py-12 text-center space-y-4 ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
               <span className="material-symbols-outlined text-5xl opacity-40">shopping_bag</span>
               <p className="text-xs font-bold max-w-[180px] mx-auto">Your Shopping bag is empty.</p>
               <button 
@@ -169,13 +181,21 @@ export const CartView: React.FC<CartViewProps> = ({
 
                     {/* Details content row */}
                     <div className="flex-grow min-w-0 pr-6 select-none leading-normal">
-                      <p className="text-xs font-bold text-slate-800 truncate">{item.product.name}</p>
+                      <p className={`text-xs font-bold truncate ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{item.product.name}</p>
                       
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[10px] font-extrabold text-slate-400 uppercase">Color:</span>
-                        <span className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-md leading-none">{item.color}</span>
-                        <span className="text-[10px] font-extrabold text-slate-400 uppercase ml-2">Size:</span>
-                        <span className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-md leading-none">{item.size}</span>
+                        <span className={`text-[10px] font-extrabold uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Color:</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none border ${
+                          isDarkMode
+                            ? 'text-slate-200 bg-slate-800/40 border-slate-700/30'
+                            : 'text-slate-700 bg-slate-50 border-slate-200'
+                        }`}>{item.color}</span>
+                        <span className={`text-[10px] font-extrabold uppercase ml-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Size:</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none border ${
+                          isDarkMode
+                            ? 'text-slate-200 bg-slate-800/40 border-slate-700/30'
+                            : 'text-slate-700 bg-slate-50 border-slate-200'
+                        }`}>{item.size}</span>
                       </div>
 
                       <div className="flex justify-between items-center mt-3">

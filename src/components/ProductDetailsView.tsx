@@ -10,6 +10,7 @@ interface ProductDetailsViewProps {
   wishlist?: string[];
   onToggleWishlist?: (productId: string) => void;
   selectedProductId?: string;
+  isDarkMode?: boolean;
 }
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
@@ -19,7 +20,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   setSelectedColor,
   wishlist = [],
   onToggleWishlist,
-  selectedProductId = 'lavender-hoodie'
+  selectedProductId = 'lavender-hoodie',
+  isDarkMode = false
 }) => {
   const mainProduct = products[selectedProductId] || products['lavender-hoodie'];
   const [selectedSize, setSelectedSize] = useState('M');
@@ -83,10 +85,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           <div className="flex justify-between items-start gap-2 mb-2">
             <div>
               {/* Taxonomy Label */}
-              <span className="inline-block bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider mb-2">
+              <span className="inline-block text-indigo-600 px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider mb-2 bg-indigo-50">
                 {mainProduct.category}
               </span>
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-tight">{mainProduct.name}</h1>
+              <h1 className={`text-2xl font-bold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{mainProduct.name}</h1>
             </div>
             
             <button 
@@ -111,38 +113,54 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           </div>
           
           {/* Star review ratings */}
-          <div className="flex items-center gap-1 mt-2 mb-4 text-xs font-semibold text-slate-600">
+          <div className={`flex items-center gap-1 mt-2 mb-4 text-xs font-semibold ${
+            isDarkMode ? 'text-slate-300' : 'text-slate-600'
+          }`}>
             <span className="material-symbols-outlined text-amber-500 text-sm leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
             <span>{mainProduct.rating}</span>
-            <span className="text-slate-400 font-medium">({mainProduct.reviewsCount} Reviews)</span>
+            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>({mainProduct.reviewsCount} Reviews)</span>
           </div>
 
           {/* Pricing tag */}
           <div className="mb-5 leading-none">
             <div className="text-2xl font-extrabold text-indigo-600">₹{mainProduct.price}</div>
-            <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">Inclusive of all taxes</div>
+            <div className={`text-[10px] mt-1 uppercase tracking-wider font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>Inclusive of all taxes</div>
           </div>
 
-          {/* Holographic Virtual try-on direct CTA banner */}
+          {/* Holistic Virtual try-on direct CTA banner */}
           <div 
             onClick={() => onNavigate('ar-tryon')}
-            className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between mb-5 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300"
+            className={`rounded-xl p-3 flex items-center justify-between mb-5 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 border ${
+              isDarkMode
+                ? 'bg-indigo-950/30 border-indigo-800/30'
+                : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-100'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600/10 p-2 rounded-xl text-indigo-600 flex items-center justify-center">
+              <div className={`p-2 rounded-xl flex items-center justify-center ${
+                isDarkMode
+                  ? 'bg-indigo-950/50 text-indigo-300'
+                  : 'bg-indigo-600/10 text-indigo-600'
+              }`}>
                 <span className="material-symbols-outlined text-lg leading-none">face</span>
               </div>
               <div className="leading-tight">
-                <div className="text-xs font-extrabold text-indigo-700">Try it on virtually</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Use AR Try-On to see how it fits you in real-time.</div>
+                <div className={`text-xs font-extrabold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>Try it on virtually</div>
+                <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Use AR Try-On to see how it fits you in real-time.</div>
               </div>
             </div>
-            <span className="material-symbols-outlined text-indigo-600 text-base">chevron_right</span>
+            <span className={`material-symbols-outlined text-base ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>chevron_right</span>
           </div>
 
           {/* Color swatches selector */}
           <div className="mb-5">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Color: <span className="text-slate-800 font-semibold">{selectedColor}</span></div>
+            <div className={`text-xs font-bold uppercase tracking-widest mb-1.5 ${
+              isDarkMode
+                ? 'text-slate-400 color-current'
+                : 'text-slate-400'
+            }`}>Color: <span className={`font-semibold ${
+              isDarkMode ? 'text-slate-100' : 'text-slate-800'
+            }`}>{selectedColor}</span></div>
             <div className="flex gap-2.5">
               {(mainProduct.colors || ['Default']).map((colorName) => {
                 const colorMap: Record<string, string> = {
@@ -183,7 +201,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
           {/* Size choices lists */}
           <div className="mb-5">
-            <div className="flex justify-between items-center mb-1.5 text-xs font-bold text-slate-400">
+            <div className={`flex justify-between items-center mb-1.5 text-xs font-bold ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-400'
+            }`}>
               <span className="uppercase tracking-widest">Size</span>
               <button 
                 onClick={() => alert('Refer to M chest specs: 98cm, sleeve: 62cm.')}
@@ -201,8 +221,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     onClick={() => setSelectedSize(sz)}
                     className={`w-10 h-10 rounded-xl border text-xs font-bold flex items-center justify-center transition-all ${
                       isActive 
-                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700 font-extrabold' 
-                        : 'border-slate-200 text-slate-600 hover:border-indigo-300'
+                        ? isDarkMode
+                          ? 'border-indigo-400 bg-indigo-950/50 text-indigo-300 font-extrabold'
+                          : 'border-indigo-600 bg-indigo-50/50 text-indigo-700 font-extrabold'
+                        : isDarkMode
+                          ? 'border-slate-700 text-slate-300 hover:border-indigo-700'
+                          : 'border-slate-200 text-slate-600 hover:border-indigo-300'
                     }`}
                   >
                     {sz}
