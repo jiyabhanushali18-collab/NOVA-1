@@ -1,11 +1,12 @@
 import React from 'react';
 import { ScreenId } from '../types';
-import { recentActivity, products } from '../data';
+import { products } from '../data';
 
 interface HomeViewProps {
   onNavigate: (screen: ScreenId) => void;
   userName: string;
   wishlist?: string[];
+  recentActivity?: any[];
   onToggleWishlist?: (productId: string) => void;
   onSelectProduct?: (productId: string) => void;
 }
@@ -14,9 +15,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigate, 
   userName,
   wishlist = [],
+  recentActivity = [],
   onToggleWishlist,
   onSelectProduct
 }) => {
+  const activityList = recentActivity;
   return (
     <div className="space-y-6">
       {/* Greeting Section */}
@@ -195,32 +198,53 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </button>
         </div>
         <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
-          {recentActivity.map((activity) => (
-            <div 
-              key={activity.id}
-              onClick={() => {
-                if (activity.badge === 'AR Try-On') onNavigate('ar-tryon');
-                else if (activity.badge === 'Camera Scan') onNavigate('camera-scan');
-                else onNavigate('scan-outfit');
-              }}
-              className="flex-none w-36 group cursor-pointer"
-            >
-              <div className="h-48 rounded-2xl overflow-hidden relative shadow-sm border border-white/40 mb-2">
-                <img 
-                  alt={activity.name} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  referrerPolicy="no-referrer"
-                  src={activity.imageUrl}
-                />
-                <div className={`absolute top-2.5 left-2.5 ${activity.color} backdrop-blur-md text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center shadow-sm`}>
-                  <span className="material-symbols-outlined text-[10px] mr-1 leading-none">{activity.icon}</span> 
-                  {activity.badge}
+          {activityList.map((activity) => {
+            const matched = Object.values(products).find(p => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+            const isSaved = matched ? wishlist.includes(matched.id) : false;
+            return (
+              <div 
+                key={activity.id}
+                onClick={() => {
+                  if (activity.badge === 'AR Try-On') onNavigate('ar-tryon');
+                  else if (activity.badge === 'Camera Scan') onNavigate('camera-scan');
+                  else onNavigate('scan-outfit');
+                }}
+                className="flex-none w-36 group cursor-pointer"
+              >
+                <div className="h-48 rounded-2xl overflow-hidden relative shadow-sm border border-white/40 mb-2">
+                  <img 
+                    alt={activity.name} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    referrerPolicy="no-referrer"
+                    src={activity.imageUrl}
+                  />
+                  <div className={`absolute top-2.5 left-2.5 ${activity.color} backdrop-blur-md text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center shadow-sm`}> 
+                    <span className="material-symbols-outlined text-[10px] mr-1 leading-none">{activity.icon}</span> 
+                    {activity.badge}
+                  </div>
+                  {/* Wishlist heart overlay for quick save */}
+                  {matched && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onToggleWishlist) {
+                          onToggleWishlist(matched.id);
+                        }
+                      }}
+                      title={isSaved ? 'Remove from Wishlist' : 'Save to Wishlist'}
+                      className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${isSaved ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-white/85 text-slate-500 hover:text-rose-500 hover:bg-white'}`}
+                    >
+                      <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isSaved ? "'FILL' 1" : undefined }}>
+                        {isSaved ? 'favorite' : 'favorite_border'}
+                      </span>
+                    </button>
+                  )}
                 </div>
+                <h4 className="text-sm font-semibold text-slate-800 truncate">{activity.name}</h4>
+                <p className="text-[11px] text-slate-500 truncate">{activity.time}</p>
               </div>
-              <h4 className="text-sm font-semibold text-slate-800 truncate">{activity.name}</h4>
-              <p className="text-[11px] text-slate-500 truncate">{activity.time}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>

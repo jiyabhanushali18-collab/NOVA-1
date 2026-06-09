@@ -118,35 +118,7 @@ export const initialPreferences: Preference[] = [
   { label: 'Occasion', value: 'Casual', iconName: 'event' }
 ];
 
-export const recentActivity = [
-  {
-    id: '1',
-    name: 'Lavender Hoodie',
-    time: 'Today, 10:30 AM',
-    badge: 'AR Try-On',
-    icon: 'checkroom',
-    color: 'bg-primary/80',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCFSGDiIXtLBJAiPRem1rT1u1vy9hiZ4dJL2uSzgH-cYy9IzFBpw7sL1djGxdfSuV2Ny2sN3hNzOf68Bqa3E3lCWOyZ_MHpZ_TTdCQ0dFqvXp2IV4a2uETvozx8lKcpD9Z0KGksZG5bqEZkdaR08UbDKwK47U5Y4f0PF96GMriZJRDT8-TwfIrO7v0ddLDbE0aejwuxbldnzx77Z4Ac1E2rlZ1XAPq0owb6ekuuni7odR-ttYb42AjrjFk_pMQIFmkiKxSITBW3ShE'
-  },
-  {
-    id: '2',
-    name: 'Grey Jacket',
-    time: 'Today, 09:15 AM',
-    badge: 'Camera Scan',
-    icon: 'photo_camera',
-    color: 'bg-secondary/80',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAz436PJ3rbXi1LBV-sa3cN9uLMLqpSMl88xEV3gJacDoqvdlBzW37YgFuzQkyI7p_9Kep1fRAB-uC7ofCfNQeDsELcdaKgoEn81Eek8bt8nNChouMNaEEOUka2CfaeoSTi5c70u6sMESaLmJCYQtYV_rYls4TGCvf8uSjdFAn9KKS0AguyjN-0jlYW4v-08SrEtgaJcxBcSGMONz9D1fXx87S5cBnKt07ubFlpA_LvVTRRNYnwtY7zbZ6A0fPRaOaa4yoMo3hdoNj'
-  },
-  {
-    id: '3',
-    name: 'Running Shoes',
-    time: 'Yesterday, 07:45 PM',
-    badge: 'Smart Vision',
-    icon: 'visibility',
-    color: 'bg-teal-600/80',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpwyxXUs0knnxIRDGSMFkTtog-0obep1SK_TU4NyeRl8ntel_DLKuxHGdk9e5OI76kjvVIpUg8l7D_aqiwRx8lRRnobyjNnOtUVcGlL_uBNkCpzbyXO43S5RHAgbuhefXAYdAgT4snU1mYWOswZKWih4Cy8BXYfru0sKOap4dHyiQgQf3CkLlWOkE9ozuokB-Zas58Xt6gHr-UrUYWO8qzje8_fP0Ljn18qUAWSmka1RIF6AQ_yS9NrHEHTeiV1H29ktImz0MCN7wC'
-  }
-];
+export const recentActivity = [];
 
 export const recentScans = [
   {

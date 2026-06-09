@@ -88,6 +88,9 @@ export default function App() {
     }
   });
 
+  // Local modal to quickly view wishlist without navigating away
+  const [isWishlistOpen, setIsWishlistOpen] = useState<boolean>(false);
+
   const handleToggleWishlist = (productId: string) => {
     setWishlist((prev) => {
       const updated = prev.includes(productId)
@@ -96,6 +99,54 @@ export default function App() {
       localStorage.setItem('wishlist', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  // Dark mode state (persisted)
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('isDarkMode');
+      return saved ? JSON.parse(saved) : false;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  // Recent activity state (persisted) - starts empty, populated only by real user interactions
+  const [recentActivityState, setRecentActivityState] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('recent_activity');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const addRecentActivity = (entry: any) => {
+    setRecentActivityState((prev: any[]) => {
+      const updated = [entry, ...prev.filter((p) => p.name !== entry.name)];
+      if (updated.length > 12) updated.splice(12);
+      try { localStorage.setItem('recent_activity', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  // Navigation wrapper that logs activity for relevant screens
+  const navigate = (to: ScreenId, opts?: { productId?: string }) => {
+    const time = new Date().toLocaleString();
+    if (to === 'ar-tryon') {
+      const prod = products[opts?.productId || selectedProductId];
+      addRecentActivity({ id: Date.now().toString(), name: prod?.name || 'AR Try-On', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod?.imageUrl || '' });
+    } else if (to === 'camera-scan') {
+      const prod = products[opts?.productId || selectedProductId];
+      addRecentActivity({ id: Date.now().toString(), name: prod?.name || 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: prod?.imageUrl || '' });
+    } else if (to === 'product-details') {
+      const id = opts?.productId || selectedProductId;
+      const prod = products[id];
+      if (prod) addRecentActivity({ id: Date.now().toString(), name: prod.name, time, badge: 'Viewed', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod.imageUrl });
+    } else if (to === 'scan-outfit') {
+      addRecentActivity({ id: Date.now().toString(), name: 'Scan Outfit', time, badge: 'Scan', icon: 'center_focus_strong', color: 'bg-teal-600/80', imageUrl: '' });
+    }
+    setScreen(to);
   };
 
   // Initialize with one default item for convenient out-of-the-box checkout previews!
@@ -170,8 +221,9 @@ export default function App() {
         return (
           <HomeView 
             userName={userName} 
-            onNavigate={setScreen} 
+            onNavigate={navigate} 
             wishlist={wishlist}
+            recentActivity={recentActivityState}
             onToggleWishlist={handleToggleWishlist}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
@@ -179,14 +231,14 @@ export default function App() {
               if (prod && prod.colors && prod.colors.length > 0) {
                 setSelectedColor(prod.colors[0]);
               }
-              setScreen('product-details');
+              navigate('product-details', { productId: id });
             }}
           />
         );
       case 'ar-tryon':
         return (
           <ArTryOnView 
-            onNavigate={setScreen} 
+            onNavigate={navigate} 
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
           />
@@ -194,18 +246,18 @@ export default function App() {
       case 'tryon-result':
         return (
           <TryOnResultView 
-            onNavigate={setScreen} 
+            onNavigate={navigate} 
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
             onAddToCart={handleAddToCart}
           />
         );
       case 'camera-scan':
-        return <CameraScanView onNavigate={setScreen} />;
+        return <CameraScanView onNavigate={navigate} />;
       case 'profile':
         return (
           <ProfileView 
-            onNavigate={setScreen} 
+            onNavigate={navigate} 
             userName={userName} 
             setUserName={setUserName} 
             userEmail={userEmail}
@@ -218,6 +270,8 @@ export default function App() {
             onUpdateMeasurements={handleUpdateMeasurements}
             preferences={preferences}
             onUpdatePreferences={handleUpdatePreferences}
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
           />
         );
       case 'setup-preferences':
@@ -234,7 +288,7 @@ export default function App() {
       case 'product-details':
         return (
           <ProductDetailsView 
-            onNavigate={setScreen} 
+            onNavigate={navigate} 
             onAddToCart={handleAddToCart}
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
@@ -246,7 +300,7 @@ export default function App() {
       case 'showroom':
         return (
           <ShowroomView 
-            onNavigate={setScreen}
+            onNavigate={navigate}
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
             onSelectProduct={(id) => {
@@ -255,19 +309,19 @@ export default function App() {
               if (prod && prod.colors && prod.colors.length > 0) {
                 setSelectedColor(prod.colors[0]);
               }
-              setScreen('product-details');
+              navigate('product-details', { productId: id });
             }}
             cartItemsCount={countCartTotalItems()}
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={setScreen} />;
+        return <ScanOutfitView onNavigate={navigate} />;
       case 'chat':
-        return <ChatView userName={userName} onNavigate={setScreen} />;
+        return <ChatView userName={userName} onNavigate={navigate} />;
       case 'cart':
         return (
           <CartView 
-            onNavigate={setScreen} 
+            onNavigate={navigate} 
             cartItems={cartItems} 
             onUpdateQuantity={handleUpdateQuantity}
             onRemoveItem={handleRemoveItem}
@@ -275,7 +329,7 @@ export default function App() {
           />
         );
       default:
-        return <HomeView userName={userName} onNavigate={setScreen} />;
+        return <HomeView userName={userName} onNavigate={navigate} recentActivity={recentActivityState} />;
     }
   };
 
@@ -287,9 +341,9 @@ export default function App() {
   const handleOnboardingComplete = () => {
     localStorage.setItem('onboarding_completed', 'true');
     if (!isLoggedIn) {
-      setScreen('login');
+      navigate('login');
     } else {
-      setScreen('home');
+      navigate('home');
     }
   };
 
@@ -303,16 +357,16 @@ export default function App() {
     setUserPhone(phone);
     setIsLoggedIn(true);
     if (isSignUp) {
-      setScreen('setup-preferences');
+      navigate('setup-preferences');
     } else {
-      setScreen('home');
+      navigate('home');
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     setIsLoggedIn(false);
-    setScreen('home');
+    navigate('home');
   };
 
   // Navigation highlights checks
@@ -350,13 +404,21 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between max-w-md mx-auto relative bg-gradient-to-b from-indigo-50/40 via-white to-purple-50/40 shadow-2xl overflow-hidden font-sans border-x border-indigo-100">
+    <div className={`min-h-screen flex flex-col justify-between max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-slate-950 border-x border-slate-800 text-white' 
+        : 'bg-slate-50 border-x border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-purple-50/40'
+    }`}>
       
       {/* 1. Header Toolbar (Hidden when immersive AR camera is loaded to mimic device viewport) */}
       {!isImmersiveAR && (
-        <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-indigo-100/40 px-6 py-4 flex items-center justify-between">
+        <header className={`sticky top-0 z-40 backdrop-blur-xl px-6 py-4 flex items-center justify-between transition-colors duration-300 ${
+          isDarkMode
+            ? 'bg-slate-900/85 border-b border-slate-800/40'
+            : 'bg-white/85 border-b border-indigo-100/40'
+        }`}>
           <div 
-            onClick={() => setScreen('home')}
+                    onClick={() => navigate('home')}
             className="flex items-center space-x-2 cursor-pointer select-none group"
           >
             {/* Elegant futuristic brand logo icon incorporating vivid lavender/blue gradients */}
@@ -364,17 +426,19 @@ export default function App() {
               N
             </div>
             <div className="leading-none">
-              <span className="text-base font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">NOVA</span>
-              <span className="text-[8px] font-bold text-indigo-500 block mt-0.5 tracking-wider font-mono">VISION LABS</span>
+              <span className={`text-base font-black tracking-tight group-hover:text-indigo-600 transition-colors ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>NOVA</span>
+              <span className={`text-[8px] font-bold block mt-0.5 tracking-wider font-mono ${
+                isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+              }`}>VISION LABS</span>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Quick Wishlist widget */}
+            {/* Quick Wishlist widget (opens modal) */}
             <button 
-              onClick={() => {
-                setScreen('profile');
-              }}
+              onClick={() => setIsWishlistOpen(true)}
               className="w-10 h-10 rounded-full bg-rose-50/40 hover:bg-rose-50 flex items-center justify-center relative transition-colors border border-rose-100/40"
               title="View Wishlist"
             >
@@ -388,8 +452,9 @@ export default function App() {
 
             {/* Quick Shopping Cart widget */}
             <button 
-              onClick={() => setScreen('showroom')}
+              onClick={() => navigate('cart')}
               className="w-10 h-10 rounded-full bg-indigo-50/40 flex items-center justify-center relative hover:bg-indigo-50 transition-colors border border-indigo-100/40"
+              title="View Cart"
             >
               <span className="material-symbols-outlined text-indigo-600 text-[20px]">local_mall</span>
               {countCartTotalItems() > 0 && (
@@ -401,7 +466,7 @@ export default function App() {
 
             {/* Quick profile thumbnail widget */}
             <button 
-              onClick={() => setScreen('profile')}
+              onClick={() => navigate('profile')}
               className="w-9 h-9 rounded-full overflow-hidden border-2 border-indigo-100 hover:border-indigo-350 transition-all shadow"
             >
               <img 
@@ -416,15 +481,72 @@ export default function App() {
       )}
 
       {/* 2. Primary Page Contents Body (with comfortable padding, except AR which covers background fully) */}
-      <main className={`flex-grow relative ${isImmersiveAR ? '' : 'px-4 py-3 pb-24 bg-white/10'}`}>
+      <main className={`flex-grow relative transition-colors duration-300 ${isImmersiveAR ? '' : `px-4 py-3 pb-24 ${isDarkMode ? 'bg-slate-950/10' : 'bg-white/10'}`}`}>
         {renderActiveScreen()}
       </main>
 
+      {/* Wishlist Modal (quick view) */}
+      {isWishlistOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setIsWishlistOpen(false)} />
+          <div className={`relative w-full max-w-md rounded-3xl shadow-xl p-4 overflow-y-auto max-h-[70vh] transition-colors duration-300 ${
+            isDarkMode ? 'bg-slate-900' : 'bg-white'
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Saved Items ({wishlist.length})</h3>
+              <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}>Close</button>
+            </div>
+            {wishlist.length === 0 ? (
+              <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                No saved items yet — tap the heart on products to save them.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {wishlist.map((productId) => {
+                  const prod = products[productId];
+                  if (!prod) return null;
+                  const defaultColor = prod.colors && prod.colors.length > 0 ? prod.colors[0] : 'Default';
+                  const defaultSize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : 'One Size';
+                  return (
+                    <div key={productId} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50">
+                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 border">
+                        <img alt={prod.name} src={prod.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-slate-700 truncate">{prod.name}</div>
+                        <div className="text-[11px] text-slate-500">₹{prod.price}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            handleAddToCart(productId, defaultColor, defaultSize);
+                          }}
+                          className="py-2 px-3 bg-indigo-600 text-white rounded-xl text-xs font-bold"
+                        >Add</button>
+                        <button
+                          onClick={() => {
+                            handleToggleWishlist(productId);
+                          }}
+                          className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100"
+                        >Remove</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* 3. Bottom persistent device Navigation Tab-Bar (Hidden during immersive Tryon filtering) */}
       {!isImmersiveAR && (
-        <nav className="fixed bottom-0 inset-x-0 max-w-md mx-auto bg-white/85 backdrop-blur-2xl border-t border-indigo-100/50 px-6 py-2 pb-5 flex items-center justify-between z-40 shadow-2xl shadow-indigo-950/15">
+        <nav className={`fixed bottom-0 inset-x-0 max-w-md mx-auto backdrop-blur-2xl px-6 py-2 pb-5 flex items-center justify-between z-40 shadow-2xl transition-colors duration-300 ${
+          isDarkMode
+            ? 'bg-slate-900/85 border-t border-slate-800/50 shadow-slate-950/50'
+            : 'bg-white/85 border-t border-indigo-100/50 shadow-indigo-950/15'
+        }`}>
           <button 
-            onClick={() => setScreen('home')}
+            onClick={() => navigate('home')}
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('home') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
@@ -432,7 +554,7 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => setScreen('scan-outfit')}
+            onClick={() => navigate('scan-outfit')}
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('scan') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
@@ -440,7 +562,7 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => setScreen('ar-tryon')}
+            onClick={() => navigate('ar-tryon')}
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('ar') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('ar') ? "'FILL' 1" : undefined }}>view_in_ar</span>
@@ -448,7 +570,7 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => setScreen('chat')}
+            onClick={() => navigate('chat')}
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('chat') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
@@ -456,7 +578,7 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => setScreen('profile')}
+            onClick={() => navigate('profile')}
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('profile') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>

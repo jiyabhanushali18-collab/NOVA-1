@@ -16,6 +16,8 @@ interface ProfileViewProps {
   onUpdateMeasurements?: (measurements: Measurement[]) => void;
   preferences?: Preference[];
   onUpdatePreferences?: (preferences: Preference[]) => void;
+  isDarkMode?: boolean;
+  setIsDarkMode?: (isDark: boolean) => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
@@ -31,7 +33,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   measurements = initialMeasurements,
   onUpdateMeasurements,
   preferences = initialPreferences,
-  onUpdatePreferences
+  onUpdatePreferences,
+  isDarkMode = false,
+  setIsDarkMode
 }) => {
   const [profileToast, setProfileToast] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -629,15 +633,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </section>
 
       {/* Settings list actions */}
-      <section className="glass-card rounded-3xl overflow-hidden shadow-sm">
-        <ul className="divide-y divide-slate-150">
+      <section className={`rounded-3xl overflow-hidden shadow-sm ${isDarkMode ? 'bg-slate-800/40 divide-slate-700/50' : 'glass-card divide-slate-150'}`}>
+        <ul className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-slate-150'}`}>
           {[
             { label: 'Wishlist (Saved Items)', icon: 'favorite', action: () => setIsWishlistModalOpen(true), extra: wishlist.length > 0 ? `${wishlist.length} Items` : '0' },
             { label: 'Payment Methods', icon: 'payment', action: () => setIsPaymentModalOpen(true), extra: `${paymentMethods.filter((p: any) => p.type === 'Credit Card').length} Card(s), ${paymentMethods.filter((p: any) => p.type === 'UPI').length} UPI` },
             { label: 'Addresses', icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
-            { label: 'System Guide Onboarding', icon: 'info', action: () => onNavigate('onboarding') },
-            { label: 'Replay Intro Splash Screen', icon: 'sparkles', action: () => onNavigate('splash') },
-            { label: 'Reset & Full App Restart', icon: 'restart_alt', action: () => { if (confirm('Are you sure you want to clear all credentials and simulate a brand new install restart?')) { localStorage.clear(); window.location.reload(); } } },
+            { label: 'Dark Mode', icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
             { label: 'Privacy & Security', icon: 'lock', action: () => setIsPrivacyModalOpen(true) },
             { label: 'Notifications', icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
             { label: 'Language', icon: 'language', extra: selectedLanguage, action: () => setIsLanguageModalOpen(true) }
@@ -645,14 +647,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <li key={item.label}>
               <button 
                 onClick={() => item.action ? item.action() : alert(`Simulated link clicked: ${item.label}`)}
-                className="w-full flex items-center justify-between p-4 hover:bg-white/40 transition-colors text-left group"
+                className={`w-full flex items-center justify-between p-4 transition-colors text-left group ${ isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-white/40'}`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-slate-400 group-hover:text-indigo-600 transition-colors">{item.icon}</span>
-                  <span className="text-sm font-bold text-slate-700">{item.label}</span>
+                  <span className={`material-symbols-outlined transition-colors ${isDarkMode ? 'text-slate-500 group-hover:text-indigo-400' : 'text-slate-400 group-hover:text-indigo-600'}`}>{item.icon}</span>
+                  <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{item.label}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-400">
-                  {item.extra && <span className="text-xs text-indigo-500 font-bold bg-indigo-50/70 px-2 py-0.5 rounded-full">{item.extra}</span>}
+                <div className={`flex items-center gap-1.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {item.extra && <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDarkMode ? 'text-indigo-300 bg-indigo-950/70' : 'text-indigo-500 bg-indigo-50/70'}`}>{item.extra}</span>}
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
                 </div>
               </button>
