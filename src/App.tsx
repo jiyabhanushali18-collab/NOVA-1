@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { ScreenId, CartItem, Measurement, Preference } from './types';
+import React, { useEffect, useState } from 'react';
+import { collection, getDocs, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { ScreenId, CartItem, Measurement, Preference, ProductItem } from './types';
 import { products } from './data';
+import { db } from './firebase';
 
 // Modular View Imports
 import { HomeView } from './components/HomeView';
@@ -78,6 +80,50 @@ export default function App() {
     localStorage.setItem('preferences', JSON.stringify(newPreferences));
   };
 
+  const [productsData, setProductsData] = useState<Record<string, ProductItem>>(() => products);
+  const [productsLoading, setProductsLoading] = useState<boolean>(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setProductsLoading(true);
+        const snapshot = await getDocs(collection(db, 'products'));
+        const fetchedProducts: Record<string, ProductItem> = {};
+
+        snapshot.forEach((doc: any) => {
+          const data = doc.data() as any;
+          const id = doc.id;
+          fetchedProducts[id] = {
+            id,
+            name: String(data.name || 'Unnamed Product'),
+            category: String(data.category || 'Uncategorized'),
+            price: Number(data.price || 0),
+            originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : undefined,
+            rating: Number(data.rating || 0),
+            reviewsCount: Number(data.reviewsCount || 0),
+            imageUrl: String(data.imageUrl || ''),
+            colors: Array.isArray(data.colors) ? data.colors.map(String) : ['Standard'],
+            sizes: Array.isArray(data.sizes) ? data.sizes.map(String) : ['One Size'],
+            inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
+            stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : undefined,
+            badge: data.badge ? String(data.badge) : undefined,
+            details: Array.isArray(data.details) ? data.details.map(String) : []
+          };
+        });
+
+        setProductsData((prev) => ({ ...prev, ...fetchedProducts }));
+      } catch (error) {
+        console.error('Error loading Firebase products:', error);
+        setProductsError('Unable to load showroom items. Please try again later.');
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
   // Persistent wishlist/favorites state
   const [wishlist, setWishlist] = useState<string[]>(() => {
     try {
@@ -134,14 +180,14 @@ export default function App() {
   const navigate = (to: ScreenId, opts?: { productId?: string }) => {
     const time = new Date().toLocaleString();
     if (to === 'ar-tryon') {
-      const prod = products[opts?.productId || selectedProductId];
+      const prod = productsData[opts?.productId || selectedProductId];
       addRecentActivity({ id: Date.now().toString(), name: prod?.name || 'AR Try-On', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod?.imageUrl || '' });
     } else if (to === 'camera-scan') {
-      const prod = products[opts?.productId || selectedProductId];
-      addRecentActivity({ id: Date.now().toString(), name: prod?.name || 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: prod?.imageUrl || '' });
+      const prod = productsData[opts?.productId || selectedProductId];
+      addRecentActivity({ id: Date.now().toLocaleString(), name: prod?.name || 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: prod?.imageUrl || '' });
     } else if (to === 'product-details') {
       const id = opts?.productId || selectedProductId;
-      const prod = products[id];
+      const prod = productsData[id];
       if (prod) addRecentActivity({ id: Date.now().toString(), name: prod.name, time, badge: 'Viewed', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod.imageUrl });
     } else if (to === 'scan-outfit') {
       addRecentActivity({ id: Date.now().toString(), name: 'Scan Outfit', time, badge: 'Scan', icon: 'center_focus_strong', color: 'bg-teal-600/80', imageUrl: '' });
@@ -152,7 +198,7 @@ export default function App() {
   // Initialize with one default item for convenient out-of-the-box checkout previews!
   const [cartItems, setCartItems] = useState<CartItem[]>([
     {
-      product: products['lavender-hoodie'],
+      product: productsData['lavender-hoodie'] || products['lavender-hoodie'],
       quantity: 1,
       color: 'Lavender',
       size: 'M'
@@ -174,7 +220,7 @@ export default function App() {
       updated[isPresentIndex].quantity += 1;
       setCartItems(updated);
     } else {
-      const p = products[prodId];
+      const p = productsData[prodId] || products[prodId];
       if (p) {
         setCartItems([
           ...cartItems,
@@ -228,7 +274,7 @@ export default function App() {
             isDarkMode={isDarkMode}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
-              const prod = products[id];
+              const prod = productsData[id] || products[id];
               if (prod && prod.colors && prod.colors.length > 0) {
                 setSelectedColor(prod.colors[0]);
               }
@@ -289,6 +335,7 @@ export default function App() {
       case 'product-details':
         return (
           <ProductDetailsView 
+            products={productsData}
             onNavigate={navigate} 
             onAddToCart={handleAddToCart}
             selectedColor={selectedColor}
@@ -302,13 +349,16 @@ export default function App() {
       case 'showroom':
         return (
           <ShowroomView 
+            products={Object.values(productsData)}
+            loading={productsLoading}
+            error={productsError}
             onNavigate={navigate}
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
             isDarkMode={isDarkMode}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
-              const prod = products[id];
+              const prod = productsData[id] || products[id];
               if (prod && prod.colors && prod.colors.length > 0) {
                 setSelectedColor(prod.colors[0]);
               }
@@ -507,7 +557,7 @@ export default function App() {
             ) : (
               <div className="space-y-3">
                 {wishlist.map((productId) => {
-                  const prod = products[productId];
+                  const prod = productsData[productId] || products[productId];
                   if (!prod) return null;
                   const defaultColor = prod.colors && prod.colors.length > 0 ? prod.colors[0] : 'Default';
                   const defaultSize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : 'One Size';

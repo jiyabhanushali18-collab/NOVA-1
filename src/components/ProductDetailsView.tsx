@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ScreenId } from '../types';
-import { products } from '../data';
+import { ScreenId, ProductItem } from '../types';
 
 interface ProductDetailsViewProps {
+  products: Record<string, ProductItem>;
   onNavigate: (screen: ScreenId) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
   selectedColor: string;
@@ -14,6 +14,7 @@ interface ProductDetailsViewProps {
 }
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
+  products,
   onNavigate,
   onAddToCart,
   selectedColor,
@@ -30,7 +31,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
   const handleAddToCart = (prodId: string, color: string, size: string) => {
     onAddToCart(prodId, color, size);
-    setToastMessage(`✓ Added 1x ${products[prodId].name} (${color}, Size ${size}) to Cart!`);
+    const productName = products[prodId]?.name || 'Product';
+    setToastMessage(`✓ Added 1x ${productName} (${color}, Size ${size}) to Cart!`);
     setTimeout(() => setToastMessage(null), 3500);
   };
 

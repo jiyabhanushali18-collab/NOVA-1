@@ -1,8 +1,10 @@
 import React from 'react';
-import { ScreenId } from '../types';
-import { products } from '../data';
+import { ScreenId, ProductItem } from '../types';
 
 interface ShowroomViewProps {
+  products: ProductItem[];
+  loading?: boolean;
+  error?: string | null;
   onNavigate: (screen: ScreenId) => void;
   wishlist?: string[];
   onToggleWishlist?: (productId: string) => void;
@@ -12,6 +14,9 @@ interface ShowroomViewProps {
 }
 
 export const ShowroomView: React.FC<ShowroomViewProps> = ({ 
+  products,
+  loading = false,
+  error = null,
   onNavigate,
   wishlist = [],
   onToggleWishlist,
@@ -63,95 +68,109 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
             All Products
           </h2>
           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${isDarkMode ? 'text-indigo-300 bg-indigo-950/70 border-indigo-700/30' : 'text-indigo-700 bg-indigo-50/70 border-indigo-100/30'}`}>
-            {Object.keys(products).length} Drops
+            {products.length} Drops
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {Object.values(products).map((product) => {
-            const isWishlisted = wishlist.includes(product.id);
-            return (
-              <div 
-                key={product.id}
-                onClick={() => {
-                  if (onSelectProduct) {
-                    onSelectProduct(product.id);
-                  } else {
-                    onNavigate('product-details');
-                  }
-                }}
-                className={`glass-panel rounded-2xl p-3 flex flex-col hover:shadow-md cursor-pointer transition-all duration-300 group relative ${
-                  isDarkMode
-                    ? 'border-slate-700/30'
-                    : 'border-white/30'
-                }`}
-              >
-                {/* Wishlist Heart Icon overlay */}
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onToggleWishlist) {
-                      onToggleWishlist(product.id);
+        {loading ? (
+          <div className={`rounded-2xl p-6 text-sm ${isDarkMode ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            Loading showroom items...
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl p-6 bg-rose-50 text-sm text-rose-700 border border-rose-200">
+            {error}
+          </div>
+        ) : products.length === 0 ? (
+          <div className={`rounded-2xl p-6 text-sm ${isDarkMode ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            No products available right now.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {products.map((product) => {
+              const isWishlisted = wishlist.includes(product.id);
+              return (
+                <div 
+                  key={product.id}
+                  onClick={() => {
+                    if (onSelectProduct) {
+                      onSelectProduct(product.id);
+                    } else {
+                      onNavigate('product-details');
                     }
                   }}
-                  className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${
-                    isWishlisted 
-                      ? 'bg-rose-50 text-rose-500 border border-rose-100' 
-                      : isDarkMode
-                        ? 'bg-slate-800/60 text-slate-400 hover:text-rose-500 hover:bg-slate-700'
-                        : 'bg-white/85 text-slate-450 hover:text-rose-500 hover:bg-white'
+                  className={`glass-panel rounded-2xl p-3 flex flex-col hover:shadow-md cursor-pointer transition-all duration-300 group relative ${
+                    isDarkMode
+                      ? 'border-slate-700/30'
+                      : 'border-white/30'
                   }`}
-                  title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                 >
-                  <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}>
-                    {isWishlisted ? 'favorite' : 'favorite_border'}
-                  </span>
-                </button>
-
-                <div className={`h-44 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center relative border ${
-                  isDarkMode 
-                    ? 'bg-slate-800/30 border-slate-700/30'
-                    : 'bg-slate-50/70 border-slate-100'
-                }`}>
-                  <img 
-                    src={product.imageUrl} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  {product.badge && (
-                    <span className="absolute bottom-2 left-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                      {product.badge}
+                  {/* Wishlist Heart Icon overlay */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onToggleWishlist) {
+                        onToggleWishlist(product.id);
+                      }
+                    }}
+                    className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${
+                      isWishlisted 
+                        ? 'bg-rose-50 text-rose-500 border border-rose-100' 
+                        : isDarkMode
+                          ? 'bg-slate-800/60 text-slate-400 hover:text-rose-500 hover:bg-slate-700'
+                          : 'bg-white/85 text-slate-450 hover:text-rose-500 hover:bg-white'
+                    }`}
+                    title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                  >
+                    <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}>
+                      {isWishlisted ? 'favorite' : 'favorite_border'}
                     </span>
-                  )}
-                </div>
+                  </button>
 
-                <div className="leading-tight flex-grow flex flex-col justify-between">
-                  <div>
-                    <span className={`text-[8px] font-bold uppercase tracking-widest block mb-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>
-                      {product.category}
-                    </span>
-                    <h4 className={`text-xs font-bold line-clamp-1 transition-colors ${
-                      isDarkMode 
-                        ? 'text-slate-100 group-hover:text-indigo-300'
-                        : 'text-slate-800 group-hover:text-indigo-600'
-                    }`}>
-                      {product.name}
-                    </h4>
+                  <div className={`h-44 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center relative border ${
+                    isDarkMode 
+                      ? 'bg-slate-800/30 border-slate-700/30'
+                      : 'bg-slate-50/70 border-slate-100'
+                  }`}>
+                    <img 
+                      src={product.imageUrl} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      referrerPolicy="no-referrer"
+                    />
+                    {product.badge && (
+                      <span className="absolute bottom-2 left-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                        {product.badge}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex justify-between items-center mt-2.5">
-                    <span className={`text-xs font-black ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{product.price.toLocaleString()}</span>
-                    <span className={`text-[9px] font-bold flex items-center gap-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      <span className="material-symbols-outlined text-[10px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      {product.rating}
-                    </span>
+                  <div className="leading-tight flex-grow flex flex-col justify-between">
+                    <div>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block mb-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>
+                        {product.category}
+                      </span>
+                      <h4 className={`text-xs font-bold line-clamp-1 transition-colors ${
+                        isDarkMode 
+                          ? 'text-slate-100 group-hover:text-indigo-300'
+                          : 'text-slate-800 group-hover:text-indigo-600'
+                      }`}>
+                        {product.name}
+                      </h4>
+                    </div>
+
+                    <div className="flex justify-between items-center mt-2.5">
+                      <span className={`text-xs font-black ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{product.price.toLocaleString()}</span>
+                      <span className={`text-[9px] font-bold flex items-center gap-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <span className="material-symbols-outlined text-[10px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        {product.rating}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Actions Footer */}
