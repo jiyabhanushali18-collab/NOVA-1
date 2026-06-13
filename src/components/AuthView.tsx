@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Phone, User, Eye, EyeOff, Check, AlertCircle, RefreshCw, Smartphone, Key, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Phone, User, Check, AlertCircle, RefreshCw, Smartphone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { auth } from '../firebase';
 
 interface AuthViewProps {
   onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean) => void;
@@ -25,7 +27,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
   
   // Form input fields
   const [name, setName] = useState('');
-  const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   
   // OTP flow steps: 'input' | 'otp'
   const [step, setStep] = useState<'input' | 'otp'>('input');
@@ -41,21 +43,123 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     useRef<HTMLInputElement>(null),
   ];
 
-  // OTP simulation states
-  const [simulatedOtp, setSimulatedOtp] = useState<string>('');
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null);
+
   const [notification, setNotification] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const [countdown, setCountdown] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState<RegisterUser[]>([]);
 
   // Initialize and load registered users
   useEffect(() => {
     const existing = localStorage.getItem('nova_registered_users');
     if (!existing) {
       localStorage.setItem('nova_registered_users', JSON.stringify(SEED_USERS));
+      setRegisteredUsers(SEED_USERS);
+    } else {
+      try {
+        setRegisteredUsers(JSON.parse(existing));
+      } catch {
+        setRegisteredUsers(SEED_USERS);
+        localStorage.setItem('nova_registered_users', JSON.stringify(SEED_USERS));
+      }
     }
   }, []);
+
+  const isValidPhoneNumber = (value: string) => {
+    return /^\+[1-9]\d{1,14}$/.test(value);
+  };
+
+  const createRecaptchaVerifier = (): RecaptchaVerifier => {
+    if (recaptchaVerifier.current) {
+      return recaptchaVerifier.current;
+    }
+
+    if (typeof window === 'undefined') {
+      throw new Error('Recaptcha verifier is only available in the browser.');
+    }
+
+    recaptchaVerifier.current = new RecaptchaVerifier(
+      'recaptcha-container',
+      {
+        size: 'invisible',
+        callback: () => {
+          // reCAPTCHA solved, signInWithPhoneNumber may proceed.
+        },
+        'expired-callback': () => {
+          setError('reCAPTCHA expired. Please try again.');
+          setConfirmationResult(null);
+        }
+      },
+      auth
+    );
+
+    return recaptchaVerifier.current;
+  };
+
+  const clearRecaptcha = () => {
+    if (recaptchaVerifier.current) {
+      try {
+        recaptchaVerifier.current.clear();
+      } catch {
+        // ignore cleanup failures
+      }
+      recaptchaVerifier.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearRecaptcha();
+    };
+  }, []);
+
+  const sendOtp = async (phone: string, forceRefresh = false) => {
+    if (!isValidPhoneNumber(phone)) {
+      setError('Please enter a valid phone number in E.164 format, for example +919876543210.');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+
+    try {
+      if (forceRefresh) {
+        clearRecaptcha();
+      }
+
+      const appVerifier = createRecaptchaVerifier();
+      const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
+      setConfirmationResult(confirmation);
+      setStep('otp');
+      setCountdown(59);
+      setOtp(['', '', '', '', '', '']);
+      setNotification({
+        message: `OTP sent to ${phone}. Please enter the 6-digit code shown on your device.`,
+        visible: true
+      });
+    } catch (err: any) {
+      console.error('Phone auth error:', err);
+      if (err.code === 'auth/invalid-phone-number') {
+        setError('Invalid phone number format. Please use +919876543210.');
+      } else if (err.code === 'auth/quota-exceeded') {
+        setError('SMS quota exceeded. Please try again later.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Network error. Please check your connection and try again.');
+      } else if (err.code === 'auth/captcha-check-failed') {
+        setError('reCAPTCHA validation failed. Please refresh and try again.');
+      } else {
+        setError('Unable to send OTP. Please try again.');
+      }
+      clearRecaptcha();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // OTP Countdown timer trigger
   useEffect(() => {
@@ -79,21 +183,20 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     return () => clearTimeout(notifyTimer);
   }, [notification.visible]);
 
-  // Parse if input is email or phone
-  const isEmail = (val: string) => {
-    return val.includes('@');
-  };
-
-  // Generate and send OTP simulation
-  const handleRequestOtp = (e: React.FormEvent) => {
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    // Initial validations
-    const cleanInput = emailOrPhone.trim();
-    if (!cleanInput) {
-      setError('Please provide an Email Address or Phone Number.');
+    const cleanPhone = phoneNumber.trim();
+    if (!cleanPhone) {
+      setError('Please provide your phone number in E.164 format, for example +919876543210.');
+      return;
+    }
+
+    const normalizedPhone = cleanPhone.replace(/\s+/g, '');
+    if (!isValidPhoneNumber(normalizedPhone)) {
+      setError('Please provide a valid phone number in E.164 format, for example +919876543210.');
       return;
     }
 
@@ -102,77 +205,41 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
       return;
     }
 
-    setIsSubmitting(true);
+    const userExists = registeredUsers.some(
+      (u) => u.phone.replace(/\s+/g, '') === normalizedPhone
+    );
 
-    // Simulate small backend check lookup
-    setTimeout(() => {
-      const registeredUsers: RegisterUser[] = JSON.parse(
-        localStorage.getItem('nova_registered_users') || JSON.stringify(SEED_USERS)
-      );
-
-      // Check if user exists for login mode
-      if (mode === 'login') {
-        const found = registeredUsers.find(
-          (u) => u.email.toLowerCase() === cleanInput.toLowerCase() || u.phone.replace(/\s+/g, '') === cleanInput.replace(/\s+/g, '')
-        );
-
-        if (!found) {
-          setError('We could not find an account with that email or phone. Switch to "Sign Up" above to register brand new!');
-          setIsSubmitting(false);
-          return;
-        }
-      } else {
-        // Sign-up: Check if user already exists
-        const exists = registeredUsers.some(
-          (u) => u.email.toLowerCase() === cleanInput.toLowerCase() || u.phone.replace(/\s+/g, '') === cleanInput.replace(/\s+/g, '')
-        );
-
-        if (exists) {
-          setError('This email/phone is already registered. If you have an account already, switch to Login!');
-          setIsSubmitting(false);
-          return;
-        }
+    if (mode === 'login') {
+      if (!userExists) {
+        setError('We could not find an account with that phone number. Switch to "Create Account" to register.');
+        return;
       }
+    } else {
+      if (userExists) {
+        setError('This phone number is already registered. If you already have an account, switch to Sign In!');
+        return;
+      }
+    }
 
-      // Generate random 6-digit verification code
-      const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
-      setSimulatedOtp(generatedCode);
-      setCountdown(59); // 1-minute cooling down timer
-      setStep('otp');
-      setIsSubmitting(false);
-      
-      // Fire up a simulation notification banner at top of screen
-      const typeLabel = isEmail(cleanInput) ? 'Email Inbox' : 'SMS secure link';
-      setNotification({
-        message: `[SIMULATED PUSH] NOVA verification code sent to your ${typeLabel}: ${generatedCode}. Expiration in 5 mins.`,
-        visible: true
-      });
-      setOtp(['', '', '', '', '', '']); // reset input
-      
-      // Trigger focus of first input block in next tick
-      setTimeout(() => {
-        otpRefs[0].current?.focus();
-      }, 100);
-
-    }, 800);
+    await sendOtp(normalizedPhone);
+    setTimeout(() => {
+      otpRefs[0].current?.focus();
+    }, 100);
   };
 
-  // Resend code simulated handler
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (countdown > 0) return;
     setError(null);
     setSuccess(null);
-    
-    const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setSimulatedOtp(generatedCode);
-    setCountdown(59);
-    
-    const typeLabel = isEmail(emailOrPhone) ? 'Email' : 'SMS';
-    setNotification({
-      message: `[RESENT SIMULATED] New verification code sent to your ${typeLabel}: ${generatedCode}`,
-      visible: true
-    });
-    setOtp(['', '', '', '', '', '']);
+
+    const cleanPhone = phoneNumber.trim();
+    const normalizedPhone = cleanPhone.replace(/\s+/g, '');
+    if (!isValidPhoneNumber(normalizedPhone)) {
+      setError('Please enter your phone number again in E.164 format before resending OTP.');
+      return;
+    }
+
+    await sendOtp(normalizedPhone, true);
     setTimeout(() => {
       otpRefs[0].current?.focus();
     }, 100);
@@ -212,8 +279,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     otpRefs[5].current?.focus();
   };
 
-  // OTP form submission
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -224,67 +290,66 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
       return;
     }
 
+    if (!confirmationResult) {
+      setError('OTP session expired. Please request a new code.');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      if (enteredCode !== simulatedOtp) {
-        setError('Incorrect verification code. Please try again or resend.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Success flows
-      setSuccess('Verification successful!');
-      
-      const registeredUsers: RegisterUser[] = JSON.parse(
+    try {
+      const userCredential = await confirmationResult.confirm(enteredCode);
+      const finalPhone = userCredential.user.phoneNumber || phoneNumber.trim();
+      const existingUsers: RegisterUser[] = JSON.parse(
         localStorage.getItem('nova_registered_users') || JSON.stringify(SEED_USERS)
       );
 
       let finalName = '';
       let finalEmail = '';
-      let finalPhone = '';
 
       if (mode === 'signup') {
-        // Registering a brand new account
-        const sanitizedInput = emailOrPhone.trim();
-        const detectedEmail = isEmail(sanitizedInput) ? sanitizedInput : `${name.toLowerCase().replace(/\s+/g, '')}@nova.ai`;
-        const detectedPhone = isEmail(sanitizedInput) ? '+91 99999 88888' : sanitizedInput;
-        
-        const newRecord: RegisterUser = {
+        const newUser: RegisterUser = {
           name: name.trim(),
-          email: detectedEmail,
-          phone: detectedPhone
+          phone: finalPhone,
+          email: `${name.trim().toLowerCase().replace(/\s+/g, '')}@nova.ai`
         };
 
-        const updatedUsers = [...registeredUsers, newRecord];
+        const updatedUsers = [...existingUsers, newUser];
         localStorage.setItem('nova_registered_users', JSON.stringify(updatedUsers));
-        
-        finalName = newRecord.name;
-        finalEmail = newRecord.email;
-        finalPhone = newRecord.phone;
+        setRegisteredUsers(updatedUsers);
+
+        finalName = newUser.name;
+        finalEmail = newUser.email;
       } else {
-        // Logging into an existing account
-        const matched = registeredUsers.find(
-          (u) => 
-            u.email.toLowerCase() === emailOrPhone.trim().toLowerCase() || 
-            u.phone.replace(/\s+/g, '') === emailOrPhone.trim().replace(/\s+/g, '')
-        )!;
-        finalName = matched.name;
-        finalEmail = matched.email;
-        finalPhone = matched.phone;
+        const matched = existingUsers.find(
+          (u) => u.phone.replace(/\s+/g, '') === finalPhone.replace(/\s+/g, '')
+        );
+        finalName = matched?.name || finalPhone;
+        finalEmail = matched?.email || `${finalName.toLowerCase().replace(/\s+/g, '')}@nova.ai`;
       }
 
+      setSuccess('Verification successful!');
       setTimeout(() => {
         setIsSubmitting(false);
         onLoginSuccess(finalName, finalEmail, finalPhone, mode === 'signup');
       }, 500);
-
-    }, 1000);
+    } catch (err: any) {
+      console.error('OTP verification failed:', err);
+      if (err.code === 'auth/invalid-verification-code') {
+        setError('Incorrect verification code. Please try again.');
+      } else if (err.code === 'auth/code-expired') {
+        setError('OTP expired. Request a new code.');
+        setConfirmationResult(null);
+      } else {
+        setError('Unable to verify OTP. Please try again.');
+      }
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-[85vh] flex flex-col justify-center items-center px-4 py-8 relative">
-      
+      <div id="recaptcha-container" className="hidden" />
       {/* Immersive Mock Notifications Panel for OTP values */}
       <AnimatePresence>
         {notification.visible && (
@@ -294,11 +359,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             className="fixed top-4 inset-x-4 max-w-sm mx-auto z-50 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-indigo-500/30 flex gap-3 cursor-pointer"
             onClick={() => {
-              // Auto-fill OTP on click for ultra cool convenience!
-              if (simulatedOtp) {
-                setOtp(simulatedOtp.split(''));
-                setNotification(prev => ({ ...prev, visible: false }));
-              }
+              setNotification(prev => ({ ...prev, visible: false }));
             }}
           >
             <div className="w-9 h-9 rounded-full bg-indigo-600/30 text-indigo-400 flex items-center justify-center shrink-0 animate-pulse">
@@ -310,7 +371,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
                 <span className="text-[8px] text-slate-400 font-mono leading-none">Just Received</span>
               </div>
               <p className="text-xs font-semibold text-slate-100 mt-1 leading-tight">{notification.message}</p>
-              <span className="text-[9px] font-black text-amber-400 mt-1.5 block uppercase tracking-wider">💡 Click envelope to auto-fill code</span>
+              <span className="text-[9px] font-black text-amber-400 mt-1.5 block uppercase tracking-wider">💡 Tap the notification to dismiss when you are ready.</span>
             </div>
           </motion.div>
         )}
@@ -394,26 +455,26 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
                   </div>
                 )}
 
-                {/* Email Address or Phone input field */}
+                {/* Phone input field */}
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Email or Phone Number</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Phone Number</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      {isEmail(emailOrPhone) ? <Mail className="w-4.5 h-4.5" /> : <Phone className="w-4.5 h-4.5" />}
+                      <Phone className="w-4.5 h-4.5" />
                     </div>
                     <input
-                      type="text"
-                      placeholder={mode === 'login' ? 'arjun.mehta@email.com or +91 98765 43210' : 'Email or Mobile with +Country prefix'}
-                      value={emailOrPhone}
-                      onChange={(e) => setEmailOrPhone(e.target.value)}
+                      type="tel"
+                      placeholder="+919876543210"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
                       required
                     />
                   </div>
                   <span className="text-[9px] text-slate-400 block mt-1 ml-1 leading-tight">
                     {mode === 'login' 
-                      ? '💡 Try: arjun.mehta@email.com or vijusaiya123@gmail.com' 
-                      : '💡 Provide any dummy email or phone to register locally'}
+                      ? '💡 Enter your registered phone in E.164 format, for example +919876543210.' 
+                      : '💡 Use your phone number to receive a secure OTP for sign up.'}
                   </span>
                 </div>
 
@@ -469,14 +530,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
                     <h4 className="text-sm font-bold text-slate-800 leading-none">Security Code</h4>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed px-1">
-                    Enter the 6-digit verification code sent securely to <span className="font-bold text-slate-800">{emailOrPhone}</span>
+                    Enter the 6-digit verification code sent securely to <span className="font-bold text-slate-800">{phoneNumber}</span>
                   </p>
                   <button
                     type="button"
                     onClick={() => { setStep('input'); setError(null); }}
                     className="text-[11px] font-bold text-indigo-600 mt-1.5 hover:underline"
                   >
-                    Change Email/Phone
+                    Change Phone Number
                   </button>
                 </div>
 
