@@ -9,7 +9,14 @@ export const products: Record<string, ProductItem> = {
     originalPrice: 1699,
     rating: 4.6,
     reviewsCount: 128,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD7VW5Cc6r7qoM4OmcIbzA7Hq92zxLvY27d4MoCAZMrrHvxQPI-VNw_6Gn8RIafOQhyaFhQzveczU9Xkdl31lZzLiRCw6UOwtcVPEdGhShWhK1buf7nckQexwWzgAnw4lsUA-yY0uUsCT_0jFnSVkqOPFqPdATdplKSM74rQazzRQS2Q-FRBLi5EeqNoedzVndcFC6pH7yw48eCrQg--wsE5cKhjLIwrrWItbPbiSFrtQKDM_iLDOVKdiIlQjtIyTpcQCDX1_vpVQZ3',
+    imageUrl: 'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&h=600&q=80&crop=entropy&cs=tinysrgb',
+      'https://images.unsplash.com/photo-1578932750294-708994cc4054?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1506634215556-11fef7d1c69d?w=500&h=600&q=80'
+    ],
     colors: ['Lavender', 'Mint Green', 'Beige', 'Black', 'Sky Blue'],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     inStock: true,
@@ -30,7 +37,12 @@ export const products: Record<string, ProductItem> = {
     price: 1899,
     rating: 4.5,
     reviewsCount: 92,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD6SUBxCC1W7OoHVtqM7h49Y9nQeKW2Bnaz74NUwa4nTGLhWoTKR_hBvdDxcEdgPmHVQRyfp3gbLpELzRvVTUM8RAcNteNG1arYHdxP8jVG56ocRhM239MmG6SnuaO9hby2osapTbZDymsksx8bZ68BBEZjnlxY5xDEcSKItJowbD4-Wj3O_vGQMoQKvPklWaYHAJxJwSI2ZVuBfJCAn_C_0k2taqthDBwr4E-jtqwbdsIRDrsxRpmco15wgzmkzdxK0S3BA7nIDpRl',
+    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1532635241649-7e968b12c664?w=500&h=600&q=80'
+    ],
     colors: ['Beige', 'Black', 'Olive'],
     sizes: ['30', '32', '34', '36'],
     inStock: true,
@@ -43,7 +55,12 @@ export const products: Record<string, ProductItem> = {
     price: 2299,
     rating: 4.8,
     reviewsCount: 204,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCXeG3Utl3pzVQbTaFybdAbydZoTXbn0Ci3SLMFl7E7PjTp-huDho0BW6PEbax-kWKYNa4Cfe0tUH0DwNu8hcz96PtWexIOuJEag2I6wftJebSx_Q-hNZP1hNl_mRfm8lTvozNBYIf_bFM9QxMMhlTJPar1vF_-HF1kn2AM_TVUH2GEIwYLXHVUr-KD-aYmHS_V2pgP7oLBduAXDDD3JxpdLDutOXpenvpX738van9OaDFC_lnWMBazGnVv4v1eqWU-UFRwpYEs2iXG',
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1552062407-291826bca4c9?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1578932750294-708994cc4054?w=500&h=600&q=80'
+    ],
     colors: ['White', 'Off-White', 'Black Accents'],
     sizes: ['UK 7', 'UK 8', 'UK 9', 'UK 10'],
     inStock: true,
@@ -56,7 +73,12 @@ export const products: Record<string, ProductItem> = {
     price: 999,
     rating: 4.4,
     reviewsCount: 65,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDUdEBWflVEI1qzxFi1xs0v_x3n8QHwAVwuyRyDvUv6HC9eZw8lpNje8urI0OlhB1NGSX6ongMkHD30zO3pmgOke4Dkk1iFBVAv6dFSrwJ9ooOhse1WrgqjLBhTI2XPrVkuuQ_lQmFeaVbwq5-gGug_BRhQyW_So7dbmBMmia_XiZVQmtLpZ8ghByct7mCcja58CqS-RdG7wsYK-5jSXUdDEZxu5Iur23nXcLgigZh3wX6ctJaq0MTnsN6BNNcM6whIAmNidmjPOFYP',
+    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1581235720704-06d3636d27f7?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&h=600&q=80'
+    ],
     colors: ['Black', 'Navy', 'Graphite'],
     sizes: ['One Size'],
     inStock: true,
@@ -69,7 +91,11 @@ export const products: Record<string, ProductItem> = {
     price: 3499,
     rating: 4.7,
     reviewsCount: 88,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAz436PJ3rbXi1LBV-sa3cN9uLMLqpSMl88xEV3gJacDoqvdlBzW37YgFuzQkyI7p_9Kep1fRAB-uC7ofCfNQeDsELcdaKgoEn81Eek8bt8nNChouMNaEEOUka2CfaeoSTi5c70u6sMESaLmJCYQtYV_rYls4TGCvf8uSjdFAn9KKS0AguyjN-0jlYW4v-08SrEtgaJcxBcSGMONz9D1fXx87S5cBnKt07ubFlpA_LvVTRRNYnwtY7zbZ6A0fPRaOaa4yoMo3hdoNj',
+    imageUrl: 'https://images.unsplash.com/photo-1539533057867-fe50032efd77?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1539533057867-fe50032efd77?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&h=600&q=80'
+    ],
     colors: ['Classic Grey', 'Navy Blue'],
     sizes: ['S', 'M', 'L', 'XL'],
     inStock: true,
@@ -82,7 +108,11 @@ export const products: Record<string, ProductItem> = {
     price: 2199,
     rating: 4.6,
     reviewsCount: 142,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD3miyWP_zl2aHEDCK9sXkVPXLOVzbOKRTWLRnX3e1NdsACMR0aFCxqKWwxGOku-R7IVBVcGNxAGDCSsezqGsnTF7cqeG872VC8viDCcyRRLri-LaZt0AFnVHR8qBBUVRdn08W7n2HIrAANh45Vqx8AM8z545uKlXiCl37ZD09VgvKuW-UT_tJ_Hu-q0eACs3i5zaveMZ2knMU0jakTV_1kfq0fTC2D77YrK1HiGdBRCkXLhFXQB3PpELPFKIva2UW0XKhoytfhVIvr',
+    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1578932750294-708994cc4054?w=500&h=600&q=80'
+    ],
     colors: ['Stonewash Blue', 'Classic Denim'],
     sizes: ['S', 'M', 'L', 'XL'],
     inStock: true,
@@ -95,7 +125,12 @@ export const products: Record<string, ProductItem> = {
     price: 1199,
     rating: 4.3,
     reviewsCount: 84,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA8wT-YJ9h1opUpZm1ItgTo6FkdK0wAOpAMniH2HQkI_Y_-haB8_cWFNy4aa-yIVFZG703nvN2a3Y4UAGNPWgmnExTMtTtm89k2S85clx5XlQDhAKyQMPq-umw2uRdUFAYWhSyj0w0tdyH-XojlBbLvD0Cp2Ov_btKdpwnd3zD4Y3OLI2x4ye_cr3pb-DcDAsarau1uSjQE9OSBuxXa6E4fWpGztGMkFi7APN02qcIMBnN6Zneuc-Qv6FY3XY2d7SMswIqHBoJ4QDMV',
+    imageUrl: 'https://images.unsplash.com/photo-1596215578519-c21a6004885c?w=500&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1596215578519-c21a6004885c?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1578886385458-5db141f40a99?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=500&h=600&q=80'
+    ],
     colors: ['Beige', 'Sand', 'Chambray'],
     sizes: ['S', 'M', 'L', 'XL'],
     inStock: true,

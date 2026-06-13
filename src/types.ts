@@ -24,6 +24,7 @@ export interface ProductItem {
   rating: number;
   reviewsCount: number;
   imageUrl: string;
+  imageUrls?: string[];
   colors: string[];
   sizes: string[];
   inStock: boolean;

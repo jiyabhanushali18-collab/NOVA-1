@@ -423,6 +423,12 @@ export default function App() {
     navigate('home');
   };
 
+  React.useEffect(() => {
+    if (isLoggedIn && (screen === 'splash' || screen === 'onboarding')) {
+      setScreen('home');
+    }
+  }, [isLoggedIn, screen]);
+
   // Navigation highlights checks
   const isTabActive = (tab: string) => {
     if (tab === 'home' && screen === 'home') return true;

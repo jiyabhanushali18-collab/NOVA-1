@@ -29,6 +29,25 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Set default color to first color when product changes
+  React.useEffect(() => {
+    if (mainProduct.colors && mainProduct.colors.length > 0) {
+      if (!selectedColor || !mainProduct.colors.includes(selectedColor)) {
+        setSelectedColor(mainProduct.colors[0]);
+      }
+    }
+  }, [selectedProductId, mainProduct.colors]);
+
+  // Get the correct image URL based on selected color
+  const getProductImageUrl = () => {
+    if (!mainProduct) return '';
+    const colorIndex = mainProduct.colors.indexOf(selectedColor);
+    if (colorIndex !== -1 && mainProduct.imageUrls && mainProduct.imageUrls[colorIndex]) {
+      return mainProduct.imageUrls[colorIndex];
+    }
+    return mainProduct.imageUrl;
+  };
+
   const handleAddToCart = (prodId: string, color: string, size: string) => {
     onAddToCart(prodId, color, size);
     const productName = products[prodId]?.name || 'Product';
@@ -54,10 +73,11 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       {/* Large Product Hero Image display card */}
       <section className="relative w-full h-[380px] bg-slate-100 flex items-center justify-center overflow-hidden rounded-b-3xl border-b border-slate-200">
         <img 
-          alt="Streetwear Lavender Hoodie model photography" 
+          key={selectedColor}
+          alt={`${mainProduct.name} in ${selectedColor}`}
           className="w-full h-full object-cover object-center absolute inset-0"
           referrerPolicy="no-referrer"
-          src={mainProduct.imageUrl}
+          src={getProductImageUrl()}
         />
         {/* badges inside hero */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
