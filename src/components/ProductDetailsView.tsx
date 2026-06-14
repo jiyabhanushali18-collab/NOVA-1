@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
 import { ScreenId, ProductItem } from '../types';
 
+const normalizeColor = (color?: string) => (color || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+
+const findColorImage = (colorImages: Record<string, string> | undefined, color?: string) => {
+  if (!colorImages || !color) return undefined;
+  const exact = colorImages[color];
+  if (exact) return exact;
+
+  const normalizedColor = normalizeColor(color);
+  const directNormalized = colorImages[normalizedColor];
+  if (directNormalized) return directNormalized;
+
+  const matchedKey = Object.keys(colorImages).find((key) => normalizeColor(key) === normalizedColor);
+  return matchedKey ? colorImages[matchedKey] : undefined;
+};
+
 interface ProductDetailsViewProps {
   products: Record<string, ProductItem>;
   onNavigate: (screen: ScreenId) => void;
@@ -42,18 +57,17 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const getProductImageUrl = () => {
     if (!mainProduct) return '';
 
-    if (mainProduct.colorImages) {
-      const exact = mainProduct.colorImages[selectedColor];
-      if (exact) return exact;
-      const normalized = selectedColor.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
-      const matchedKey = Object.keys(mainProduct.colorImages).find((key) => key.toLowerCase().trim().replace(/[^a-z0-9]/g, '') === normalized);
-      if (matchedKey) return mainProduct.colorImages[matchedKey];
-    }
+    // Try colorImages first with robust color matching
+    const colorImage = findColorImage(mainProduct.colorImages, selectedColor);
+    if (colorImage) return colorImage;
 
+    // Fallback to indexed imageUrls array
     const colorIndex = mainProduct.colors.indexOf(selectedColor);
     if (colorIndex !== -1 && mainProduct.imageUrls && mainProduct.imageUrls[colorIndex]) {
       return mainProduct.imageUrls[colorIndex];
     }
+
+    // Final fallback to single imageUrl
     return mainProduct.imageUrl;
   };
 

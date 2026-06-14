@@ -105,12 +105,22 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
     });
   });
 
+  // Enhanced: scan all fields for color-based image naming (e.g., redImage, pinkImage, yellowImage)
   Object.entries(data).forEach(([fieldName, value]) => {
-    const normalizedField = normalizeColor(fieldName);
-    const matchedColor = colors.find((color) => normalizeColor(color) && normalizedField.includes(normalizeColor(color)));
-    if (matchedColor && getStringValue(value)) {
-      addColorImage(result, matchedColor, value);
-    }
+    const lowerField = fieldName.toLowerCase();
+    const imageUrl = getStringValue(value);
+    
+    if (!imageUrl) return;
+
+    // Check if any word from the color name appears in the field name
+    colors.forEach((color) => {
+      const colorWords = color.toLowerCase().split(/\s+/);
+      const matchesAnyWord = colorWords.some((word) => lowerField.includes(word));
+      
+      if (matchesAnyWord) {
+        addColorImage(result, color, value);
+      }
+    });
   });
 
   if (Object.keys(result).length > 0) return result;
