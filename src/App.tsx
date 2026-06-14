@@ -20,6 +20,128 @@ import { SplashView } from './components/SplashView';
 import { OnboardingView } from './components/OnboardingView';
 import { SetupPreferencesView } from './components/SetupPreferencesView';
 
+const getStringValue = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const candidate = record.imageUrl || record.url || record.src || record.image;
+  if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  return undefined;
+};
+
+const getColorValue = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const candidate = record.color || record.name || record.label;
+  if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  return undefined;
+};
+
+const normalizeColor = (value: unknown) => {
+  return typeof value === 'string'
+    ? value.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+    : '';
+};
+
+const asStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === 'string' ? item.trim() : typeof item === 'number' ? String(item).trim() : ''))
+      .filter((item) => item.length > 0);
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+
+  return [];
+};
+
+const addColorImage = (result: Record<string, string>, color: unknown, imageUrl: unknown) => {
+  const imageUrlString = getStringValue(imageUrl);
+  const colorString = getColorValue(color) || (typeof color === 'string' ? color.trim() : '');
+  const normalized = normalizeColor(colorString);
+
+  if (normalized && imageUrlString) {
+    result[normalized] = imageUrlString;
+    if (colorString && !(colorString in result)) {
+      result[colorString] = imageUrlString;
+    }
+  }
+};
+
+const processColorImageSource = (result: Record<string, string>, source: unknown) => {
+  if (!source) return;
+  if (Array.isArray(source)) {
+    source.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      addColorImage(result, (entry as any).color || (entry as any).name || (entry as any).label, (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src);
+    });
+    return;
+  }
+  if (typeof source === 'object') {
+    Object.entries(source).forEach(([key, value]) => {
+      addColorImage(result, key, value);
+    });
+  }
+};
+
+const buildColorImages = (data: Record<string, any>, colors: string[]) => {
+  const result: Record<string, string> = {};
+  const mapSources = [data.colorImages, data.imagesByColor, data.colorImageUrls, data.imageUrls];
+
+  mapSources.forEach((source) => processColorImageSource(result, source));
+
+  const variantSources = [data.variants, data.colorVariants, data.colorsData];
+  variantSources.forEach((source) => {
+    if (!Array.isArray(source)) return;
+    source.forEach((variant) => {
+      if (!variant || typeof variant !== 'object') return;
+      addColorImage(result, (variant as any).color || (variant as any).name || (variant as any).label, (variant as any).imageUrl || (variant as any).image || (variant as any).url || (variant as any).src);
+    });
+  });
+
+  Object.entries(data).forEach(([fieldName, value]) => {
+    const normalizedField = normalizeColor(fieldName);
+    const matchedColor = colors.find((color) => normalizeColor(color) && normalizedField.includes(normalizeColor(color)));
+    if (matchedColor && getStringValue(value)) {
+      addColorImage(result, matchedColor, value);
+    }
+  });
+
+  if (Object.keys(result).length > 0) return result;
+
+  const imageUrlsArray = asStringArray(data.imageUrls);
+  if (imageUrlsArray.length > 0 && colors.length > 0) {
+    const count = Math.min(colors.length, imageUrlsArray.length);
+    for (let idx = 0; idx < count; idx += 1) {
+      const key = normalizeColor(colors[idx]);
+      if (key && imageUrlsArray[idx]) {
+        result[key] = imageUrlsArray[idx];
+      }
+    }
+  }
+
+  if (Object.keys(result).length > 0) return result;
+
+  const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || '';
+  if (imageUrl && colors.length > 0) {
+    colors.forEach((color) => {
+      const key = normalizeColor(color);
+      if (key) {
+        result[key] = imageUrl;
+      }
+    });
+    return result;
+  }
+
+  return undefined;
+};
+
 export default function App() {
   // Session authorization states loaded from localStorage
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
@@ -94,6 +216,12 @@ export default function App() {
         snapshot.forEach((doc: any) => {
           const data = doc.data() as any;
           const id = doc.id;
+          const colors = Array.isArray(data.colors)
+            ? data.colors.map(String).map((value) => value.trim()).filter((value) => value.length > 0)
+            : ['Standard'];
+          const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || '';
+          const imageUrls = asStringArray(data.imageUrls);
+
           fetchedProducts[id] = {
             id,
             name: String(data.name || 'Unnamed Product'),
@@ -102,9 +230,11 @@ export default function App() {
             originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : undefined,
             rating: Number(data.rating || 0),
             reviewsCount: Number(data.reviewsCount || 0),
-            imageUrl: String(data.imageUrl || ''),
-            colors: Array.isArray(data.colors) ? data.colors.map(String) : ['Standard'],
-            sizes: Array.isArray(data.sizes) ? data.sizes.map(String) : ['One Size'],
+            imageUrl,
+            imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+            colorImages: buildColorImages({ ...data, imageUrl }, colors),
+            colors,
+            sizes: Array.isArray(data.sizes) ? data.sizes.map(String).map((value) => value.trim()).filter((value) => value.length > 0) : ['One Size'],
             inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
             stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : undefined,
             badge: data.badge ? String(data.badge) : undefined,

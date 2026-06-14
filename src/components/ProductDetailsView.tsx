@@ -41,6 +41,15 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   // Get the correct image URL based on selected color
   const getProductImageUrl = () => {
     if (!mainProduct) return '';
+
+    if (mainProduct.colorImages) {
+      const exact = mainProduct.colorImages[selectedColor];
+      if (exact) return exact;
+      const normalized = selectedColor.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      const matchedKey = Object.keys(mainProduct.colorImages).find((key) => key.toLowerCase().trim().replace(/[^a-z0-9]/g, '') === normalized);
+      if (matchedKey) return mainProduct.colorImages[matchedKey];
+    }
+
     const colorIndex = mainProduct.colors.indexOf(selectedColor);
     if (colorIndex !== -1 && mainProduct.imageUrls && mainProduct.imageUrls[colorIndex]) {
       return mainProduct.imageUrls[colorIndex];
