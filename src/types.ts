@@ -25,7 +25,8 @@ export interface ProductItem {
   reviewsCount: number;
   imageUrl: string;
   imageUrls?: string[];
-  colorImages?: Record<string, string>;
+  // colorImages can be a single URL or an array of URLs per color
+  colorImages?: Record<string, string | string[]>;
   colors: string[];
   sizes: string[];
   inStock: boolean;

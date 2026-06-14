@@ -61,20 +61,23 @@ const asStringArray = (value: unknown): string[] => {
   return [];
 };
 
-const addColorImage = (result: Record<string, string>, color: unknown, imageUrl: unknown) => {
+const addColorImage = (result: Record<string, string[]>, color: unknown, imageUrl: unknown) => {
   const imageUrlString = getStringValue(imageUrl);
   const colorString = getColorValue(color) || (typeof color === 'string' ? color.trim() : '');
   const normalized = normalizeColor(colorString);
 
   if (normalized && imageUrlString) {
-    result[normalized] = imageUrlString;
-    if (colorString && !(colorString in result)) {
-      result[colorString] = imageUrlString;
+    result[normalized] = result[normalized] || [];
+    if (!result[normalized].includes(imageUrlString)) result[normalized].push(imageUrlString);
+
+    if (colorString) {
+      result[colorString] = result[colorString] || [];
+      if (!result[colorString].includes(imageUrlString)) result[colorString].push(imageUrlString);
     }
   }
 };
 
-const processColorImageSource = (result: Record<string, string>, source: unknown) => {
+const processColorImageSource = (result: Record<string, string[]>, source: unknown) => {
   if (!source) return;
   if (Array.isArray(source)) {
     source.forEach((entry) => {
@@ -91,17 +94,17 @@ const processColorImageSource = (result: Record<string, string>, source: unknown
 };
 
 const buildColorImages = (data: Record<string, any>, colors: string[]) => {
-  const result: Record<string, string> = {};
+  const tmp: Record<string, string[]> = {};
   const mapSources = [data.colorImages, data.imagesByColor, data.colorImageUrls, data.imageUrls];
 
-  mapSources.forEach((source) => processColorImageSource(result, source));
+  mapSources.forEach((source) => processColorImageSource(tmp, source));
 
   const variantSources = [data.variants, data.colorVariants, data.colorsData];
   variantSources.forEach((source) => {
     if (!Array.isArray(source)) return;
     source.forEach((variant) => {
       if (!variant || typeof variant !== 'object') return;
-      addColorImage(result, (variant as any).color || (variant as any).name || (variant as any).label, (variant as any).imageUrl || (variant as any).image || (variant as any).url || (variant as any).src);
+      addColorImage(tmp, (variant as any).color || (variant as any).name || (variant as any).label, (variant as any).imageUrl || (variant as any).image || (variant as any).url || (variant as any).src);
     });
   });
 
@@ -118,14 +121,91 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
       const matchesAnyWord = colorWords.some((word) => lowerField.includes(word));
       
       if (matchesAnyWord) {
-        addColorImage(result, color, value);
+        addColorImage(tmp, color, value);
       }
     });
   });
 
-  if (Object.keys(result).length > 0) return result;
+  // convert tmp (arrays) into result where values are single string or array
+  const result: Record<string, string | string[]> = {};
+  Object.entries(tmp).forEach(([k, arr]) => {
+    if (!arr || arr.length === 0) return;
+    result[k] = arr.length === 1 ? arr[0] : arr.slice();
+  });
 
-  const imageUrlsArray = asStringArray(data.imageUrls);
+  // If some colors have mappings but others don't, try to use numbered/global image fields
+  if (Object.keys(result).length > 0) {
+    const mappedColors = Object.keys(result).map((k) => normalizeColor(k));
+    const missing = colors.filter((c) => !mappedColors.includes(normalizeColor(c)));
+    if (missing.length > 0) {
+      // collect numbered/global images (imageUrl, imageUrl2, image2...)
+      let numbered: string[] = [];
+      const base = getStringValue(data.imageUrl) || getStringValue(data.image) || getStringValue(data.image1) || getStringValue(data.img1);
+      if (base) numbered.push(base);
+      for (let i = 2; i <= 8; i += 1) {
+        const candidates = [
+          `imageUrl${i}`,
+          `image${i}`,
+          `img${i}`,
+          `image_url${i}`,
+          `url${i}`
+        ];
+        for (const key of candidates) {
+          const val = getStringValue((data as any)[key]);
+          if (val && !numbered.includes(val)) {
+            numbered.push(val);
+            break;
+          }
+        }
+      }
+
+      if (numbered.length > 0) {
+        if (missing.length === 1) {
+          const colorKey = missing[0];
+          const norm = normalizeColor(colorKey);
+          result[colorKey] = numbered.length === 1 ? numbered[0] : numbered.slice();
+          if (!(norm in result)) result[norm] = result[colorKey];
+        } else {
+          // distribute images across missing colors in order
+          for (let i = 0; i < Math.min(missing.length, numbered.length); i += 1) {
+            const colorKey = missing[i];
+            const norm = normalizeColor(colorKey);
+            result[colorKey] = numbered[i];
+            if (!(norm in result)) result[norm] = numbered[i];
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // Try common list field first
+  let imageUrlsArray = asStringArray(data.imageUrls);
+  // If not present, also collect numbered image fields like imageUrl2, image2, image_2, img2, etc.
+  if (imageUrlsArray.length === 0) {
+    const numbered: string[] = [];
+    // include base imageUrl if present
+    const base = getStringValue(data.imageUrl) || getStringValue(data.image) || getStringValue(data.image1) || getStringValue(data.img1);
+    if (base) numbered.push(base);
+    for (let i = 2; i <= 8; i += 1) {
+      const candidates = [
+        `imageUrl${i}`,
+        `image${i}`,
+        `img${i}`,
+        `image_url${i}`,
+        `url${i}`
+      ];
+      for (const key of candidates) {
+        const val = getStringValue((data as any)[key]);
+        if (val && !numbered.includes(val)) {
+          numbered.push(val);
+          break;
+        }
+      }
+    }
+    imageUrlsArray = numbered;
+  }
   if (imageUrlsArray.length > 0 && colors.length > 0) {
     const count = Math.min(colors.length, imageUrlsArray.length);
     for (let idx = 0; idx < count; idx += 1) {

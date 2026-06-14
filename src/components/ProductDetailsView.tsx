@@ -3,7 +3,7 @@ import { ScreenId, ProductItem } from '../types';
 
 const normalizeColor = (color?: string) => (color || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
-const findColorImage = (colorImages: Record<string, string> | undefined, color?: string) => {
+const findColorImage = (colorImages: Record<string, string | string[]> | undefined, color?: string) => {
   if (!colorImages || !color) return undefined;
   const exact = colorImages[color];
   if (exact) return exact;
@@ -43,6 +43,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [selectedSize, setSelectedSize] = useState('M');
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [galleryIndex, setGalleryIndex] = useState<number>(0);
 
   // Set default color to first color when product changes
   React.useEffect(() => {
@@ -51,6 +52,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         setSelectedColor(mainProduct.colors[0]);
       }
     }
+    // reset gallery when product or color changes
+    setGalleryIndex(0);
   }, [selectedProductId, mainProduct.colors]);
 
   // Get the correct image URL based on selected color
@@ -96,11 +99,43 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       {/* Large Product Hero Image display card */}
       <section className="relative w-full h-[380px] bg-slate-100 flex items-center justify-center overflow-hidden rounded-b-3xl border-b border-slate-200">
         <img 
-          key={selectedColor}
+          key={`${selectedColor}-${galleryIndex}`}
           alt={`${mainProduct.name} in ${selectedColor}`}
-          className="w-full h-full object-cover object-center absolute inset-0"
+          className="w-full h-full object-cover object-center absolute inset-0 cursor-pointer"
           referrerPolicy="no-referrer"
-          src={getProductImageUrl()}
+          src={(() => {
+            // build a small gallery: prefer color-specific images array; only fall back to global images if no color-specific images
+            const colorImg = findColorImage(mainProduct.colorImages, selectedColor);
+            const imgs: string[] = [];
+            if (colorImg) {
+              if (Array.isArray(colorImg)) colorImg.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
+              else if (typeof colorImg === 'string') imgs.push(colorImg);
+            } else {
+              if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
+                mainProduct.imageUrls.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
+              }
+              if (mainProduct.imageUrl && !imgs.includes(mainProduct.imageUrl)) imgs.push(mainProduct.imageUrl);
+            }
+            // ensure at least one
+            const idx = Math.max(0, Math.min(galleryIndex, Math.max(0, imgs.length - 1)));
+            return imgs[idx] || mainProduct.imageUrl || '';
+          })()}
+          onClick={() => {
+            // advance to next image when user taps the hero image
+            const colorImg = findColorImage(mainProduct.colorImages, selectedColor);
+            const imgs: string[] = [];
+            if (colorImg) {
+              if (Array.isArray(colorImg)) colorImg.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
+              else if (typeof colorImg === 'string') imgs.push(colorImg);
+            } else {
+              if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
+                mainProduct.imageUrls.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
+              }
+              if (mainProduct.imageUrl && !imgs.includes(mainProduct.imageUrl)) imgs.push(mainProduct.imageUrl);
+            }
+            if (imgs.length <= 1) return;
+            setGalleryIndex((p) => (p + 1) % imgs.length);
+          }}
         />
         {/* badges inside hero */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -118,9 +153,28 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
         {/* Pagination Dots indicator */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/20 backdrop-blur px-2.5 py-1.5 rounded-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>
-          <div className="w-1.5 h-1.5 rounded-full bg-white/50"></div>
-          <div className="w-1.5 h-1.5 rounded-full bg-white/50"></div>
+          {(() => {
+            const colorImg = findColorImage(mainProduct.colorImages, selectedColor);
+            const imgs: string[] = [];
+            if (colorImg) {
+              if (Array.isArray(colorImg)) colorImg.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
+              else if (typeof colorImg === 'string') imgs.push(colorImg);
+            } else {
+              if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
+                mainProduct.imageUrls.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
+              }
+              if (mainProduct.imageUrl && !imgs.includes(mainProduct.imageUrl)) imgs.push(mainProduct.imageUrl);
+            }
+            const len = Math.max(1, imgs.length);
+            return Array.from({ length: len }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setGalleryIndex(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${galleryIndex === i ? 'bg-indigo-600 scale-110' : 'bg-white/50'}`}
+                aria-label={`Image ${i + 1}`}
+              />
+            ));
+          })()}
         </div>
       </section>
 
