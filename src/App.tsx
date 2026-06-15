@@ -680,7 +680,6 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    // Go directly to onboarding so the user always sees both beautiful screens on reload
     setScreen('onboarding');
   };
 
@@ -714,12 +713,6 @@ export default function App() {
     setIsLoggedIn(false);
     navigate('home');
   };
-
-  React.useEffect(() => {
-    if (isLoggedIn && (screen === 'splash' || screen === 'onboarding')) {
-      setScreen('home');
-    }
-  }, [isLoggedIn, screen]);
 
   // Navigation highlights checks
   const isTabActive = (tab: string) => {
