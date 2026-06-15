@@ -130,7 +130,7 @@ export const CartView: React.FC<CartViewProps> = ({
           <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
             step === 'address' ? 'bg-indigo-600 text-white shadow' : step === 'payment' ? 'bg-green-100 text-green-700 font-extrabold' : 'bg-slate-200 text-slate-500'
           }`}>
-            {step === 'completed' || step === 'payment' ? '✓' : '2'}
+            {['payment', 'completed'].includes(step) ? '✓' : '2'}
           </div>
           <span className={`text-[10px] font-bold ${step === 'address' ? 'text-indigo-600' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Address</span>
         </div>

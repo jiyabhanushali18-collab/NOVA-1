@@ -292,6 +292,56 @@ export default function App() {
     localStorage.setItem('preferences', JSON.stringify(newPreferences));
   };
 
+  const [novaPoints, setNovaPoints] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('nova_points');
+      const parsed = saved ? Number(saved) : NaN;
+      return Number.isFinite(parsed) && parsed >= 100 ? parsed : 100;
+    } catch {
+      return 100;
+    }
+  });
+
+  const levelThresholds = [100, 300, 600, 1000, 1500, 2200];
+  const getNovaLevel = (points: number) => {
+    if (points < 300) return 1;
+    if (points < 600) return 2;
+    if (points < 1000) return 3;
+    if (points < 1500) return 4;
+    return 5;
+  };
+
+  const getNextLevelThreshold = (points: number) => {
+    return levelThresholds.find((threshold) => threshold > Math.max(points, 100)) ?? levelThresholds[levelThresholds.length - 1];
+  };
+
+  const awardNovaPoints = (amount: number, description: string) => {
+    if (amount <= 0) return;
+    setNovaPoints((prevPoints) => {
+      const nextPoints = Math.max(100, prevPoints + amount);
+      localStorage.setItem('nova_points', String(nextPoints));
+      addRecentActivity({
+        id: Date.now().toString(),
+        name: `${description}`,
+        time: new Date().toLocaleTimeString(),
+        badge: 'NOVA Rewards',
+        icon: 'stars',
+        color: 'bg-amber-500/80',
+        imageUrl: ''
+      });
+      return nextPoints;
+    });
+  };
+
+  const novaLevel = getNovaLevel(novaPoints);
+  const nextLevelThreshold = getNextLevelThreshold(novaPoints);
+  const currentLevelFloor = novaLevel === 1 ? 100 : levelThresholds[novaLevel - 1];
+  const pointsToNextLevel = Math.max(0, nextLevelThreshold - novaPoints);
+  const levelProgress = Math.min(
+    100,
+    Math.round(((novaPoints - currentLevelFloor) / Math.max(1, nextLevelThreshold - currentLevelFloor)) * 100)
+  );
+
   const [productsData, setProductsData] = useState<Record<string, ProductItem>>(() => products);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -307,7 +357,10 @@ export default function App() {
           const data = doc.data() as any;
           const id = doc.id;
           const colors = Array.isArray(data.colors)
-            ? data.colors.map(String).map((value) => value.trim()).filter((value) => value.length > 0)
+            ? data.colors
+                .map((value: unknown) => String(value))
+                .map((value: string) => value.trim())
+                .filter((value: string) => value.length > 0)
             : ['Standard'];
           const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || '';
           const imageUrls = asStringArray(data.imageUrls);
@@ -324,7 +377,12 @@ export default function App() {
             imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
             colorImages: buildColorImages({ ...data, imageUrl }, colors),
             colors,
-            sizes: Array.isArray(data.sizes) ? data.sizes.map(String).map((value) => value.trim()).filter((value) => value.length > 0) : ['One Size'],
+            sizes: Array.isArray(data.sizes)
+              ? data.sizes
+                  .map((value: unknown) => String(value))
+                  .map((value: string) => value.trim())
+                  .filter((value: string) => value.length > 0)
+              : ['One Size'],
             inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
             stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : undefined,
             badge: data.badge ? String(data.badge) : undefined,
@@ -332,10 +390,17 @@ export default function App() {
           };
         });
 
-        setProductsData((prev) => ({ ...prev, ...fetchedProducts }));
+        if (Object.keys(fetchedProducts).length > 0) {
+          setProductsData((prev) => ({ ...prev, ...fetchedProducts }));
+        } else {
+          console.warn('Firestore returned no products; falling back to local sample data.');
+          setProductsData((prev) => ({ ...prev, ...products }));
+          setProductsError('Firestore did not return any products; using local sample data.');
+        }
       } catch (error) {
         console.error('Error loading Firebase products:', error);
-        setProductsError('Unable to load showroom items. Please try again later.');
+        setProductsData((prev) => ({ ...prev, ...products }));
+        setProductsError('Unable to load showroom items from Firestore. Showing local sample data instead.');
       } finally {
         setProductsLoading(false);
       }
@@ -359,10 +424,12 @@ export default function App() {
 
   const handleToggleWishlist = (productId: string) => {
     setWishlist((prev) => {
-      const updated = prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId];
+      const isAdding = !prev.includes(productId);
+      const updated = isAdding ? [...prev, productId] : prev.filter((id) => id !== productId);
       localStorage.setItem('wishlist', JSON.stringify(updated));
+      if (isAdding) {
+        awardNovaPoints(15, 'Saved item to Wishlist');
+      }
       return updated;
     });
   };
@@ -402,6 +469,7 @@ export default function App() {
     if (to === 'ar-tryon') {
       const prod = productsData[opts?.productId || selectedProductId];
       addRecentActivity({ id: Date.now().toString(), name: prod?.name || 'AR Try-On', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod?.imageUrl || '' });
+      awardNovaPoints(25, 'Engaged in AR Try-On');
     } else if (to === 'camera-scan') {
       const prod = productsData[opts?.productId || selectedProductId];
       addRecentActivity({ id: Date.now().toLocaleString(), name: prod?.name || 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: prod?.imageUrl || '' });
@@ -539,6 +607,10 @@ export default function App() {
             onUpdatePreferences={handleUpdatePreferences}
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
+            novaPoints={novaPoints}
+            novaLevel={novaLevel}
+            pointsToNextLevel={pointsToNextLevel}
+            levelProgress={levelProgress}
           />
         );
       case 'setup-preferences':

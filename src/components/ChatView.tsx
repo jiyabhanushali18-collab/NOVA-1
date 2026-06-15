@@ -52,15 +52,15 @@ Ask me anything—I'm ready to craft suggestions!`,
     try {
       const payloadMessages = [...messages, userMsg].map((m) => ({
         role: m.role,
-        content: m.content
+        content: m.content,
       }));
 
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages: payloadMessages })
+        body: JSON.stringify({ messages: payloadMessages }),
       });
 
       if (!res.ok) {
@@ -68,48 +68,13 @@ Ask me anything—I'm ready to craft suggestions!`,
       }
 
       const data = await res.json();
-      
-      // Let's analyze the reply to see if we can highlight matching catalog items to display as convenient cards!
-      const replyText = data.reply || "";
-      const lowerReply = replyText.toLowerCase();
-      const matchedProdList: any[] = [];
-
-      if (lowerReply.includes('hoodie') || lowerReply.includes('lavender')) {
-        matchedProdList.push({
-          name: 'Lavender Hoodie',
-          price: 1499,
-          imageUrl: products['lavender-hoodie'].imageUrl
-        });
-      }
-      if (lowerReply.includes('cargo') || lowerReply.includes('pants')) {
-        matchedProdList.push({
-          name: 'Cargo Pants',
-          price: 1899,
-          imageUrl: products['cargo-pants'].imageUrl
-        });
-      }
-      if (lowerReply.includes('sneaker') || lowerReply.includes('white')) {
-        matchedProdList.push({
-          name: 'White Sneakers',
-          price: 2299,
-          imageUrl: products['white-sneakers'].imageUrl
-        });
-      }
-      if (lowerReply.includes('bag') || lowerReply.includes('crossbody')) {
-        matchedProdList.push({
-          name: 'Crossbody Bag',
-          price: 999,
-          imageUrl: products['crossbody-bag'].imageUrl
-        });
-      }
-
       const assistantMsg: ChatMessage = {
         id: `ast-${Date.now()}`,
         role: 'assistant',
-        content: replyText,
+        content: data.reply || 'I could not fetch a response right now.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isPairingResult: matchedProdList.length > 0,
-        pairingProducts: matchedProdList.length > 0 ? matchedProdList : undefined
+        isPairingResult: Array.isArray(data.pairingProducts) && data.pairingProducts.length > 0,
+        pairingProducts: Array.isArray(data.pairingProducts) ? data.pairingProducts : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);

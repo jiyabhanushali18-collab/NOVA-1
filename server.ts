@@ -1,85 +1,41 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import chatRouter from './server/chatRouter';
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use('/api', chatRouter);
+app.use(chatRouter);
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
-// Initialize GoogleGenAI securely server-side
-const apiKey = process.env.GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
-if (apiKey) {
-  ai = new GoogleGenAI({
-    apiKey: apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
-
-// Endpoint for Gemini style chat assistant integration
-app.post('/api/chat', async (req: any, res: any) => {
-  const { messages } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'messages array is required' });
-  }
-
-  if (!ai) {
-    return res.json({
-      reply: "Hi Pratham! I'm NOVA, your personal AI and AR Optical Assistant. Currently, my API Key is not configured in this preview, but you can add it via Settings Secrets in the AI Studio menu. In the meantime, I can simulate intelligent responses here, or you can interactively explore scanning outfits, virtual try-ons, and detailed clothing combinations using the handy navigation buttons below!"
-    });
-  }
-
+async function start() {
   try {
-    const userPrompt = messages[messages.length - 1]?.content || "Hello";
-    
-    const systemInstruction = `You are "NOVA" (Next-Gen Optical Vision Assistant), a visionary, conversational, and hyper-intelligent AI and AR style assistant. 
-You provide style recommendations, outfit advice, color coordination, and AR try-on feedback. 
-Talk with design-focused sophistication, visionary passion, and helpful confidence. 
-Keep replies concise, clear, and beautifully structured with linebreaks. Avoid long-winded paragraphs. 
-Address the user as Pratham or Arjun (depending on their profile state). Speak like an elite personal curator.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: userPrompt,
-      config: {
-        systemInstruction,
-      },
-    });
-
-    res.json({ reply: response.text });
-  } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    res.status(500).json({ error: error.message || 'Error communicating with GenAI model.' });
-  }
-});
-
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+    // Create Vite server for development
     const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
+      server: { middlewareMode: true }
     });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`NOVA server running at http://0.0.0.0:${PORT}`);
-  });
+    // Use Vite's connect instance as middleware
+    app.use(vite.middlewares);
+
+    // Fallback to index.html for SPA
+    app.get('/', (req, res) => {
+      res.sendFile(path.resolve(__dirname, 'index.html'));
+    });
+
+    // Start server
+    const server = app.listen(PORT, () => {
+      console.log(`\n✨ Server running at http://localhost:${PORT}\n`);
+    });
+  } catch (error) {
+    console.error('Server startup error:', error);
+    process.exit(1);
+  }
 }
 
-startServer();
+start();

@@ -18,6 +18,10 @@ interface ProfileViewProps {
   onUpdatePreferences?: (preferences: Preference[]) => void;
   isDarkMode?: boolean;
   setIsDarkMode?: (isDark: boolean) => void;
+  novaPoints?: number;
+  novaLevel?: number;
+  pointsToNextLevel?: number;
+  levelProgress?: number;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
@@ -35,7 +39,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   preferences = initialPreferences,
   onUpdatePreferences,
   isDarkMode = false,
-  setIsDarkMode
+  setIsDarkMode,
+  novaPoints = 100,
+  novaLevel = 1,
+  pointsToNextLevel = 0,
+  levelProgress = 0
 }) => {
   const [profileToast, setProfileToast] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -385,15 +393,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
             <span className="material-symbols-outlined text-indigo-600 text-[14px]">stars</span> NOVA Points
           </p>
-          <h3 className="text-2xl font-extrabold text-indigo-600">2,450</h3>
+          <h3 className="text-2xl font-extrabold text-indigo-600">{novaPoints.toLocaleString()}</h3>
         </div>
         
         <div className="text-right">
-          <p className="text-xs font-bold text-slate-700">Level 7</p>
+          <p className="text-xs font-bold text-slate-700">Level {novaLevel}</p>
           <div className="w-32 h-1.5 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: '75%' }}></div>
+            <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${Math.max(0, Math.min(100, levelProgress))}%` }}></div>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Next level in 550 pts</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {pointsToNextLevel > 0 ? `Next level in ${pointsToNextLevel} pts` : 'Max level reached'}
+          </p>
         </div>
       </section>
 
