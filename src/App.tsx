@@ -439,9 +439,9 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('isDarkMode');
-      return saved ? JSON.parse(saved) : false;
+      return saved ? JSON.parse(saved) : true;
     } catch (e) {
-      return false;
+      return true;
     }
   });
 

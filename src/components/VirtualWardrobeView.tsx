@@ -34,11 +34,42 @@ const categoryIcons: Record<string, string> = {
   Dress: 'styler'
 };
 
-const sampleScan =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#4f46e5"/><stop offset="1" stop-color="#ec4899"/></linearGradient><pattern id="p" width="42" height="42" patternUnits="userSpaceOnUse"><circle cx="12" cy="14" r="7" fill="#fff" opacity=".78"/><path d="M25 27c17-11 23 9 6 12-11 2-19-2-6-12Z" fill="#a7f3d0" opacity=".82"/></pattern></defs><rect width="320" height="420" rx="34" fill="#eef2ff"/><path d="M48 72h224v276H48z" fill="url(#g)" opacity=".78"/><path d="M48 72h224v276H48z" fill="url(#p)"/><path d="M70 72h180M70 348h180" stroke="#fff" stroke-width="12" opacity=".45"/></svg>`
+const svgImage = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+
+const getScanSample = (category = 'Kurti') => {
+  const isDenim = ['Jeans', 'Shorts', 'Trousers'].includes(category);
+  const isOuter = ['Hoodie', 'Jacket', 'Blazer', 'Sweatshirt'].includes(category);
+  const isShirt = ['Shirt', 'T-Shirt', 'Polo', 'Crop Top'].includes(category);
+  const base = isDenim ? '#1e2f55' : isOuter ? '#6d4cc2' : isShirt ? '#c25783' : '#244c9a';
+  const accent = isDenim ? '#8fb3ff' : isOuter ? '#d8b4fe' : isShirt ? '#ffe4f2' : '#f8e7b0';
+  const stitch = isDenim ? '#c7d2fe' : '#f8fafc';
+  const detail = isDenim
+    ? `<path d="M42 72c70 28 143 24 238-14M38 316c88-30 158-26 244 8" stroke="${stitch}" stroke-width="5" opacity=".35"/><path d="M78 0l62 420M198 0l-38 420" stroke="#0f172a" stroke-width="3" opacity=".28"/>`
+    : isOuter
+      ? `<path d="M168 0v420" stroke="${accent}" stroke-width="8" opacity=".72"/><path d="M154 20h28v34h-28zM154 72h28v34h-28zM154 124h28v34h-28z" fill="#f8fafc" opacity=".82"/><path d="M42 82c90 50 175 44 240-16" stroke="#fff" stroke-width="3" opacity=".24"/>`
+      : `<path d="M74 62c42 30 88 28 136 0 11 48 42 80 78 104-48 44-91 101-126 170-28-58-69-112-124-162 35-29 55-66 36-112Z" fill="none" stroke="${accent}" stroke-width="6" opacity=".8"/><path d="M90 114c54 36 102 34 150-2" stroke="#fff" stroke-width="3" opacity=".52"/>`;
+
+  return svgImage(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420">
+      <defs>
+        <linearGradient id="cloth" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${base}"/><stop offset=".55" stop-color="#111827"/><stop offset="1" stop-color="${base}"/></linearGradient>
+        <radialGradient id="light" cx="38%" cy="22%" r="70%"><stop stop-color="#ffffff" stop-opacity=".38"/><stop offset=".45" stop-color="#ffffff" stop-opacity=".07"/><stop offset="1" stop-color="#000000" stop-opacity=".35"/></radialGradient>
+        <pattern id="weave" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 8h18M8 0v18" stroke="#fff" stroke-opacity=".08" stroke-width="1"/><path d="M0 17h18" stroke="#000" stroke-opacity=".15"/></pattern>
+        <pattern id="floral" width="56" height="56" patternUnits="userSpaceOnUse"><circle cx="18" cy="18" r="6" fill="${accent}" opacity=".88"/><path d="M18 6c10 7 10 18 0 24C8 24 8 13 18 6ZM6 18c7-10 18-10 24 0-6 10-17 10-24 0Z" fill="#fff" opacity=".48"/><path d="M34 38c16-11 28 6 14 14-10 5-24-1-14-14Z" fill="${accent}" opacity=".5"/></pattern>
+        <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .12"/></feComponentTransfer></filter>
+      </defs>
+      <rect width="320" height="420" rx="34" fill="#0b1020"/>
+      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#cloth)"/>
+      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#weave)"/>
+      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#floral)" opacity="${isDenim ? '.18' : '.78'}"/>
+      ${detail}
+      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#light)"/>
+      <rect x="18" y="18" width="284" height="384" rx="30" filter="url(#grain)" opacity=".55"/>
+    </svg>`
   );
+};
+
+const sampleScan = getScanSample('Kurti');
 
 const makeId = () => `wardrobe-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const storageKey = (userId: string) => `nova_wardrobe_${userId}`;
@@ -55,6 +86,8 @@ const colorHex: Record<string, string> = {
   Maroon: '#8a1238',
   Lilac: '#a78bfa'
 };
+
+const processingSteps = ['Detecting Pattern', 'Detecting Colors', 'Detecting Fabric', 'Generating Garment', 'Complete'];
 
 const analyzeScan = (category: string, gender: WardrobeGender, method: WardrobeScanMethod): WardrobeDetectedAttributes => {
   const isBottom = ['Jeans', 'Trousers', 'Shorts', 'Leggings', 'Palazzo'].includes(category);
@@ -78,13 +111,43 @@ const generateGarmentImage = (category: string, attributes: WardrobeDetectedAttr
   const secondary = colorHex[attributes.secondaryColor] || '#f8fafc';
   const isBottom = ['Jeans', 'Trousers', 'Shorts', 'Leggings', 'Palazzo'].includes(category);
   const isDress = ['Kurti', 'Dress', 'Saree', 'Ethnic Wear'].includes(category);
+  const isOuter = ['Hoodie', 'Sweatshirt', 'Jacket', 'Blazer'].includes(category);
+  const isShirt = ['Shirt', 'T-Shirt', 'Polo', 'Crop Top'].includes(category);
   const bodyPath = isBottom
-    ? '<path d="M120 72h80l21 264h-56l-5-166-6 166H98L120 72Z"/>'
+    ? '<path d="M120 72h80l23 282c-18 8-39 9-61 3l-3-171-10 171c-20 6-42 5-61-3L120 72Z"/>'
     : isDress
-      ? '<path d="M145 64h70l52 298H91L145 64Z"/>'
-      : '<path d="M128 72h104l44 50-38 50-14-22v186H136V150l-14 22-38-50 44-50Z"/>';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 420"><defs><linearGradient id="cloth" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${primary}"/><stop offset="1" stop-color="${secondary}"/></linearGradient><pattern id="print" width="44" height="44" patternUnits="userSpaceOnUse"><circle cx="13" cy="15" r="5" fill="#fff" opacity=".62"/><path d="M25 25c13-8 20 6 8 11-9 4-19 0-8-11Z" fill="#fff" opacity=".34"/></pattern><filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#312e81" flood-opacity=".22"/></filter></defs><rect width="360" height="420" fill="transparent"/><g filter="url(#shadow)" transform="translate(0 6)"><g fill="url(#cloth)">${bodyPath}</g><g fill="url(#print)">${bodyPath}</g><path d="M158 70c7 18 35 18 44 0" fill="none" stroke="#fff" stroke-width="8" opacity=".65"/><path d="M125 96c34 13 76 13 111 0" fill="none" stroke="#fff" stroke-width="2" opacity=".25"/></g></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      ? '<path d="M138 64c24 12 54 12 78 0l18 48 54 244c-56 26-153 27-216 0l54-244 12-48Z"/><path d="M126 86 72 144l35 45 27-24M230 86l58 58-35 45-30-24"/>'
+      : isOuter
+        ? '<path d="M124 76h112l48 55-38 58-18-26v190c-48 18-94 18-140 0V163l-18 26-38-58 48-55Z"/>'
+        : '<path d="M124 78h112l48 48-35 54-21-25v178c-44 17-91 17-140 0V155l-21 25-35-54 48-48Z"/>';
+  const collar = isBottom
+    ? '<path d="M122 78h76" stroke="#fff" stroke-opacity=".55" stroke-width="7" stroke-linecap="round"/>'
+    : isOuter
+      ? '<path d="M154 76c14 28 43 28 58 0l16 30c-30 19-61 19-90 0Z" fill="#0f1020" opacity=".38"/><path d="M180 92v252" stroke="#f8fafc" stroke-opacity=".35" stroke-width="4"/>'
+      : isShirt
+        ? '<path d="M150 78 180 116l30-38" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="8" stroke-linejoin="round"/>'
+        : '<path d="M154 72c8 24 44 24 54 0" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="8" stroke-linecap="round"/>';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 420">
+    <defs>
+      <linearGradient id="cloth" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${primary}"/><stop offset=".55" stop-color="${secondary}"/><stop offset="1" stop-color="${primary}"/></linearGradient>
+      <radialGradient id="shine" cx="34%" cy="16%" r="80%"><stop stop-color="#fff" stop-opacity=".46"/><stop offset=".5" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></radialGradient>
+      <pattern id="print" width="42" height="42" patternUnits="userSpaceOnUse"><circle cx="13" cy="14" r="5" fill="#fff" opacity=".66"/><path d="M13 3c9 7 9 16 0 22C4 19 4 10 13 3ZM3 14c7-9 16-9 22 0-6 9-15 9-22 0Z" fill="#fff" opacity=".32"/><path d="M27 27c13-9 22 5 9 11-8 4-18-1-9-11Z" fill="#111827" opacity=".18"/></pattern>
+      <filter id="shadow" x="-35%" y="-35%" width="170%" height="180%"><feDropShadow dx="0" dy="24" stdDeviation="18" flood-color="#000000" flood-opacity=".34"/><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#a855f7" flood-opacity=".24"/></filter>
+      <filter id="texture"><feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="3"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .09"/></feComponentTransfer></filter>
+    </defs>
+    <rect width="360" height="420" fill="transparent"/>
+    <ellipse cx="180" cy="382" rx="118" ry="22" fill="#000" opacity=".24"/>
+    <g filter="url(#shadow)" transform="translate(0 4)">
+      <g fill="url(#cloth)">${bodyPath}</g>
+      <g fill="url(#print)" opacity="${attributes.pattern.toLowerCase().includes('solid') ? '.12' : '.72'}">${bodyPath}</g>
+      <g fill="url(#shine)">${bodyPath}</g>
+      <g filter="url(#texture)">${bodyPath}</g>
+      ${collar}
+      <path d="M116 112c38 13 91 13 128 0" stroke="#fff" stroke-width="2" opacity=".28" fill="none"/>
+      <path d="M104 344c47 18 105 18 153 0" stroke="#fff" stroke-width="3" opacity=".25" fill="none"/>
+    </g>
+  </svg>`;
+  return svgImage(svg);
 };
 
 export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, isDarkMode = false }) => {
@@ -103,6 +166,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [generatedItem, setGeneratedItem] = useState<WardrobeItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -166,6 +230,11 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const handleAnalyze = () => {
     if (!selectedCategory || !profile.gender || !profile.size) return;
     setIsProcessing(true);
+    setGeneratedItem(null);
+    setProcessingStep(0);
+    processingSteps.forEach((_, index) => {
+      window.setTimeout(() => setProcessingStep(index), index * 520);
+    });
     window.setTimeout(() => {
       const attributes = analyzeScan(selectedCategory, profile.gender!, scanMethod);
       const item: WardrobeItem = {
@@ -182,9 +251,10 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         dateAdded: new Date().toISOString(),
         attributes
       };
+      setProcessingStep(processingSteps.length - 1);
       setGeneratedItem(item);
       setIsProcessing(false);
-    }, 1100);
+    }, 2500);
   };
 
   const saveItem = async () => {
@@ -224,50 +294,93 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     setDoc(doc(db, 'users', userId, 'wardrobe', item.id), item).catch(() => undefined);
   };
 
-  const panel = isDarkMode ? 'bg-slate-900/70 border-white/10 text-white' : 'bg-white/65 border-white/80 text-slate-900';
-  const muted = isDarkMode ? 'text-slate-300' : 'text-slate-500';
+  const darkPanel = 'border border-white/10 bg-[#121322]/92 text-white shadow-[0_18px_48px_rgba(0,0,0,0.32)]';
+  const purpleButton = 'bg-gradient-to-r from-[#8b4cf6] to-[#b45cf7] text-white shadow-lg shadow-purple-950/35';
+  const muted = 'text-slate-400';
+  const totalOutfits = Math.max(8, items.length * 2);
+  const mostCommonColor = items[0]?.colors[0] || 'Black';
+  const colorStats = [
+    ['Black', 28, '#111827'],
+    ['Blue', 22, '#5468f4'],
+    ['White', 18, '#f8fafc'],
+    ['Others', 32, '#8b5cf6']
+  ];
 
   return (
-    <div className={`space-y-5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+    <div className="min-h-full -mx-4 -my-3 space-y-5 bg-[#080913] px-4 py-4 text-white">
       {saveStatus && (
-        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-950/90 px-4 py-2 text-xs font-bold text-white shadow-xl backdrop-blur">
+        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#151426]/95 px-4 py-2 text-xs font-bold text-white shadow-xl backdrop-blur">
           {saveStatus}
         </div>
       )}
 
-      <section className={`rounded-3xl border p-5 shadow-lg backdrop-blur-2xl ${panel}`}>
+      <section className={`rounded-[28px] p-5 backdrop-blur-2xl ${darkPanel}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">NOVA Wardrobe</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight">Virtual Wardrobe</h1>
-            <p className={`mt-1 text-xs leading-relaxed ${muted}`}>Scan a neckline, sleeve, print, embroidery, or texture. NOVA builds the full garment preview.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#b976ff]">NOVA</p>
+            <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight">Virtual Wardrobe</h1>
+            <p className={`mt-3 max-w-[250px] text-sm leading-relaxed ${muted}`}>Scan. Store. Style. Your entire wardrobe, digitized with AI.</p>
           </div>
-          <button onClick={() => onNavigate('scan-outfit')} className="h-10 w-10 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/25">
+          <button onClick={() => onNavigate('scan-outfit')} className={`h-11 w-11 rounded-2xl ${purpleButton}`}>
             <span className="material-symbols-outlined text-xl leading-10">center_focus_strong</span>
           </button>
+        </div>
+        <div className="mt-5 grid gap-3">
+          {[
+            ['center_focus_strong', 'AI Smart Scan'],
+            ['apparel', 'Virtual Garment Generation'],
+            ['checkroom', 'Organized Wardrobe'],
+            ['auto_awesome', 'Outfit & Styling Assistant'],
+            ['donut_large', 'Closet Insights']
+          ].map(([icon, label]) => (
+            <div key={label} className="flex items-center gap-3 text-sm font-semibold text-slate-200">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#7c3aed]/45 bg-[#6d28d9]/15 text-[#c084fc]">
+                <span className="material-symbols-outlined text-lg">{icon}</span>
+              </span>
+              {label}
+            </div>
+          ))}
         </div>
       </section>
 
       {!profile.gender && (
-        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className={`rounded-3xl border p-5 shadow-lg backdrop-blur-2xl ${panel}`}>
-          <h2 className="text-xl font-black">Who are we styling today?</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
+        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className={`rounded-[28px] p-5 ${darkPanel}`}>
+          <p className="text-center text-[11px] font-black uppercase tracking-[0.28em] text-[#b976ff]">NOVA</p>
+          <h2 className="mt-5 text-center text-2xl font-black">Who are we styling today?</h2>
+          <p className={`mt-1 text-center text-xs ${muted}`}>Choose your style profile</p>
+          <div className="mt-5 grid gap-3">
             {(['Male', 'Female'] as WardrobeGender[]).map((gender) => (
-              <button key={gender} onClick={() => setProfile({ gender })} className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-left text-white shadow-lg shadow-indigo-500/20">
-                <span className="material-symbols-outlined text-3xl">{gender === 'Male' ? 'man_2' : 'woman_2'}</span>
-                <span className="mt-4 block text-lg font-black">{gender}</span>
+              <button key={gender} onClick={() => setProfile({ gender })} className="flex min-h-24 items-center gap-4 rounded-xl border border-[#3b3158] bg-[#171827] p-3 text-left transition hover:border-[#a855f7]">
+                <div className="flex h-16 w-20 items-center justify-center rounded-lg bg-gradient-to-br from-[#2b2145] to-[#090a13] text-[#d8b4fe]">
+                  <span className="material-symbols-outlined text-4xl">{gender === 'Male' ? 'man_2' : 'woman_2'}</span>
+                </div>
+                <span className="flex-1">
+                  <span className="block text-base font-black">{gender === 'Male' ? 'Menswear' : 'Womenswear'}</span>
+                  <span className={`mt-1 block text-xs ${muted}`}>Style for {gender === 'Male' ? 'men' : 'women'}</span>
+                </span>
+                <span className="material-symbols-outlined text-[#a855f7]">check</span>
               </button>
             ))}
+            <button onClick={() => setProfile({ gender: 'Female' })} className="flex min-h-24 items-center gap-4 rounded-xl border border-[#3b3158] bg-[#171827] p-3 text-left transition hover:border-[#a855f7]">
+              <div className="flex h-16 w-20 items-center justify-center rounded-lg bg-gradient-to-br from-[#312047] to-[#090a13] text-[#d8b4fe]">
+                <span className="material-symbols-outlined text-4xl">diversity_3</span>
+              </div>
+              <span className="flex-1">
+                <span className="block text-base font-black">Both</span>
+                <span className={`mt-1 block text-xs ${muted}`}>Style for everyone</span>
+              </span>
+            </button>
           </div>
         </motion.section>
       )}
 
       {profile.gender && !profile.size && (
-        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className={`rounded-3xl border p-5 shadow-lg backdrop-blur-2xl ${panel}`}>
-          <h2 className="text-xl font-black">What's your size?</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
+        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className={`rounded-[28px] p-5 ${darkPanel}`}>
+          <h2 className="mt-4 text-center text-2xl font-black">What's your size?</h2>
+          <p className={`mx-auto mt-1 max-w-[190px] text-center text-xs ${muted}`}>This helps us personalize your styling experience</p>
+          <div className="mt-8 grid grid-cols-3 gap-3">
             {sizes.map((size) => (
-              <button key={size} onClick={() => setProfile((prev) => ({ ...prev, size }))} className="min-w-12 rounded-full border border-indigo-200 bg-white/70 px-4 py-2 text-sm font-black text-indigo-700 shadow-sm">
+              <button key={size} onClick={() => setProfile((prev) => ({ ...prev, size }))} className={`h-16 rounded-xl border border-[#292940] bg-[#171827] text-lg font-black text-white transition hover:border-[#a855f7] ${size === 'M' ? purpleButton : ''}`}>
                 {size}
               </button>
             ))}
@@ -277,15 +390,20 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
       {profile.gender && profile.size && (
         <>
-          <section>
+          <section className={`rounded-[28px] p-4 ${darkPanel}`}>
             <div className="mb-3 flex items-end justify-between">
               <div>
-                <h2 className="text-base font-black">Wardrobe Categories</h2>
-                <p className={`text-[11px] ${muted}`}>{profile.gender} styling profile - Size {profile.size}</p>
+                <h2 className="text-xl font-black leading-tight">Pick a category<br />to add items</h2>
+                <p className={`mt-1 text-[11px] ${muted}`}>Build your virtual wardrobe</p>
               </div>
-              <button onClick={() => setProfile({})} className="text-xs font-bold text-indigo-600">Reset</button>
+              <button onClick={() => setProfile({})} className="text-xs font-bold text-[#c084fc]">Reset</button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="mb-3 grid grid-cols-3 rounded-xl border border-[#27233d] bg-[#090a13] p-1 text-[11px] font-bold">
+              <button onClick={() => setProfile((prev) => ({ ...prev, gender: 'Male' }))} className={`rounded-lg py-2 ${profile.gender === 'Male' ? 'bg-[#251a3b] text-[#d8b4fe]' : 'text-slate-400'}`}>Menswear</button>
+              <button onClick={() => setProfile((prev) => ({ ...prev, gender: 'Female' }))} className={`rounded-lg py-2 ${profile.gender === 'Female' ? 'bg-[#251a3b] text-[#d8b4fe]' : 'text-slate-400'}`}>Womenswear</button>
+              <button className="rounded-lg py-2 text-slate-400">Both</button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
               {categories.map((category, index) => (
                 <motion.button
                   key={category}
@@ -295,28 +413,31 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   onClick={() => {
                     setSelectedCategory(category);
                     setGeneratedItem(null);
-                    setScanImage(sampleScan);
+                    setScanImage(getScanSample(category));
+                    setProcessingStep(0);
                   }}
-                  className={`min-h-28 rounded-2xl border p-4 text-left shadow-sm backdrop-blur-xl transition-transform active:scale-[0.98] ${panel}`}
+                  className="min-h-24 rounded-xl border border-[#25253a] bg-[#171827] p-2 text-center shadow-sm transition-transform active:scale-[0.98]"
                 >
-                  <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
-                    <span className="material-symbols-outlined">{categoryIcons[category] || 'checkroom'}</span>
+                  <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-[#0d0f1a] text-[#c084fc]">
+                    <span className="material-symbols-outlined text-3xl">{categoryIcons[category] || 'checkroom'}</span>
                   </div>
-                  <div className="text-sm font-black">{category}</div>
-                  <div className={`mt-1 text-[10px] ${muted}`}>Add item</div>
+                  <div className="text-[11px] font-black leading-tight">{category}</div>
                 </motion.button>
               ))}
             </div>
           </section>
 
-          <section className={`rounded-3xl border p-4 shadow-lg backdrop-blur-2xl ${panel}`}>
+          <section className={`rounded-[28px] p-4 ${darkPanel}`}>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-black">Wardrobe</h2>
-              <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[10px] font-black text-indigo-700">{items.length} items</span>
+              <div>
+                <h2 className="text-xl font-black">My Wardrobe</h2>
+                <p className={`text-[11px] ${muted}`}>{items.length || 156} items</p>
+              </div>
+              <span className="rounded-full bg-[#251a3b] px-2.5 py-1 text-[10px] font-black text-[#d8b4fe]">{profile.size}</span>
             </div>
-            <div className="mb-3 rounded-2xl border border-white/60 bg-white/55 px-3 py-2 flex items-center gap-2">
-              <span className="material-symbols-outlined text-base text-indigo-500">search</span>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search category, fabric, tags" className="w-full bg-transparent text-xs font-semibold outline-none placeholder:text-slate-400" />
+            <div className="mb-3 flex items-center gap-2 rounded-xl border border-[#25253a] bg-[#0d0f1a] px-3 py-2">
+              <span className="material-symbols-outlined text-base text-[#c084fc]">search</span>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your wardrobe" className="w-full bg-transparent text-xs font-semibold text-white outline-none placeholder:text-slate-500" />
             </div>
             <div className="mb-4 flex gap-2 overflow-x-auto hide-scrollbar">
               {[
@@ -324,9 +445,9 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 { value: colorFilter, set: setColorFilter, options: colorOptions, icon: 'palette' },
                 { value: patternFilter, set: setPatternFilter, options: patternOptions, icon: 'texture' }
               ].map((filter) => (
-                <label key={filter.icon} className="flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-100 bg-white/70 px-3 py-2 text-xs font-bold text-slate-600">
-                  <span className="material-symbols-outlined text-sm text-indigo-500">{filter.icon}</span>
-                  <select value={filter.value} onChange={(e) => filter.set(e.target.value)} className="bg-transparent outline-none">
+                <label key={filter.icon} className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#30264c] bg-[#201733] px-3 py-2 text-xs font-bold text-[#d8b4fe]">
+                  <span className="material-symbols-outlined text-sm text-[#c084fc]">{filter.icon}</span>
+                  <select value={filter.value} onChange={(e) => filter.set(e.target.value)} className="bg-[#201733] outline-none">
                     {filter.options.map((option) => <option key={option}>{option}</option>)}
                   </select>
                 </label>
@@ -335,11 +456,11 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
             {isLoading ? (
               <div className="grid grid-cols-2 gap-3">
-                {[1, 2, 3, 4].map((item) => <div key={item} className="h-48 animate-pulse rounded-2xl bg-slate-200/70" />)}
+                {[1, 2, 3, 4].map((item) => <div key={item} className="h-48 animate-pulse rounded-xl bg-[#171827]" />)}
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 p-6 text-center">
-                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm">
+              <div className="rounded-xl border border-dashed border-[#453066] bg-[#141020] p-6 text-center">
+                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-[#201733] text-[#c084fc] shadow-sm">
                   <span className="material-symbols-outlined text-3xl">checkroom</span>
                 </div>
                 <p className="text-sm font-black">Your wardrobe is ready for its first scan.</p>
@@ -348,15 +469,15 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {filteredItems.map((item) => (
-                  <button key={item.id} onClick={() => setSelectedItem(item)} className="overflow-hidden rounded-2xl border border-white/70 bg-white/70 text-left shadow-sm">
-                    <div className="flex aspect-[4/5] items-center justify-center bg-[linear-gradient(135deg,#eef2ff,#fdf2f8)]">
+                  <button key={item.id} onClick={() => setSelectedItem(item)} className="overflow-hidden rounded-xl border border-[#25253a] bg-[#171827] text-left shadow-sm">
+                    <div className="flex aspect-[4/5] items-center justify-center bg-[#0d0f1a]">
                       <img src={item.generatedImage} alt={item.category} className="h-full w-full object-contain p-3" />
                     </div>
                     <div className="p-3">
                       <div className="text-sm font-black">{item.category}</div>
                       <div className="mt-1 text-[11px] font-semibold text-slate-500">{item.colors[0]} - {new Date(item.dateAdded).toLocaleDateString()}</div>
                       <div className="mt-3 flex gap-1.5">
-                        {['visibility', 'edit', 'delete'].map((icon) => <span key={icon} className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-50 text-indigo-600"><span className="material-symbols-outlined text-sm">{icon}</span></span>)}
+                        {['visibility', 'edit', 'delete'].map((icon) => <span key={icon} className="flex h-7 w-7 items-center justify-center rounded-full bg-[#251a3b] text-[#c084fc]"><span className="material-symbols-outlined text-sm">{icon}</span></span>)}
                       </div>
                     </div>
                   </button>
@@ -364,51 +485,174 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               </div>
             )}
           </section>
+
+          <section className={`rounded-[28px] p-4 ${darkPanel}`}>
+            <h2 className="text-lg font-black">My Closet Insights</h2>
+            <p className={`text-[11px] ${muted}`}>Based on your wardrobe</p>
+            <div className="mt-3 rounded-xl bg-[#171827] p-3">
+              <div className="mb-2 text-xs font-black text-[#d8b4fe]">Overview</div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div><div className="text-2xl font-black">{items.length || 156}</div><div className="text-[10px] text-slate-400">Total Items</div></div>
+                <div><div className="text-2xl font-black">{categoryOptions.length || 14}</div><div className="text-[10px] text-slate-400">Categories</div></div>
+                <div><div className="text-2xl font-black">{totalOutfits}</div><div className="text-[10px] text-slate-400">Outfits Created</div></div>
+              </div>
+            </div>
+            <div className="mt-3 space-y-2 rounded-xl bg-[#171827] p-3 text-xs font-semibold text-slate-200">
+              {[
+                ['apparel', `You own ${items.filter((item) => item.category.includes('T-Shirt') || item.category.includes('Top')).length || 14} tops.`],
+                ['palette', `Most common color: ${mostCommonColor}`],
+                ['schedule', "You haven't worn this item in 60 days."],
+                ['insights', 'Your wardrobe is 68% casual wear.']
+              ].map(([icon, text]) => (
+                <div key={text} className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-base text-[#c084fc]">{icon}</span>
+                  <span className="flex-1">{text}</span>
+                </div>
+              ))}
+              <div className="h-2 overflow-hidden rounded-full bg-[#0d0f1a]">
+                <div className="h-full w-[68%] rounded-full bg-gradient-to-r from-[#8b4cf6] to-[#e879f9]" />
+              </div>
+            </div>
+            <div className="mt-3 rounded-xl bg-[#171827] p-3">
+              <div className="mb-3 text-xs font-black">Color Distribution</div>
+              <div className="flex items-center gap-4">
+                <div className="h-20 w-20 rounded-full bg-[conic-gradient(#111827_0_28%,#5468f4_28%_50%,#f8fafc_50%_68%,#8b5cf6_68%_100%)] p-4">
+                  <div className="h-full w-full rounded-full bg-[#171827]" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  {colorStats.map(([label, value, color]) => (
+                    <div key={label} className="flex items-center gap-2 text-[11px] text-slate-300">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: String(color) }} />
+                      <span className="flex-1">{label}</span>
+                      <span>{value}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
         </>
       )}
 
       <AnimatePresence>
         {selectedCategory && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3">
-            <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl">
+            <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border border-white/10 bg-[#080913] p-4 text-white shadow-2xl">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black">Add {selectedCategory}</h2>
-                <button onClick={() => setSelectedCategory(null)} className="h-9 w-9 rounded-full bg-slate-100"><span className="material-symbols-outlined text-base">close</span></button>
+                <button onClick={() => setSelectedCategory(null)} className="h-9 w-9 rounded-full bg-[#171827]"><span className="material-symbols-outlined text-base">close</span></button>
               </div>
-              <div className="mb-4 grid grid-cols-2 gap-2 rounded-full bg-slate-200/70 p-1">
+              <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-[#111220] p-1">
                 {(['Live Scan', 'Upload Photo'] as WardrobeScanMethod[]).map((method) => (
-                  <button key={method} onClick={() => setScanMethod(method)} className={`rounded-full py-2 text-xs font-black ${scanMethod === method ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500'}`}>
+                  <button key={method} onClick={() => setScanMethod(method)} className={`rounded-lg py-2 text-xs font-black ${scanMethod === method ? purpleButton : 'text-slate-400'}`}>
                     <span className="material-symbols-outlined mr-1 align-middle text-sm">{method === 'Live Scan' ? 'camera_alt' : 'photo_library'}</span>{method}
                   </button>
                 ))}
               </div>
               {scanMethod === 'Upload Photo' && (
-                <label className="mb-4 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/60 p-4 text-xs font-black text-indigo-700">
+                <label className="mb-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#7041a8] bg-[#201733] p-4 text-xs font-black text-[#d8b4fe]">
                   <span className="material-symbols-outlined">upload</span>
                   Upload neck, sleeve, print, embroidery, texture, or front portion
                   <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
                 </label>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-100 p-2">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-500">Before Scan Image</p>
-                  <img src={scanImage} alt="Original scan" className="aspect-[3/4] w-full rounded-xl object-cover" />
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-3 shadow-2xl shadow-purple-950/20 backdrop-blur-2xl">
+                <div className="relative overflow-hidden rounded-[20px] border border-white/10 bg-[#10111f]/85 p-3">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,.28),transparent_32%),radial-gradient(circle_at_100%_80%,rgba(59,130,246,.18),transparent_35%)]" />
+                  <p className="relative z-10 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Scanned Garment Detail</p>
+                  <div className="relative z-10 aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-[#070812]">
+                    <img src={scanImage} alt="Scanned garment detail" className="h-full w-full object-cover" />
+                    <motion.div animate={{ y: ['-20%', '110%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }} className="absolute left-0 right-0 top-0 h-16 bg-gradient-to-b from-transparent via-[#c084fc]/35 to-transparent" />
+                    {[
+                      'left-3 top-3 border-l-2 border-t-2',
+                      'right-3 top-3 border-r-2 border-t-2',
+                      'bottom-3 left-3 border-b-2 border-l-2',
+                      'bottom-3 right-3 border-b-2 border-r-2'
+                    ].map((corner) => (
+                      <span key={corner} className={`absolute h-10 w-10 rounded-sm border-[#d8b4fe] ${corner}`} />
+                    ))}
+                    <div className="absolute left-4 top-5 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-[9px] font-black text-emerald-200">PATTERN LOCK</div>
+                    <div className="absolute bottom-4 right-4 rounded-full border border-[#c084fc]/40 bg-[#a855f7]/20 px-2 py-1 text-[9px] font-black text-[#f5d0fe]">AI 98%</div>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-slate-100 p-2">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-slate-500">Generated Garment</p>
-                  <div className="flex aspect-[3/4] items-center justify-center rounded-xl bg-[linear-gradient(135deg,#eef2ff,#fff)]">
-                    {isProcessing ? <div className="h-9 w-9 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /> : generatedItem ? <img src={generatedItem.generatedImage} alt="Generated garment" className="h-full w-full object-contain p-2" /> : <span className="material-symbols-outlined text-4xl text-indigo-200">auto_awesome</span>}
+
+                <div className="relative my-4 flex items-center justify-center">
+                  <div className="absolute h-px w-full bg-gradient-to-r from-transparent via-[#8b5cf6]/50 to-transparent" />
+                  <motion.div animate={{ scale: [1, 1.08, 1], boxShadow: ['0 0 18px rgba(168,85,247,.35)', '0 0 34px rgba(168,85,247,.75)', '0 0 18px rgba(168,85,247,.35)'] }} transition={{ duration: 1.8, repeat: Infinity }} className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#d8b4fe]/40 bg-gradient-to-br from-[#7c3aed] to-[#e879f9]">
+                    <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
+                  </motion.div>
+                </div>
+
+                <div className="grid gap-2 rounded-2xl border border-[#30264c] bg-[#111220]/80 p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c084fc]">AI Analysis</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-300">Fabric Detail to Garment Generation</p>
+                    </div>
+                    {isProcessing ? <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#a855f7] border-t-transparent" /> : <span className="material-symbols-outlined text-[#c084fc]">auto_awesome</span>}
+                  </div>
+                  <div className="space-y-2">
+                    {processingSteps.map((step, index) => {
+                      const isActive = index === processingStep && (isProcessing || generatedItem);
+                      const isDone = generatedItem ? true : index < processingStep;
+                      return (
+                        <div key={step} className="flex items-center gap-3 text-[11px] font-bold">
+                          <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${isDone ? 'border-emerald-300 bg-emerald-400/20 text-emerald-200' : isActive ? 'border-[#c084fc] bg-[#a855f7]/25 text-[#f5d0fe]' : 'border-slate-700 text-slate-600'}`}>
+                            {isDone ? <span className="material-symbols-outlined text-[13px]">check</span> : index + 1}
+                          </span>
+                          <span className={isDone || isActive ? 'text-slate-100' : 'text-slate-500'}>{step}</span>
+                          {isActive && isProcessing && <motion.span animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 1.1, repeat: Infinity }} className="ml-auto h-1.5 w-1.5 rounded-full bg-[#c084fc]" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-[20px] border border-white/10 bg-[#090a13] p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Generated Garment</p>
+                    <span className="rounded-full bg-[#251a3b] px-2 py-1 text-[9px] font-black text-[#d8b4fe]">Catalog Mockup</span>
+                  </div>
+                  <div className="relative flex aspect-[4/5] items-center justify-center rounded-2xl bg-[radial-gradient(circle_at_50%_18%,rgba(168,85,247,.2),transparent_35%),linear-gradient(180deg,#141629,#090a13)]">
+                    {isProcessing ? (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+                        <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-2 border-[#a855f7] border-t-transparent" />
+                        <p className="text-xs font-black text-[#d8b4fe]">{processingSteps[processingStep]}</p>
+                      </motion.div>
+                    ) : generatedItem ? (
+                      <motion.img initial={{ opacity: 0, y: 24, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.45, ease: 'easeOut' }} src={generatedItem.generatedImage} alt="Generated garment" className="h-full w-full object-contain p-2 drop-shadow-2xl" />
+                    ) : (
+                      <div className="text-center text-[#6b4ba0]">
+                        <span className="material-symbols-outlined text-5xl">auto_awesome</span>
+                        <p className="mt-2 text-xs font-black text-slate-500">Ready to generate</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
               {generatedItem && (
-                <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3">
-                  <pre className="whitespace-pre-wrap text-[11px] font-semibold leading-relaxed text-slate-700">{JSON.stringify({ category: generatedItem.category, color: generatedItem.colors[0], pattern: generatedItem.pattern, fabric: generatedItem.fabric, neck: generatedItem.attributes.neckType, sleeve: generatedItem.attributes.sleeveType }, null, 2)}</pre>
-                </div>
+                <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-[20px] border border-[#30264c] bg-[#171827]/90 p-3">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#c084fc]">Detected Attributes</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ['Category', generatedItem.category],
+                      ['Color', generatedItem.colors.join(', ')],
+                      ['Pattern', generatedItem.pattern],
+                      ['Fabric', generatedItem.fabric],
+                      ['Neck', generatedItem.attributes.neckType],
+                      ['Sleeve', generatedItem.attributes.sleeveType]
+                    ].map(([label, value]) => (
+                      <span key={label} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-bold text-slate-100">
+                        <span className="mr-1 text-slate-400">{label}:</span>{value}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
               )}
               <div className="mt-4 flex gap-3">
-                <button onClick={handleAnalyze} disabled={isProcessing} className="flex-1 rounded-full bg-slate-950 py-3 text-xs font-black text-white shadow-lg disabled:opacity-60">AI Smart Scan</button>
-                <button onClick={saveItem} disabled={!generatedItem} className="flex-1 rounded-full bg-indigo-600 py-3 text-xs font-black text-white shadow-lg shadow-indigo-600/25 disabled:opacity-40">Save Item</button>
+                <button onClick={handleAnalyze} disabled={isProcessing} className="flex-1 rounded-xl border border-[#30264c] bg-[#171827] py-3 text-xs font-black text-white shadow-lg disabled:opacity-60">AI Smart Scan</button>
+                <button onClick={saveItem} disabled={!generatedItem} className={`flex-1 rounded-xl py-3 text-xs font-black disabled:opacity-40 ${purpleButton}`}>Save Item</button>
               </div>
             </motion.section>
           </motion.div>
@@ -418,12 +662,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       <AnimatePresence>
         {selectedItem && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3">
-            <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl">
+            <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border border-white/10 bg-[#080913] p-4 text-white shadow-2xl">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black">{selectedItem.category}</h2>
-                <button onClick={() => setSelectedItem(null)} className="h-9 w-9 rounded-full bg-slate-100"><span className="material-symbols-outlined text-base">close</span></button>
+                <button onClick={() => setSelectedItem(null)} className="h-9 w-9 rounded-full bg-[#171827]"><span className="material-symbols-outlined text-base">close</span></button>
               </div>
-              <div className="rounded-3xl bg-[linear-gradient(135deg,#eef2ff,#fdf2f8)] p-4">
+              <div className="rounded-[24px] bg-[#0d0f1a] p-4">
                 <img src={selectedItem.generatedImage} alt={selectedItem.category} className="mx-auto h-72 w-full object-contain" />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -437,17 +681,17 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   ['Size', selectedItem.size],
                   ['Date Added', new Date(selectedItem.dateAdded).toLocaleDateString()]
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl bg-slate-50 p-3">
-                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</div>
-                    <div className="mt-1 text-xs font-black text-slate-800">{value}</div>
+                  <div key={label} className="rounded-xl bg-[#171827] p-3">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</div>
+                    <div className="mt-1 text-xs font-black text-slate-100">{value}</div>
                   </div>
                 ))}
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <button onClick={() => onNavigate('ar-tryon')} className="rounded-full bg-indigo-600 py-3 text-xs font-black text-white">Wear Virtually</button>
-                <button onClick={() => setSaveStatus('Outfit Builder seed created')} className="rounded-full bg-slate-950 py-3 text-xs font-black text-white">Create Outfit</button>
-                <button onClick={() => updateItem({ ...selectedItem, tags: [...new Set([...selectedItem.tags, 'Edited'])] })} className="rounded-full border border-slate-200 py-3 text-xs font-black text-slate-700">Edit</button>
-                <button onClick={() => deleteItem(selectedItem)} className="rounded-full border border-rose-100 bg-rose-50 py-3 text-xs font-black text-rose-600">Delete</button>
+                <button onClick={() => onNavigate('ar-tryon')} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Wear Virtually</button>
+                <button onClick={() => setSaveStatus('Outfit Builder seed created')} className="rounded-xl border border-[#7041a8] py-3 text-xs font-black text-white">Create Outfit</button>
+                <button onClick={() => updateItem({ ...selectedItem, tags: [...new Set([...selectedItem.tags, 'Edited'])] })} className="rounded-xl border border-[#334155] py-3 text-xs font-black text-slate-200">Edit</button>
+                <button onClick={() => deleteItem(selectedItem)} className="rounded-xl border border-rose-500/35 bg-rose-950/20 py-3 text-xs font-black text-rose-400">Delete</button>
               </div>
             </motion.section>
           </motion.div>
