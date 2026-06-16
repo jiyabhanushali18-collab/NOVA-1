@@ -9,6 +9,7 @@ export type ScreenId =
   | 'chat'
   | 'cart'
   | 'showroom'
+  | 'wardrobe'
   | 'login'
   | 'signup'
   | 'splash'
@@ -65,4 +66,51 @@ export interface Preference {
   label: string;
   value: string;
   iconName: string;
+}
+
+export type WardrobeGender = 'Male' | 'Female';
+export type WardrobeSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+export type WardrobeScanMethod = 'Live Scan' | 'Upload Photo';
+
+export interface WardrobeDetectedAttributes {
+  primaryColor: string;
+  secondaryColor: string;
+  pattern: string;
+  fabric: string;
+  style: string;
+  sleeveType: string;
+  neckType: string;
+}
+
+export interface WardrobeItem {
+  id: string;
+  category: string;
+  gender: WardrobeGender;
+  size: WardrobeSize;
+  generatedImage: string;
+  originalScan: string;
+  colors: string[];
+  pattern: string;
+  fabric: string;
+  tags: string[];
+  dateAdded: string;
+  attributes: WardrobeDetectedAttributes;
+}
+
+export interface WardrobeProfile {
+  gender?: WardrobeGender;
+  size?: WardrobeSize;
+}
+
+export interface OutfitBuilderSeed {
+  wardrobeItemId: string;
+  occasion?: string;
+  weatherContext?: string;
+}
+
+export interface CapsuleWardrobePlan {
+  id: string;
+  name: string;
+  itemIds: string[];
+  tags: string[];
 }

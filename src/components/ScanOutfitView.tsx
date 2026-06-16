@@ -81,7 +81,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate }) =>
           <span className="material-symbols-outlined text-[14px]">photo_library</span> Photo Scan
         </button>
         <button 
-          onClick={() => onNavigate('profile')}
+          onClick={() => onNavigate('wardrobe')}
           className="flex-1 py-2 text-xs font-semibold rounded-full text-slate-600 hover:text-slate-800 flex items-center justify-center gap-1.5"
         >
           <span className="material-symbols-outlined text-[14px]">checkroom</span> Wardrobe

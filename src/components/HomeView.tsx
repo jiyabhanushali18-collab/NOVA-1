@@ -150,6 +150,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
+          {/* Item 4: Virtual Wardrobe */}
+          <div
+            onClick={() => onNavigate('wardrobe')}
+            className="glass-panel rounded-2xl p-4 flex flex-col items-start hover:shadow-md cursor-pointer transition-all duration-300 group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-fuchsia-100 flex items-center justify-center mb-3 text-fuchsia-700 border border-white/80">
+              <span className="material-symbols-outlined leading-none">checkroom</span>
+            </div>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Virtual Wardrobe</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>Build AI garments from scans, prints, and textures.</p>
+            <div className="mt-auto w-6 h-6 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-indigo-600 self-end group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
+              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
+            </div>
+          </div>
+
           {/* Item 4: AR Try-On */}
           <div 
             onClick={() => onNavigate('ar-tryon')}

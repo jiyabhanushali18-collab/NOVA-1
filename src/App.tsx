@@ -19,6 +19,7 @@ import { AuthView } from './components/AuthView';
 import { SplashView } from './components/SplashView';
 import { OnboardingView } from './components/OnboardingView';
 import { SetupPreferencesView } from './components/SetupPreferencesView';
+import { VirtualWardrobeView } from './components/VirtualWardrobeView';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -479,6 +480,8 @@ export default function App() {
       if (prod) addRecentActivity({ id: Date.now().toString(), name: prod.name, time, badge: 'Viewed', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod.imageUrl });
     } else if (to === 'scan-outfit') {
       addRecentActivity({ id: Date.now().toString(), name: 'Scan Outfit', time, badge: 'Scan', icon: 'center_focus_strong', color: 'bg-teal-600/80', imageUrl: '' });
+    } else if (to === 'wardrobe') {
+      addRecentActivity({ id: Date.now().toString(), name: 'Virtual Wardrobe', time, badge: 'Wardrobe', icon: 'checkroom', color: 'bg-indigo-600/80', imageUrl: '' });
     }
     setScreen(to);
   };
@@ -661,6 +664,8 @@ export default function App() {
         );
       case 'scan-outfit':
         return <ScanOutfitView onNavigate={navigate} />;
+      case 'wardrobe':
+        return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':
         return <ChatView userName={userName} onNavigate={navigate} />;
       case 'cart':
@@ -718,6 +723,7 @@ export default function App() {
   const isTabActive = (tab: string) => {
     if (tab === 'home' && screen === 'home') return true;
     if (tab === 'scan' && (screen === 'scan-outfit' || screen === 'camera-scan')) return true;
+    if (tab === 'wardrobe' && screen === 'wardrobe') return true;
     if (tab === 'ar' && (screen === 'ar-tryon' || screen === 'tryon-result')) return true;
     if (tab === 'chat' && screen === 'chat') return true;
     if (tab === 'profile' && screen === 'profile') return true;
@@ -907,11 +913,11 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => navigate('ar-tryon')}
-            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('ar') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            onClick={() => navigate('wardrobe')}
+            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('wardrobe') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('ar') ? "'FILL' 1" : undefined }}>view_in_ar</span>
-            <span className="text-[10px] font-bold">AR Try-on</span>
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
+            <span className="text-[10px] font-bold">Wardrobe</span>
           </button>
 
           <button 
