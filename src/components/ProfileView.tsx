@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ScreenId, Measurement, Preference } from '../types';
+import { ScreenId, Measurement, Preference, NovaAccount } from '../types';
+import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
 
 interface ProfileViewProps {
@@ -22,6 +23,12 @@ interface ProfileViewProps {
   novaLevel?: number;
   pointsToNextLevel?: number;
   levelProgress?: number;
+  // account management
+  accounts?: NovaAccount[];
+  activeUid?: string;
+  onAddAccount?: (acc: NovaAccount) => void;
+  onRemoveAccount?: (uid: string) => void;
+  onSwitchAccount?: (uid?: string) => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
@@ -43,8 +50,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   novaPoints = 100,
   novaLevel = 1,
   pointsToNextLevel = 0,
-  levelProgress = 0
+  levelProgress = 0,
+  accounts = [],
+  activeUid,
+  onAddAccount,
+  onRemoveAccount,
+  onSwitchAccount
 }) => {
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [profileToast, setProfileToast] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -353,14 +366,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <section className="glass-card rounded-3xl p-5 flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="relative z-10 shrink-0">
-          <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow shadow-indigo-200/50 relative">
+          <button
+            type="button"
+            onClick={() => setIsAccountModalOpen(true)}
+            className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow shadow-indigo-200/50 relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-400"
+            aria-label="Manage NOVA accounts"
+          >
             <img 
               alt="Arjun Mehta user picture avatar" 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmbdmCX9HTnsu3re-LKTwZeIzdxiZpbS33EX-8SJnYFnfuUKDEV1s_Hw7EGDD1SVWZHfYR4kRFIsuBmjqTEV7Brdv3HHvCLCeIj4Oo97NE4d_W91RCG_MoaGi64JI-_PNj1ZMPL4tHcbNr6gTkbXBvCYURW7LmoMLBQWAOkByDufT4T0kIjneJFVxvxc9UQNrgze1LxB7o9r3KStxC6uXasen_3YXM3SWX81zs9lFiyEA2Dt1jHIaBbOIq5DpPENqF0yZVneBSZiXD"
             />
-          </div>
+          </button>
           <button 
             onClick={() => setIsProfileModalOpen(true)}
             className="absolute -bottom-1 -right-1 bg-indigo-600 text-white p-1.5 rounded-full shadow hover:scale-110 transition-transform flex items-center justify-center border border-white"
@@ -386,6 +404,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </p>
         </div>
       </section>
+
+      {isAccountModalOpen && (
+        <AccountSwitcherModal
+          isOpen={isAccountModalOpen}
+          onClose={() => setIsAccountModalOpen(false)}
+          accounts={accounts || []}
+          activeUid={activeUid}
+          onSwitch={(uid) => { onSwitchAccount?.(uid); setIsAccountModalOpen(false); }}
+          onAdd={(acc) => { onAddAccount?.(acc); setIsAccountModalOpen(false); }}
+          onRemove={(uid) => { onRemoveAccount?.(uid); }}
+        />
+      )}
+      {!isAccountModalOpen && (
+        <div className="mt-3 text-right">
+          <button type="button" onClick={() => setIsAccountModalOpen(true)} className="px-4 py-2 rounded-full bg-purple-600 text-white text-xs font-semibold hover:bg-purple-500 transition-colors">
+            Manage Accounts
+          </button>
+        </div>
+      )}
 
       {/* NOVA Reward Points card */}
       <section className="glass-card rounded-2xl p-4 flex items-center justify-between shadow-sm">

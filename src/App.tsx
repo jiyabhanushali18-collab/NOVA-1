@@ -20,6 +20,9 @@ import { SplashView } from './components/SplashView';
 import { OnboardingView } from './components/OnboardingView';
 import { SetupPreferencesView } from './components/SetupPreferencesView';
 import { VirtualWardrobeView } from './components/VirtualWardrobeView';
+import useAccounts from './hooks/useAccounts';
+import useActiveAccount from './hooks/useActiveAccount';
+import accountService from './services/accountService';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -240,6 +243,19 @@ export default function App() {
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@email.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
+
+  // Account management
+  const { accounts, addAccount, removeAccount } = useAccounts();
+  const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
+    onAccountSwitched: (acc) => {
+      if (acc) {
+        setUserName(acc.name || acc.username || '');
+        setUserEmail(acc.email || '');
+        setIsLoggedIn(true);
+        // TODO: trigger reloads for wardrobe/outfits/recommendations
+      }
+    }
+  });
 
   // Persistent measurements state
   const [measurements, setMeasurements] = useState<Measurement[]>(() => {
@@ -614,6 +630,11 @@ export default function App() {
             novaLevel={novaLevel}
             pointsToNextLevel={pointsToNextLevel}
             levelProgress={levelProgress}
+            accounts={accounts}
+            activeUid={activeUid}
+            onAddAccount={(acc) => addAccount(acc)}
+            onRemoveAccount={(uid) => removeAccount(uid)}
+            onSwitchAccount={(uid) => setActiveAccountUid(uid)}
           />
         );
       case 'setup-preferences':
@@ -706,6 +727,20 @@ export default function App() {
     setUserEmail(email);
     setUserPhone(phone);
     setIsLoggedIn(true);
+    // Persist account to device list and set active
+    try {
+      const uid = email; // fallback: using email as uid when auth uid not available in this flow
+      const acc = {
+        uid,
+        username: email.split('@')[0] || name,
+        email,
+        profilePhoto: undefined,
+        createdAt: Date.now()
+      };
+      addAccount(acc as any);
+      accountService.setActiveLocalAccount(uid);
+      setActiveAccountUid(uid);
+    } catch {}
     if (isSignUp) {
       navigate('setup-preferences');
     } else {

@@ -68,6 +68,18 @@ export interface Preference {
   iconName: string;
 }
 
+export interface NovaAccount {
+  uid: string;
+  name?: string;
+  username: string;
+  email: string;
+  profilePhoto?: string;
+  gender?: string;
+  size?: string;
+  wardrobeCount?: number;
+  createdAt: number;
+}
+
 export type WardrobeGender = 'Male' | 'Female';
 export type WardrobeSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type WardrobeScanMethod = 'Live Scan' | 'Upload Photo';
