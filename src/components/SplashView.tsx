@@ -50,32 +50,8 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
           <div className="absolute -inset-10 rounded-full border border-indigo-200/30 animate-pulse opacity-20"></div>
 
           {/* Compass / Starburst Gradient SVG Vector */}
-          <div className="w-28 h-28 flex items-center justify-center relative bg-white rounded-full shadow-xl">
-            <svg viewBox="0 0 100 100" className="w-24 h-24">
-              <defs>
-                <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="50%" stopColor="#4f46e5" />
-                  <stop offset="100%" stopColor="#1d4ed8" />
-                </linearGradient>
-                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#fbbf24" />
-                  <stop offset="100%" stopColor="#ea580c" />
-                </linearGradient>
-              </defs>
-              {/* Outer compass ring */}
-              <circle cx="50" cy="50" r="46" fill="none" stroke="#e2e8f0" strokeWidth="1.5" strokeDasharray="3 3" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke="url(#blueGrad)" strokeWidth="0.75" strokeOpacity="0.4" />
-              
-              {/* Star spikes */}
-              {/* Vertical / Horizontal Spikes */}
-              <path d="M50,8 L54,42 L80,38 L58,50 L92,50 L58,54 L80,62 L54,58 L50,92 L46,58 L20,62 L42,54 L8,50 L42,50 L20,38 L46,42 Z" fill="url(#blueGrad)" />
-              {/* Diagonal Accent Gold Spikes */}
-              <path d="M50,50 L56,24 L58,42 L76,50 L58,46 L68,68 L50,56 L32,68 L42,46 L24,50 L42,42 Z" fill="url(#goldGrad)" opacity="0.9" />
-              
-              {/* Center shining core */}
-              <circle cx="50" cy="50" r="5" fill="#ffffff" />
-            </svg>
+          <div className="w-28 h-28 flex items-center justify-center relative bg-white rounded-full shadow-xl overflow-hidden">
+            <img src="/logoone.jpeg" alt="NOVA splash logo" className="w-full h-full object-contain p-3" />
           </div>
         </motion.div>
 

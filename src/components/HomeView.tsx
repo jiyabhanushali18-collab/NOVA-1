@@ -84,7 +84,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               alt="AI Orb Graphic" 
               className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white/50 shadow-inner" 
               referrerPolicy="no-referrer"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRI_2PkIuIET98Vtd_Z4Cvw0v9wPJLXlnMX3mquVp45cp3jG9GW7sgdgts-0w-exCrdM25YgcpDUp2k1EYmd0-CTc996Jvhz3WD539u2w4nftKt_Yzi0b3jX-ORJI_b4aUCrhmHTomG7WtoJqs-Bwe0QFLG_P02NQlVWJW2yWqiv8L58woM7eJCkeSWG1djrKWstUOovzPSuwD3idWjoAYSyKN6_BbsFKb1yGoW2UymI4_mY7BQZZognmKHnXq2oX5QEB9dbPqkqke"
+              src="/logoone.jpeg"
             />
           </div>
         </div>
