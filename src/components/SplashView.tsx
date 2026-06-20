@@ -51,7 +51,7 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
 
           {/* Compass / Starburst Gradient SVG Vector */}
           <div className="w-28 h-28 flex items-center justify-center relative bg-white rounded-full shadow-xl overflow-hidden">
-            <img src="/logoone.jpeg" alt="NOVA splash logo" className="w-full h-full object-contain p-3" />
+            <img src={`/logoone.jpeg?t=${Date.now()}`} alt="NOVA splash logo" className="w-full h-full object-contain p-3" />
           </div>
         </motion.div>
 

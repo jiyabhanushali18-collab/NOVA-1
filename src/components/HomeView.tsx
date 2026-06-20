@@ -84,7 +84,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               alt="AI Orb Graphic" 
               className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white/50 shadow-inner" 
               referrerPolicy="no-referrer"
-              src="/logoone.jpeg"
+              src={`/logoone.jpeg?t=${Date.now()}`}
             />
           </div>
         </div>
