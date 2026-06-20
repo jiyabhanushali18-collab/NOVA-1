@@ -27,12 +27,12 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
   }, [onComplete]);
 
   return (
-    <div className="min-h-screen flex flex-col justify-between max-w-md mx-auto relative bg-gradient-to-b from-indigo-50/60 via-white to-purple-50/60 overflow-hidden font-sans border-x border-indigo-100 shadow-2xl">
+    <div className="min-h-screen flex flex-col justify-between max-w-md mx-auto relative bg-gradient-to-b from-blue-100 via-blue-50 to-indigo-50 overflow-hidden font-sans border-x border-blue-200 shadow-2xl">
       {/* Decorative Grid Mesh Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] opacity-35"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#bfdbfe_1px,transparent_1px),linear-gradient(to_bottom,#bfdbfe_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] opacity-15"></div>
 
       {/* Modern gradient orb in center background */}
-      <div className="absolute top-[40%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-gradient-to-tr from-indigo-300/25 via-sky-300/25 to-purple-400/25 blur-3xl"></div>
+      <div className="absolute top-[40%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-gradient-to-tr from-blue-200/20 via-cyan-200/20 to-indigo-200/20 blur-3xl"></div>
 
       {/* Header spacing */}
       <div className="h-20"></div>
