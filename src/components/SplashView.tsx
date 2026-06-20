@@ -7,101 +7,68 @@ interface SplashViewProps {
 }
 
 export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
-  const [pulse, setPulse] = useState(false);
+  const [progressReady, setProgressReady] = useState(false);
 
   useEffect(() => {
-    // Trigger pulse loop
-    const interval = setInterval(() => {
-      setPulse(prev => !prev);
-    }, 2000);
+    const progressStart = window.setTimeout(() => {
+      setProgressReady(true);
+    }, 250);
 
-    // Auto complete after 3 seconds so user transitions smoothly
     const timeout = setTimeout(() => {
       onComplete();
     }, 3200);
 
     return () => {
-      clearInterval(interval);
+      clearTimeout(progressStart);
       clearTimeout(timeout);
     };
   }, [onComplete]);
 
   return (
-    <div className="min-h-screen flex flex-col justify-between max-w-md mx-auto relative bg-gradient-to-b from-blue-100 via-blue-50 to-indigo-50 overflow-hidden font-sans border-x border-blue-200 shadow-2xl">
-      {/* Decorative Grid Mesh Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#bfdbfe_1px,transparent_1px),linear-gradient(to_bottom,#bfdbfe_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] opacity-15"></div>
+    <div className="min-h-screen w-full relative overflow-hidden bg-[linear-gradient(180deg,#d6e5ff_0%,#f7fbff_45%,#eef5ff_100%)] font-sans text-slate-900">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(101,132,178,0.16)_1px,transparent_1px),linear-gradient(to_bottom,rgba(101,132,178,0.14)_1px,transparent_1px)] bg-[size:32px_32px] opacity-35"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(255,255,255,0.95)_0%,rgba(255,255,255,0.45)_24%,rgba(213,228,255,0.18)_52%,transparent_76%)]"></div>
+      <div className="absolute left-1/2 bottom-[-24vh] h-[48vh] w-[130vw] max-w-[980px] -translate-x-1/2 rounded-[50%_50%_0_0] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.72)_46%,rgba(211,226,255,0.46)_72%,rgba(169,197,246,0.18)_100%)] shadow-[0_-18px_70px_rgba(255,255,255,0.95)]"></div>
+      <div className="absolute left-1/2 bottom-[10vh] h-px w-[82vw] max-w-[780px] -translate-x-1/2 bg-white/80 shadow-[0_0_28px_rgba(255,255,255,0.95)]"></div>
 
-      {/* Modern gradient orb in center background */}
-      <div className="absolute top-[40%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-gradient-to-tr from-blue-200/20 via-cyan-200/20 to-indigo-200/20 blur-3xl"></div>
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-between px-6 py-[9vh]">
+        <div aria-hidden="true"></div>
 
-      {/* Header spacing */}
-      <div className="h-20"></div>
-
-      {/* Main branded star logo section */}
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.6 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, ease: 'easeOut' }}
-          className="relative mb-6"
+          className="relative flex w-full justify-center"
         >
-          {/* Ambient visual ring */}
-          <div className="absolute -inset-6 rounded-full border border-indigo-100/60 animate-ping opacity-15"></div>
-          <div className="absolute -inset-10 rounded-full border border-indigo-200/30 animate-pulse opacity-20"></div>
+          <img
+            src="/novalogo_withoutbg.png"
+            alt="NOVA - Next Gen Optical Vision Assistant"
+            className="h-auto w-[min(74vw,360px)] object-contain drop-shadow-[0_20px_38px_rgba(63,111,195,0.16)]"
+          />
+        </motion.div>
 
-          {/* Compass / Starburst Gradient SVG Vector */}
-          <div className="w-28 h-28 flex items-center justify-center relative bg-white rounded-full shadow-xl overflow-hidden">
-            <img src="/logoone.jpeg" alt="NOVA splash logo" className="w-full h-full object-contain p-3" />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65, duration: 0.8 }}
+          className="w-full pb-[4vh] text-center"
+        >
+          <div className="flex items-center justify-center gap-2 text-[clamp(16px,2.2vw,20px)] font-semibold text-[#65728f]">
+            <Sparkles className="h-5 w-5 text-blue-600" fill="currentColor" />
+            <span>See the world.</span>
+          </div>
+          <p className="mt-5 text-[clamp(11px,1.5vw,14px)] font-bold uppercase tracking-[0.22em] text-[#65728f]">
+            Empowered by AI. Guided by NOVA.
+          </p>
+          <div className="mx-auto mt-8 h-3 w-[min(46vw,280px)] overflow-hidden rounded-full bg-[#bfcee5]">
+            <div
+              className={`h-full rounded-full bg-[linear-gradient(90deg,#0968f3_0%,#0b80f7_48%,#32c7ef_100%)] transition-[width] duration-[2800ms] ease-out ${
+                progressReady ? 'w-[72%]' : 'w-0'
+              }`}
+            ></div>
           </div>
         </motion.div>
-
-        {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="text-center"
-        >
-          <h1 className="text-4xl font-extrabold tracking-[0.18em] text-slate-900 font-sans">
-            NOVA
-          </h1>
-          <p className="text-[10px] font-black tracking-[0.3em] text-indigo-600 uppercase mt-2 font-mono">
-            Next Gen Optical Vision Assistant
-          </p>
-        </motion.div>
       </div>
-
-      {/* Elegant minimalist Footer credits */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.8 }}
-        className="pb-16 text-center px-8 relative z-10"
-      >
-        <div className="flex justify-center items-center gap-1.5 text-[11px] font-medium text-slate-400">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-          <span>See the world.</span>
-        </div>
-        <p className="text-[10px] font-bold text-slate-500/80 mt-1 uppercase tracking-wider font-mono">
-          Empowered by AI. Guided by NOVA.
-        </p>
-
-        {/* Loading status bar indicator */}
-        <div className="w-24 h-1 bg-indigo-50/50 rounded-full mx-auto mt-5 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-400 rounded-full animate-loading-bar w-full"></div>
-        </div>
-      </motion.div>
-
-      {/* Simple global CSS injection for anim progress bar inside Tailwind */}
-      <style>{`
-        @keyframes loadingBar {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .animate-loading-bar {
-          animation: loadingBar 2s infinite linear;
-        }
-      `}</style>
     </div>
   );
 };
