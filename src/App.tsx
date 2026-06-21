@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, QuerySnapshot, DocumentData, addDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, QuerySnapshot, DocumentData, addDoc, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
 import { db } from './firebase';
@@ -535,7 +535,7 @@ export default function App() {
       return nextReviews;
     });
 
-    // Save review to Firestore for all users
+    // Save review to Firestore for all users (use server timestamp)
     try {
       await addDoc(collection(db, 'product_reviews'), {
         id: reviewId,
@@ -546,7 +546,7 @@ export default function App() {
         date: new Date().toLocaleDateString(),
         source,
         accountUid: activeUid,
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       });
     } catch (error) {
       console.error('Error saving review to Firestore:', error);
@@ -578,10 +578,9 @@ export default function App() {
           }
         });
 
-        if (Object.keys(reviewsByProduct).length > 0) {
-          setProductReviews(reviewsByProduct);
-          saveStoredProductReviews(reviewsByProduct);
-        }
+        // Always update local state from Firestore snapshot (empty means no remote reviews)
+        setProductReviews(reviewsByProduct);
+        saveStoredProductReviews(reviewsByProduct);
       } catch (err) {
         console.error('Error processing realtime reviews snapshot:', err);
       }
