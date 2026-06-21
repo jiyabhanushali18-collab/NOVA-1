@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { collection, getDocs, QuerySnapshot, DocumentData, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
 import { db } from './firebase';
@@ -126,6 +126,39 @@ const saveStoredProductReviews = (reviews: Record<string, ProductReview[]>) => {
     localStorage.setItem(productReviewsStorageKey, JSON.stringify(reviews));
   } catch {
     // ignore storage writing failures
+  }
+};
+
+const loadFirestoreProductReviews = async (): Promise<Record<string, ProductReview[]>> => {
+  try {
+    const reviewsSnapshot = await getDocs(collection(db, 'product_reviews'));
+    const reviewsByProduct: Record<string, ProductReview[]> = {};
+    
+    reviewsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const productId = data.productId;
+      if (productId) {
+        const review: ProductReview = {
+          id: doc.id,
+          reviewer: String(data.reviewer || 'Guest'),
+          rating: Number(data.rating || 0),
+          text: String(data.text || ''),
+          date: String(data.date || new Date().toLocaleDateString()),
+          source: data.source === 'tryon' ? 'tryon' : 'product',
+          accountUid: data.accountUid ? String(data.accountUid) : undefined
+        };
+        
+        if (!reviewsByProduct[productId]) {
+          reviewsByProduct[productId] = [];
+        }
+        reviewsByProduct[productId].push(review);
+      }
+    });
+    
+    return reviewsByProduct;
+  } catch (error) {
+    console.error('Error loading reviews from Firestore:', error);
+    return {};
   }
 };
 
@@ -451,17 +484,18 @@ export default function App() {
     });
   }, [productReviews]);
 
-  const handleSubmitProductReview = (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product') => {
+  const handleSubmitProductReview = async (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product') => {
     if (!productId || rating <= 0 || !text.trim()) return;
 
     const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';
+    const reviewId = `${productId}-${Date.now()}`;
 
     setProductReviews((prev) => {
       const nextReviews = {
         ...prev,
         [productId]: [
           {
-            id: `${productId}-${Date.now()}`,
+            id: reviewId,
             reviewer: reviewerName,
             rating,
             text: text.trim(),
@@ -500,7 +534,63 @@ export default function App() {
 
       return nextReviews;
     });
+
+    // Save review to Firestore for all users
+    try {
+      await addDoc(collection(db, 'product_reviews'), {
+        id: reviewId,
+        productId,
+        reviewer: reviewerName,
+        rating,
+        text: text.trim(),
+        date: new Date().toLocaleDateString(),
+        source,
+        accountUid: activeUid,
+        createdAt: new Date()
+      });
+    } catch (error) {
+      console.error('Error saving review to Firestore:', error);
+    }
   };
+
+  useEffect(() => {
+    // Real-time listener for product_reviews so new reviews are visible to all users immediately
+    const coll = collection(db, 'product_reviews');
+    const unsub = onSnapshot(coll, (snapshot) => {
+      try {
+        const reviewsByProduct: Record<string, ProductReview[]> = {};
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const productId = data.productId;
+          if (productId) {
+            const review: ProductReview = {
+              id: doc.id,
+              reviewer: String(data.reviewer || 'Guest'),
+              rating: Number(data.rating || 0),
+              text: String(data.text || ''),
+              date: String(data.date || new Date().toLocaleDateString()),
+              source: data.source === 'tryon' ? 'tryon' : 'product',
+              accountUid: data.accountUid ? String(data.accountUid) : undefined
+            };
+
+            if (!reviewsByProduct[productId]) reviewsByProduct[productId] = [];
+            reviewsByProduct[productId].push(review);
+          }
+        });
+
+        if (Object.keys(reviewsByProduct).length > 0) {
+          setProductReviews(reviewsByProduct);
+          saveStoredProductReviews(reviewsByProduct);
+        }
+      } catch (err) {
+        console.error('Error processing realtime reviews snapshot:', err);
+      }
+    }, (error) => {
+      console.error('Realtime reviews listener error:', error);
+    });
+
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const loadProducts = async () => {
