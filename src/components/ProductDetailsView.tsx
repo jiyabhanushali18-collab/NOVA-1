@@ -510,11 +510,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                       <div key={review.id} className="rounded-3xl bg-white p-4 shadow-sm border border-slate-200">
                         <div className="flex justify-between items-center mb-2">
                           <div>
-                            <div className="text-sm font-bold text-slate-900">
-                              {review.reviewer === 'You' && review.accountUid === activeUid
-                                ? currentReviewerName 
-                                : review.reviewer}
-                            </div>
+                            <div className="text-sm font-bold text-slate-900">{review.reviewer}</div>
                             <div className="text-[10px] uppercase tracking-widest text-slate-400">{review.date}</div>
                           </div>
                           <div className="text-amber-500 font-bold text-sm">{Array.from({ length: review.rating }).map((_, idx) => (

@@ -429,28 +429,6 @@ export default function App() {
   const [productsError, setProductsError] = useState<string | null>(null);
 
   useEffect(() => {
-    setProductReviews((prev) => {
-      let hasChanges = false;
-      const updated = Object.entries(prev).reduce((acc, [productId, reviews]) => {
-        const updatedReviews = reviews.map((review) => {
-          if (review.reviewer === 'You' && !review.accountUid) {
-            hasChanges = true;
-            return { ...review, accountUid: activeUid };
-          }
-          return review;
-        });
-        acc[productId] = updatedReviews;
-        return acc;
-      }, {} as Record<string, ProductReview[]>);
-      
-      if (hasChanges) {
-        saveStoredProductReviews(updated);
-      }
-      return hasChanges ? updated : prev;
-    });
-  }, [activeUid]);
-
-  useEffect(() => {
     setProductsData((current) => {
       let updated = current;
       Object.entries(productReviews).forEach(([productId, reviews]) => {
