@@ -132,14 +132,14 @@ Ask me anything—I'm ready to craft suggestions!`,
                           if (p.name.includes('Hoodie')) onNavigate('product-details');
                           else alert(`Redirecting simulation to checkout parameters for: ${p.name}`);
                         }}
-                        className={`min-w-[130px] p-2 rounded-xl flex items-center gap-2 border cursor-pointer hover:shadow-sm ${isUser ? 'bg-indigo-700/60 border-indigo-500 text-white' : 'bg-slate-50 border-slate-150 text-slate-800'}`}
+                        className={`min-w-[150px] p-2.5 rounded-xl flex flex-col items-start gap-2 border cursor-pointer hover:shadow-sm transition-shadow ${isUser ? 'bg-indigo-700/60 border-indigo-500 text-white' : 'bg-slate-50 border-slate-150 text-slate-800'}`}
                       >
-                        <div className="w-9 h-9 rounded-lg bg-slate-100 overflow-hidden shrink-0">
-                          <img alt={p.name} className="w-full h-full object-cover" src={p.imageUrl} />
+                        <div className="w-full h-20 rounded-lg bg-slate-200 overflow-hidden shrink-0">
+                          <img alt={p.name} className="w-full h-full object-cover" src={p.imageUrl} onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'; }} />
                         </div>
-                        <div className="leading-tight min-w-0">
-                          <div className="text-[10px] font-bold truncate leading-none">{p.name}</div>
-                          <div className="text-[9px] font-semibold mt-1 opacity-90 text-indigo-500 leading-none">₹{p.price}</div>
+                        <div className="leading-tight w-full">
+                          <div className="text-[11px] font-bold line-clamp-2">{p.name}</div>
+                          <div className="text-[10px] font-semibold mt-1.5 opacity-90 text-indigo-500 leading-none">₹{p.price.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
                     ))}

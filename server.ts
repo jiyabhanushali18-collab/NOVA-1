@@ -9,7 +9,6 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 app.use('/api', chatRouter);
-app.use(chatRouter);
 
 const PORT = Number(process.env.PORT || 3000);
 

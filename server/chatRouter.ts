@@ -80,19 +80,52 @@ const findProductSuggestions = (query: string, products: any[]) => {
     .sort((a, b) => b.score - a.score)
     .map((item) => item.product);
 
-  if (scored.length > 0) {
-    return scored.slice(0, 4).map((product) => ({
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-    }));
-  }
+  const suggestions = (scored.length > 0 ? scored.slice(0, 4) : products.slice(0, 4)).map((product) => {
+    let imageUrl = product.imageUrl;
+    
+    // If imageUrl is missing, try to find from local products
+    if (!imageUrl) {
+      const productName = product.name?.toLowerCase() || '';
+      
+      // Try exact match first
+      for (const key of Object.keys(localProducts)) {
+        if (localProducts[key].name.toLowerCase() === productName) {
+          imageUrl = localProducts[key].imageUrl;
+          break;
+        }
+      }
+      
+      // If still not found, try partial match
+      if (!imageUrl) {
+        for (const key of Object.keys(localProducts)) {
+          if (localProducts[key].name.toLowerCase().includes(productName) ||
+              productName.includes(localProducts[key].name.toLowerCase())) {
+            imageUrl = localProducts[key].imageUrl;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Last resort: use a generic fallback
+    if (!imageUrl) {
+      const defaultImages = [
+        'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&q=80', // hoodie
+        'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=500&q=80', // pants
+        'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80', // shoes
+        'https://images.unsplash.com/photo-1596215578519-c21a6004885c?w=500&q=80', // shirt
+      ];
+      imageUrl = defaultImages[Math.floor(Math.random() * defaultImages.length)];
+    }
+    
+    return {
+      name: product.name || 'Product',
+      price: product.price || 0,
+      imageUrl,
+    };
+  });
 
-  return products.slice(0, 4).map((product) => ({
-    name: product.name,
-    price: product.price,
-    imageUrl: product.imageUrl,
-  }));
+  return suggestions;
 };
 
 router.post('/chat', async (req: any, res: any) => {
