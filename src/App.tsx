@@ -108,7 +108,8 @@ const loadStoredProductReviews = (): Record<string, ProductReview[]> => {
             rating: Number(reviewObj.rating || 0),
             text: String(reviewObj.text || ''),
             date: String(reviewObj.date || new Date().toLocaleDateString()),
-            source
+            source,
+            accountUid: reviewObj.accountUid ? String(reviewObj.accountUid) : undefined
           };
         })
         .filter((review): review is ProductReview => review !== null && review.rating > 0);
@@ -428,6 +429,28 @@ export default function App() {
   const [productsError, setProductsError] = useState<string | null>(null);
 
   useEffect(() => {
+    setProductReviews((prev) => {
+      let hasChanges = false;
+      const updated = Object.entries(prev).reduce((acc, [productId, reviews]) => {
+        const updatedReviews = reviews.map((review) => {
+          if (review.reviewer === 'You' && !review.accountUid) {
+            hasChanges = true;
+            return { ...review, accountUid: activeUid };
+          }
+          return review;
+        });
+        acc[productId] = updatedReviews;
+        return acc;
+      }, {} as Record<string, ProductReview[]>);
+      
+      if (hasChanges) {
+        saveStoredProductReviews(updated);
+      }
+      return hasChanges ? updated : prev;
+    });
+  }, [activeUid]);
+
+  useEffect(() => {
     setProductsData((current) => {
       let updated = current;
       Object.entries(productReviews).forEach(([productId, reviews]) => {
@@ -465,7 +488,8 @@ export default function App() {
             rating,
             text: text.trim(),
             date: new Date().toLocaleDateString(),
-            source
+            source,
+            accountUid: activeUid
           },
           ...(prev[productId] || [])
         ]
@@ -801,6 +825,7 @@ export default function App() {
             isDarkMode={isDarkMode}
             reviews={productReviews[selectedProductId] || []}
             currentReviewerName={activeAccount?.name || activeAccount?.username || userName}
+            activeUid={activeUid}
             onSubmitReview={handleSubmitProductReview}
           />
         );

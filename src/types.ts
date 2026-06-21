@@ -43,6 +43,7 @@ export interface ProductReview {
   text: string;
   date: string;
   source?: 'product' | 'tryon';
+  accountUid?: string;
 }
 
 export interface CartItem {
