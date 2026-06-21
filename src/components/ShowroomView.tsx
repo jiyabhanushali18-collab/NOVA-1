@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScreenId, ProductItem } from '../types';
+import { ScreenId, ProductItem, ProductReview } from '../types';
 
 interface ShowroomViewProps {
   products: ProductItem[];
@@ -11,6 +11,7 @@ interface ShowroomViewProps {
   onSelectProduct?: (productId: string) => void;
   cartItemsCount?: number;
   isDarkMode?: boolean;
+  productReviews?: Record<string, ProductReview[]>;
 }
 
 export const ShowroomView: React.FC<ShowroomViewProps> = ({ 
@@ -22,8 +23,19 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   onToggleWishlist,
   onSelectProduct,
   cartItemsCount = 0,
-  isDarkMode = false
+  isDarkMode = false,
+  productReviews = {}
 }) => {
+  const getProductReviewSummary = (product: ProductItem) => {
+    const reviews = productReviews[product.id] || [];
+    if (reviews.length === 0) {
+      return { rating: product.rating, count: product.reviewsCount };
+    }
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const count = product.reviewsCount + reviews.length;
+    const rating = Number(((product.rating * product.reviewsCount + totalRating) / count).toFixed(1));
+    return { rating, count };
+  };
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -162,7 +174,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
                       <span className={`text-xs font-black ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{product.price.toLocaleString()}</span>
                       <span className={`text-[9px] font-bold flex items-center gap-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                         <span className="material-symbols-outlined text-[10px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                        {product.rating}
+                        {getProductReviewSummary(product).rating}
                       </span>
                     </div>
                   </div>

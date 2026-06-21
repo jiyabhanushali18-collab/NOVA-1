@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, QuerySnapshot, DocumentData } from 'firebase/firestore';
-import { ScreenId, CartItem, Measurement, Preference, ProductItem } from './types';
+import { ScreenId, CartItem, Measurement, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
 import { db } from './firebase';
 
@@ -63,6 +63,69 @@ const asStringArray = (value: unknown): string[] => {
   }
 
   return [];
+};
+
+
+const calculateRatingFromReviews = (product: ProductItem, reviews: ProductReview[]) => {
+  if (!reviews || reviews.length === 0) {
+    return {
+      rating: product.rating,
+      reviewsCount: product.reviewsCount
+    };
+  }
+
+  const existingBaseCount = product.reviewsCount || 0;
+  const existingTotal = existingBaseCount * (product.rating || 0);
+  const reviewTotal = reviews.reduce((sum, review) => sum + review.rating, 0);
+  const totalCount = existingBaseCount + reviews.length;
+  const average = totalCount > 0 ? Number(((existingTotal + reviewTotal) / totalCount).toFixed(1)) : 0;
+
+  return {
+    rating: average,
+    reviewsCount: totalCount
+  };
+};
+
+const productReviewsStorageKey = 'nova_product_reviews';
+
+const loadStoredProductReviews = (): Record<string, ProductReview[]> => {
+  try {
+    const stored = localStorage.getItem(productReviewsStorageKey);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+
+    return Object.entries(parsed).reduce((acc, [productId, reviews]) => {
+      if (!Array.isArray(reviews)) return acc;
+      const normalizedReviews = reviews
+        .map((item): ProductReview | null => {
+          if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+          const reviewObj = item as Record<string, unknown>;
+          const source: 'product' | 'tryon' = reviewObj.source === 'tryon' ? 'tryon' : 'product';
+          return {
+            id: String(reviewObj.id || `${productId}-${Date.now()}`),
+            reviewer: String(reviewObj.reviewer || 'Guest'),
+            rating: Number(reviewObj.rating || 0),
+            text: String(reviewObj.text || ''),
+            date: String(reviewObj.date || new Date().toLocaleDateString()),
+            source
+          };
+        })
+        .filter((review): review is ProductReview => review !== null && review.rating > 0);
+      acc[productId] = normalizedReviews;
+      return acc;
+    }, {} as Record<string, ProductReview[]>);
+  } catch {
+    return {};
+  }
+};
+
+const saveStoredProductReviews = (reviews: Record<string, ProductReview[]>) => {
+  try {
+    localStorage.setItem(productReviewsStorageKey, JSON.stringify(reviews));
+  } catch {
+    // ignore storage writing failures
+  }
 };
 
 const addColorImage = (result: Record<string, string[]>, color: unknown, imageUrl: unknown) => {
@@ -360,8 +423,82 @@ export default function App() {
   );
 
   const [productsData, setProductsData] = useState<Record<string, ProductItem>>(() => products);
+  const [productReviews, setProductReviews] = useState<Record<string, ProductReview[]>>(() => loadStoredProductReviews());
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
   const [productsError, setProductsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProductsData((current) => {
+      let updated = current;
+      Object.entries(productReviews).forEach(([productId, reviews]) => {
+        const prod = current[productId];
+        if (prod && reviews.length > 0) {
+          const agg = calculateRatingFromReviews(prod, reviews);
+          if (agg.rating !== prod.rating || agg.reviewsCount !== prod.reviewsCount) {
+            updated = {
+              ...updated,
+              [productId]: {
+                ...prod,
+                rating: agg.rating,
+                reviewsCount: agg.reviewsCount
+              }
+            };
+          }
+        }
+      });
+      return updated;
+    });
+  }, [productReviews]);
+
+  const handleSubmitProductReview = (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product') => {
+    if (!productId || rating <= 0 || !text.trim()) return;
+
+    const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';
+
+    setProductReviews((prev) => {
+      const nextReviews = {
+        ...prev,
+        [productId]: [
+          {
+            id: `${productId}-${Date.now()}`,
+            reviewer: reviewerName,
+            rating,
+            text: text.trim(),
+            date: new Date().toLocaleDateString(),
+            source
+          },
+          ...(prev[productId] || [])
+        ]
+      };
+
+      saveStoredProductReviews(nextReviews);
+
+      const prod = productsData[productId] || products[productId];
+      if (prod) {
+        const updatedAggregate = calculateRatingFromReviews(prod, nextReviews[productId]);
+        setProductsData((current) => ({
+          ...current,
+          [productId]: {
+            ...prod,
+            rating: updatedAggregate.rating,
+            reviewsCount: updatedAggregate.reviewsCount
+          }
+        }));
+        awardNovaPoints(20, 'Submitted product review');
+        addRecentActivity({
+          id: Date.now().toString(),
+          name: `${prod.name} review`,
+          time: new Date().toLocaleTimeString(),
+          badge: 'Review',
+          icon: 'star',
+          color: 'bg-amber-500/80',
+          imageUrl: prod.imageUrl
+        });
+      }
+
+      return nextReviews;
+    });
+  };
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -604,6 +741,8 @@ export default function App() {
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
             onAddToCart={handleAddToCart}
+            selectedProductId={selectedProductId}
+            onSubmitReview={handleSubmitProductReview}
           />
         );
       case 'camera-scan':
@@ -660,6 +799,9 @@ export default function App() {
             onToggleWishlist={handleToggleWishlist}
             selectedProductId={selectedProductId}
             isDarkMode={isDarkMode}
+            reviews={productReviews[selectedProductId] || []}
+            currentReviewerName={activeAccount?.name || activeAccount?.username || userName}
+            onSubmitReview={handleSubmitProductReview}
           />
         );
       case 'showroom':
@@ -681,6 +823,7 @@ export default function App() {
               navigate('product-details', { productId: id });
             }}
             cartItemsCount={countCartTotalItems()}
+            productReviews={productReviews}
           />
         );
       case 'scan-outfit':
