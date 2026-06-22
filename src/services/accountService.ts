@@ -1,7 +1,7 @@
 import { auth, db } from '../firebase';
 import { NovaAccount } from '../types';
 import { doc, getDoc } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const ACCOUNTS_KEY = 'nova_accounts';
 const ACTIVE_KEY = 'nova_active_account';
@@ -59,6 +59,11 @@ export const signInWithEmail = async (email: string, password: string) => {
   return res.user;
 };
 
+export const registerWithEmail = async (email: string, password: string) => {
+  const res = await createUserWithEmailAndPassword(auth, email, password);
+  return res.user;
+};
+
 export default {
   getLocalAccounts,
   saveLocalAccounts,
@@ -66,5 +71,6 @@ export default {
   setActiveLocalAccount,
   fetchProfileFromFirebase,
   signInWithGoogle,
-  signInWithEmail
+  signInWithEmail,
+  registerWithEmail
 };

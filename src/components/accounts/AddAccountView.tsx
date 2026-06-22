@@ -28,8 +28,18 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const trimmed = email.trim();
+
+    // If user entered a username (no @), treat as local account instead of Firebase email auth
+    if (!trimmed.includes('@')) {
+      const fallback = createLocalAccount(trimmed);
+      onAdded?.(fallback);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const user = await accountService.signInWithEmail(email, password);
+      const user = await accountService.signInWithEmail(trimmed, password);
       const acc: NovaAccount = {
         uid: user.uid,
         username: user.email ? user.email.split('@')[0] : user.uid,
@@ -39,7 +49,21 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
       };
       onAdded?.(acc);
     } catch (e: any) {
-      if (e?.code === 'auth/operation-not-allowed' || e?.message?.includes('operation-not-allowed')) {
+      if (e?.code === 'auth/user-not-found' || e?.message?.includes('user-not-found')) {
+        try {
+          const user = await accountService.registerWithEmail(email, password);
+          const acc: NovaAccount = {
+            uid: user.uid,
+            username: user.email ? user.email.split('@')[0] : user.uid,
+            email: user.email || '',
+            profilePhoto: user.photoURL || undefined,
+            createdAt: Date.now()
+          };
+          onAdded?.(acc);
+        } catch (regErr: any) {
+          setError(regErr?.message || 'Failed to create account');
+        }
+      } else if (e?.code === 'auth/operation-not-allowed' || e?.message?.includes('operation-not-allowed')) {
         const fallback = createLocalAccount(email);
         onAdded?.(fallback);
       } else {
@@ -65,6 +89,8 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
     } catch (e: any) {
       if (e?.code === 'auth/operation-not-allowed' || e?.message?.includes('operation-not-allowed')) {
         setError('Google sign-in is disabled in Firebase Auth. Please enable the Google provider in your Firebase console.');
+      } else if (e?.code === 'auth/invalid-credential' || e?.message?.includes('invalid-credential')) {
+        setError('Google sign-in credential is invalid. Check your Firebase Google provider setup and authorized domains.');
       } else if (e?.code === 'auth/unauthorized-domain' || e?.message?.includes('unauthorized-domain')) {
         setError('Firebase blocked this domain. Add your app origin to Firebase Auth authorized domains, then reload.');
       } else if (e?.code === 'auth/popup-closed-by-user') {
