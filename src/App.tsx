@@ -554,10 +554,23 @@ export default function App() {
   const handleSubmitProductReview = async (productId: string, rating: number, comment: string) => {
     if (!productId || rating < 1 || rating > 5 || !comment.trim()) return;
 
-    // Reviews are stored in the Firestore collection named "reviews".
-    // productId is the Firestore product document ID, not the product name.
     const userId = activeAccount?.uid || activeUid || userEmail || 'anonymous';
     const userNameForReview = activeAccount?.name || activeAccount?.username || userName || 'Guest';
+
+    const newReview = {
+      id: `${productId}-${Date.now()}`,
+      productId,
+      userId,
+      userName: userNameForReview,
+      rating,
+      comment: comment.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    setProductReviews((prev) => ({
+      ...prev,
+      [productId]: [newReview, ...(prev[productId] || [])]
+    }));
 
     try {
       await addDoc(collection(db, 'reviews'), {
@@ -749,6 +762,8 @@ export default function App() {
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
             onAddToCart={handleAddToCart}
+            selectedProductId={selectedProductId}
+            onSubmitReview={handleSubmitProductReview}
           />
         );
       case 'camera-scan':
