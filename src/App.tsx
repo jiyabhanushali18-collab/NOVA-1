@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, QuerySnapshot, DocumentData } from 'firebase/firestore';
-import { ScreenId, CartItem, Measurement, Preference, ProductItem } from './types';
+import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
+import { ScreenId, CartItem, Measurement, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
 import { db } from './firebase';
 
@@ -362,6 +362,14 @@ export default function App() {
   const [productsData, setProductsData] = useState<Record<string, ProductItem>>(() => products);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [productReviews, setProductReviews] = useState<Record<string, ProductReview[]>>({});
+  const [reviewListenerError, setReviewListenerError] = useState<string | null>(null);
+
+  const [selectedProductId, setSelectedProductId] = useState<string>('lavender-hoodie');
+  const [selectedColor, setSelectedColor] = useState<string>('Lavender');
+  const [selectedGarment, setSelectedGarment] = useState<string>('Lavender');
+
+  const currentProductReviews = productReviews[selectedProductId] || [];
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -425,6 +433,147 @@ export default function App() {
 
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    if (screen !== 'product-details' || !selectedProductId) return;
+
+    let unsubscribe: (() => void) | null = null;
+
+    // Realtime synchronization: listen for reviews matching the current Firestore product document ID.
+    // Try with orderBy first, if it fails (composite index), try without orderBy
+    const setupListener = async () => {
+      try {
+        // First attempt: query with orderBy (requires composite index)
+        const reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('productId', '==', selectedProductId),
+          orderBy('createdAt', 'desc')
+        );
+
+        unsubscribe = onSnapshot(
+          reviewsQuery,
+          (snapshot) => {
+            const reviews: ProductReview[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data() as any;
+              reviews.push({
+                id: doc.id,
+                productId: String(data.productId || ''),
+                userId: String(data.userId || ''),
+                userName: String(data.userName || 'Guest'),
+                rating: Number(data.rating || 0),
+                comment: String(data.comment || ''),
+                createdAt: data.createdAt
+              });
+            });
+            setProductReviews((prev) => ({ ...prev, [selectedProductId]: reviews }));
+            setReviewListenerError(null);
+          },
+          (error: any) => {
+            console.error('Realtime review listener failed (with orderBy):', error?.code, error?.message);
+            
+            // Fallback: try without orderBy if composite index error
+            if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+              console.log('Attempting fallback query without orderBy...');
+              try {
+                const fallbackQuery = query(
+                  collection(db, 'reviews'),
+                  where('productId', '==', selectedProductId)
+                );
+
+                unsubscribe = onSnapshot(
+                  fallbackQuery,
+                  (snapshot) => {
+                    const reviews: ProductReview[] = [];
+                    snapshot.forEach((doc) => {
+                      const data = doc.data() as any;
+                      reviews.push({
+                        id: doc.id,
+                        productId: String(data.productId || ''),
+                        userId: String(data.userId || ''),
+                        userName: String(data.userName || 'Guest'),
+                        rating: Number(data.rating || 0),
+                        comment: String(data.comment || ''),
+                        createdAt: data.createdAt
+                      });
+                    });
+                    // Sort client-side
+                    reviews.sort((a, b) => {
+                      const timeA = a.createdAt?.toMillis?.() || 0;
+                      const timeB = b.createdAt?.toMillis?.() || 0;
+                      return timeB - timeA;
+                    });
+                    setProductReviews((prev) => ({ ...prev, [selectedProductId]: reviews }));
+                    setReviewListenerError(null);
+                  },
+                  (fallbackError) => {
+                    console.error('Fallback listener also failed:', fallbackError?.code, fallbackError?.message);
+                    setReviewListenerError('Unable to load real-time reviews.');
+                  }
+                );
+              } catch (e) {
+                console.error('Fallback query setup failed:', e);
+                setReviewListenerError('Unable to load real-time reviews.');
+              }
+            } else {
+              setReviewListenerError('Unable to load real-time reviews.');
+            }
+          }
+        );
+      } catch (e) {
+        console.error('Query setup failed:', e);
+        setReviewListenerError('Unable to load real-time reviews.');
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [screen, selectedProductId]);
+
+  const getReviewStats = (productId: string) => {
+    const reviews = productReviews[productId] || [];
+    if (!reviews.length) {
+      const fallback = productsData[productId] || products[productId];
+      return {
+        averageRating: fallback?.rating || 0,
+        reviewsCount: fallback?.reviewsCount || 0
+      };
+    }
+
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
+    return {
+      averageRating,
+      reviewsCount: reviews.length
+    };
+  };
+
+  const handleSubmitProductReview = async (productId: string, rating: number, comment: string) => {
+    if (!productId || rating < 1 || rating > 5 || !comment.trim()) return;
+
+    // Reviews are stored in the Firestore collection named "reviews".
+    // productId is the Firestore product document ID, not the product name.
+    const userId = activeAccount?.uid || activeUid || userEmail || 'anonymous';
+    const userNameForReview = activeAccount?.name || activeAccount?.username || userName || 'Guest';
+
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        productId,
+        userId,
+        userName: userNameForReview,
+        rating,
+        comment: comment.trim(),
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error saving review to Firestore:', error);
+    }
+  };
+
+  const currentReviewStats = getReviewStats(selectedProductId);
 
   // Persistent wishlist/favorites state
   const [wishlist, setWishlist] = useState<string[]>(() => {
@@ -511,10 +660,6 @@ export default function App() {
       size: 'M'
     }
   ]);
-
-  const [selectedColor, setSelectedColor] = useState<string>('Lavender');
-  const [selectedGarment, setSelectedGarment] = useState<string>('Lavender');
-  const [selectedProductId, setSelectedProductId] = useState<string>('lavender-hoodie');
 
   // Interactive Cart Handlers
   const handleAddToCart = (prodId: string, color: string, size: string) => {
@@ -660,6 +805,12 @@ export default function App() {
             onToggleWishlist={handleToggleWishlist}
             selectedProductId={selectedProductId}
             isDarkMode={isDarkMode}
+            reviews={currentProductReviews}
+            averageRating={currentReviewStats.averageRating}
+            reviewsCount={currentReviewStats.reviewsCount}
+            reviewListenerError={reviewListenerError}
+            onSubmitReview={handleSubmitProductReview}
+            currentUserName={userName}
           />
         );
       case 'showroom':

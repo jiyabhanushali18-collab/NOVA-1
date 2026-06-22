@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScreenId, ProductItem } from '../types';
+import { ScreenId, ProductItem, ProductReview } from '../types';
 
 const normalizeColor = (color?: string) => (color || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
@@ -26,6 +26,12 @@ interface ProductDetailsViewProps {
   onToggleWishlist?: (productId: string) => void;
   selectedProductId?: string;
   isDarkMode?: boolean;
+  reviews?: ProductReview[];
+  averageRating?: number;
+  reviewsCount?: number;
+  reviewListenerError?: string | null;
+  onSubmitReview?: (productId: string, rating: number, comment: string) => Promise<void>;
+  currentUserName?: string;
 }
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
@@ -37,13 +43,46 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   wishlist = [],
   onToggleWishlist,
   selectedProductId = 'lavender-hoodie',
-  isDarkMode = false
+  isDarkMode = false,
+  reviews = [],
+  averageRating,
+  reviewsCount,
+  reviewListenerError,
+  onSubmitReview,
+  currentUserName
 }) => {
   const mainProduct = products[selectedProductId] || products['lavender-hoodie'];
   const [selectedSize, setSelectedSize] = useState('M');
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number>(0);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>('');
+
+  const reviewStars = averageRating && averageRating > 0 ? averageRating : mainProduct.rating;
+  const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : mainProduct.reviewsCount;
+
+  const formatReviewDate = (createdAt: any) => {
+    if (!createdAt) return 'Unknown date';
+    if (createdAt.toDate) return createdAt.toDate().toLocaleDateString();
+    if (typeof createdAt === 'number') return new Date(createdAt).toLocaleDateString();
+    if (typeof createdAt === 'object' && typeof createdAt.seconds === 'number') return new Date(createdAt.seconds * 1000).toLocaleDateString();
+    return String(createdAt);
+  };
+
+  const handleReviewSubmit = async () => {
+    if (!mainProduct || !onSubmitReview) return;
+    if (reviewRating < 1 || reviewRating > 5 || !reviewComment.trim()) {
+      setToastMessage('Please provide a rating and comment.');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    await onSubmitReview(mainProduct.id, reviewRating, reviewComment.trim());
+    setReviewComment('');
+    setReviewRating(5);
+    setToastMessage('Review submitted successfully.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   // Set default color to first color when product changes
   React.useEffect(() => {
@@ -216,8 +255,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             isDarkMode ? 'text-slate-300' : 'text-slate-600'
           }`}>
             <span className="material-symbols-outlined text-amber-500 text-sm leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            <span>{mainProduct.rating}</span>
-            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>({mainProduct.reviewsCount} Reviews)</span>
+            <span>{reviewStars}</span>
+            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>({reviewCountLabel} Reviews)</span>
           </div>
 
           {/* Pricing tag */}
@@ -366,7 +405,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             {[
               { id: 'details', label: 'Details' },
               { id: 'material', label: 'Material & Care' },
-              { id: 'reviews', label: 'Reviews (128)' },
+              { id: 'reviews', label: `Reviews (${reviewCountLabel})` },
               { id: 'delivery', label: 'Shipping' }
             ].map((tab) => (
               <button
@@ -403,20 +442,75 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               </p>
             )}
             {activeTab === 'reviews' && (
-              <div className="space-y-2.5 animate-fade-in">
-                <div className="border-b border-slate-100 pb-2">
-                  <div className="flex justify-between font-bold text-slate-800">
-                    <span>Pranav S.</span>
-                    <span className="text-amber-500">★★★★★</span>
+              <div className="space-y-4 animate-fade-in">
+                {reviewListenerError && (
+                  <div className="rounded-xl p-3 text-sm text-red-700 bg-red-50 border border-red-100">
+                    {reviewListenerError}
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">The lavender tone matches the web preview precisely! Very comfortable fleece inner overlay.</p>
+                )}
+                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">Your review</div>
+                        <div className="text-[11px] text-slate-500">
+                          {currentUserName ? `Signed in as ${currentUserName}` : 'Write a review for this product.'}
+                        </div>
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500">{reviewCountLabel} reviews · {reviewStars} ★</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, index) => {
+                        const starValue = index + 1;
+                        return (
+                          <button
+                            key={starValue}
+                            type="button"
+                            onClick={() => setReviewRating(starValue)}
+                            className={`material-symbols-outlined text-lg ${reviewRating >= starValue ? 'text-amber-500' : 'text-slate-300'}`}
+                          >
+                            star
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(event) => setReviewComment(event.target.value)}
+                      placeholder="Share your experience..."
+                      className="w-full min-h-[100px] rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleReviewSubmit}
+                      className="w-full rounded-2xl bg-indigo-600 py-3 text-xs font-bold text-white hover:bg-indigo-700 transition-colors"
+                    >
+                      Submit Review
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex justify-between font-bold text-slate-800">
-                    <span>Aditya R.</span>
-                    <span className="text-amber-500">★★★★☆</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Warm, nice details. M size coordinates perfectly with cargo pants.</p>
+
+                <div className="space-y-3">
+                  {reviews && reviews.length > 0 ? (
+                    reviews.map((review) => (
+                      <div key={review.id} className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-bold text-slate-900">{review.userName}</div>
+                          <div className="text-amber-500 text-sm">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                              <span key={index}>{index < review.rating ? '★' : '☆'}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-slate-400 mb-2">{formatReviewDate(review.createdAt)}</div>
+                        <p className="text-[12px] leading-relaxed text-slate-700">{review.comment}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
+                      No reviews yet. Be the first to share your opinion.
+                    </div>
+                  )}
                 </div>
               </div>
             )}

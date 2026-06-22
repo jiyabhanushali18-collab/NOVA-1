@@ -36,6 +36,16 @@ export interface ProductItem {
   details: string[];
 }
 
+export interface ProductReview {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: any;
+}
+
 export interface CartItem {
   product: ProductItem;
   quantity: number;
