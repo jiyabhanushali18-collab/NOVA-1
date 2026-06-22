@@ -7,15 +7,22 @@ interface TryOnResultViewProps {
   selectedColor: string;
   setSelectedColor: (color: string) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
+  selectedProductId?: string;
+  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => void;
 }
 
 export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   onNavigate,
   selectedColor,
   setSelectedColor,
-  onAddToCart
+  onAddToCart,
+  selectedProductId = 'lavender-hoodie',
+  onSubmitReview
 }) => {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const swatches = [
     { name: 'Lavender', text: 'Lavender' },
@@ -205,6 +212,58 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         >
           <span className="material-symbols-outlined text-sm leading-none">local_mall</span>
           Details
+        </button>
+      </section>
+
+      <section className="rounded-3xl bg-white p-4 shadow-sm border border-slate-200">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Rate your try-on</h3>
+            <p className="text-[11px] text-slate-500">Add a star rating and quick review from your AR experience.</p>
+          </div>
+          <span className="text-xs font-semibold text-slate-400">{selectedColor}</span>
+        </div>
+
+        <div className="flex gap-2 mb-3">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setReviewRating(star)}
+              className={`rounded-full w-10 h-10 border flex items-center justify-center transition ${
+                reviewRating >= star ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-100 text-slate-500 border-slate-200'
+              }`}
+            >
+              <span className="material-symbols-outlined">star</span>
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          value={reviewText}
+          onChange={(e) => setReviewText(e.target.value)}
+          className="w-full rounded-3xl border border-slate-200 px-4 py-3 text-sm text-slate-700 min-h-[110px]"
+          placeholder="Write a quick note about fit, color, or comfort..."
+        />
+
+        <button
+          type="button"
+          onClick={() => {
+            if (!onSubmitReview) return;
+            if (reviewRating <= 0 || !reviewText.trim()) {
+              setToastMessage('Select rating and write a review before submitting.');
+              setTimeout(() => setToastMessage(null), 2500);
+              return;
+            }
+            onSubmitReview(selectedProductId, reviewRating, reviewText, 'tryon');
+            setReviewRating(0);
+            setReviewText('');
+            setToastMessage('Thanks! Your try-on review has been submitted.');
+            setTimeout(() => setToastMessage(null), 2500);
+          }}
+          className="mt-4 w-full rounded-2xl bg-indigo-600 text-white py-3 text-sm font-semibold hover:bg-indigo-700 transition-colors"
+        >
+          Submit Try-On Review
         </button>
       </section>
 
