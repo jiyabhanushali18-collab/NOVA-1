@@ -847,6 +847,7 @@ export default function App() {
               navigate('product-details', { productId: id });
             }}
             cartItemsCount={countCartTotalItems()}
+            productReviews={productReviews}
           />
         );
       case 'scan-outfit':
