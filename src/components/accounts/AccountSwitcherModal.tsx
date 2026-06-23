@@ -9,12 +9,13 @@ interface Props {
   onClose: () => void;
   accounts: NovaAccount[];
   activeUid?: string;
-  onSwitch: (uid: string) => void;
+  onSwitch: (uid?: string) => void;
   onAdd: (acc: NovaAccount) => void;
   onRemove: (uid: string) => void;
+  onLogout: () => void;
 }
 
-export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, accounts, activeUid, onSwitch, onAdd, onRemove }) => {
+export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, accounts, activeUid, onSwitch, onAdd, onRemove, onLogout }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -69,7 +70,17 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
               <button onClick={() => setShowAdd(true)} disabled={accounts.length >= 5} className={`py-2 rounded ${accounts.length >= 5 ? 'bg-slate-600/30 text-slate-400' : 'bg-white text-black font-bold'}`}>
                 Add Account
               </button>
-              <button onClick={() => { accountService.setActiveLocalAccount(undefined); onSwitch(undefined as any); onClose(); }} className="py-2 rounded bg-red-600 text-white">Log Out</button>
+              <button
+                onClick={() => {
+                  accountService.setActiveLocalAccount(undefined);
+                  onSwitch(undefined);
+                  onClose();
+                  onLogout();
+                }}
+                className="py-2 rounded bg-red-600 text-white"
+              >
+                Log Out
+              </button>
             </div>
           </>
         ) : (

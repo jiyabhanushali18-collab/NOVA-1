@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import accountService from '../../services/accountService';
 import { NovaAccount } from '../../types';
+import { saveUserToFirestore } from '../../firebase';
 
 interface Props {
   onAdded?: (acc: NovaAccount) => void;
@@ -28,8 +29,21 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    let normalizedEmail = email.trim().toLowerCase();
+
+    // Enforce @gmail.com domain requirement
+    if (normalizedEmail.includes('@')) {
+      if (!normalizedEmail.endsWith('@gmail.com')) {
+        setError('Email must be a @gmail.com address.');
+        setLoading(false);
+        return;
+      }
+    } else {
+      normalizedEmail = `${normalizedEmail}@gmail.com`;
+    }
+
     try {
-      const user = await accountService.signInWithEmail(email, password);
+      const user = await accountService.signInWithEmail(normalizedEmail, password);
       const acc: NovaAccount = {
         uid: user.uid,
         username: user.email ? user.email.split('@')[0] : user.uid,
@@ -37,10 +51,18 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
         profilePhoto: user.photoURL || undefined,
         createdAt: Date.now()
       };
+      // Save user to Firestore
+      saveUserToFirestore(acc.username, user.email || '', '', false).catch(err => {
+        console.error('Failed to save user data:', err);
+      });
       onAdded?.(acc);
     } catch (e: any) {
       if (e?.code === 'auth/operation-not-allowed' || e?.message?.includes('operation-not-allowed')) {
-        const fallback = createLocalAccount(email);
+        const fallback = createLocalAccount(normalizedEmail);
+        // Save local account to Firestore
+        saveUserToFirestore(fallback.username, normalizedEmail, '', false).catch(err => {
+          console.error('Failed to save user data:', err);
+        });
         onAdded?.(fallback);
       } else {
         setError(e?.message || 'Failed to sign in');
@@ -61,6 +83,10 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
         profilePhoto: user.photoURL || undefined,
         createdAt: Date.now()
       };
+      // Save user to Firestore
+      saveUserToFirestore(acc.username, user.email || '', '', false).catch(err => {
+        console.error('Failed to save user data:', err);
+      });
       onAdded?.(acc);
     } catch (e: any) {
       if (e?.code === 'auth/operation-not-allowed' || e?.message?.includes('operation-not-allowed')) {

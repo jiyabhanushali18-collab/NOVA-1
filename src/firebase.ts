@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -14,3 +14,37 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+/**
+ * Save user details to Firestore 'users' collection
+ * @param name - User's full name
+ * @param email - User's email address
+ * @param phone - User's phone number
+ * @param isNewUser - Whether this is a new signup or returning login
+ */
+export const saveUserToFirestore = async (
+  name: string,
+  email: string,
+  phone: string,
+  isNewUser: boolean = false
+): Promise<void> => {
+  try {
+    const normalizedEmail = email.toLowerCase().replace(/[@.]/g, '_');
+    const userRef = doc(db, 'users', normalizedEmail);
+    const userData = {
+      uid: normalizedEmail,
+      name,
+      email,
+      phone,
+      username: email.split('@')[0] || name,
+      createdAt: isNewUser ? serverTimestamp() : new Date(),
+      lastLogin: serverTimestamp(),
+      profilePhoto: undefined
+    };
+    
+    await setDoc(userRef, userData, { merge: true });
+  } catch (err) {
+    console.error('Error saving user to Firestore:', err);
+    throw err;
+  }
+};

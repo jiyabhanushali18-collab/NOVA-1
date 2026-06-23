@@ -25,6 +25,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
   
   // Form input fields
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     return /^\+[1-9]\d{9,14}$/.test(value);
   };
 
-  const loginWithPhone = async (phone: string) => {
+  const loginWithPhone = async (phone: string, signupEmail?: string) => {
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
@@ -81,7 +82,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
 
     const finalPhone = normalizedPhone;
     const finalName = matched?.name || (mode === 'signup' ? name.trim() || 'Guest User' : 'Guest User');
-    const finalEmail = matched?.email || `${finalName.toLowerCase().replace(/\s+/g, '') || 'guest'}@nova.ai`;
+    const finalEmail = matched?.email || (mode === 'signup' ? signupEmail?.trim().toLowerCase() || `${finalName.toLowerCase().replace(/\s+/g, '') || 'guest'}@nova.ai` : `${finalName.toLowerCase().replace(/\s+/g, '') || 'guest'}@nova.ai`);
 
     if (mode === 'signup' && !matched) {
       const newUser: RegisterUser = {
@@ -118,12 +119,35 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
       return;
     }
 
-    if (mode === 'signup' && !name.trim()) {
-      setError('Please provide your Full Name to register.');
-      return;
+    let signupEmailValue: string | undefined;
+
+    if (mode === 'signup') {
+      if (!name.trim()) {
+        setError('Please provide your Full Name to register.');
+        return;
+      }
+      if (!email.trim()) {
+        setError('Please provide your email address to register.');
+        return;
+      }
+      let normalizedEmail = email.trim().toLowerCase();
+      // Enforce @gmail.com domain requirement
+      if (normalizedEmail.includes('@')) {
+        if (!normalizedEmail.endsWith('@gmail.com')) {
+          setError('Email must be a @gmail.com address.');
+          return;
+        }
+        if (!/^[^\s@]+@gmail\.com$/.test(normalizedEmail)) {
+          setError('Please provide a valid @gmail.com email address.');
+          return;
+        }
+      } else {
+        normalizedEmail = `${normalizedEmail}@gmail.com`;
+      }
+      signupEmailValue = normalizedEmail;
     }
 
-    await loginWithPhone(normalizedPhone);
+    await loginWithPhone(normalizedPhone, signupEmailValue);
   };
 
   return (
@@ -165,27 +189,46 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
               <p className="text-xs text-slate-500 leading-relaxed">
                 {mode === 'login'
                   ? 'Enter your phone number to sign in instantly with dummy account data.'
-                  : 'Create an account by entering your name and phone number. You will be redirected home.'}
+                  : 'Create an account by entering your name, email, and phone number. You will be redirected home.'}
               </p>
             </div>
 
             {mode === 'signup' && (
-              <div className="space-y-1 text-left">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Full Name</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <User className="w-4.5 h-4.5" />
+              <>
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Full Name</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <User className="w-4.5 h-4.5" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Arjun Mehta"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                      required={mode === 'signup'}
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Arjun Mehta"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
-                    required={mode === 'signup'}
-                  />
                 </div>
-              </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Email Address</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <ShieldCheck className="w-4.5 h-4.5" />
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                      required={mode === 'signup'}
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="space-y-1 text-left">

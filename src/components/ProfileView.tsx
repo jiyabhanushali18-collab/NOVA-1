@@ -414,6 +414,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           onSwitch={(uid) => { onSwitchAccount?.(uid); setIsAccountModalOpen(false); }}
           onAdd={(acc) => { onAddAccount?.(acc); setIsAccountModalOpen(false); }}
           onRemove={(uid) => { onRemoveAccount?.(uid); }}
+          onLogout={onLogout}
         />
       )}
       {!isAccountModalOpen && (

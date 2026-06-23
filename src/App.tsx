@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, QuerySnapshot, DocumentData, addDoc, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, QuerySnapshot, DocumentData, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
-import { db } from './firebase';
+import { db, saveUserToFirestore } from './firebase';
 
 // Modular View Imports
 import { HomeView } from './components/HomeView';
@@ -338,7 +338,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
   const [screen, setScreen] = useState<ScreenId>('splash');
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
-  const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@email.com');
+  const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
 
   // Account management
@@ -962,6 +962,12 @@ export default function App() {
     setUserEmail(email);
     setUserPhone(phone);
     setIsLoggedIn(true);
+    
+    // Save user details to Firestore
+    saveUserToFirestore(name, email, phone, isSignUp).catch(err => {
+      console.error('Failed to save user data:', err);
+    });
+    
     // Persist account to device list and set active
     try {
       const uid = email; // fallback: using email as uid when auth uid not available in this flow
@@ -985,6 +991,8 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
+    accountService.setActiveLocalAccount(undefined);
+    setActiveAccountUid(undefined);
     setIsLoggedIn(false);
     navigate('home');
   };
@@ -1025,7 +1033,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
+    <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
         : 'bg-slate-50 border-x border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-purple-50/40'
