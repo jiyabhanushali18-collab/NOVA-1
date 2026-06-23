@@ -38,12 +38,12 @@ export interface ProductItem {
 
 export interface ProductReview {
   id: string;
-  reviewer: string;
+  productId: string;
+  userId: string;
+  userName: string;
   rating: number;
-  text: string;
-  date: string;
-  source?: 'product' | 'tryon';
-  accountUid?: string;
+  comment: string;
+  createdAt: any;
 }
 
 export interface CartItem {

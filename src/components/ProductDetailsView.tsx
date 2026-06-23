@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ScreenId, ProductItem, ProductReview } from '../types';
 
 const normalizeColor = (color?: string) => (color || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
@@ -27,9 +27,11 @@ interface ProductDetailsViewProps {
   selectedProductId?: string;
   isDarkMode?: boolean;
   reviews?: ProductReview[];
-  currentReviewerName?: string;
-  activeUid?: string;
-  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => void;
+  averageRating?: number;
+  reviewsCount?: number;
+  reviewListenerError?: string | null;
+  onSubmitReview?: (productId: string, rating: number, comment: string) => Promise<void>;
+  currentUserName?: string;
 }
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
@@ -43,50 +45,43 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   selectedProductId = 'lavender-hoodie',
   isDarkMode = false,
   reviews = [],
-  currentReviewerName = 'Guest',
-  activeUid = '',
-  onSubmitReview
+  averageRating,
+  reviewsCount,
+  reviewListenerError,
+  onSubmitReview,
+  currentUserName
 }) => {
   const mainProduct = products[selectedProductId] || products['lavender-hoodie'];
   const [selectedSize, setSelectedSize] = useState('M');
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number>(0);
-  const [reviewRating, setReviewRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const reviewsSectionRef = useRef<HTMLDivElement | null>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>('');
 
-  const reviewSummary = useMemo(() => {
-    const storedReviews = reviews || [];
-    const baseCount = mainProduct.reviewsCount || 0;
-    const baseTotal = baseCount * (mainProduct.rating || 0);
-    const reviewTotal = storedReviews.reduce((sum, review) => sum + review.rating, 0);
-    const totalCount = baseCount + storedReviews.length;
-    const average = totalCount > 0 ? Number(((baseTotal + reviewTotal) / totalCount).toFixed(1)) : 0;
-    return {
-      rating: average || mainProduct.rating,
-      reviewsCount: totalCount
-    };
-  }, [mainProduct.rating, mainProduct.reviewsCount, reviews]);
+  const reviewStars = averageRating && averageRating > 0 ? averageRating : mainProduct.rating;
+  const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : mainProduct.reviewsCount;
 
-  useLayoutEffect(() => {
-    if (activeTab === 'reviews' && reviewsSectionRef.current) {
-      reviewsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [activeTab]);
+  const formatReviewDate = (createdAt: any) => {
+    if (!createdAt) return 'Unknown date';
+    if (createdAt.toDate) return createdAt.toDate().toLocaleDateString();
+    if (typeof createdAt === 'number') return new Date(createdAt).toLocaleDateString();
+    if (typeof createdAt === 'object' && typeof createdAt.seconds === 'number') return new Date(createdAt.seconds * 1000).toLocaleDateString();
+    return String(createdAt);
+  };
 
-  const handleSubmitReview = () => {
-    if (!onSubmitReview) return;
-    if (reviewRating <= 0 || !reviewText.trim()) {
-      setToastMessage('Select a star rating and write a review before submitting.');
-      setTimeout(() => setToastMessage(null), 2500);
+  const handleReviewSubmit = async () => {
+    if (!mainProduct || !onSubmitReview) return;
+    if (reviewRating < 1 || reviewRating > 5 || !reviewComment.trim()) {
+      setToastMessage('Please provide a rating and comment.');
+      setTimeout(() => setToastMessage(null), 3000);
       return;
     }
-    onSubmitReview(mainProduct.id, reviewRating, reviewText, 'product');
-    setReviewRating(0);
-    setReviewText('');
-    setToastMessage('Thanks! Your review has been added.');
-    setTimeout(() => setToastMessage(null), 2500);
+    await onSubmitReview(mainProduct.id, reviewRating, reviewComment.trim());
+    setReviewComment('');
+    setReviewRating(5);
+    setToastMessage('Review submitted successfully.');
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   // Set default color to first color when product changes
@@ -256,29 +251,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           </div>
           
           {/* Star review ratings */}
-          <div className={`flex flex-col gap-3 mt-2 mb-4 text-xs font-semibold ${
+          <div className={`flex items-center gap-1 mt-2 mb-4 text-xs font-semibold ${
             isDarkMode ? 'text-slate-300' : 'text-slate-600'
           }`}>
-            <div className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-amber-500 text-sm leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-              <span>{reviewSummary.rating}</span>
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>({reviewSummary.reviewsCount} Reviews)</span>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] font-semibold text-slate-900">Share your experience</div>
-                  <div className="text-[10px] text-slate-500">Open the reviews section to read feedback or leave your own rating.</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('reviews')}
-                  className="rounded-full bg-indigo-600 px-4 py-2 text-[11px] font-bold text-white hover:bg-indigo-700 transition-colors"
-                >
-                  Reviews
-                </button>
-              </div>
-            </div>
+            <span className="material-symbols-outlined text-amber-500 text-sm leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+            <span>{reviewStars}</span>
+            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>({reviewCountLabel} Reviews)</span>
           </div>
 
           {/* Pricing tag */}
@@ -427,7 +405,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             {[
               { id: 'details', label: 'Details' },
               { id: 'material', label: 'Material & Care' },
-              { id: 'reviews', label: `Reviews (${reviewSummary.reviewsCount})` },
+              { id: 'reviews', label: `Reviews (${reviewCountLabel})` },
               { id: 'delivery', label: 'Shipping' }
             ].map((tab) => (
               <button
@@ -464,65 +442,73 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               </p>
             )}
             {activeTab === 'reviews' && (
-              <div ref={reviewsSectionRef} className="space-y-4 animate-fade-in">
-                <div className="rounded-3xl bg-slate-50 p-4 border border-slate-200">
-                  <div className="flex items-center justify-between mb-3 gap-3">
-                    <div>
-                      <div className="text-sm font-bold text-slate-900">Write a review</div>
-                      <div className="text-[11px] text-slate-500">Share your experience and help others choose the right fit.</div>
+              <div className="space-y-4 animate-fade-in">
+                {reviewListenerError && (
+                  <div className="rounded-xl p-3 text-sm text-red-700 bg-red-50 border border-red-100">
+                    {reviewListenerError}
+                  </div>
+                )}
+                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">Your review</div>
+                        <div className="text-[11px] text-slate-500">
+                          {currentUserName ? `Signed in as ${currentUserName}` : 'Write a review for this product.'}
+                        </div>
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500">{reviewCountLabel} reviews · {reviewStars} ★</div>
                     </div>
-                    <div className="text-xs font-semibold text-slate-500">{reviewSummary.reviewsCount} ratings</div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, index) => {
+                        const starValue = index + 1;
+                        return (
+                          <button
+                            key={starValue}
+                            type="button"
+                            onClick={() => setReviewRating(starValue)}
+                            className={`material-symbols-outlined text-lg ${reviewRating >= starValue ? 'text-amber-500' : 'text-slate-300'}`}
+                          >
+                            star
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(event) => setReviewComment(event.target.value)}
+                      placeholder="Share your experience..."
+                      className="w-full min-h-[100px] rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleReviewSubmit}
+                      className="w-full rounded-2xl bg-indigo-600 py-3 text-xs font-bold text-white hover:bg-indigo-700 transition-colors"
+                    >
+                      Submit Review
+                    </button>
                   </div>
-                  <div className="flex gap-2 mb-3">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setReviewRating(star)}
-                        className={`rounded-full w-10 h-10 border flex items-center justify-center transition ${
-                          reviewRating >= star
-                            ? 'bg-amber-500 text-white border-amber-500'
-                            : 'bg-white text-slate-500 border-slate-200'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-base">star</span>
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    value={reviewText}
-                    onChange={(e) => setReviewText(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 p-3 text-sm text-slate-700 min-h-[100px]"
-                    placeholder="Write your review here..."
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSubmitReview}
-                    className="mt-3 w-full rounded-2xl bg-indigo-600 text-white py-3 text-sm font-semibold hover:bg-indigo-700 transition-colors"
-                  >
-                    Add review
-                  </button>
                 </div>
 
                 <div className="space-y-3">
                   {reviews && reviews.length > 0 ? (
                     reviews.map((review) => (
-                      <div key={review.id} className="rounded-3xl bg-white p-4 shadow-sm border border-slate-200">
-                        <div className="flex justify-between items-center mb-2">
-                          <div>
-                            <div className="text-sm font-bold text-slate-900">{review.reviewer}</div>
-                            <div className="text-[10px] uppercase tracking-widest text-slate-400">{review.date}</div>
+                      <div key={review.id} className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-bold text-slate-900">{review.userName}</div>
+                          <div className="text-amber-500 text-sm">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                              <span key={index}>{index < review.rating ? '★' : '☆'}</span>
+                            ))}
                           </div>
-                          <div className="text-amber-500 font-bold text-sm">{Array.from({ length: review.rating }).map((_, idx) => (
-                            <span key={idx} className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                          ))}</div>
                         </div>
-                        <p className="text-sm text-slate-600">{review.text}</p>
+                        <div className="text-[11px] text-slate-400 mb-2">{formatReviewDate(review.createdAt)}</div>
+                        <p className="text-[12px] leading-relaxed text-slate-700">{review.comment}</p>
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-3xl bg-white p-4 border border-dashed border-slate-200 text-slate-500 text-sm">
-                      No reviews yet. Be the first to leave a star rating and share your experience.
+                    <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
+                      No reviews yet. Be the first to share your opinion.
                     </div>
                   )}
                 </div>

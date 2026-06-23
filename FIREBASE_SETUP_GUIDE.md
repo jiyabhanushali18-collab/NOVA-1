@@ -216,4 +216,136 @@ Your frontend automatically:
 
 Once you add/edit products in Firestore Console, they'll appear in your app within seconds (real-time Firestore sync).
 
-**Done!** Your NOVA Showroom is now connected to Firebase. 🚀
+---
+
+## ⭐ Reviews Collection Setup (NEW)
+
+The app now includes a **product reviews** feature with Firestore real-time synchronization.
+
+### Step 1: Create Reviews Collection
+
+1. In Firebase Console → Firestore Database
+2. Click **+ Create Collection**
+3. Name it: `reviews`
+4. Click **Next**
+
+### Step 2: Reviews Collection Structure
+
+Each review document has the following fields:
+
+```json
+{
+  "productId": "basic-t-shirt",
+  "userId": "user123",
+  "userName": "John Doe",
+  "rating": 4,
+  "comment": "Great quality and comfortable fit!",
+  "createdAt": "2026-06-22T15:30:00Z"
+}
+```
+
+### Step 3: Add Sample Reviews (Optional)
+
+Click **+ Add Document** to create a review:
+
+| Field | Type | Value |
+|-------|------|-------|
+| productId | string | basic-t-shirt |
+| userId | string | guest-user-1 |
+| userName | string | Sarah M |
+| rating | number | 5 |
+| comment | string | Excellent quality! |
+| createdAt | timestamp | 2026-06-22T14:00:00Z |
+
+### Step 4: Update Firestore Security Rules
+
+**IMPORTANT**: Your security rules must allow reading and writing to the reviews collection.
+
+Go to **Firestore Database** → **Rules** tab and replace with:
+
+```firestore
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read products
+    match /products/{document=**} {
+      allow read: if true;
+    }
+    
+    // Allow anyone to read reviews
+    match /reviews/{document=**} {
+      allow read: if true;
+    }
+    
+    // Allow anyone to write reviews (for anonymous users)
+    // For production, add proper authentication checks
+    match /reviews/{document=**} {
+      allow create: if request.resource.data.productId != null 
+                 && request.resource.data.userName != null
+                 && request.resource.data.rating != null
+                 && request.resource.data.rating >= 1
+                 && request.resource.data.rating <= 5;
+    }
+  }
+}
+```
+
+### Step 5: Test Reviews Feature
+
+1. Open the app and navigate to a product
+2. Go to the **Reviews** tab
+3. Submit a test review
+4. You should see it appear in real-time
+
+### Troubleshooting Reviews
+
+| Issue | Solution |
+|-------|----------|
+| "Unable to load real-time reviews" | Check Firestore rules allow read access to reviews collection |
+| Reviews don't appear after submission | Verify security rules allow write access; check productId matches exactly |
+| Error about missing index | Create a composite index for `productId` + `createdAt` (Firestore will prompt) |
+
+---
+
+## 🔐 Complete Firestore Security Rules (Recommended)
+
+For a complete setup with products and reviews:
+
+```firestore
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Products collection - public read
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if false; // Admin only (set in backend)
+    }
+    
+    // Reviews collection - public read, controlled write
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if 
+        request.resource.data.productId != null &&
+        request.resource.data.userName != null &&
+        request.resource.data.rating != null &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.comment != null;
+      allow update, delete: if false; // Prevent modification
+    }
+  }
+}
+```
+
+---
+
+## 📊 Review Statistics
+
+The app automatically calculates:
+- **Average Rating**: Mean of all review ratings
+- **Review Count**: Total number of reviews for the product
+- **Most Recent First**: Reviews sorted by newest first
+
+---
+
+**Done!** Your NOVA Showroom is now connected to Firebase with product reviews enabled. 🚀

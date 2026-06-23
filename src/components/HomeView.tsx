@@ -84,7 +84,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               alt="AI Orb Graphic" 
               className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white/50 shadow-inner" 
               referrerPolicy="no-referrer"
-              src="/logoone.jpeg"
+              src={`/logoone.jpeg?t=${Date.now()}`}
             />
           </div>
         </div>
@@ -224,6 +224,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 onClick={() => {
                   if (activity.badge === 'AR Try-On') onNavigate('ar-tryon');
                   else if (activity.badge === 'Camera Scan') onNavigate('camera-scan');
+                  else if (activity.badge === 'Viewed' && matched) onSelectProduct?.(matched.id);
                   else onNavigate('scan-outfit');
                 }}
                 className="flex-none w-36 group cursor-pointer"
