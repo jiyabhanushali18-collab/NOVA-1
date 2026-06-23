@@ -36,6 +36,23 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     const rating = Number(((product.rating * product.reviewsCount + totalRating) / count).toFixed(1));
     return { rating, count };
   };
+
+  const formatRatingValue = (rating: number) => {
+    if (!Number.isFinite(rating)) return '0.0';
+    return rating.toFixed(1);
+  };
+
+  const getRatingLabel = (product: ProductItem) => {
+    const summary = getProductReviewSummary(product);
+    if ((summary.count ?? 0) <= 0 && (!summary.rating || summary.rating <= 0)) {
+      return { label: 'No ratings', hasRating: false };
+    }
+    return {
+      label: `⭐ ${formatRatingValue(summary.rating)}${summary.count > 0 ? ` (${summary.count} reviews)` : ''}`,
+      hasRating: true,
+    };
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -170,12 +187,18 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
                       </h4>
                     </div>
 
-                    <div className="flex justify-between items-center mt-2.5">
-                      <span className={`text-xs font-black ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{product.price.toLocaleString()}</span>
-                      <span className={`text-[9px] font-bold flex items-center gap-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        <span className="material-symbols-outlined text-[10px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                        {getProductReviewSummary(product).rating}
-                      </span>
+                    <div className="mt-3 flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className={`text-xs font-black ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                          ₹{product.price.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="inline-flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/85 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">
+                          <span className="text-amber-500">⭐</span>
+                          {getRatingLabel(product).label}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
