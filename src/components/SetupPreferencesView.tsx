@@ -73,7 +73,7 @@ const styleRecommendations: Record<StyleKey, StyleRecommendation> = {
     colorText: 'Earth-inspired tones naturally align with outdoor and utility-focused aesthetics.',
     helperText: 'Technical and outdoor garments perform best with room for movement and layering.',
   },
-} as const;
+};
 
 export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ userName, onComplete }) => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -115,10 +115,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
     { name: 'Monochrome Slate', value: 'Monochrome', desc: 'Deep black, crisp white & greys', bg: 'bg-slate-100 text-slate-900 border-slate-200' },
   ];
 
-  const recommendation = useMemo(
-    () => styleRecommendations[selectedStyle as keyof typeof styleRecommendations],
-    [selectedStyle]
-  );
+  const recommendation: StyleRecommendation = styleRecommendations[selectedStyle];
 
   useEffect(() => {
     setSelectedFit(recommendation.fit);
@@ -211,24 +208,45 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               </div>
 
               {/* STYLE STYLE CHOICE */}
-              <div className="space-y-2 text-left">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">
-                  1. Matchmaking Category Style
-                </label>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="space-y-3 text-left">
+                <div className="flex items-end justify-between gap-3 flex-wrap">
+                  <div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">
+                      1. Matchmaking Category Style
+                    </span>
+                    <p className="text-[11px] text-slate-500 ml-1 mt-1">
+                      What’s your go-to style vibe?
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-[0.2em] px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100">
+                    Style-forward AI
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
                   {styleOptions.map((opt) => (
                     <button
                       key={opt.name}
                       type="button"
-                      onClick={() => setSelectedStyle(opt.name)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                      onClick={() => setSelectedStyle(opt.name as StyleKey)}
+                      className={`rounded-[24px] p-4 text-left transition-all duration-200 ease-in-out shadow-sm border ${
                         selectedStyle === opt.name
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                          ? 'bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 text-white border-transparent shadow-indigo-500/20'
+                          : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-200/30'
                       }`}
                     >
-                      <span className="material-symbols-outlined text-sm leading-none">{opt.icon}</span>
-                      {opt.name}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${selectedStyle === opt.name ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                          <span className="material-symbols-outlined text-lg">{opt.icon}</span>
+                        </div>
+                        {selectedStyle === opt.name ? (
+                          <span className="rounded-full bg-white/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                            Selected
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="font-black text-sm leading-tight mb-2">{opt.name}</div>
+                      <div className="text-[10px] leading-snug text-slate-400">{opt.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -237,30 +255,27 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               <AnimatePresence mode="wait">
                 <motion.div
                   key={selectedStyle}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="rounded-[28px] border border-white/35 bg-white/15 backdrop-blur-2xl p-4 shadow-2xl shadow-violet-500/10"
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={{ duration: 0.35, ease: 'easeInOut' }}
+                  className="rounded-[30px] border border-violet-100/70 bg-gradient-to-r from-white/90 to-violet-50/80 backdrop-blur-xl p-4 shadow-2xl shadow-violet-200/30"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-600">
-                      <span className="material-symbols-outlined text-lg">auto_awesome</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] uppercase tracking-[0.32em] font-black text-indigo-500">
-                          AI Stylist</span>
-                        <span className="rounded-full bg-indigo-600/10 text-indigo-700 text-[10px] px-2 py-1 font-semibold">
-                          {selectedStyle}</span>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-3xl bg-violet-600/10 text-violet-700 shadow-lg shadow-violet-200/40">
+                        <span className="material-symbols-outlined text-xl">auto_awesome</span>
                       </div>
-                      <p className="text-sm text-slate-700 leading-snug">
-                        {recommendation.suggestionText}
-                      </p>
-                      <p className="text-[11px] text-slate-500 leading-snug">
-                        {recommendation.colorText}
-                      </p>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-500">AI Stylist</p>
+                        <p className="text-sm font-semibold text-slate-800 leading-snug">
+                          {recommendation.suggestionText}
+                        </p>
+                      </div>
                     </div>
+                    <p className="text-[11px] text-slate-500 leading-snug max-w-xl">
+                      {recommendation.colorText}
+                    </p>
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -270,7 +285,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">
                   2. Desired Fit Profile
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                   {fitOptions.map((opt) => {
                     const discouraged = isDiscouragedFit(opt.name);
                     const recommended = isRecommendedFit(opt.name);
@@ -281,37 +296,43 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                         key={opt.name}
                         type="button"
                         onClick={() => handleFitClick(opt.name)}
-                        className={`p-2.5 rounded-xl text-left border transition-all active:scale-95 ${
+                        className={`h-full rounded-[28px] border p-5 text-left transition-all duration-200 ease-in-out ${
                           discouraged
-                            ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-70 cursor-not-allowed'
+                            ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-80 cursor-not-allowed'
                             : selectedFit === opt.name
-                              ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-sm'
-                              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                              ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-sm shadow-indigo-200/30'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-100/40'
                         }`}
                         aria-disabled={discouraged}
                       >
-                        <div className="flex items-center justify-between gap-1.5 mb-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`material-symbols-outlined text-base ${selectedFit === opt.name ? 'text-indigo-600' : discouraged ? 'text-slate-400' : 'text-slate-500'}`}>
-                              {discouraged ? 'lock' : opt.icon}
-                            </span>
-                            <span className="text-xs font-black">{opt.name}</span>
+                        <div className="flex h-full flex-col justify-between gap-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              <span className={`material-symbols-outlined text-lg ${selectedFit === opt.name ? 'text-indigo-600' : discouraged ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {discouraged ? 'lock' : opt.icon}
+                              </span>
+                              <div>
+                                <p className="text-sm font-black leading-none">{opt.name}</p>
+                                <p className="text-[10px] text-slate-500 leading-tight">{opt.desc}</p>
+                              </div>
+                            </div>
                           </div>
-                          {recommended ? (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-600 text-white font-semibold">
-                              Recommended
-                            </span>
-                          ) : alternative ? (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
-                              Alternative
-                            </span>
-                          ) : discouraged ? (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500 font-semibold">
-                              Discouraged
-                            </span>
-                          ) : null}
+                          <div className="flex justify-between items-end">
+                            {recommended ? (
+                              <span className="text-[9px] rounded-full bg-indigo-600 text-white px-2 py-1 font-semibold">
+                                Recommended
+                              </span>
+                            ) : alternative ? (
+                              <span className="text-[9px] rounded-full bg-slate-100 text-slate-600 px-2 py-1 font-semibold">
+                                Alternative
+                              </span>
+                            ) : discouraged ? (
+                              <span className="text-[9px] rounded-full bg-slate-200 text-slate-500 px-2 py-1 font-semibold">
+                                Discouraged
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                        <span className="text-[9px] text-slate-400 leading-tight block">{opt.desc}</span>
                       </button>
                     );
                   })}
@@ -332,45 +353,61 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
 
               {/* COLORS PALETTE PREFERENCE */}
               <div className="space-y-2 text-left">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">
-                  3. Color Sentiment Preference
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 flex-wrap">
+                <div className="flex items-end justify-between gap-3 flex-wrap">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">
+                      3. Color Sentiment Preference
+                    </label>
+                    <p className="text-[11px] text-slate-500 ml-1 mt-1">
+                      Which colors best match your vibe?
+                    </p>
+                  </div>
+                  <span className="text-[10px] px-3 py-1 rounded-full bg-slate-100 text-slate-600 uppercase tracking-[0.18em] font-semibold">
+                    Mood-led palette
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   {colorOptions.map((opt) => {
                     const recommendedColor = isRecommendedColor(opt.value);
                     const alternativeColor = isAlternativeColor(opt.value);
+
+                    const swatches = opt.value === 'Neutrals'
+                      ? ['#C8A27E', '#8B6B44', '#D8C8B2', '#9CA081']
+                      : opt.value === 'Brights'
+                        ? ['#F04438', '#2563EB', '#F97316', '#A855F7']
+                        : opt.value === 'Mix'
+                          ? ['#A78BFA', '#34D399', '#FDE68A', '#F472B6']
+                          : ['#111827', '#6B7280', '#E5E7EB', '#F8FAFC'];
 
                     return (
                       <button
                         key={opt.name}
                         type="button"
-                        onClick={() => setSelectedColors(opt.value)}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer active:scale-95 ${
+                        onClick={() => setSelectedColors(opt.value as ColorOptionValue)}
+                        className={`rounded-[30px] p-4 text-left border transition-all duration-200 ease-in-out focus:outline-none ${
                           selectedColors === opt.value
-                            ? 'border-indigo-600 shadow-sm bg-indigo-50/10'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                            ? 'bg-indigo-50 border-indigo-300 shadow-lg shadow-indigo-200/40'
+                            : 'bg-white border-slate-200 hover:border-indigo-200 hover:shadow-sm'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-2.5 h-2.5 rounded-full border border-slate-200/50 ${
-                              opt.value === 'Neutrals' ? 'bg-[#D2B48C]' :
-                              opt.value === 'Brights' ? 'bg-[#FF4500]' :
-                              opt.value === 'Mix' ? 'bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-300' : 'bg-slate-700'
-                            }`}></span>
-                            <span className="text-xs font-black">{opt.name}</span>
-                          </div>
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <span className="text-sm font-black uppercase tracking-[0.18em] text-slate-700">{opt.name}</span>
                           {recommendedColor ? (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-600 text-white font-semibold">
+                            <span className="text-[9px] px-2 py-1 rounded-full bg-indigo-600 text-white font-semibold">
                               Recommended
                             </span>
                           ) : alternativeColor ? (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                            <span className="text-[9px] px-2 py-1 rounded-full bg-slate-100 text-slate-600 font-semibold">
                               Alternative
                             </span>
                           ) : null}
                         </div>
-                        <span className="text-[9px] text-slate-400 leading-tight block">{opt.desc}</span>
+                        <div className="mb-4 grid grid-cols-4 gap-2">
+                          {swatches.map((color) => (
+                            <span key={color} className="h-7 w-7 rounded-full border border-slate-200 shadow-sm" style={{ backgroundColor: color }} />
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-snug">{opt.desc}</p>
                       </button>
                     );
                   })}
