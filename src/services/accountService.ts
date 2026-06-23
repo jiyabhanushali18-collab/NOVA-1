@@ -1,6 +1,6 @@
 import { auth, db } from '../firebase';
-import { NovaAccount } from '../types';
-import { doc, getDoc } from 'firebase/firestore';
+import { Measurement, NovaAccount, Preference } from '../types';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const ACCOUNTS_KEY = 'nova_accounts';
@@ -37,11 +37,62 @@ export const setActiveLocalAccount = (uid: string | undefined) => {
   } catch {}
 };
 
+export const getUserDocId = (id: string) => {
+  return (id || 'guestuser@nova.ai').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+};
+
+const withoutUndefined = <T extends Record<string, unknown>>(value: T) => {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as Partial<T>;
+};
+
+export const upsertUserProfile = async (
+  account: Partial<NovaAccount> & { uid?: string; email?: string; phone?: string },
+  extra?: {
+    preferences?: Preference[];
+    measurements?: Measurement[];
+    wardrobeCount?: number;
+    wardrobeUpdatedAt?: string;
+  }
+) => {
+  const docId = getUserDocId(account.email || account.uid || account.username || 'guestuser@nova.ai');
+  const email = account.email || '';
+  const username = account.username || (email ? email.split('@')[0] : docId);
+  const now = Date.now();
+  const profile = withoutUndefined({
+    uid: account.uid || docId,
+    username,
+    name: account.name || username,
+    email,
+    phone: account.phone,
+    profilePhoto: account.profilePhoto,
+    gender: account.gender,
+    size: account.size,
+    createdAt: account.createdAt || now,
+    updatedAt: serverTimestamp(),
+    preferences: extra?.preferences,
+    measurements: extra?.measurements,
+    wardrobeCount: extra?.wardrobeCount,
+    wardrobeUpdatedAt: extra?.wardrobeUpdatedAt
+  });
+
+  await setDoc(doc(db, 'users', docId), profile, { merge: true });
+  await setDoc(doc(db, 'users', docId, 'profile', 'meta'), profile, { merge: true });
+  return docId;
+};
+
 export const fetchProfileFromFirebase = async (uid: string): Promise<Partial<NovaAccount> | null> => {
   try {
-    const ref = doc(db, 'users', uid, 'profile', 'meta');
+    const docId = getUserDocId(uid);
+    const parentSnap = await getDoc(doc(db, 'users', docId));
+    if (parentSnap.exists()) return parentSnap.data() as Partial<NovaAccount>;
+
+    const ref = doc(db, 'users', docId, 'profile', 'meta');
     const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
+    if (!snap.exists()) {
+      const legacySnap = await getDoc(doc(db, 'users', uid, 'profile', 'meta'));
+      if (!legacySnap.exists()) return null;
+      return legacySnap.data() as Partial<NovaAccount>;
+    }
     return snap.data() as Partial<NovaAccount>;
   } catch (e) {
     return null;
@@ -69,6 +120,8 @@ export default {
   saveLocalAccounts,
   getActiveLocalAccount,
   setActiveLocalAccount,
+  getUserDocId,
+  upsertUserProfile,
   fetchProfileFromFirebase,
   signInWithGoogle,
   signInWithEmail,

@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from 'motion/react';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
+import accountService from '../services/accountService';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
   userEmail: string;
+  userName?: string;
   isDarkMode?: boolean;
 }
 
@@ -74,7 +76,6 @@ const sampleScan = getScanSample('Kurti');
 const makeId = () => `wardrobe-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const storageKey = (userId: string) => `nova_wardrobe_${userId}`;
 const profileKey = (userId: string) => `nova_wardrobe_profile_${userId}`;
-const userDocId = (email: string) => (email || 'demo-user').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
 
 const colorHex: Record<string, string> = {
   Blue: '#4f46e5',
@@ -150,11 +151,12 @@ const generateGarmentImage = (category: string, attributes: WardrobeDetectedAttr
   return svgImage(svg);
 };
 
-export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, isDarkMode = false }) => {
-  const userId = userDocId(userEmail);
+export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false }) => {
+  const userId = accountService.getUserDocId(userEmail);
+  const username = userEmail ? userEmail.split('@')[0] : userId;
   const [profile, setProfile] = useState<WardrobeProfile>(() => {
     try {
-      return JSON.parse(localStorage.getItem(profileKey(userDocId(userEmail))) || '{}');
+      return JSON.parse(localStorage.getItem(profileKey(accountService.getUserDocId(userEmail))) || '{}');
     } catch {
       return {};
     }
@@ -198,7 +200,18 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
   useEffect(() => {
     localStorage.setItem(profileKey(userId), JSON.stringify(profile));
-  }, [profile, userId]);
+    accountService.upsertUserProfile(
+      {
+        uid: userEmail || userId,
+        username,
+        name: userName || username,
+        email: userEmail,
+        gender: profile.gender,
+        size: profile.size
+      },
+      { wardrobeCount: items.length }
+    ).catch(() => undefined);
+  }, [items.length, profile, userEmail, userId, userName, username]);
 
   const categories = profile.gender === 'Male' ? maleCategories : femaleCategories;
   const categoryOptions = ['All', ...new Set(items.map((item) => item.category))];
@@ -267,6 +280,17 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       const savedWithRemoteId = { ...generatedItem, id: ref.id };
       const remoteNext = [savedWithRemoteId, ...items.filter((item) => item.id !== generatedItem.id)];
       await setDoc(doc(db, 'users', userId, 'wardrobe', ref.id), savedWithRemoteId);
+      await accountService.upsertUserProfile(
+        {
+          uid: userEmail || userId,
+          username,
+          name: userName || username,
+          email: userEmail,
+          gender: profile.gender,
+          size: profile.size
+        },
+        { wardrobeCount: remoteNext.length, wardrobeUpdatedAt: savedWithRemoteId.dateAdded }
+      );
       persistItems(remoteNext);
     } catch {
       setSaveStatus('Saved locally. Firebase sync will retry when available.');
@@ -281,6 +305,17 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     setSelectedItem(null);
     try {
       await deleteDoc(doc(db, 'users', userId, 'wardrobe', item.id));
+      await accountService.upsertUserProfile(
+        {
+          uid: userEmail || userId,
+          username,
+          name: userName || username,
+          email: userEmail,
+          gender: profile.gender,
+          size: profile.size
+        },
+        { wardrobeCount: Math.max(0, items.length - 1), wardrobeUpdatedAt: new Date().toISOString() }
+      );
     } catch {
       setSaveStatus('Removed locally');
       window.setTimeout(() => setSaveStatus(null), 1800);
@@ -291,7 +326,19 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     const next = items.map((entry) => (entry.id === item.id ? item : entry));
     persistItems(next);
     setSelectedItem(item);
-    setDoc(doc(db, 'users', userId, 'wardrobe', item.id), item).catch(() => undefined);
+    setDoc(doc(db, 'users', userId, 'wardrobe', item.id), item)
+      .then(() => accountService.upsertUserProfile(
+        {
+          uid: userEmail || userId,
+          username,
+          name: userName || username,
+          email: userEmail,
+          gender: profile.gender,
+          size: profile.size
+        },
+        { wardrobeCount: next.length, wardrobeUpdatedAt: new Date().toISOString() }
+      ))
+      .catch(() => undefined);
   };
 
   const darkPanel = 'border border-white/10 bg-[#121322]/92 text-white shadow-[0_18px_48px_rgba(0,0,0,0.32)]';

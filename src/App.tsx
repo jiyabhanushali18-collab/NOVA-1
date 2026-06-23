@@ -302,11 +302,27 @@ export default function App() {
   const handleUpdateMeasurements = (newMeasurements: Measurement[]) => {
     setMeasurements(newMeasurements);
     localStorage.setItem('measurements', JSON.stringify(newMeasurements));
+    syncCurrentUserProfile({ measurements: newMeasurements, preferences }).catch(() => undefined);
   };
 
   const handleUpdatePreferences = (newPreferences: Preference[]) => {
     setPreferences(newPreferences);
     localStorage.setItem('preferences', JSON.stringify(newPreferences));
+    syncCurrentUserProfile({ preferences: newPreferences, measurements }).catch(() => undefined);
+  };
+
+  const syncCurrentUserProfile = (extra?: { preferences?: Preference[]; measurements?: Measurement[] }) => {
+    return accountService.upsertUserProfile(
+      {
+        ...activeAccount,
+        uid: activeUid || activeAccount?.uid || userEmail,
+        username: activeAccount?.username || userEmail.split('@')[0] || userName,
+        name: userName,
+        email: userEmail,
+        phone: userPhone
+      },
+      extra
+    );
   };
 
   const [novaPoints, setNovaPoints] = useState<number>(() => {
@@ -792,7 +808,10 @@ export default function App() {
             levelProgress={levelProgress}
             accounts={accounts}
             activeUid={activeUid}
-            onAddAccount={(acc) => addAccount(acc)}
+            onAddAccount={(acc) => {
+              addAccount(acc);
+              accountService.upsertUserProfile(acc).catch(() => undefined);
+            }}
             onRemoveAccount={(uid) => removeAccount(uid)}
             onSwitchAccount={(uid) => setActiveAccountUid(uid)}
           />
@@ -804,6 +823,7 @@ export default function App() {
             onComplete={(newPrefs, newMeasures) => {
               handleUpdatePreferences(newPrefs);
               handleUpdateMeasurements(newMeasures);
+              syncCurrentUserProfile({ preferences: newPrefs, measurements: newMeasures }).catch(() => undefined);
               setScreen('home');
             }}
           />
@@ -853,7 +873,7 @@ export default function App() {
       case 'scan-outfit':
         return <ScanOutfitView onNavigate={navigate} />;
       case 'wardrobe':
-        return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
+        return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} userName={userName} isDarkMode={isDarkMode} />;
       case 'chat':
         return <ChatView userName={userName} onNavigate={navigate} />;
       case 'cart':
@@ -900,13 +920,16 @@ export default function App() {
       const acc = {
         uid,
         username: email.split('@')[0] || name,
+        name,
         email,
+        phone,
         profilePhoto: undefined,
         createdAt: Date.now()
       };
       addAccount(acc as any);
       accountService.setActiveLocalAccount(uid);
       setActiveAccountUid(uid);
+      accountService.upsertUserProfile(acc).catch(() => undefined);
     } catch {}
     if (isSignUp) {
       navigate('setup-preferences');
