@@ -30,8 +30,13 @@ const defaultAnalysis: GeminiAnalysis = {
   outfitStyle: { value: 'unknown', confidence: 0 }
 };
 
-const ANALYSIS_CONFIDENCE_FLOOR = 50;
-const GEMINI_VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+// Lowered confidence floor to be less aggressive about mapping to 'unknown'.
+// This makes the system accept values with moderate confidence (>=30) instead
+// of requiring very high confidence. Adjust if you prefer stricter behavior.
+const ANALYSIS_CONFIDENCE_FLOOR = 30;
+// `gemini-1.5-pro` is not supported for v1beta generateContent in this project.
+// Keep only supported models to avoid unnecessary 404 retries.
+const GEMINI_VISION_MODELS = ['gemini-2.5-flash'];
 
 const getUserDocId = (id: string) => {
   return (id || 'guestuser@nova.ai').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
@@ -63,11 +68,15 @@ const normalizeField = (key: keyof typeof allowedValues, field: unknown): Analys
   const record = field as Record<string, unknown>;
   const confidence = normalizeConfidence(record.confidence);
   const rawValue = typeof record.value === 'string' ? record.value.trim().toLowerCase() : 'unknown';
-  const value = (allowedValues[key] as readonly string[]).includes(rawValue) && confidence >= ANALYSIS_CONFIDENCE_FLOOR ? rawValue : 'unknown';
+  // Normalize common variants from model output (e.g. "light medium" -> "light-medium")
+  const normalizedValue = rawValue.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  // Accept any allowed value the model returns, even if confidence is below the floor.
+  // We will let the consensus step decide which value wins across multiple runs.
+  const value = (allowedValues[key] as readonly string[]).includes(normalizedValue) ? normalizedValue : 'unknown';
 
   return {
     value,
-    confidence: value === 'unknown' ? Math.min(confidence, ANALYSIS_CONFIDENCE_FLOOR - 1) : confidence
+    confidence: value === 'unknown' ? 0 : confidence
   };
 };
 
@@ -91,8 +100,9 @@ const parseJson = (text: string) => {
 
 const buildPrompt = () => `You are NOVA's visual fashion analysis model.
 Analyze ONLY fashion-relevant visual attributes that are visible in the uploaded selfie.
-Use your best visible estimate when a face, hair, or outfit is reasonably visible. Use "unknown" only when the attribute is blocked, out of frame, too blurry, or genuinely not visible.
-Confidence should be 50-100 for visible estimates and 0-49 for unknown.
+If the face, hair, or outfit is clearly visible, give your best visible estimate.
+Use "unknown" only when the attribute is blocked, not visible, or cannot be detected with reasonable visual certainty.
+If the image is clear, do not default to "unknown" for every field.
 Do not detect height, weight, body type, personality, ethnicity, medical traits, hidden features, or other sensitive attributes.
 
 Return structured JSON only. No markdown. No explanation.
@@ -114,8 +124,9 @@ JSON shape:
 
 const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promise<GeminiAnalysis> => {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
-    throw new Error('GEMINI_API_KEY is not configured. Set it in .env.local or .env.');
+  const accessToken = process.env.GEMINI_ACCESS_TOKEN;
+  if (!apiKey && !accessToken) {
+    throw new Error('No Gemini credentials configured. Set GEMINI_API_KEY or GEMINI_ACCESS_TOKEN in .env.local.');
   }
 
   const image = splitDataUrl(imageDataUrl);
@@ -125,13 +136,24 @@ const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promi
   const timeout = setTimeout(() => controller.abort(), 4200);
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    let url = endpoint;
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+      console.log(`Using GEMINI_ACCESS_TOKEN for ${model}`);
+    } else {
+      url = `${endpoint}?key=${encodeURIComponent(apiKey)}`;
+      console.log(`Using GEMINI_API_KEY query auth for ${model}`);
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
+      headers,
       body: JSON.stringify({
         contents: [
           {
@@ -159,13 +181,24 @@ const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promi
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`Gemini Vision ${model} HTTP error:`, response.status, errorText);
       throw new Error(`Gemini Vision ${model} error: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
+    console.log(`Gemini Vision ${model} raw response:`, JSON.stringify(data, null, 2));
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return defaultAnalysis;
-    return normalizeGeminiAnalysis(parseJson(text));
+    if (!text) {
+      console.warn(`Gemini Vision ${model} returned no text candidate; falling back to defaultAnalysis.`);
+      return defaultAnalysis;
+    }
+
+    try {
+      return normalizeGeminiAnalysis(parseJson(text));
+    } catch (parseError) {
+      console.error(`Gemini Vision ${model} parse error:`, parseError, 'text:', text);
+      return defaultAnalysis;
+    }
   } finally {
     clearTimeout(timeout);
   }
@@ -186,7 +219,8 @@ const callGeminiVision = async (imageDataUrl: string): Promise<GeminiAnalysis> =
 };
 
 const chooseConsensus = (analyses: GeminiAnalysis[], key: keyof GeminiAnalysis) => {
-  const valid = analyses.map((analysis) => analysis[key]).filter((field) => field.value !== 'unknown' && field.confidence >= ANALYSIS_CONFIDENCE_FLOOR);
+  // Consider any non-unknown field from model runs and let frequency + average confidence decide.
+  const valid = analyses.map((analysis) => analysis[key]).filter((field) => field.value !== 'unknown');
   if (!valid.length) return { value: 'unknown', confidence: 0 };
 
   const grouped = valid.reduce((acc, field) => {
@@ -204,10 +238,11 @@ const chooseConsensus = (analyses: GeminiAnalysis[], key: keyof GeminiAnalysis) 
     .sort((a, b) => b.count - a.count || b.confidence - a.confidence);
 
   const winner = ranked[0];
-  if (!winner || winner.confidence < ANALYSIS_CONFIDENCE_FLOOR) {
-    return { value: 'unknown', confidence: winner?.confidence ? Math.min(winner.confidence, ANALYSIS_CONFIDENCE_FLOOR - 1) : 0 };
+  if (!winner || winner.confidence <= 0) {
+    return { value: 'unknown', confidence: 0 };
   }
 
+  // Accept the winner even if its confidence is below the original floor; caller can decide presentation.
   return { value: winner.value, confidence: winner.confidence };
 };
 
@@ -282,6 +317,11 @@ const runConsensusAnalysis = async (imageDataUrl: string): Promise<GeminiAnalysi
 
 router.post('/analyze-selfie', async (req: any, res: any) => {
   const { imageDataUrl, userId, forceRefresh } = req.body || {};
+  console.log('Received analyze-selfie request:', {
+    userId,
+    forceRefresh,
+    imageDataUrlLength: typeof imageDataUrl === 'string' ? imageDataUrl.length : 0
+  });
 
   if (!imageDataUrl || typeof imageDataUrl !== 'string') {
     return res.status(400).json({ error: 'imageDataUrl is required.' });
@@ -314,16 +354,21 @@ router.post('/analyze-selfie', async (req: any, res: any) => {
       analyzedAt: new Date().toISOString()
     };
 
+    // Log analysis for debugging — helps determine why fields map to 'unknown'
+    console.log('NOVA analysis result:', JSON.stringify(result, null, 2));
+
     await setDoc(cacheRef, result, { merge: true });
+    const profilePhotoFields = imageDataUrl.length <= 1048487 ? { profilePhoto: imageDataUrl } : {};
+
     await setDoc(doc(firestore, 'users', docId), {
       novaAnalysisProfile: result,
-      profilePhoto: imageDataUrl,
+      ...profilePhotoFields,
       profilePhotoHash: imageHash,
       updatedAt: serverTimestamp()
     }, { merge: true });
     await setDoc(doc(firestore, 'users', docId, 'profile', 'meta'), {
       novaAnalysisProfile: result,
-      profilePhoto: imageDataUrl,
+      ...profilePhotoFields,
       profilePhotoHash: imageHash,
       updatedAt: serverTimestamp()
     }, { merge: true });

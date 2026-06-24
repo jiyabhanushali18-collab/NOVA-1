@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, BriefcaseBusiness, Check, Info, Lock, ShieldCheck, Shirt, Sparkles, Waves } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, Info, Lock, Mars, RefreshCw, Ruler, ShieldCheck, Shirt, Sparkles, Venus, Waves } from 'lucide-react';
 import { Measurement, Preference } from '../types';
 
 interface SetupPreferencesViewProps {
@@ -9,6 +9,18 @@ interface SetupPreferencesViewProps {
 }
 
 type IconName = 'briefcase' | 'shoe' | 'minimal' | 'shirt' | 'backpack' | 'compress' | 'target' | 'waves' | 'sofa';
+type Gender = 'Women' | 'Men';
+type SizeKey = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+
+interface SizeChartEntry {
+  size: SizeKey;
+  heightFt: string;
+  heightCm: [number, number];
+  waistIn: [number, number];
+  inseamIn: number;
+  chestCm: number;
+  weightKg: number;
+}
 
 const iconClass = 'h-8 w-8 stroke-[1.9]';
 
@@ -48,26 +60,79 @@ const colorOptions = [
   { name: 'Monochrome Slate', value: 'Monochrome', desc: 'Deep black, crisp white & greys', swatches: ['#171717', '#4b5563', '#9ca3af', '#d1d5db'] },
 ];
 
+const sizeCharts: Record<Gender, SizeChartEntry[]> = {
+  Women: [
+    { size: 'XS', heightFt: `4'10" - 5'1"`, heightCm: [147, 155], waistIn: [24, 26], inseamIn: 27, chestCm: 82, weightKg: 45 },
+    { size: 'S', heightFt: `5'0" - 5'3"`, heightCm: [152, 160], waistIn: [26, 28], inseamIn: 28, chestCm: 86, weightKg: 50 },
+    { size: 'M', heightFt: `5'2" - 5'5"`, heightCm: [157, 165], waistIn: [28, 30], inseamIn: 29, chestCm: 92, weightKg: 56 },
+    { size: 'L', heightFt: `5'4" - 5'7"`, heightCm: [163, 170], waistIn: [30, 32], inseamIn: 30, chestCm: 98, weightKg: 62 },
+    { size: 'XL', heightFt: `5'5" - 5'8"`, heightCm: [165, 173], waistIn: [32, 36], inseamIn: 31, chestCm: 106, weightKg: 70 },
+    { size: 'XXL', heightFt: `5'6" - 5'9"`, heightCm: [168, 175], waistIn: [36, 40], inseamIn: 32, chestCm: 116, weightKg: 78 },
+  ],
+  Men: [
+    { size: 'S', heightFt: `5'4" - 5'7"`, heightCm: [163, 170], waistIn: [30, 32], inseamIn: 30, chestCm: 92, weightKg: 62 },
+    { size: 'M', heightFt: `5'7" - 5'9"`, heightCm: [170, 175], waistIn: [32, 34], inseamIn: 31, chestCm: 98, weightKg: 68 },
+    { size: 'L', heightFt: `5'9" - 5'11"`, heightCm: [175, 180], waistIn: [34, 36], inseamIn: 32, chestCm: 104, weightKg: 76 },
+    { size: 'XL', heightFt: `5'11" - 6'1"`, heightCm: [180, 185], waistIn: [36, 40], inseamIn: 33, chestCm: 112, weightKg: 84 },
+    { size: 'XXL', heightFt: `6'0" - 6'2"`, heightCm: [183, 188], waistIn: [40, 44], inseamIn: 34, chestCm: 122, weightKg: 94 },
+    { size: 'XXXL', heightFt: `6'1" - 6'4"`, heightCm: [185, 193], waistIn: [44, 48], inseamIn: 35, chestCm: 132, weightKg: 104 },
+  ],
+};
+
+const sizeOrder: SizeKey[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+const inchesToCm = (value: number) => Math.round(value * 2.54);
+const midpoint = ([min, max]: [number, number]) => Math.round((min + max) / 2);
+const chartToMeasurements = (entry: SizeChartEntry) => ({
+  height: midpoint(entry.heightCm),
+  weight: entry.weightKg,
+  chest: entry.chestCm,
+  waist: inchesToCm(midpoint(entry.waistIn)),
+  inseam: inchesToCm(entry.inseamIn),
+});
+
 export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ userName, onComplete }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedStyle, setSelectedStyle] = useState('Formal');
   const [selectedFit, setSelectedFit] = useState('Regular');
   const [selectedColors, setSelectedColors] = useState('Mix');
   const [selectedOccasion] = useState('Casual');
-  const [height, setHeight] = useState(178);
-  const [weight, setWeight] = useState(68);
-  const [chest, setChest] = useState(98);
-  const [waist, setWaist] = useState(82);
-  const [inseam, setInseam] = useState(78);
+  const [selectedGender, setSelectedGender] = useState<Gender>('Men');
+  const [selectedSize, setSelectedSize] = useState<SizeKey>('M');
+  const [height, setHeight] = useState(() => chartToMeasurements(sizeCharts.Men[1]).height);
+  const [weight, setWeight] = useState(() => chartToMeasurements(sizeCharts.Men[1]).weight);
+  const [chest, setChest] = useState(() => chartToMeasurements(sizeCharts.Men[1]).chest);
+  const [waist, setWaist] = useState(() => chartToMeasurements(sizeCharts.Men[1]).waist);
+  const [inseam, setInseam] = useState(() => chartToMeasurements(sizeCharts.Men[1]).inseam);
 
   const displayName = userName?.trim() || 'hardikpandya';
+  const selectedChart = sizeCharts[selectedGender];
+  const selectedEntry = selectedChart.find((entry) => entry.size === selectedSize) || selectedChart[0];
+
+  const applySizeEntry = (entry: SizeChartEntry) => {
+    const next = chartToMeasurements(entry);
+    setSelectedSize(entry.size);
+    setHeight(next.height);
+    setWeight(next.weight);
+    setChest(next.chest);
+    setWaist(next.waist);
+    setInseam(next.inseam);
+  };
+
+  const handleGenderChange = (gender: Gender) => {
+    const chart = sizeCharts[gender];
+    const nextEntry = chart.find((entry) => entry.size === selectedSize) || chart.find((entry) => entry.size === 'M') || chart[0];
+    setSelectedGender(gender);
+    applySizeEntry(nextEntry);
+  };
 
   const handleFinish = () => {
     const preferencesData: Preference[] = [
       { label: 'Style', value: selectedStyle, iconName: 'style' },
       { label: 'Fit', value: selectedFit, iconName: 'fit_screen' },
       { label: 'Colors', value: selectedColors, iconName: 'palette' },
-      { label: 'Occasion', value: selectedOccasion, iconName: 'event' }
+      { label: 'Occasion', value: selectedOccasion, iconName: 'event' },
+      { label: 'Gender', value: selectedGender, iconName: selectedGender === 'Men' ? 'man_2' : 'woman_2' },
+      { label: 'Size', value: selectedSize, iconName: 'checkroom' }
     ];
 
     const measurementsData: Measurement[] = [
@@ -246,27 +311,98 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               <section className="mb-8">
                 <h2 className="text-[28px] font-black leading-tight text-slate-950 sm:text-[34px]">Set Your Smart Fit Metrics</h2>
                 <p className="mt-3 max-w-[560px] text-[17px] font-medium leading-8 text-slate-500">
-                  Add your measurements so NOVA can tune size and drape recommendations with better precision.
+                  Choose your usual size and NOVA will estimate height, waist, and inseam from Indian clothing size charts.
                 </p>
               </section>
+
+              <div className="mb-5 rounded-[18px] border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <SectionTitle number="2" title="Select your usual size" subtitle="Auto-fill measurements from the chart, then adjust below." info />
+                  <div className="grid grid-cols-2 gap-2 rounded-[14px] bg-slate-100 p-1">
+                    {(['Women', 'Men'] as Gender[]).map((gender) => {
+                      const selected = selectedGender === gender;
+                      return (
+                        <button
+                          key={gender}
+                          type="button"
+                          onClick={() => handleGenderChange(gender)}
+                          className={`flex h-11 items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-black transition-all ${
+                            selected ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          {gender === 'Women' ? <Venus className="h-4 w-4" /> : <Mars className="h-4 w-4" />}
+                          {gender}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
+                  {sizeOrder.map((size) => {
+                    const entry = selectedChart.find((item) => item.size === size);
+                    const selected = selectedSize === size;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        disabled={!entry}
+                        onClick={() => entry && applySizeEntry(entry)}
+                        className={`relative h-16 rounded-[12px] border text-base font-black transition-all ${
+                          selected
+                            ? 'border-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-[0_12px_24px_rgba(109,40,217,0.25)]'
+                            : entry
+                              ? 'border-slate-200 bg-white text-slate-950 shadow-sm hover:border-violet-300'
+                              : 'border-slate-100 bg-slate-50 text-slate-300'
+                        }`}
+                      >
+                        {size}
+                        {selected && (
+                          <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-white/25">
+                            <Check className="h-3.5 w-3.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Notice className="mt-5">
+                  <Sparkles className="h-5 w-5 shrink-0 text-violet-600" />
+                  <span>
+                    <b>Auto-filled for {selectedGender} size {selectedSize}.</b> Height {selectedEntry.heightCm[0]}-{selectedEntry.heightCm[1]} cm, waist {selectedEntry.waistIn[0]}-{selectedEntry.waistIn[1]} inches, inseam {selectedEntry.inseamIn} inches.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => applySizeEntry(selectedEntry)}
+                    className="ml-auto hidden shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-violet-700 shadow-sm sm:flex"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Reset
+                  </button>
+                </Notice>
+              </div>
 
               <div className="grid gap-4">
                 <RangeControl label="Height" icon="height" value={height} min={140} max={210} unit="cm" onChange={setHeight} />
                 <RangeControl label="Weight" icon="fitness_center" value={weight} min={40} max={150} unit="kg" onChange={setWeight} />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <Stepper label="Chest" value={chest} min={70} max={130} unit="cm" onChange={setChest} />
+                  <Stepper label="Chest" value={chest} min={70} max={140} unit="cm" onChange={setChest} />
                   <Stepper label="Waist" value={waist} min={60} max={120} unit="cm" onChange={setWaist} />
                   <Stepper label="Inseam" value={inseam} min={60} max={110} unit="cm" onChange={setInseam} />
                 </div>
               </div>
+
+              <SizeChartPreview gender={selectedGender} entries={selectedChart} selectedSize={selectedSize} />
 
               <footer className="mt-auto pt-8">
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="h-14 flex-1 rounded-[12px] border border-slate-200 bg-white text-sm font-black text-slate-600 shadow-sm"
+                    className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white text-sm font-black text-slate-600 shadow-sm"
                   >
+                    <ArrowLeft className="h-5 w-5" />
                     Back
                   </button>
                   <button
@@ -354,6 +490,58 @@ const FitCard = ({
     </button>
   );
 };
+
+const SizeChartPreview = ({
+  gender,
+  entries,
+  selectedSize,
+}: {
+  gender: Gender;
+  entries: SizeChartEntry[];
+  selectedSize: SizeKey;
+}) => (
+  <div className="mt-5 overflow-hidden rounded-[16px] border border-slate-200 bg-slate-950 text-white shadow-[0_18px_34px_rgba(15,23,42,0.14)]">
+    <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-violet-500/20 text-violet-200">
+          <Ruler className="h-5 w-5" />
+        </span>
+        <span>
+          <span className="block text-sm font-black">{gender} Size Chart</span>
+          <span className="mt-1 block text-xs font-semibold text-slate-400">Height, waist, and inseam reference</span>
+        </span>
+      </div>
+      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-violet-700">Size {selectedSize}</span>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[620px] text-left text-sm">
+        <thead className="text-xs uppercase text-slate-400">
+          <tr>
+            <th className="px-4 py-3 font-black sm:px-5">Size</th>
+            <th className="px-4 py-3 font-black">Height</th>
+            <th className="px-4 py-3 font-black">Height (cm)</th>
+            <th className="px-4 py-3 font-black">Waist</th>
+            <th className="px-4 py-3 font-black">Inseam</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          {entries.map((entry) => {
+            const selected = entry.size === selectedSize;
+            return (
+              <tr key={entry.size} className={selected ? 'bg-violet-500/18 text-white' : 'text-slate-300'}>
+                <td className="px-4 py-3 font-black sm:px-5">{entry.size}</td>
+                <td className="px-4 py-3 font-semibold">{entry.heightFt}</td>
+                <td className="px-4 py-3 font-semibold">{entry.heightCm[0]} - {entry.heightCm[1]}</td>
+                <td className="px-4 py-3 font-semibold">{entry.waistIn[0]} - {entry.waistIn[1]} in</td>
+                <td className="px-4 py-3 font-semibold">{entry.inseamIn} in</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
 
 const RangeControl = ({
   label,
