@@ -11,6 +11,12 @@ type GeminiAnalysis = {
   hairColor: AnalysisField;
   outfitStyle: AnalysisField;
 };
+type AnalysisSchemaProperty = {
+  type: string;
+  enum?: readonly string[];
+  properties?: Record<string, AnalysisSchemaProperty>;
+  required?: string[];
+};
 
 const router = express.Router();
 
@@ -22,6 +28,8 @@ const allowedValues = {
   outfitStyle: ['casual', 'smart casual', 'formal', 'streetwear', 'ethnic', 'sporty', 'unknown']
 } as const;
 
+type AnalysisKey = keyof typeof allowedValues;
+
 const defaultAnalysis: GeminiAnalysis = {
   skinTone: { value: 'unknown', confidence: 0 },
   faceShape: { value: 'unknown', confidence: 0 },
@@ -30,13 +38,11 @@ const defaultAnalysis: GeminiAnalysis = {
   outfitStyle: { value: 'unknown', confidence: 0 }
 };
 
-// Lowered confidence floor to be less aggressive about mapping to 'unknown'.
-// This makes the system accept values with moderate confidence (>=30) instead
-// of requiring very high confidence. Adjust if you prefer stricter behavior.
-const ANALYSIS_CONFIDENCE_FLOOR = 30;
-// `gemini-1.5-pro` is not supported for v1beta generateContent in this project.
-// Keep only supported models to avoid unnecessary 404 retries.
-const GEMINI_VISION_MODELS = ['gemini-2.5-flash'];
+const DEFAULT_CONFIDENCE_FOR_VALUE = 70;
+const GEMINI_VISION_MODELS = (process.env.GEMINI_VISION_MODELS || 'gemini-2.5-flash,gemini-2.0-flash')
+  .split(',')
+  .map((model) => model.trim())
+  .filter(Boolean);
 
 const getUserDocId = (id: string) => {
   return (id || 'guestuser@nova.ai').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
@@ -54,25 +60,62 @@ const hashImage = (imageDataUrl: string) => {
   return crypto.createHash('sha256').update(raw).digest('hex');
 };
 
-const normalizeConfidence = (value: unknown) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.max(0, Math.min(100, Math.round(numeric)));
+const hasKnownAnalysisValue = (analysis: GeminiAnalysis) => {
+  return Object.values(analysis).some((field) => field.value !== 'unknown' && field.confidence > 0);
 };
 
-const normalizeField = (key: keyof typeof allowedValues, field: unknown): AnalysisField => {
+const normalizeConfidence = (value: unknown, fallback = 0) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  const percent = numeric > 0 && numeric <= 1 ? numeric * 100 : numeric;
+  return Math.max(0, Math.min(100, Math.round(percent)));
+};
+
+const normalizeForMatch = (value: string) => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ');
+};
+
+const aliasValues: Partial<Record<AnalysisKey, Record<string, string>>> = {
+  faceShape: {
+    rectangular: 'rectangle',
+    oblong: 'rectangle'
+  },
+  hairColor: {
+    brunette: 'brown',
+    'dark brunette': 'dark brown',
+    grey: 'gray'
+  },
+  outfitStyle: {
+    semiformal: 'formal',
+    'semi formal': 'formal',
+    athleisure: 'sporty'
+  }
+};
+
+const normalizeValue = (key: AnalysisKey, value: string) => {
+  const comparable = normalizeForMatch(value);
+  const aliased = aliasValues[key]?.[comparable] || comparable;
+  const match = allowedValues[key].find((allowed) => normalizeForMatch(allowed) === aliased);
+  return match || 'unknown';
+};
+
+const normalizeField = (key: AnalysisKey, field: unknown): AnalysisField => {
   if (!field || typeof field !== 'object' || Array.isArray(field)) {
     return { value: 'unknown', confidence: 0 };
   }
 
   const record = field as Record<string, unknown>;
-  const confidence = normalizeConfidence(record.confidence);
   const rawValue = typeof record.value === 'string' ? record.value.trim().toLowerCase() : 'unknown';
-  // Normalize common variants from model output (e.g. "light medium" -> "light-medium")
-  const normalizedValue = rawValue.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  // Accept any allowed value the model returns, even if confidence is below the floor.
-  // We will let the consensus step decide which value wins across multiple runs.
-  const value = (allowedValues[key] as readonly string[]).includes(normalizedValue) ? normalizedValue : 'unknown';
+  const value = normalizeValue(key, rawValue);
+  const confidence = normalizeConfidence(
+    record.confidence,
+    value === 'unknown' ? 0 : DEFAULT_CONFIDENCE_FOR_VALUE
+  );
 
   return {
     value,
@@ -95,7 +138,23 @@ const normalizeGeminiAnalysis = (value: unknown): GeminiAnalysis => {
 
 const parseJson = (text: string) => {
   const trimmed = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-  return JSON.parse(trimmed);
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Gemini response did not contain a JSON object.');
+    return JSON.parse(jsonMatch[0]);
+  }
+};
+
+const getGeminiText = (data: any) => {
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return '';
+  return parts
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
 };
 
 const buildPrompt = () => `You are NOVA's visual fashion analysis model.
@@ -113,14 +172,41 @@ hairType: straight, wavy, curly, coily, unknown
 hairColor: black, dark brown, brown, blonde, red, gray, unknown
 outfitStyle: casual, smart casual, formal, streetwear, ethnic, sporty, unknown
 
-JSON shape:
-{
-  "skinTone": { "value": "unknown", "confidence": 0 },
-  "faceShape": { "value": "unknown", "confidence": 0 },
-  "hairType": { "value": "unknown", "confidence": 0 },
-  "hairColor": { "value": "unknown", "confidence": 0 },
-  "outfitStyle": { "value": "unknown", "confidence": 0 }
-}`;
+Required object shape:
+- skinTone: object with "value" and "confidence"
+- faceShape: object with "value" and "confidence"
+- hairType: object with "value" and "confidence"
+- hairColor: object with "value" and "confidence"
+- outfitStyle: object with "value" and "confidence"
+
+Each "value" must be one allowed value for that field.
+Each "confidence" must be a number from 0 to 100.`;
+
+const buildFieldSchema = (values: readonly string[]): AnalysisSchemaProperty => ({
+  type: 'object',
+  properties: {
+    value: {
+      type: 'string',
+      enum: values
+    },
+    confidence: {
+      type: 'number'
+    }
+  },
+  required: ['value', 'confidence']
+});
+
+const buildResponseSchema = (): AnalysisSchemaProperty => ({
+  type: 'object',
+  properties: {
+    skinTone: buildFieldSchema(allowedValues.skinTone),
+    faceShape: buildFieldSchema(allowedValues.faceShape),
+    hairType: buildFieldSchema(allowedValues.hairType),
+    hairColor: buildFieldSchema(allowedValues.hairColor),
+    outfitStyle: buildFieldSchema(allowedValues.outfitStyle)
+  },
+  required: ['skinTone', 'faceShape', 'hairType', 'hairColor', 'outfitStyle']
+});
 
 const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promise<GeminiAnalysis> => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -133,7 +219,7 @@ const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promi
   if (!image) throw new Error('Invalid image data URL.');
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4200);
+  const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -173,8 +259,9 @@ const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promi
           temperature: 0,
           topP: 0.1,
           topK: 1,
-          maxOutputTokens: 320,
-          responseMimeType: 'application/json'
+          maxOutputTokens: 512,
+          responseMimeType: 'application/json',
+          responseSchema: buildResponseSchema()
         }
       })
     });
@@ -187,17 +274,17 @@ const callGeminiVisionModel = async (imageDataUrl: string, model: string): Promi
 
     const data = await response.json();
     console.log(`Gemini Vision ${model} raw response:`, JSON.stringify(data, null, 2));
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = getGeminiText(data);
     if (!text) {
-      console.warn(`Gemini Vision ${model} returned no text candidate; falling back to defaultAnalysis.`);
-      return defaultAnalysis;
+      console.warn(`Gemini Vision ${model} returned no text candidate.`);
+      throw new Error(`Gemini Vision ${model} returned no analyzable text.`);
     }
 
     try {
       return normalizeGeminiAnalysis(parseJson(text));
     } catch (parseError) {
       console.error(`Gemini Vision ${model} parse error:`, parseError, 'text:', text);
-      return defaultAnalysis;
+      throw new Error(`Gemini Vision ${model} returned malformed analysis JSON.`);
     }
   } finally {
     clearTimeout(timeout);
@@ -209,7 +296,12 @@ const callGeminiVision = async (imageDataUrl: string): Promise<GeminiAnalysis> =
 
   for (const model of GEMINI_VISION_MODELS) {
     try {
-      return await callGeminiVisionModel(imageDataUrl, model);
+      const analysis = await callGeminiVisionModel(imageDataUrl, model);
+      if (!hasKnownAnalysisValue(analysis)) {
+        throw new Error(`Gemini Vision ${model} returned only unknown values.`);
+      }
+
+      return analysis;
     } catch (error) {
       lastError = error;
     }
@@ -345,6 +437,10 @@ router.post('/analyze-selfie', async (req: any, res: any) => {
     }
 
     const analysis = await runConsensusAnalysis(imageDataUrl);
+    if (!hasKnownAnalysisValue(analysis)) {
+      throw new Error('Gemini could not detect visible selfie details from this image. Please upload a clear front-facing selfie with your face and hair visible.');
+    }
+
     const recommendations = runRecommendationEngine(analysis);
     const result = {
       analysis,

@@ -100,6 +100,15 @@ const fileToCompressedDataUrl = (file: File): Promise<string> => {
   });
 };
 
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Could not read selfie image.'));
+    reader.readAsDataURL(file);
+  });
+};
+
 const recommendationCards = [
   {
     title: 'Fashion',
@@ -186,9 +195,15 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
       setImagePreview(previewUrl);
       setStep('scanning');
     } catch {
-      const fallbackPreview = URL.createObjectURL(file);
-      setImagePreview(fallbackPreview);
-      setStep('scanning');
+      try {
+        const originalDataUrl = await fileToDataUrl(file);
+        setImagePreview(originalDataUrl);
+        setStep('scanning');
+      } catch {
+        const fallbackPreview = URL.createObjectURL(file);
+        setImagePreview(fallbackPreview);
+        setStep('upload');
+      }
     }
   };
 

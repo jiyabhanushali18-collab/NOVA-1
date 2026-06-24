@@ -27,6 +27,10 @@ export const analyzeSelfie = async ({
   forceRefresh = false
 }: AnalyzeSelfiePayload): Promise<NovaStyleAnalysisResult> => {
   try {
+    if (!/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(imageDataUrl)) {
+      throw new Error('Please upload a supported image file so NOVA can send the selfie to Gemini.');
+    }
+
     const response = await fetch('/api/analyze-selfie', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
