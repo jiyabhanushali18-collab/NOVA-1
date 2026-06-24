@@ -485,7 +485,7 @@ export default function App() {
       extra
     );
   };
-  };
+  
 
   const [novaPoints, setNovaPoints] = useState<number>(() => {
     try {
