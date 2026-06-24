@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, QuerySnapshot, DocumentData, addDoc, query, where, onSnapshot, serverTimestamp, setDoc, doc } from 'firebase/firestore';
-import { ScreenId, CartItem, Measurement, Preference, ProductItem, ProductReview } from './types';
+import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
+import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
 import { db, saveUserToFirestore } from './firebase';
 
@@ -20,6 +20,7 @@ import { SplashView } from './components/SplashView';
 import { OnboardingView } from './components/OnboardingView';
 import { SetupPreferencesView } from './components/SetupPreferencesView';
 import { VirtualWardrobeView } from './components/VirtualWardrobeView';
+import { ProfileAnalysisView } from './components/ProfileAnalysisView';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
@@ -342,7 +343,7 @@ export default function App() {
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
 
   // Account management
-  const { accounts, addAccount, removeAccount } = useAccounts();
+  const { accounts, addAccount, removeAccount, replaceAccounts } = useAccounts();
   const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
     onAccountSwitched: (acc) => {
       if (acc) {
@@ -404,6 +405,86 @@ export default function App() {
   const handleUpdatePreferences = (newPreferences: Preference[]) => {
     setPreferences(newPreferences);
     localStorage.setItem('preferences', JSON.stringify(newPreferences));
+    syncCurrentUserProfile({ preferences: newPreferences, measurements }).catch(() => undefined);
+  };
+
+  const [userProfilePhoto, setUserProfilePhoto] = useState<string>(() => {
+    try {
+      return localStorage.getItem('userProfilePhoto') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [analysisProfile, setAnalysisProfile] = useState<NovaAnalysisProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('nova_analysis_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleCompleteProfileAnalysis = async (profile: NovaAnalysisProfile) => {
+    setAnalysisProfile(profile);
+    localStorage.setItem('nova_analysis_profile', JSON.stringify(profile));
+
+    if (profile.selfieUrl) {
+      setUserProfilePhoto(profile.selfieUrl);
+      localStorage.setItem('userProfilePhoto', profile.selfieUrl);
+    }
+
+    const personalizedPreferences: Preference[] = [
+      { label: 'Style', value: profile.stylePreference.replace(' Style Preference', ''), iconName: 'style' },
+      { label: 'Fit', value: profile.recommendedFit || 'Regular', iconName: 'fit_screen' },
+      { label: 'Colors', value: profile.recommendedColors.join(', ') || 'Mix', iconName: 'palette' },
+      { label: 'Eyewear', value: profile.eyewearSuggestions.join(', ') || 'Any', iconName: 'visibility' }
+    ];
+
+    handleUpdatePreferences(personalizedPreferences);
+
+    const currentUid = activeUid || userEmail;
+    const updatedAccount = {
+      ...activeAccount,
+      uid: currentUid,
+      username: activeAccount?.username || userEmail.split('@')[0] || userName,
+      email: userEmail,
+      name: userName,
+      phone: userPhone,
+      profilePhoto: profile.selfieUrl || activeAccount?.profilePhoto,
+      createdAt: activeAccount?.createdAt || Date.now()
+    };
+
+    replaceAccounts([
+      updatedAccount,
+      ...accounts.filter((account) => account.uid !== currentUid)
+    ]);
+
+    try {
+      await accountService.upsertUserProfile(updatedAccount, {
+        preferences: personalizedPreferences,
+        measurements
+      });
+    } catch (error) {
+      console.error('Failed to save NOVA profile analysis:', error);
+    }
+
+    setScreen('profile');
+  };
+
+  const syncCurrentUserProfile = (extra?: { preferences?: Preference[]; measurements?: Measurement[] }) => {
+    return accountService.upsertUserProfile(
+      {
+        ...activeAccount,
+        uid: activeUid || activeAccount?.uid || userEmail,
+        username: activeAccount?.username || userEmail.split('@')[0] || userName,
+        name: userName,
+        email: userEmail,
+        phone: userPhone
+      },
+      extra
+    );
+  };
   };
 
   const [novaPoints, setNovaPoints] = useState<number>(() => {
@@ -846,6 +927,8 @@ export default function App() {
             setUserName={setUserName} 
             userEmail={userEmail}
             userPhone={userPhone}
+            profilePhoto={userProfilePhoto || activeAccount?.profilePhoto}
+            analysisProfile={analysisProfile}
             onLogout={handleLogout}
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
@@ -874,8 +957,17 @@ export default function App() {
             onComplete={(newPrefs, newMeasures) => {
               handleUpdatePreferences(newPrefs);
               handleUpdateMeasurements(newMeasures);
-              setScreen('home');
+              syncCurrentUserProfile({ preferences: newPrefs, measurements: newMeasures }).catch(() => undefined);
+              setScreen('profile-analysis');
             }}
+          />
+        );
+      case 'profile-analysis':
+        return (
+          <ProfileAnalysisView
+            userName={userName}
+            userId={userEmail}
+            onComplete={handleCompleteProfileAnalysis}
           />
         );
       case 'product-details':
@@ -993,7 +1085,11 @@ export default function App() {
     localStorage.removeItem('isLoggedIn');
     accountService.setActiveLocalAccount(undefined);
     setActiveAccountUid(undefined);
+    localStorage.removeItem('userProfilePhoto');
+    localStorage.removeItem('nova_analysis_profile');
     setIsLoggedIn(false);
+    setUserProfilePhoto('');
+    setAnalysisProfile(null);
     navigate('home');
   };
 
@@ -1010,7 +1106,7 @@ export default function App() {
   };
 
   // Determine if full-screen preview camera active (no standard header/nav shown on live tryon to emulate immersive filter experience!)
-  const isImmersiveAR = screen === 'ar-tryon' || screen === 'setup-preferences';
+  const isImmersiveAR = screen === 'ar-tryon' || screen === 'setup-preferences' || screen === 'profile-analysis';
 
   // Splash Screen Guard
   if (screen === 'splash') {
@@ -1033,7 +1129,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
+    <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
         : 'bg-slate-50 border-x border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-purple-50/40'
@@ -1102,7 +1198,7 @@ export default function App() {
                 alt="Account profile" 
                 className="w-full h-full object-cover" 
                 referrerPolicy="no-referrer"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmbdmCX9HTnsu3re-LKTwZeIzdxiZpbS33EX-8SJnYFnfuUKDEV1s_Hw7EGDD1SVWZHfYR4kRFIsuBmjqTEV7Brdv3HHvCLCeIj4Oo97NE4d_W91RCG_MoaGi64JI-_PNj1ZMPL4tHcbNr6gTkbXBvCYURW7LmoMLBQWAOkByDufT4T0kIjneJFVxvxc9UQNrgze1LxB7o9r3KStxC6uXasen_3YXM3SWX81zs9lFiyEA2Dt1jHIaBbOIq5DpPENqF0yZVneBSZiXD"
+                src={userProfilePhoto || activeAccount?.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'NOVA User')}&background=ede9fe&color=6d28d9&bold=true`}
               />
             </button>
           </div>

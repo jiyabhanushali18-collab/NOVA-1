@@ -14,7 +14,8 @@ export type ScreenId =
   | 'signup'
   | 'splash'
   | 'onboarding'
-  | 'setup-preferences';
+  | 'setup-preferences'
+  | 'profile-analysis';
 
 export interface ProductItem {
   id: string;
@@ -76,6 +77,62 @@ export interface Preference {
   label: string;
   value: string;
   iconName: string;
+}
+
+export interface NovaAnalysisProfile {
+  skinTone: string;
+  undertone: string;
+  faceShape: string;
+  hairType: string;
+  eyeColor: string;
+  bodyType: string;
+  heightEstimate: string;
+  recommendedFit: string;
+  recommendedColors: string[];
+  eyewearSuggestions: string[];
+  stylePreference: string;
+  confidence: {
+    skinToneDetection: number;
+    faceShapeDetection: number;
+    stylePreferenceDetection: number;
+    bodyAnalysis: number;
+  };
+  selfieUrl?: string;
+  imageHash?: string;
+  rawAnalysis?: NovaStyleAnalysisResult;
+  cached?: boolean;
+  analyzedAt: string;
+}
+
+export type NovaAnalysisValue<T extends string> = {
+  value: T;
+  confidence: number;
+};
+
+export type SkinToneValue = 'fair' | 'light-medium' | 'medium' | 'tan' | 'deep' | 'unknown';
+export type FaceShapeValue = 'oval' | 'round' | 'square' | 'heart' | 'diamond' | 'rectangle' | 'unknown';
+export type HairTypeValue = 'straight' | 'wavy' | 'curly' | 'coily' | 'unknown';
+export type HairColorValue = 'black' | 'dark brown' | 'brown' | 'blonde' | 'red' | 'gray' | 'unknown';
+export type OutfitStyleValue = 'casual' | 'smart casual' | 'formal' | 'streetwear' | 'ethnic' | 'sporty' | 'unknown';
+
+export interface NovaStyleAnalysis {
+  skinTone: NovaAnalysisValue<SkinToneValue>;
+  faceShape: NovaAnalysisValue<FaceShapeValue>;
+  hairType: NovaAnalysisValue<HairTypeValue>;
+  hairColor: NovaAnalysisValue<HairColorValue>;
+  outfitStyle: NovaAnalysisValue<OutfitStyleValue>;
+}
+
+export interface NovaStyleAnalysisResult {
+  analysis: NovaStyleAnalysis;
+  recommendedColors: string[];
+  recommendedFit: string;
+  eyewearSuggestions: string[];
+  styleSummary: string;
+  error?: string;
+  imageHash?: string;
+  cached?: boolean;
+  analyzedAt?: string;
 }
 
 export interface NovaAccount {

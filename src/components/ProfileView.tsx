@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScreenId, Measurement, Preference, NovaAccount } from '../types';
+import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount } from '../types';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
 
@@ -9,6 +9,8 @@ interface ProfileViewProps {
   setUserName: (name: string) => void;
   userEmail?: string;
   userPhone?: string;
+  profilePhoto?: string;
+  analysisProfile?: NovaAnalysisProfile | null;
   onLogout: () => void;
   wishlist?: string[];
   onToggleWishlist?: (productId: string) => void;
@@ -37,6 +39,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   setUserName,
   userEmail = 'arjun.mehta@email.com',
   userPhone = '+91 98765 43210',
+  profilePhoto,
+  analysisProfile,
   onLogout,
   wishlist = [],
   onToggleWishlist,
@@ -376,7 +380,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               alt="Arjun Mehta user picture avatar" 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmbdmCX9HTnsu3re-LKTwZeIzdxiZpbS33EX-8SJnYFnfuUKDEV1s_Hw7EGDD1SVWZHfYR4kRFIsuBmjqTEV7Brdv3HHvCLCeIj4Oo97NE4d_W91RCG_MoaGi64JI-_PNj1ZMPL4tHcbNr6gTkbXBvCYURW7LmoMLBQWAOkByDufT4T0kIjneJFVxvxc9UQNrgze1LxB7o9r3KStxC6uXasen_3YXM3SWX81zs9lFiyEA2Dt1jHIaBbOIq5DpPENqF0yZVneBSZiXD"
+              src={profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'NOVA User')}&background=ede9fe&color=6d28d9&bold=true`}
             />
           </button>
           <button 
@@ -404,6 +408,43 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </p>
         </div>
       </section>
+
+      {analysisProfile && (
+        <section className="glass-card rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <span className="material-symbols-outlined text-indigo-600 text-[20px]">auto_awesome</span>
+              NOVA AI Profile
+            </h3>
+            <span className="rounded-full bg-violet-50 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-violet-700">
+              Synced
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              ['Skin Tone', analysisProfile.skinTone],
+              ['Undertone', analysisProfile.undertone],
+              ['Face Shape', analysisProfile.faceShape],
+              ['Hair', analysisProfile.hairType],
+              ['Eyes', analysisProfile.eyeColor],
+              ['Body Type', analysisProfile.bodyType],
+              ['Fit', analysisProfile.recommendedFit],
+              ['Eyewear', analysisProfile.eyewearSuggestions.join(', ')]
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-violet-100 bg-white/70 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-slate-700">{value || 'unknown'}</p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-violet-100 bg-violet-50/70 p-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-violet-500">Recommended Colors</p>
+            <p className="mt-1 text-xs font-bold text-violet-800">
+              {analysisProfile.recommendedColors.length > 0 ? analysisProfile.recommendedColors.join(' • ') : 'unknown'}
+            </p>
+          </div>
+        </section>
+      )}
 
       {isAccountModalOpen && (
         <AccountSwitcherModal
