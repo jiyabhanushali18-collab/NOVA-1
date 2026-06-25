@@ -1,5 +1,8 @@
-import React from 'react';
-import { ScreenId, ProductItem, ProductReview } from '../types';
+import React, { memo, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../firebase';
+import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
 
 interface ShowroomViewProps {
   products: ProductItem[];
@@ -14,7 +17,215 @@ interface ShowroomViewProps {
   productReviews?: Record<string, ProductReview[]>;
 }
 
-export const ShowroomView: React.FC<ShowroomViewProps> = ({ 
+type ProductCardVariant = 'carousel' | 'grid';
+
+const ALL_VENDORS = 'all';
+const VENDOR_STORAGE_KEY = 'nova_showroom_selected_vendor';
+let cachedVendors: VendorItem[] | null = null;
+
+const fallbackImage = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80';
+
+const asStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+const getStringValue = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const candidate = record.imageUrl || record.url || record.src || record.image;
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : undefined;
+};
+
+const getInitials = (name: string) => {
+  const words = name.trim().split(/\s+/).slice(0, 2);
+  return words.map((word) => word[0]?.toUpperCase()).join('') || 'NV';
+};
+
+const formatPrice = (price: number) => `₹${Number(price || 0).toLocaleString('en-IN')}`;
+
+const getTimestampMs = (value: any) => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return new Date(value).getTime() || 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  return 0;
+};
+
+const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Record<string, VendorItem>): ProductItem => {
+  const images = [
+    ...asStringArray(data.images),
+    ...asStringArray(data.imageUrls)
+  ].filter((value, index, array) => value && array.indexOf(value) === index);
+  const vendorId = data.vendorId ? String(data.vendorId) : undefined;
+  const vendor = vendorId ? vendorsById[vendorId] : undefined;
+  const stock = data.stock !== undefined ? Number(data.stock) : undefined;
+  const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || images[0] || fallbackImage;
+
+  return {
+    id,
+    productId: String(data.productId || id),
+    vendorId,
+    vendorName: getStringValue(data.vendorName) || vendor?.vendorName || 'NOVA Vendor',
+    vendorLogoUrl: getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || vendor?.logoUrl,
+    name: String(data.name || data.productName || 'Unnamed Product'),
+    category: String(data.category || 'Curated'),
+    description: data.description ? String(data.description) : undefined,
+    price: Number(data.discountPrice || data.price || 0),
+    originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
+    discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
+    rating: Number(data.rating || 0),
+    reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
+    imageUrl,
+    imageUrls: images.length > 0 ? images : [imageUrl],
+    colors: Array.isArray(data.colors) ? data.colors.map(String) : ['Standard'],
+    sizes: Array.isArray(data.sizes) ? data.sizes.map(String) : ['One Size'],
+    inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
+    stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,
+    isTopRated: Boolean(data.isTopRated) || Number(data.rating || 0) >= 4.7,
+    isFeatured: Boolean(data.isFeatured),
+    badge: data.badge ? String(data.badge) : Boolean(data.isTopRated) || Number(data.rating || 0) >= 4.7 ? 'Top Pick' : undefined,
+    details: Array.isArray(data.details) ? data.details.map(String) : data.description ? [String(data.description)] : [],
+    createdAt: data.createdAt
+  };
+};
+
+const normalizeVendor = (id: string, data: Record<string, any>): VendorItem => ({
+  id,
+  vendorId: String(data.vendorId || id),
+  vendorName: String(data.vendorName || data.name || 'NOVA Vendor'),
+  logoUrl: getStringValue(data.logoUrl) || getStringValue(data.logo) || '',
+  bannerUrl: getStringValue(data.bannerUrl),
+  description: data.description ? String(data.description) : undefined,
+  followers: data.followers !== undefined ? Number(data.followers) : undefined,
+  rating: data.rating !== undefined ? Number(data.rating) : undefined,
+  isVerified: Boolean(data.isVerified),
+  isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
+  createdAt: data.createdAt,
+  productCount: data.productCount !== undefined ? Number(data.productCount) : undefined
+});
+
+const VendorLogo: React.FC<{ vendor?: Pick<VendorItem, 'vendorName' | 'logoUrl' | 'isVerified'>; size?: 'sm' | 'md' | 'lg' }> = ({ vendor, size = 'md' }) => {
+  const dimension = size === 'lg' ? 'h-20 w-20' : size === 'sm' ? 'h-7 w-7' : 'h-14 w-14';
+  const name = vendor?.vendorName || 'NOVA';
+
+  return (
+    <div className={`${dimension} shrink-0 rounded-full border bg-white/95 p-0.5 ${vendor?.isVerified ? 'border-violet-300 shadow-[0_0_22px_rgba(167,139,250,0.55)]' : 'border-white/25'}`}>
+      {vendor?.logoUrl ? (
+        <img src={vendor.logoUrl} alt={name} loading="lazy" className="h-full w-full rounded-full object-cover" referrerPolicy="no-referrer" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-white to-violet-100 text-sm font-black text-slate-950">
+          {getInitials(name)}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ProductCard = memo(({
+  product,
+  vendor,
+  isWishlisted,
+  onToggleWishlist,
+  onSelectProduct,
+  variant = 'grid',
+  index = 0
+}: {
+  product: ProductItem;
+  vendor?: VendorItem;
+  isWishlisted: boolean;
+  onToggleWishlist?: (productId: string) => void;
+  onSelectProduct?: (productId: string) => void;
+  variant?: ProductCardVariant;
+  index?: number;
+}) => {
+  const compact = variant === 'carousel';
+  const vendorName = product.vendorName || vendor?.vendorName || 'NOVA Vendor';
+  const vendorLogo = product.vendorLogoUrl || vendor?.logoUrl || '';
+
+  return (
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 14 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.035, 0.2) }}
+      onClick={() => onSelectProduct?.(product.id)}
+      className={`group relative shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-white/12 bg-white/[0.07] shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:border-violet-300/50 hover:shadow-[0_18px_55px_rgba(139,92,246,0.22)] ${compact ? 'w-44 p-2.5' : 'p-3'}`}
+    >
+      <motion.button
+        whileTap={{ scale: 0.78 }}
+        animate={isWishlisted ? { scale: [1, 1.24, 1] } : { scale: 1 }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleWishlist?.(product.id);
+        }}
+        className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-slate-950/55 text-white shadow-lg backdrop-blur-md transition-colors hover:text-rose-300"
+        title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+      >
+        <span className="material-symbols-outlined text-[20px] leading-none" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}>
+          {isWishlisted ? 'favorite' : 'favorite_border'}
+        </span>
+      </motion.button>
+
+      <div className={`relative overflow-hidden rounded-xl border border-white/10 bg-slate-800/70 ${compact ? 'h-40' : 'aspect-[4/5]'}`}>
+        <img
+          src={product.imageUrl || fallbackImage}
+          alt={product.name}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          referrerPolicy="no-referrer"
+        />
+        {product.badge && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-violet-600 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white shadow-[0_0_18px_rgba(139,92,246,0.45)]">
+            {product.badge}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <VendorLogo vendor={{ vendorName, logoUrl: vendorLogo, isVerified: vendor?.isVerified }} size="sm" />
+          <span className="min-w-0 truncate text-[10px] font-semibold text-slate-300">{vendorName}</span>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{product.category}</p>
+          <h3 className={`${compact ? 'text-sm' : 'text-[15px]'} line-clamp-1 font-bold text-white transition-colors group-hover:text-violet-200`}>
+            {product.name}
+          </h3>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-black text-violet-300">{formatPrice(product.price)}</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-slate-100">
+            <span className="text-amber-400">★</span>
+            {Number(product.rating || 0).toFixed(1)}
+            {!compact && product.reviewsCount > 0 ? <span className="text-slate-400">({product.reviewsCount})</span> : null}
+          </span>
+        </div>
+      </div>
+    </motion.article>
+  );
+});
+
+const ShimmerCard = ({ compact = false }: { compact?: boolean }) => (
+  <div className={`overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] p-3 ${compact ? 'h-64 w-44 shrink-0' : 'h-72'}`}>
+    <div className="h-full animate-pulse space-y-3">
+      <div className="h-40 rounded-xl bg-white/10" />
+      <div className="h-3 w-2/3 rounded bg-white/10" />
+      <div className="h-4 w-full rounded bg-white/10" />
+      <div className="h-4 w-1/2 rounded bg-white/10" />
+    </div>
+  </div>
+);
+
+export const ShowroomView: React.FC<ShowroomViewProps> = ({
   products,
   loading = false,
   error = null,
@@ -23,201 +234,367 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   onToggleWishlist,
   onSelectProduct,
   cartItemsCount = 0,
-  isDarkMode = false,
   productReviews = {}
 }) => {
-  const getProductReviewSummary = (product: ProductItem) => {
-    const reviews = productReviews[product.id] || [];
-    if (reviews.length === 0) {
-      return { rating: product.rating, count: product.reviewsCount };
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedVendor, setSelectedVendor] = useState(() => localStorage.getItem(VENDOR_STORAGE_KEY) || ALL_VENDORS);
+  const [vendors, setVendors] = useState<VendorItem[]>(() => cachedVendors || []);
+  const [vendorsLoading, setVendorsLoading] = useState(!cachedVendors);
+  const [vendorsError, setVendorsError] = useState<string | null>(null);
+  const [topRatedProducts, setTopRatedProducts] = useState<ProductItem[]>([]);
+  const [topRatedLoading, setTopRatedLoading] = useState(true);
+  const [collectionProducts, setCollectionProducts] = useState<ProductItem[]>([]);
+  const [collectionLoading, setCollectionLoading] = useState(true);
+  const [collectionError, setCollectionError] = useState<string | null>(null);
+
+  const derivedVendors = useMemo(() => {
+    const map = new Map<string, VendorItem>();
+    collectionProducts.concat(topRatedProducts, products).forEach((product) => {
+      if (!product.vendorId || map.has(product.vendorId)) return;
+      map.set(product.vendorId, {
+        id: product.vendorId,
+        vendorId: product.vendorId,
+        vendorName: product.vendorName || product.vendorId,
+        logoUrl: product.vendorLogoUrl || '',
+        isActive: true,
+        isVerified: false
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+  }, [collectionProducts, products, topRatedProducts]);
+
+  const marketplaceVendors = useMemo(() => {
+    const map = new Map<string, VendorItem>();
+    vendors.forEach((vendor) => map.set(vendor.vendorId, vendor));
+    derivedVendors.forEach((vendor) => {
+      if (!map.has(vendor.vendorId)) map.set(vendor.vendorId, vendor);
+    });
+    return Array.from(map.values()).sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+  }, [derivedVendors, vendors]);
+
+  const firebaseVendorsById = useMemo(() => {
+    return vendors.reduce<Record<string, VendorItem>>((acc, vendor) => {
+      acc[vendor.vendorId] = vendor;
+      acc[vendor.id] = vendor;
+      return acc;
+    }, {});
+  }, [vendors]);
+
+  const vendorsById = useMemo(() => {
+    return marketplaceVendors.reduce<Record<string, VendorItem>>((acc, vendor) => {
+      acc[vendor.vendorId] = vendor;
+      acc[vendor.id] = vendor;
+      return acc;
+    }, {});
+  }, [marketplaceVendors]);
+
+  const productCountByVendor = useMemo(() => {
+    const counts: Record<string, number> = {};
+    collectionProducts.concat(topRatedProducts, products).forEach((product) => {
+      if (!product.vendorId) return;
+      counts[product.vendorId] = (counts[product.vendorId] || 0) + 1;
+    });
+    return counts;
+  }, [collectionProducts, products, topRatedProducts]);
+
+  const selectedVendorItem = selectedVendor === ALL_VENDORS ? undefined : vendorsById[selectedVendor];
+
+  useEffect(() => {
+    localStorage.setItem(VENDOR_STORAGE_KEY, selectedVendor);
+  }, [selectedVendor]);
+
+  useEffect(() => {
+    setVendorsLoading(!cachedVendors);
+    const vendorsQuery = query(collection(db, 'vendors'));
+    const unsubscribe = onSnapshot(vendorsQuery, (snapshot) => {
+      const nextVendors = snapshot.docs
+        .map((doc) => normalizeVendor(doc.id, doc.data()))
+        .filter((vendor) => vendor.isActive !== false)
+        .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+      cachedVendors = nextVendors;
+      setVendors(nextVendors);
+      setVendorsLoading(false);
+      setVendorsError(null);
+    }, (firebaseError) => {
+      console.error('Vendor listener error:', firebaseError);
+      setVendorsError(null);
+      setVendorsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    setTopRatedLoading(true);
+    const topRatedQuery = query(collection(db, 'products'), limit(80));
+
+    const unsubscribe = onSnapshot(topRatedQuery, (snapshot) => {
+      const nextProducts = snapshot.docs
+        .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
+        .filter((product) => Number(product.rating || 0) >= 4.7)
+        .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
+        .slice(0, 10);
+      setTopRatedProducts(nextProducts);
+      setTopRatedLoading(false);
+    }, (firebaseError) => {
+      console.error('Top rated products listener error:', firebaseError);
+      setTopRatedProducts([]);
+      setTopRatedLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [firebaseVendorsById]);
+
+  useEffect(() => {
+    setCollectionLoading(true);
+    setCollectionError(null);
+    const baseCollection = collection(db, 'products');
+    const productsQuery = selectedVendor === ALL_VENDORS
+      ? query(baseCollection, limit(80))
+      : query(baseCollection, where('vendorId', '==', selectedVendor), limit(20));
+
+    const unsubscribe = onSnapshot(productsQuery, (snapshot) => {
+      const nextProducts = snapshot.docs
+        .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
+        .sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt))
+        .slice(0, 20);
+      setCollectionProducts(nextProducts);
+      setCollectionLoading(false);
+    }, (firebaseError) => {
+      console.error('Vendor products listener error:', firebaseError);
+      setCollectionError('Unable to load products from Firebase.');
+      setCollectionLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [firebaseVendorsById, selectedVendor]);
+
+  useEffect(() => {
+    if (selectedVendor === ALL_VENDORS) return;
+    if (marketplaceVendors.length > 0 && !vendorsById[selectedVendor]) {
+      setSelectedVendor(ALL_VENDORS);
     }
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    const count = product.reviewsCount + reviews.length;
-    const rating = Number(((product.rating * product.reviewsCount + totalRating) / count).toFixed(1));
-    return { rating, count };
+  }, [selectedVendor, marketplaceVendors.length, vendorsById]);
+
+  const matchesSearch = (product: ProductItem) => {
+    const queryText = searchTerm.trim().toLowerCase();
+    if (!queryText) return true;
+    return [product.name, product.category, product.vendorName, product.vendorId]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(queryText));
   };
 
-  const formatRatingValue = (rating: number) => {
-    if (!Number.isFinite(rating)) return '0.0';
-    return rating.toFixed(1);
-  };
+  const filteredVendors = useMemo(() => {
+    const queryText = searchTerm.trim().toLowerCase();
+    if (!queryText) return marketplaceVendors;
+    return marketplaceVendors.filter((vendor) => [vendor.vendorName, vendor.description].filter(Boolean).some((value) => String(value).toLowerCase().includes(queryText)));
+  }, [marketplaceVendors, searchTerm]);
 
-  const getRatingLabel = (product: ProductItem) => {
-    const summary = getProductReviewSummary(product);
-    if ((summary.count ?? 0) <= 0 && (!summary.rating || summary.rating <= 0)) {
-      return { label: 'No ratings', hasRating: false };
-    }
-    return {
-      label: `⭐ ${formatRatingValue(summary.rating)}${summary.count > 0 ? ` (${summary.count} reviews)` : ''}`,
-      hasRating: true,
-    };
+  const visibleTopRated = useMemo(() => topRatedProducts.filter(matchesSearch), [searchTerm, topRatedProducts]);
+  const visibleProducts = useMemo(() => collectionProducts.filter(matchesSearch), [collectionProducts, searchTerm]);
+  const selectedCount = selectedVendorItem?.productCount ?? (selectedVendor === ALL_VENDORS ? collectionProducts.length : productCountByVendor[selectedVendor] || collectionProducts.length);
+  const collectionTitle = selectedVendorItem ? `${selectedVendorItem.vendorName} Collection` : 'All Products';
+
+  const handleSelectProduct = (id: string) => {
+    onSelectProduct?.(id);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <section className="mt-4 animate-fade-in">
-        <div className="flex items-center justify-between">
+    <div className="space-y-7 pb-6 text-white">
+      <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className={`text-3xl font-bold tracking-tight flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-white">
               NOVA Showroom <span className="text-amber-400">✨</span>
             </h1>
-            <p className={`mt-1 leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              Discover our latest drops and curated collection
-            </p>
+            <p className="mt-1 text-slate-300">Discover brands, vendor drops and curated collections</p>
           </div>
+          <div className="flex items-center gap-3">
+            <button className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white backdrop-blur-xl" title="Notifications">
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
+            <button onClick={() => onNavigate('cart')} className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white backdrop-blur-xl" title="Cart">
+              <span className="material-symbols-outlined">shopping_cart</span>
+              {cartItemsCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-500 px-1 text-[10px] font-black text-white">
+                  {cartItemsCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.section>
+
+      <section className="flex items-center gap-3">
+        <label className="flex h-16 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.07] px-5 shadow-[0_0_30px_rgba(139,92,246,0.09)] backdrop-blur-2xl">
+          <span className="material-symbols-outlined text-3xl text-slate-300">search</span>
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search products, vendors and brands..."
+            className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-white outline-none placeholder:text-slate-400 sm:text-base"
+          />
+        </label>
+        <button className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.07] text-white backdrop-blur-2xl" title="Filters">
+          <span className="material-symbols-outlined">tune</span>
+        </button>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">Our Vendors</h2>
+          {vendorsError && <span className="text-xs font-semibold text-rose-300">{vendorsError}</span>}
+        </div>
+        <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+          <VendorButton
+            selected={selectedVendor === ALL_VENDORS}
+            label="All Vendors"
+            onClick={() => setSelectedVendor(ALL_VENDORS)}
+          />
+          {vendorsLoading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="flex w-24 shrink-0 flex-col items-center gap-3">
+                <div className="h-20 w-20 animate-pulse rounded-full bg-white/10" />
+                <div className="h-3 w-20 animate-pulse rounded bg-white/10" />
+              </div>
+            ))
+          ) : (
+            filteredVendors.map((vendor) => (
+              <VendorButton
+                key={vendor.id}
+                vendor={vendor}
+                selected={selectedVendor === vendor.vendorId}
+                label={vendor.vendorName}
+                productCount={vendor.productCount ?? productCountByVendor[vendor.vendorId]}
+                onClick={() => setSelectedVendor(vendor.vendorId)}
+              />
+            ))
+          )}
         </div>
       </section>
 
-      {/* Featured Banner */}
-      <section className={`rounded-2xl p-6 relative overflow-hidden group transition-colors duration-300 ${
-        isDarkMode 
-          ? 'glass-panel bg-gradient-to-r from-indigo-950/50 to-purple-950/50 border-indigo-800/20'
-          : 'glass-panel bg-gradient-to-r from-indigo-50/80 to-purple-50/80 border border-indigo-100/40'
-      }`}>
-        <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl"></div>
-        <div className="relative z-10">
-          <span className={`text-xs font-black uppercase tracking-widest block mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>Featured</span>
-          <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Spring Collection</h2>
-          <p className={`text-sm mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Explore our latest drops and exclusive pieces</p>
-          {cartItemsCount > 0 && (
-            <div className="inline-flex items-center space-x-2 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/80 shadow-sm">
-              <span className="material-symbols-outlined text-indigo-600 text-base leading-none">shopping_bag</span>
-              <span className="text-sm font-semibold text-indigo-600">{cartItemsCount} item{cartItemsCount > 1 ? 's' : ''} in cart</span>
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">⭐ Top Rated Products</h2>
+          <span className="text-sm font-semibold text-violet-300">View all</span>
+        </div>
+        <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
+          {topRatedLoading && visibleTopRated.length === 0 ? (
+            Array.from({ length: 5 }).map((_, index) => <ShimmerCard key={index} compact />)
+          ) : visibleTopRated.length > 0 ? (
+            visibleTopRated.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                vendor={product.vendorId ? vendorsById[product.vendorId] : undefined}
+                isWishlisted={wishlist.includes(product.id)}
+                onToggleWishlist={onToggleWishlist}
+                onSelectProduct={handleSelectProduct}
+                variant="carousel"
+                index={index}
+              />
+            ))
+          ) : (
+            <div className="w-full rounded-2xl border border-white/10 bg-white/[0.06] p-5 text-sm text-slate-300">
+              No top rated products available yet.
             </div>
           )}
         </div>
       </section>
 
-      {/* Products Grid */}
       <section>
-        <div className="flex justify-between items-end mb-4">
-          <h2 className={`text-base font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-            <span className="material-symbols-outlined text-indigo-600 mr-2 text-xl leading-none">local_mall</span>
-            All Products
-          </h2>
-          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${isDarkMode ? 'text-indigo-300 bg-indigo-950/70 border-indigo-700/30' : 'text-indigo-700 bg-indigo-50/70 border-indigo-100/30'}`}>
-            {products.length} Drops
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-white">{collectionTitle}</h2>
+            <p className="mt-1 text-sm font-semibold text-violet-300">{selectedCount} Products</p>
+          </div>
+          <span className="rounded-full border border-violet-400/20 bg-violet-500/15 px-3 py-1 text-xs font-black text-violet-200">
+            {selectedVendorItem ? selectedVendorItem.vendorName : 'All Vendors'}
           </span>
         </div>
 
-        {loading ? (
-          <div className={`rounded-2xl p-6 text-sm ${isDarkMode ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-            Loading showroom items...
+        {collectionError || error ? (
+          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-5 text-sm text-rose-200">
+            {collectionError || error}
           </div>
-        ) : error ? (
-          <div className="rounded-2xl p-6 bg-rose-50 text-sm text-rose-700 border border-rose-200">
-            {error}
-          </div>
-        ) : products.length === 0 ? (
-          <div className={`rounded-2xl p-6 text-sm ${isDarkMode ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-            No products available right now.
-          </div>
-        ) : (
+        ) : (collectionLoading || loading) && visibleProducts.length === 0 ? (
           <div className="grid grid-cols-2 gap-4">
-            {products.map((product) => {
-              const isWishlisted = wishlist.includes(product.id);
-              return (
-                <div 
-                  key={product.id}
-                  onClick={() => {
-                    if (onSelectProduct) {
-                      onSelectProduct(product.id);
-                    } else {
-                      onNavigate('product-details');
-                    }
-                  }}
-                  className={`glass-panel rounded-2xl p-3 flex flex-col hover:shadow-md cursor-pointer transition-all duration-300 group relative ${
-                    isDarkMode
-                      ? 'border-slate-700/30'
-                      : 'border-white/30'
-                  }`}
-                >
-                  {/* Wishlist Heart Icon overlay */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onToggleWishlist) {
-                        onToggleWishlist(product.id);
-                      }
-                    }}
-                    className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${
-                      isWishlisted 
-                        ? 'bg-rose-50 text-rose-500 border border-rose-100' 
-                        : isDarkMode
-                          ? 'bg-slate-800/60 text-slate-400 hover:text-rose-500 hover:bg-slate-700'
-                          : 'bg-white/85 text-slate-450 hover:text-rose-500 hover:bg-white'
-                    }`}
-                    title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-                  >
-                    <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}>
-                      {isWishlisted ? 'favorite' : 'favorite_border'}
-                    </span>
-                  </button>
-
-                  <div className={`h-44 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center relative border ${
-                    isDarkMode 
-                      ? 'bg-slate-800/30 border-slate-700/30'
-                      : 'bg-slate-50/70 border-slate-100'
-                  }`}>
-                    <img 
-                      src={product.imageUrl} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      referrerPolicy="no-referrer"
-                    />
-                    {product.badge && (
-                      <span className="absolute bottom-2 left-2 bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                        {product.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="leading-tight flex-grow flex flex-col justify-between">
-                    <div>
-                      <span className={`text-[8px] font-bold uppercase tracking-widest block mb-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>
-                        {product.category}
-                      </span>
-                      <h4 className={`text-xs font-bold line-clamp-1 transition-colors ${
-                        isDarkMode 
-                          ? 'text-slate-100 group-hover:text-indigo-300'
-                          : 'text-slate-800 group-hover:text-indigo-600'
-                      }`}>
-                        {product.name}
-                      </h4>
-                    </div>
-
-                    <div className="mt-3 flex flex-col gap-2">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className={`text-xs font-black ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                          ₹{product.price.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="inline-flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/85 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">
-                          <span className="text-amber-500">⭐</span>
-                          {getRatingLabel(product).label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {Array.from({ length: 6 }).map((_, index) => <ShimmerCard key={index} />)}
           </div>
+        ) : visibleProducts.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl border border-white/10 bg-white/[0.06] p-8 text-center shadow-[0_18px_50px_rgba(0,0,0,0.25)] backdrop-blur-2xl">
+            <p className="text-base font-bold text-white">No products available from this vendor yet.</p>
+            <p className="mt-2 text-sm text-slate-300">Explore another vendor.</p>
+          </motion.div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            <motion.div layout className="grid grid-cols-2 gap-4">
+              {visibleProducts.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  vendor={product.vendorId ? vendorsById[product.vendorId] : undefined}
+                  isWishlisted={wishlist.includes(product.id)}
+                  onToggleWishlist={onToggleWishlist}
+                  onSelectProduct={handleSelectProduct}
+                  index={index}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
         )}
       </section>
 
-      {/* Actions Footer */}
-      <section className="pb-4">
-        <button 
-          onClick={() => onNavigate('home')}
-          className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2"
-        >
-          <span className="material-symbols-outlined text-lg leading-none">home</span>
-          Back to Home
-        </button>
+      <section className="grid grid-cols-3 gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-center backdrop-blur-2xl">
+        {[
+          ['redeem', 'Curated Collections', 'Handpicked quality'],
+          ['star', 'Top Rated', 'Only the best'],
+          ['verified_user', 'Trusted Vendors', 'Verified brands']
+        ].map(([icon, title, subtitle]) => (
+          <div key={title} className="space-y-2">
+            <span className="material-symbols-outlined text-3xl text-violet-300">{icon}</span>
+            <p className="text-xs font-bold text-white">{title}</p>
+            <p className="text-[10px] text-slate-400">{subtitle}</p>
+          </div>
+        ))}
       </section>
     </div>
   );
 };
+
+const VendorButton = ({
+  vendor,
+  selected,
+  label,
+  productCount,
+  onClick
+}: {
+  vendor?: VendorItem;
+  selected: boolean;
+  label: string;
+  productCount?: number;
+  onClick: () => void;
+}) => (
+  <motion.button
+    type="button"
+    onClick={onClick}
+    whileTap={{ scale: 0.96 }}
+    animate={{ scale: selected ? 1.04 : 1 }}
+    transition={{ duration: 0.3 }}
+    className={`snap-start rounded-2xl px-3 py-3 text-center transition-all duration-300 ${selected ? 'border border-violet-400 bg-violet-500/15 shadow-[0_0_26px_rgba(139,92,246,0.5)]' : 'border border-transparent bg-transparent hover:bg-white/[0.04]'}`}
+  >
+    <div className="flex w-24 flex-col items-center gap-2">
+      {vendor ? (
+        <VendorLogo vendor={vendor} size="lg" />
+      ) : (
+        <div className={`flex h-20 w-20 items-center justify-center rounded-full border ${selected ? 'border-violet-300 bg-violet-500/20 text-violet-100' : 'border-white/15 bg-white/[0.06] text-white'}`}>
+          <span className="material-symbols-outlined text-4xl">grid_view</span>
+        </div>
+      )}
+      <span className="line-clamp-2 min-h-9 text-xs font-bold uppercase leading-tight text-white">{label}</span>
+      {productCount !== undefined && (
+        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-violet-200">{productCount} Products</span>
+      )}
+    </div>
+  </motion.button>
+);

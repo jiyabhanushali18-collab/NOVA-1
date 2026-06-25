@@ -197,7 +197,7 @@ const processColorImageSource = (result: Record<string, string[]>, source: unkno
 
 const buildColorImages = (data: Record<string, any>, colors: string[]) => {
   const tmp: Record<string, string[]> = {};
-  const mapSources = [data.colorImages, data.imagesByColor, data.colorImageUrls, data.imageUrls];
+  const mapSources = [data.colorImages, data.imagesByColor, data.colorImageUrls, data.imageUrls, data.images];
 
   mapSources.forEach((source) => processColorImageSource(tmp, source));
 
@@ -688,17 +688,28 @@ export default function App() {
                 .map((value: string) => value.trim())
                 .filter((value: string) => value.length > 0)
             : ['Standard'];
-          const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || '';
-          const imageUrls = asStringArray(data.imageUrls);
+          const imageUrls = [
+            ...asStringArray(data.images),
+            ...asStringArray(data.imageUrls)
+          ].filter((value, index, array) => value && array.indexOf(value) === index);
+          const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || imageUrls[0] || '';
+          const stock = data.stock !== undefined ? Number(data.stock) : undefined;
+          const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName);
+          const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl);
 
           fetchedProducts[id] = {
             id,
-            name: String(data.name || 'Unnamed Product'),
+            productId: String(data.productId || id),
+            vendorId: data.vendorId ? String(data.vendorId) : undefined,
+            vendorName,
+            vendorLogoUrl,
+            name: String(data.name || data.productName || 'Unnamed Product'),
             category: String(data.category || 'Uncategorized'),
-            price: Number(data.price || 0),
-            originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : undefined,
+            price: Number(data.discountPrice || data.price || 0),
+            originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
+            discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
             rating: Number(data.rating || 0),
-            reviewsCount: Number(data.reviewsCount || 0),
+            reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
             imageUrl,
             imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
             colorImages: buildColorImages({ ...data, imageUrl }, colors),
@@ -709,10 +720,13 @@ export default function App() {
                   .map((value: string) => value.trim())
                   .filter((value: string) => value.length > 0)
               : ['One Size'],
-            inStock: data.inStock !== undefined ? Boolean(data.inStock) : true,
-            stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : undefined,
-            badge: data.badge ? String(data.badge) : undefined,
-            details: Array.isArray(data.details) ? data.details.map(String) : []
+            inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
+            stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,
+            isTopRated: Boolean(data.isTopRated),
+            isFeatured: Boolean(data.isFeatured),
+            badge: data.badge ? String(data.badge) : data.isTopRated ? 'Top Pick' : undefined,
+            details: Array.isArray(data.details) ? data.details.map(String) : Array.isArray(data.description) ? data.description.map(String) : data.description ? [String(data.description)] : [],
+            createdAt: data.createdAt
           };
         });
 

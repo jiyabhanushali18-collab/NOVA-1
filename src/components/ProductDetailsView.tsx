@@ -32,6 +32,8 @@ interface ProductDetailsViewProps {
   reviewListenerError?: string | null;
   onSubmitReview?: (productId: string, rating: number, comment: string) => Promise<void>;
   currentUserName?: string;
+  currentReviewerName?: string;
+  activeUid?: string;
 }
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({

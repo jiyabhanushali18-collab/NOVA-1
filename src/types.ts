@@ -19,10 +19,16 @@ export type ScreenId =
 
 export interface ProductItem {
   id: string;
+  productId?: string;
+  vendorId?: string;
+  vendorName?: string;
+  vendorLogoUrl?: string;
   name: string;
   category: string;
+  description?: string;
   price: number;
   originalPrice?: number;
+  discountPrice?: number;
   rating: number;
   reviewsCount: number;
   imageUrl: string;
@@ -33,18 +39,42 @@ export interface ProductItem {
   sizes: string[];
   inStock: boolean;
   stockLeft?: number;
+  isTopRated?: boolean;
+  isFeatured?: boolean;
   badge?: string;
   details: string[];
+  createdAt?: any;
 }
 
 export interface ProductReview {
   id: string;
-  productId: string;
-  userId: string;
-  userName: string;
+  productId?: string;
+  vendorId?: string;
+  userId?: string;
+  userName?: string;
   rating: number;
-  comment: string;
-  createdAt: any;
+  comment?: string;
+  createdAt?: any;
+  reviewer?: string;
+  text?: string;
+  date?: string;
+  source?: 'tryon' | 'product';
+  accountUid?: string;
+}
+
+export interface VendorItem {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  logoUrl: string;
+  bannerUrl?: string;
+  description?: string;
+  followers?: number;
+  rating?: number;
+  isVerified?: boolean;
+  isActive?: boolean;
+  createdAt?: any;
+  productCount?: number;
 }
 
 export interface CartItem {
