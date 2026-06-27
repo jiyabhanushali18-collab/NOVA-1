@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
+import { normalizeProductVariants } from '../utils/productVariants';
 
 interface ShowroomViewProps {
   products: ProductItem[];
@@ -67,7 +68,13 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
   const vendorId = data.vendorId ? String(data.vendorId) : undefined;
   const vendor = vendorId ? vendorsById[vendorId] : undefined;
   const stock = data.stock !== undefined ? Number(data.stock) : undefined;
-  const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || images[0] || fallbackImage;
+  const colors = Array.isArray(data.colors) ? data.colors.map(String).filter(Boolean) : ['Standard'];
+  const variants = normalizeProductVariants(data, colors);
+  const allImages = [
+    ...images,
+    ...variants.flatMap((variant) => variant.images || [])
+  ].filter((value, index, array) => value && array.indexOf(value) === index);
+  const imageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || allImages[0] || fallbackImage;
 
   return {
     id,
@@ -84,8 +91,11 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
     rating: Number(data.rating || 0),
     reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
     imageUrl,
-    imageUrls: images.length > 0 ? images : [imageUrl],
-    colors: Array.isArray(data.colors) ? data.colors.map(String) : ['Standard'],
+    mainImage: imageUrl,
+    images: allImages.length > 0 ? allImages : [imageUrl],
+    imageUrls: allImages.length > 0 ? allImages : [imageUrl],
+    variants: variants.length > 0 ? variants : undefined,
+    colors: variants.length > 0 ? variants.map((variant) => variant.color) : colors,
     sizes: Array.isArray(data.sizes) ? data.sizes.map(String) : ['One Size'],
     inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
     stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,

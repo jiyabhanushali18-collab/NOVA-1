@@ -24,6 +24,7 @@ import { ProfileAnalysisView } from './components/ProfileAnalysisView';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
+import { normalizeProductVariants } from './utils/productVariants';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -224,7 +225,18 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
     if (!Array.isArray(source)) return;
     source.forEach((variant) => {
       if (!variant || typeof variant !== 'object') return;
-      addColorImage(tmp, (variant as any).color || (variant as any).name || (variant as any).label, (variant as any).imageUrl || (variant as any).image || (variant as any).url || (variant as any).src);
+      addColorImage(
+        tmp,
+        (variant as any).color || (variant as any).name || (variant as any).label,
+        [
+          (variant as any).images,
+          (variant as any).imageUrls,
+          (variant as any).imageUrl,
+          (variant as any).image,
+          (variant as any).url,
+          (variant as any).src
+        ]
+      );
     });
   });
 
@@ -350,6 +362,10 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
 
   return undefined;
 };
+
+const getDefaultProductColor = (product?: ProductItem) => (
+  product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
+);
 
 export default function App() {
   // Session authorization states loaded from localStorage
@@ -709,7 +725,14 @@ export default function App() {
             ...asStringArray(data.images),
             ...asStringArray(data.imageUrls)
           ].filter((value, index, array) => value && array.indexOf(value) === index);
-          const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || imageUrls[0] || '';
+          const colorImages = buildColorImages({ ...data }, colors);
+          const variants = normalizeProductVariants(data, colors, colorImages);
+          const variantImages = variants.flatMap((variant) => variant.images || []);
+          const images = [
+            ...imageUrls,
+            ...variantImages
+          ].filter((value, index, array) => value && array.indexOf(value) === index);
+          const imageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || images[0] || '';
           const stock = data.stock !== undefined ? Number(data.stock) : undefined;
           const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName);
           const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl);
@@ -728,9 +751,12 @@ export default function App() {
             rating: Number(data.rating || 0),
             reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
             imageUrl,
-            imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-            colorImages: buildColorImages({ ...data, imageUrl }, colors),
-            colors,
+            mainImage: imageUrl,
+            images: images.length > 0 ? images : imageUrl ? [imageUrl] : undefined,
+            imageUrls: images.length > 0 ? images : undefined,
+            colorImages,
+            variants: variants.length > 0 ? variants : undefined,
+            colors: variants.length > 0 ? variants.map((variant) => variant.color) : colors,
             sizes: Array.isArray(data.sizes)
               ? data.sizes
                   .map((value: unknown) => String(value))
@@ -922,9 +948,7 @@ export default function App() {
             onSelectProduct={(id) => {
               setSelectedProductId(id);
               const prod = productsData[id] || products[id];
-              if (prod && prod.colors && prod.colors.length > 0) {
-                setSelectedColor(prod.colors[0]);
-              }
+              setSelectedColor(getDefaultProductColor(prod));
               navigate('product-details', { productId: id });
             }}
           />
@@ -1032,9 +1056,7 @@ export default function App() {
             onSelectProduct={(id) => {
               setSelectedProductId(id);
               const prod = productsData[id] || products[id];
-              if (prod && prod.colors && prod.colors.length > 0) {
-                setSelectedColor(prod.colors[0]);
-              }
+              setSelectedColor(getDefaultProductColor(prod));
               navigate('product-details', { productId: id });
             }}
             cartItemsCount={countCartTotalItems()}
@@ -1263,7 +1285,7 @@ export default function App() {
                 {wishlist.map((productId) => {
                   const prod = productsData[productId] || products[productId];
                   if (!prod) return null;
-                  const defaultColor = prod.colors && prod.colors.length > 0 ? prod.colors[0] : 'Default';
+                  const defaultColor = getDefaultProductColor(prod);
                   const defaultSize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : 'One Size';
                   return (
                     <div key={productId} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50">

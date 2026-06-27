@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount } from '../types';
+import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem } from '../types';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
 
@@ -32,6 +32,10 @@ interface ProfileViewProps {
   onRemoveAccount?: (uid: string) => void;
   onSwitchAccount?: (uid?: string) => void;
 }
+
+const getDefaultProductColor = (product?: ProductItem) => (
+  product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
+);
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
   onNavigate, 
@@ -617,7 +621,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               const matchedProd = products[productId];
               if (!matchedProd) return null;
               
-              const defaultColor = matchedProd.colors && matchedProd.colors.length > 0 ? matchedProd.colors[0] : 'Default';
+              const defaultColor = getDefaultProductColor(matchedProd);
               const defaultSize = matchedProd.sizes && matchedProd.sizes.length > 0 ? matchedProd.sizes[0] : 'One Size';
 
               return (
@@ -1497,7 +1501,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   const item = products[productId];
                   if (!item) return null;
                   
-                  const defaultColor = item.colors && item.colors.length > 0 ? item.colors[0] : 'Default';
+                  const defaultColor = getDefaultProductColor(item);
                   const defaultSize = item.sizes && item.sizes.length > 0 ? item.sizes[0] : 'M';
 
                   return (

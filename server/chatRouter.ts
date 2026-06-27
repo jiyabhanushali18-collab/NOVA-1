@@ -65,12 +65,27 @@ const buildKnowledgeContext = (rules: FashionRule[]) =>
 
 const findProductSuggestions = (query: string, products: any[]) => {
   const tokens = normalizeText(query).split(' ').filter(Boolean);
+  const getVariantColors = (product: any) => Array.isArray(product.variants)
+    ? product.variants.map((variant: any) => variant?.color).filter(Boolean)
+    : [];
+  const getProductImage = (product: any) => (
+    product.imageUrl ||
+    product.mainImage ||
+    product.image ||
+    (Array.isArray(product.images) ? product.images.find(Boolean) : undefined) ||
+    (Array.isArray(product.imageUrls) ? product.imageUrls.find(Boolean) : undefined) ||
+    (Array.isArray(product.variants)
+      ? product.variants.flatMap((variant: any) => Array.isArray(variant?.images) ? variant.images : []).find(Boolean)
+      : undefined)
+  );
+
   const scored = products
     .map((product) => {
       const haystack = [
         product.name,
         product.category,
         ...(product.colors ?? []),
+        ...getVariantColors(product),
         ...(product.tags ?? []),
         ...(product.details ?? []),
       ].join(' ');
@@ -81,7 +96,7 @@ const findProductSuggestions = (query: string, products: any[]) => {
     .map((item) => item.product);
 
   const suggestions = (scored.length > 0 ? scored.slice(0, 4) : products.slice(0, 4)).map((product) => {
-    let imageUrl = product.imageUrl;
+    let imageUrl = getProductImage(product);
     
     // If imageUrl is missing, try to find from local products
     if (!imageUrl) {

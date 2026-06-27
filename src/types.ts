@@ -17,6 +17,12 @@ export type ScreenId =
   | 'setup-preferences'
   | 'profile-analysis';
 
+export interface ProductVariant {
+  color: string;
+  images: string[];
+  stock?: number;
+}
+
 export interface ProductItem {
   id: string;
   productId?: string;
@@ -32,9 +38,12 @@ export interface ProductItem {
   rating: number;
   reviewsCount: number;
   imageUrl: string;
+  mainImage?: string;
+  images?: string[];
   imageUrls?: string[];
   // colorImages can be a single URL or an array of URLs per color
   colorImages?: Record<string, string | string[]>;
+  variants?: ProductVariant[];
   colors: string[];
   sizes: string[];
   inStock: boolean;

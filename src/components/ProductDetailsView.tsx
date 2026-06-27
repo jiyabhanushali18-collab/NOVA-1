@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ScreenId, ProductItem, ProductReview } from '../types';
+import { findColorImages } from '../utils/productVariants';
 
 const normalizeColor = (color?: string) => (color || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
@@ -15,6 +16,12 @@ const findColorImage = (colorImages: Record<string, string | string[]> | undefin
   const matchedKey = Object.keys(colorImages).find((key) => normalizeColor(key) === normalizedColor);
   return matchedKey ? colorImages[matchedKey] : undefined;
 };
+
+const getProductColors = (product: ProductItem) => (
+  product.variants && product.variants.length > 0
+    ? product.variants.map((variant) => variant.color).filter(Boolean)
+    : product.colors || ['Default']
+);
 
 interface ProductDetailsViewProps {
   products: Record<string, ProductItem>;
@@ -63,6 +70,11 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
   const reviewStars = averageRating && averageRating > 0 ? averageRating : mainProduct.rating;
   const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : mainProduct.reviewsCount;
+  const variantColors = getProductColors(mainProduct);
+  const selectedVariant = mainProduct.variants?.find((variant) => normalizeColor(variant.color) === normalizeColor(selectedColor)) || mainProduct.variants?.[0];
+  const selectedVariantStock = selectedVariant?.stock;
+  const currentStock = selectedVariantStock ?? mainProduct.stockLeft;
+  const currentInStock = currentStock !== undefined ? currentStock > 0 : mainProduct.inStock;
 
   const formatReviewDate = (createdAt: any) => {
     if (!createdAt) return 'Unknown date';
@@ -88,18 +100,28 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
   // Set default color to first color when product changes
   React.useEffect(() => {
-    if (mainProduct.colors && mainProduct.colors.length > 0) {
-      if (!selectedColor || !mainProduct.colors.includes(selectedColor)) {
-        setSelectedColor(mainProduct.colors[0]);
+    if (variantColors.length > 0) {
+      if (!selectedColor || !variantColors.includes(selectedColor)) {
+        setSelectedColor(variantColors[0]);
       }
     }
-    // reset gallery when product or color changes
     setGalleryIndex(0);
-  }, [selectedProductId, mainProduct.colors]);
+  }, [selectedProductId, variantColors.join('|')]);
+
+  React.useEffect(() => {
+    setGalleryIndex(0);
+  }, [selectedColor]);
 
   // Get the correct image URL or gallery for the selected color
   const getSelectedColorImages = () => {
     if (!mainProduct) return [] as string[];
+
+    if (selectedVariant && selectedVariant.images.length > 0) {
+      return selectedVariant.images.filter(Boolean);
+    }
+
+    const variantColorImages = findColorImages(mainProduct.colorImages, selectedColor);
+    if (variantColorImages.length > 0) return variantColorImages;
 
     const colorImage = findColorImage(mainProduct.colorImages, selectedColor);
     if (colorImage) {
@@ -117,7 +139,11 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       return mainProduct.imageUrls.filter(Boolean);
     }
 
-    return mainProduct.imageUrl ? [mainProduct.imageUrl] : [];
+    if (mainProduct.images && mainProduct.images.length > 0) {
+      return mainProduct.images.filter(Boolean);
+    }
+
+    return (mainProduct.mainImage || mainProduct.imageUrl) ? [mainProduct.mainImage || mainProduct.imageUrl] : [];
   };
 
   const selectedColorImages = getSelectedColorImages();
@@ -149,7 +175,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       <section className="relative w-full h-[380px] bg-slate-100 flex items-center justify-center overflow-hidden rounded-b-3xl border-b border-slate-200">
         <img 
           key={`${selectedColor}-${galleryIndex}`}
-          alt={`${mainProduct.name} in ${selectedColor}`}
+          alt={`${mainProduct.name} in ${selectedVariant?.color || selectedColor}`}
           className="w-full h-full object-cover object-center absolute inset-0 cursor-pointer"
           referrerPolicy="no-referrer"
           src={heroImageUrl}
@@ -273,9 +299,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 : 'text-slate-400'
             }`}>Color: <span className={`font-semibold ${
               isDarkMode ? 'text-slate-100' : 'text-slate-800'
-            }`}>{selectedColor}</span></div>
+            }`}>{selectedVariant?.color || selectedColor}</span></div>
             <div className="flex gap-2.5">
-              {(mainProduct.colors || ['Default']).map((colorName) => {
+              {variantColors.map((colorName) => {
                 const colorMap: Record<string, string> = {
                   'Lavender': 'bg-indigo-300',
                   'Mint Green': 'bg-teal-300',
@@ -348,10 +374,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               })}
             </div>
             <div className="flex justify-between mt-2.5 text-[10px] font-bold">
-              <span className="text-green-600 flex items-center gap-0.5">
-                <span className="material-symbols-outlined text-xs leading-none">check_circle</span> In Stock
+              <span className={`${currentInStock ? 'text-green-600' : 'text-rose-600'} flex items-center gap-0.5`}>
+                <span className="material-symbols-outlined text-xs leading-none">{currentInStock ? 'check_circle' : 'cancel'}</span> {currentInStock ? 'In Stock' : 'Out of Stock'}
               </span>
-              <span className="text-amber-600">Only {mainProduct.stockLeft} left!</span>
+              {currentStock !== undefined && currentInStock && (
+                <span className="text-amber-600">Only {currentStock} left!</span>
+              )}
             </div>
           </div>
 
