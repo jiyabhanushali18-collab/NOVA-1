@@ -34,7 +34,7 @@ interface ProfileViewProps {
 }
 
 const getDefaultProductColor = (product?: ProductItem) => (
-  product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
+  product?.variants?.[0]?.colorName || product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
 );
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 

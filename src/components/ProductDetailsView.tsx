@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ScreenId, ProductItem, ProductReview } from '../types';
+import { ProductVariant, ScreenId, ProductItem, ProductReview } from '../types';
 import { findColorImages } from '../utils/productVariants';
+import { getRequiredColorHex, isDarkColor, isLightColor, normalizeColorKey } from '../utils/colors';
 
-const normalizeColor = (color?: string) => (color || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+const normalizeColor = normalizeColorKey;
 
 const findColorImage = (colorImages: Record<string, string | string[]> | undefined, color?: string) => {
   if (!colorImages || !color) return undefined;
@@ -19,9 +20,11 @@ const findColorImage = (colorImages: Record<string, string | string[]> | undefin
 
 const getProductColors = (product: ProductItem) => (
   product.variants && product.variants.length > 0
-    ? product.variants.map((variant) => variant.color).filter(Boolean)
+    ? product.variants.map((variant) => variant.colorName || variant.color).filter(Boolean)
     : product.colors || ['Default']
 );
+
+const getVariantLabel = (variant?: ProductVariant) => variant?.colorName || variant?.color || 'Default';
 
 interface ProductDetailsViewProps {
   products: Record<string, ProductItem>;
@@ -71,10 +74,11 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const reviewStars = averageRating && averageRating > 0 ? averageRating : mainProduct.rating;
   const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : mainProduct.reviewsCount;
   const variantColors = getProductColors(mainProduct);
-  const selectedVariant = mainProduct.variants?.find((variant) => normalizeColor(variant.color) === normalizeColor(selectedColor)) || mainProduct.variants?.[0];
+  const selectedVariant = mainProduct.variants?.find((variant) => normalizeColor(getVariantLabel(variant)) === normalizeColor(selectedColor)) || mainProduct.variants?.[0];
   const selectedVariantStock = selectedVariant?.stock;
   const currentStock = selectedVariantStock ?? mainProduct.stockLeft;
-  const currentInStock = currentStock !== undefined ? currentStock > 0 : mainProduct.inStock;
+  const currentInStock = selectedVariant?.isAvailable ?? (currentStock !== undefined ? currentStock > 0 : mainProduct.inStock);
+  const currentSku = selectedVariant?.sku;
 
   const formatReviewDate = (createdAt: any) => {
     if (!createdAt) return 'Unknown date';
@@ -175,7 +179,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       <section className="relative w-full h-[380px] bg-slate-100 flex items-center justify-center overflow-hidden rounded-b-3xl border-b border-slate-200">
         <img 
           key={`${selectedColor}-${galleryIndex}`}
-          alt={`${mainProduct.name} in ${selectedVariant?.color || selectedColor}`}
+          alt={`${mainProduct.name} in ${getVariantLabel(selectedVariant) || selectedColor}`}
           className="w-full h-full object-cover object-center absolute inset-0 cursor-pointer"
           referrerPolicy="no-referrer"
           src={heroImageUrl}
@@ -299,39 +303,30 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 : 'text-slate-400'
             }`}>Color: <span className={`font-semibold ${
               isDarkMode ? 'text-slate-100' : 'text-slate-800'
-            }`}>{selectedVariant?.color || selectedColor}</span></div>
+            }`}>{getVariantLabel(selectedVariant) || selectedColor}</span></div>
             <div className="flex gap-2.5">
-              {variantColors.map((colorName) => {
-                const colorMap: Record<string, string> = {
-                  'Lavender': 'bg-indigo-300',
-                  'Mint Green': 'bg-teal-300',
-                  'Beige': 'bg-amber-100',
-                  'Black': 'bg-slate-800',
-                  'Sky Blue': 'bg-sky-300',
-                  'Olive': 'bg-emerald-800',
-                  'White': 'bg-white border-slate-300',
-                  'Off-White': 'bg-amber-50',
-                  'Black Accents': 'bg-slate-700',
-                  'Navy': 'bg-blue-900',
-                  'Graphite': 'bg-slate-500',
-                  'Classic Grey': 'bg-slate-400',
-                  'Navy Blue': 'bg-indigo-900',
-                  'Stonewash Blue': 'bg-sky-400',
-                  'Classic Denim': 'bg-blue-800',
-                  'Sand': 'bg-amber-200',
-                  'Chambray': 'bg-sky-200',
-                  'Default': 'bg-indigo-500'
-                };
-                const swClass = colorMap[colorName] || 'bg-slate-400';
+              {(mainProduct.variants && mainProduct.variants.length > 0 ? mainProduct.variants : variantColors.map((colorName, index) => ({
+                id: colorName,
+                colorName,
+                colorHex: getRequiredColorHex(colorName),
+                images: [],
+                thumbnail: '',
+                isAvailable: true,
+                displayOrder: index,
+                color: colorName
+              }))).map((variant) => {
+                const colorName = getVariantLabel(variant);
                 const isActive = selectedColor === colorName;
+                const colorHex = variant.colorHex || getRequiredColorHex(colorName);
                 return (
                   <button
-                    key={colorName}
+                    key={variant.id || colorName}
                     onClick={() => setSelectedColor(colorName)}
                     title={colorName}
-                    className={`w-8 h-8 rounded-full ${swClass} border transition-all ${
-                      isActive ? 'ring-2 ring-indigo-600 ring-offset-2 border-white' : 'border-slate-200 opacity-60'
-                    }`}
+                    className={`h-8 w-8 rounded-full border transition-all ${
+                      isActive ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-white shadow-[0_0_18px_rgba(168,85,247,0.65)]' : 'opacity-70 hover:opacity-100'
+                    } ${isLightColor(colorHex) ? 'border-slate-300' : 'border-white/40'} ${isDarkColor(colorHex) ? 'shadow-md shadow-slate-950/25' : ''}`}
+                    style={{ backgroundColor: colorHex }}
                   />
                 );
               })}
@@ -381,6 +376,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 <span className="text-amber-600">Only {currentStock} left!</span>
               )}
             </div>
+            {currentSku && (
+              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">SKU: {currentSku}</div>
+            )}
           </div>
 
           {/* Footer actions buttons block */}

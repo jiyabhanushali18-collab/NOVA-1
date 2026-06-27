@@ -66,7 +66,7 @@ const buildKnowledgeContext = (rules: FashionRule[]) =>
 const findProductSuggestions = (query: string, products: any[]) => {
   const tokens = normalizeText(query).split(' ').filter(Boolean);
   const getVariantColors = (product: any) => Array.isArray(product.variants)
-    ? product.variants.map((variant: any) => variant?.color).filter(Boolean)
+    ? product.variants.map((variant: any) => variant?.colorName || variant?.color).filter(Boolean)
     : [];
   const getProductImage = (product: any) => (
     product.imageUrl ||

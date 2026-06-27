@@ -364,7 +364,7 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
 };
 
 const getDefaultProductColor = (product?: ProductItem) => (
-  product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
+  product?.variants?.[0]?.colorName || product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
 );
 
 export default function App() {
@@ -756,7 +756,8 @@ export default function App() {
             imageUrls: images.length > 0 ? images : undefined,
             colorImages,
             variants: variants.length > 0 ? variants : undefined,
-            colors: variants.length > 0 ? variants.map((variant) => variant.color) : colors,
+            defaultVariantId: variants[0]?.id,
+            colors: variants.length > 0 ? variants.map((variant) => variant.colorName) : colors,
             sizes: Array.isArray(data.sizes)
               ? data.sizes
                   .map((value: unknown) => String(value))

@@ -18,9 +18,16 @@ export type ScreenId =
   | 'profile-analysis';
 
 export interface ProductVariant {
-  color: string;
+  id: string;
+  colorName: string;
+  colorHex: string;
   images: string[];
+  thumbnail: string;
   stock?: number;
+  sku?: string;
+  isAvailable: boolean;
+  displayOrder: number;
+  color?: string;
 }
 
 export interface ProductItem {
@@ -44,6 +51,7 @@ export interface ProductItem {
   // colorImages can be a single URL or an array of URLs per color
   colorImages?: Record<string, string | string[]>;
   variants?: ProductVariant[];
+  defaultVariantId?: string;
   colors: string[];
   sizes: string[];
   inStock: boolean;
