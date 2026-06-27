@@ -26,12 +26,14 @@ export const saveUserToFirestore = async (
   name: string,
   email: string,
   phone: string,
-  isNewUser: boolean = false
+  isNewUser: boolean = false,
+  address?: string,
+  pinCode?: string
 ): Promise<void> => {
   try {
     const normalizedEmail = email.toLowerCase().replace(/[@.]/g, '_');
     const userRef = doc(db, 'users', normalizedEmail);
-    const userData = {
+    const userData: any = {
       uid: normalizedEmail,
       name,
       email,
@@ -41,6 +43,8 @@ export const saveUserToFirestore = async (
       lastLogin: serverTimestamp(),
       profilePhoto: undefined
     };
+    if (address) userData.address = address;
+    if (pinCode) userData.pinCode = pinCode;
     
     await setDoc(userRef, userData, { merge: true });
   } catch (err) {

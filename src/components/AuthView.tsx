@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Phone, User, Check, AlertCircle, RefreshCw, Smartphone, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface AuthViewProps {
-  onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean) => void;
+  onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => void;
   initialMode?: 'login' | 'signup';
 }
 
@@ -11,6 +11,8 @@ interface RegisterUser {
   name: string;
   email: string;
   phone: string;
+  address?: string;
+  pinCode?: string;
 }
 
 // Initial seed accounts for outstanding out-of-the-box convenience!
@@ -27,6 +29,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [pinCode, setPinCode] = useState('');
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -70,7 +74,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     return /^\+[1-9]\d{9,14}$/.test(value);
   };
 
-  const loginWithPhone = async (phone: string, signupEmail?: string) => {
+  const loginWithPhone = async (phone: string, signupEmail?: string, signupAddress?: string, signupPinCode?: string) => {
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
@@ -88,7 +92,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
       const newUser: RegisterUser = {
         name: name.trim() || 'Guest User',
         phone: finalPhone,
-        email: finalEmail
+        email: finalEmail,
+        address: signupAddress?.trim(),
+        pinCode: signupPinCode?.trim()
       };
       const updatedUsers = [...registeredUsers.filter((u) => u.phone.replace(/\s+/g, '') !== finalPhone), newUser];
       localStorage.setItem('nova_registered_users', JSON.stringify(updatedUsers));
@@ -98,7 +104,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     setSuccess('Login successful! Redirecting you to Home.');
     setTimeout(() => {
       setIsSubmitting(false);
-      onLoginSuccess(finalName, finalEmail, finalPhone, mode === 'signup');
+      onLoginSuccess(finalName, finalEmail, finalPhone, mode === 'signup', signupAddress?.trim(), signupPinCode?.trim());
     }, 500);
   };
 
@@ -130,24 +136,28 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
         setError('Please provide your email address to register.');
         return;
       }
-      let normalizedEmail = email.trim().toLowerCase();
-      // Enforce @gmail.com domain requirement
-      if (normalizedEmail.includes('@')) {
-        if (!normalizedEmail.endsWith('@gmail.com')) {
-          setError('Email must be a @gmail.com address.');
+        if (pinCode.trim() && !/^\d{6}$/.test(pinCode.trim())) {
+          setError('Please enter a valid 6-digit PIN code.');
           return;
         }
-        if (!/^[^\s@]+@gmail\.com$/.test(normalizedEmail)) {
-          setError('Please provide a valid @gmail.com email address.');
-          return;
+        let normalizedEmail = email.trim().toLowerCase();
+        // Enforce @gmail.com domain requirement
+        if (normalizedEmail.includes('@')) {
+          if (!normalizedEmail.endsWith('@gmail.com')) {
+            setError('Email must be a @gmail.com address.');
+            return;
+          }
+          if (!/^[^\s@]+@gmail\.com$/.test(normalizedEmail)) {
+            setError('Please provide a valid @gmail.com email address.');
+            return;
+          }
+        } else {
+          normalizedEmail = `${normalizedEmail}@gmail.com`;
         }
-      } else {
-        normalizedEmail = `${normalizedEmail}@gmail.com`;
+        signupEmailValue = normalizedEmail;
       }
-      signupEmailValue = normalizedEmail;
-    }
 
-    await loginWithPhone(normalizedPhone, signupEmailValue);
+      await loginWithPhone(normalizedPhone, signupEmailValue, address.trim() || undefined, pinCode.trim() || undefined);
   };
 
   return (
@@ -168,19 +178,21 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
           <p className="text-xs font-bold text-slate-400 mt-0.5 tracking-wider uppercase font-mono">AR & AI Curation Engine</p>
         </div>
 
-        <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-6 relative">
-          <button
-            onClick={() => { setMode('login'); setError(null); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all relative z-10 text-center ${mode === 'login' ? 'text-indigo-600 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-800'}`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => { setMode('signup'); setError(null); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all relative z-10 text-center ${mode === 'signup' ? 'text-indigo-600 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-800'}`}
-          >
-            Create Account
-          </button>
+        <div className="flex flex-col gap-2 mb-6">
+          <div className="flex bg-slate-50 p-1.5 rounded-2xl relative">
+            <button
+              onClick={() => { setMode('login'); setError(null); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all relative z-10 text-center ${mode === 'login' ? 'text-indigo-600 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setMode('signup'); setError(null); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all relative z-10 text-center ${mode === 'signup' ? 'text-indigo-600 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Create Account
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleRequestOtp} className="space-y-4 flex-grow flex flex-col justify-between">
@@ -225,6 +237,33 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
                       required={mode === 'signup'}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Address</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Street, locality, city"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full pl-3 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">PIN Code</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="560038"
+                      maxLength={6}
+                      value={pinCode}
+                      onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
+                      className="w-full pl-3 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
                     />
                   </div>
                 </div>

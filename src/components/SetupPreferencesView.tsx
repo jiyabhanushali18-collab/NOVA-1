@@ -286,14 +286,23 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               </section>
 
               <footer className="mt-7">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="flex h-14 w-full items-center justify-center gap-4 rounded-[12px] bg-gradient-to-r from-indigo-600 to-violet-700 text-base font-black text-white shadow-[0_18px_30px_rgba(99,65,238,0.24)] transition-transform active:scale-[0.99]"
-                >
-                  Continue to Body Measurements
-                  <ArrowRight className="h-7 w-7" />
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="flex h-14 w-full items-center justify-center gap-4 rounded-[12px] bg-gradient-to-r from-indigo-600 to-violet-700 text-base font-black text-white shadow-[0_18px_30px_rgba(99,65,238,0.24)] transition-transform active:scale-[0.99]"
+                  >
+                    Continue to Body Measurements
+                    <ArrowRight className="h-7 w-7" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFinish}
+                    className="flex h-14 w-full items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-slate-100 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-200"
+                  >
+                    Skip measurements and enter NOVA
+                  </button>
+                </div>
                 <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
                   <ShieldCheck className="h-5 w-5" />
                   Your data is private and secure. Only used to personalize your experience.
@@ -396,23 +405,32 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               <SizeChartPreview gender={selectedGender} entries={selectedChart} selectedSize={selectedSize} />
 
               <footer className="mt-auto pt-8">
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white text-sm font-black text-slate-600 shadow-sm"
+                    className="flex h-14 w-full sm:w-auto flex-1 items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white text-sm font-black text-slate-600 shadow-sm"
                   >
                     <ArrowLeft className="h-5 w-5" />
                     Back
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleFinish}
-                    className="flex h-14 flex-[2] items-center justify-center gap-3 rounded-[12px] bg-gradient-to-r from-indigo-600 to-violet-700 text-sm font-black text-white shadow-[0_18px_30px_rgba(99,65,238,0.24)]"
-                  >
-                    Save & Enter NOVA
-                    <ArrowRight className="h-6 w-6" />
-                  </button>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-[2]">
+                    <button
+                      type="button"
+                      onClick={handleFinish}
+                      className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-slate-200 bg-slate-100 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-200"
+                    >
+                      Skip & Enter NOVA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleFinish}
+                      className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] bg-gradient-to-r from-indigo-600 to-violet-700 text-sm font-black text-white shadow-[0_18px_30px_rgba(99,65,238,0.24)]"
+                    >
+                      Save & Enter NOVA
+                      <ArrowRight className="h-6 w-6" />
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
                   <ShieldCheck className="h-5 w-5" />

@@ -97,23 +97,31 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     setGalleryIndex(0);
   }, [selectedProductId, mainProduct.colors]);
 
-  // Get the correct image URL based on selected color
-  const getProductImageUrl = () => {
-    if (!mainProduct) return '';
+  // Get the correct image URL or gallery for the selected color
+  const getSelectedColorImages = () => {
+    if (!mainProduct) return [] as string[];
 
-    // Try colorImages first with robust color matching
     const colorImage = findColorImage(mainProduct.colorImages, selectedColor);
-    if (colorImage) return colorImage;
-
-    // Fallback to indexed imageUrls array
-    const colorIndex = mainProduct.colors.indexOf(selectedColor);
-    if (colorIndex !== -1 && mainProduct.imageUrls && mainProduct.imageUrls[colorIndex]) {
-      return mainProduct.imageUrls[colorIndex];
+    if (colorImage) {
+      return Array.isArray(colorImage) ? colorImage.filter(Boolean) : [colorImage].filter(Boolean);
     }
 
-    // Final fallback to single imageUrl
-    return mainProduct.imageUrl;
+    if (mainProduct.imageUrls && mainProduct.colors && mainProduct.colors.length > 0 && mainProduct.imageUrls.length === mainProduct.colors.length) {
+      const colorIndex = mainProduct.colors.indexOf(selectedColor);
+      if (colorIndex !== -1 && mainProduct.imageUrls[colorIndex]) {
+        return [mainProduct.imageUrls[colorIndex]];
+      }
+    }
+
+    if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
+      return mainProduct.imageUrls.filter(Boolean);
+    }
+
+    return mainProduct.imageUrl ? [mainProduct.imageUrl] : [];
   };
+
+  const selectedColorImages = getSelectedColorImages();
+  const heroImageUrl = selectedColorImages[galleryIndex] || selectedColorImages[0] || mainProduct.imageUrl || '';
 
   const handleAddToCart = (prodId: string, color: string, size: string) => {
     onAddToCart(prodId, color, size);
@@ -144,38 +152,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           alt={`${mainProduct.name} in ${selectedColor}`}
           className="w-full h-full object-cover object-center absolute inset-0 cursor-pointer"
           referrerPolicy="no-referrer"
-          src={(() => {
-            // build a small gallery: prefer color-specific images array; only fall back to global images if no color-specific images
-            const colorImg = findColorImage(mainProduct.colorImages, selectedColor);
-            const imgs: string[] = [];
-            if (colorImg) {
-              if (Array.isArray(colorImg)) colorImg.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
-              else if (typeof colorImg === 'string') imgs.push(colorImg);
-            } else {
-              if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
-                mainProduct.imageUrls.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
-              }
-              if (mainProduct.imageUrl && !imgs.includes(mainProduct.imageUrl)) imgs.push(mainProduct.imageUrl);
-            }
-            // ensure at least one
-            const idx = Math.max(0, Math.min(galleryIndex, Math.max(0, imgs.length - 1)));
-            return imgs[idx] || mainProduct.imageUrl || '';
-          })()}
+          src={heroImageUrl}
           onClick={() => {
-            // advance to next image when user taps the hero image
-            const colorImg = findColorImage(mainProduct.colorImages, selectedColor);
-            const imgs: string[] = [];
-            if (colorImg) {
-              if (Array.isArray(colorImg)) colorImg.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
-              else if (typeof colorImg === 'string') imgs.push(colorImg);
-            } else {
-              if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
-                mainProduct.imageUrls.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
-              }
-              if (mainProduct.imageUrl && !imgs.includes(mainProduct.imageUrl)) imgs.push(mainProduct.imageUrl);
-            }
-            if (imgs.length <= 1) return;
-            setGalleryIndex((p) => (p + 1) % imgs.length);
+            if (selectedColorImages.length <= 1) return;
+            setGalleryIndex((p) => (p + 1) % selectedColorImages.length);
           }}
         />
         {/* badges inside hero */}
@@ -194,28 +174,21 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
         {/* Pagination Dots indicator */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/20 backdrop-blur px-2.5 py-1.5 rounded-full">
-          {(() => {
-            const colorImg = findColorImage(mainProduct.colorImages, selectedColor);
-            const imgs: string[] = [];
-            if (colorImg) {
-              if (Array.isArray(colorImg)) colorImg.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
-              else if (typeof colorImg === 'string') imgs.push(colorImg);
-            } else {
-              if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
-                mainProduct.imageUrls.forEach((u) => { if (u && !imgs.includes(u)) imgs.push(u); });
-              }
-              if (mainProduct.imageUrl && !imgs.includes(mainProduct.imageUrl)) imgs.push(mainProduct.imageUrl);
-            }
-            const len = Math.max(1, imgs.length);
-            return Array.from({ length: len }).map((_, i) => (
+          {selectedColorImages.length > 0 ? (
+            selectedColorImages.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setGalleryIndex(i)}
                 className={`w-2.5 h-2.5 rounded-full transition-all ${galleryIndex === i ? 'bg-indigo-600 scale-110' : 'bg-white/50'}`}
                 aria-label={`Image ${i + 1}`}
               />
-            ));
-          })()}
+            ))
+          ) : (
+            <button
+              className="w-2.5 h-2.5 rounded-full bg-white/50"
+              aria-label="Image 1"
+            />
+          )}
         </div>
       </section>
 

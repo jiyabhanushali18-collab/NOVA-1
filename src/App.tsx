@@ -66,6 +66,21 @@ const asStringArray = (value: unknown): string[] => {
   return [];
 };
 
+const collectImageValues = (value: unknown): string[] => {
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  if (typeof value === 'number') return [String(value).trim()];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectImageValues(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const candidates = [record.imageUrl, record.url, record.src, record.image, record.img, record.image1, record.imageUrl1];
+    return candidates.flatMap((item) => collectImageValues(item)).filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+  }
+
+  return [];
+};
 
 const calculateRatingFromReviews = (product: ProductItem, reviews: ProductReview[]) => {
   if (!reviews || reviews.length === 0) {
@@ -164,11 +179,14 @@ const loadFirestoreProductReviews = async (): Promise<Record<string, ProductRevi
 };
 
 const addColorImage = (result: Record<string, string[]>, color: unknown, imageUrl: unknown) => {
-  const imageUrlString = getStringValue(imageUrl);
+  const imageUrls = collectImageValues(imageUrl);
   const colorString = getColorValue(color) || (typeof color === 'string' ? color.trim() : '');
   const normalized = normalizeColor(colorString);
 
-  if (normalized && imageUrlString) {
+  if (!normalized || imageUrls.length === 0) return;
+
+  imageUrls.forEach((imageUrlString) => {
+    if (!imageUrlString) return;
     result[normalized] = result[normalized] || [];
     if (!result[normalized].includes(imageUrlString)) result[normalized].push(imageUrlString);
 
@@ -176,7 +194,7 @@ const addColorImage = (result: Record<string, string[]>, color: unknown, imageUr
       result[colorString] = result[colorString] || [];
       if (!result[colorString].includes(imageUrlString)) result[colorString].push(imageUrlString);
     }
-  }
+  });
 };
 
 const processColorImageSource = (result: Record<string, string[]>, source: unknown) => {
@@ -184,7 +202,7 @@ const processColorImageSource = (result: Record<string, string[]>, source: unkno
   if (Array.isArray(source)) {
     source.forEach((entry) => {
       if (!entry || typeof entry !== 'object') return;
-      addColorImage(result, (entry as any).color || (entry as any).name || (entry as any).label, (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src);
+      addColorImage(result, (entry as any).color || (entry as any).name || (entry as any).label, (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src || entry);
     });
     return;
   }
@@ -212,18 +230,17 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
 
   // Enhanced: scan all fields for color-based image naming (e.g., redImage, pinkImage, yellowImage)
   Object.entries(data).forEach(([fieldName, value]) => {
-    const lowerField = fieldName.toLowerCase();
-    const imageUrl = getStringValue(value);
-    
-    if (!imageUrl) return;
+    const lowerField = fieldName.trim().toLowerCase();
+    const imageValues = collectImageValues(value);
+    if (imageValues.length === 0) return;
 
     // Check if any word from the color name appears in the field name
     colors.forEach((color) => {
-      const colorWords = color.toLowerCase().split(/\s+/);
+      const colorWords = color.toLowerCase().split(/\s+/).filter((word) => word.length > 0);
       const matchesAnyWord = colorWords.some((word) => lowerField.includes(word));
       
       if (matchesAnyWord) {
-        addColorImage(tmp, color, value);
+        imageValues.forEach((imageValue) => addColorImage(tmp, color, imageValue));
       }
     });
   });
@@ -1059,18 +1076,20 @@ export default function App() {
     }
   };
 
-  const handleLoginSuccess = (name: string, email: string, phone: string, isSignUp?: boolean) => {
+  const handleLoginSuccess = (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => {
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
     localStorage.setItem('userPhone', phone);
+    if (address) localStorage.setItem('userAddress', address);
+    if (pinCode) localStorage.setItem('userPinCode', pinCode);
     setUserName(name);
     setUserEmail(email);
     setUserPhone(phone);
     setIsLoggedIn(true);
     
     // Save user details to Firestore
-    saveUserToFirestore(name, email, phone, isSignUp).catch(err => {
+    saveUserToFirestore(name, email, phone, isSignUp, address, pinCode).catch(err => {
       console.error('Failed to save user data:', err);
     });
     
