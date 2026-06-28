@@ -1,7 +1,7 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { auth, db, firebaseProjectId, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
 import { normalizeProductVariants } from '../utils/productVariants';
 
@@ -25,6 +25,29 @@ const VENDOR_STORAGE_KEY = 'nova_showroom_selected_vendor';
 let cachedVendors: VendorItem[] | null = null;
 
 const fallbackImage = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80';
+
+const getFirebaseErrorCode = (error: unknown) => error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : undefined;
+const getFirebaseErrorMessage = (error: unknown) => error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message) : undefined;
+
+const getFirebaseDebugContext = (collectionName: string, queryDescription: string) => ({
+  collectionName,
+  query: queryDescription,
+  firebaseProjectId,
+  currentUser: auth.currentUser ? {
+    uid: auth.currentUser.uid,
+    isAnonymous: auth.currentUser.isAnonymous
+  } : null
+});
+
+const logFirebaseProductFetchError = (error: unknown, collectionName: string, queryDescription: string) => {
+  console.error(
+    'Firebase Product Fetch Error:',
+    error,
+    getFirebaseErrorCode(error),
+    getFirebaseErrorMessage(error),
+    getFirebaseDebugContext(collectionName, queryDescription)
+  );
+};
 
 const asStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -315,69 +338,129 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   }, [selectedVendor]);
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    const collectionName = 'vendors';
+    const queryDescription = 'vendors';
+
     setVendorsLoading(!cachedVendors);
-    const vendorsQuery = query(collection(db, 'vendors'));
-    const unsubscribe = onSnapshot(vendorsQuery, (snapshot) => {
-      const nextVendors = snapshot.docs
-        .map((doc) => normalizeVendor(doc.id, doc.data()))
-        .filter((vendor) => vendor.isActive !== false)
-        .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
-      cachedVendors = nextVendors;
-      setVendors(nextVendors);
-      setVendorsLoading(false);
-      setVendorsError(null);
-    }, (firebaseError) => {
-      console.error('Vendor listener error:', firebaseError);
-      setVendorsError(null);
-      setVendorsLoading(false);
+    waitForFirebaseAuthReady().then(() => {
+      if (cancelled) return;
+      const vendorsQuery = query(collection(db, collectionName));
+      unsubscribe = onSnapshot(vendorsQuery, (snapshot) => {
+        console.debug('Firebase vendors snapshot received:', {
+          ...getFirebaseDebugContext(collectionName, queryDescription),
+          documentsReceived: snapshot.size
+        });
+        const nextVendors = snapshot.docs
+          .map((doc) => normalizeVendor(doc.id, doc.data()))
+          .filter((vendor) => vendor.isActive !== false)
+          .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+        cachedVendors = nextVendors;
+        setVendors(nextVendors);
+        setVendorsLoading(false);
+        setVendorsError(null);
+      }, (firebaseError) => {
+        console.error('Firebase Vendor Fetch Error:', firebaseError, getFirebaseErrorCode(firebaseError), getFirebaseErrorMessage(firebaseError), getFirebaseDebugContext(collectionName, queryDescription));
+        setVendorsError(null);
+        setVendorsLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
   useEffect(() => {
-    setTopRatedLoading(true);
-    const topRatedQuery = query(collection(db, 'products'), limit(80));
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    const collectionName = 'products';
+    const queryDescription = 'products limit 80 top-rated client filter rating >= 4.7';
 
-    const unsubscribe = onSnapshot(topRatedQuery, (snapshot) => {
-      const nextProducts = snapshot.docs
-        .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
-        .filter((product) => Number(product.rating || 0) >= 4.7)
-        .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
-        .slice(0, 10);
-      setTopRatedProducts(nextProducts);
-      setTopRatedLoading(false);
-    }, (firebaseError) => {
-      console.error('Top rated products listener error:', firebaseError);
-      setTopRatedProducts([]);
-      setTopRatedLoading(false);
+    setTopRatedLoading(true);
+    waitForFirebaseAuthReady().then(() => {
+      if (cancelled) return;
+      const topRatedQuery = query(collection(db, collectionName), limit(80));
+
+      unsubscribe = onSnapshot(topRatedQuery, (snapshot) => {
+        console.debug('Firebase products snapshot received:', {
+          ...getFirebaseDebugContext(collectionName, queryDescription),
+          documentsReceived: snapshot.size
+        });
+        try {
+          const nextProducts = snapshot.docs
+            .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
+            .filter((product) => Number(product.rating || 0) >= 4.7)
+            .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
+            .slice(0, 10);
+          setTopRatedProducts(nextProducts);
+        } catch (error) {
+          logFirebaseProductFetchError(error, collectionName, queryDescription);
+          setTopRatedProducts([]);
+        } finally {
+          setTopRatedLoading(false);
+        }
+      }, (firebaseError) => {
+        logFirebaseProductFetchError(firebaseError, collectionName, queryDescription);
+        setTopRatedProducts([]);
+        setTopRatedLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [firebaseVendorsById]);
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    const collectionName = 'products';
+    const queryDescription = selectedVendor === ALL_VENDORS
+      ? 'products limit 80'
+      : `products where vendorId == ${selectedVendor} limit 20`;
+
     setCollectionLoading(true);
     setCollectionError(null);
-    const baseCollection = collection(db, 'products');
-    const productsQuery = selectedVendor === ALL_VENDORS
-      ? query(baseCollection, limit(80))
-      : query(baseCollection, where('vendorId', '==', selectedVendor), limit(20));
+    waitForFirebaseAuthReady().then(() => {
+      if (cancelled) return;
+      const baseCollection = collection(db, collectionName);
+      const productsQuery = selectedVendor === ALL_VENDORS
+        ? query(baseCollection, limit(80))
+        : query(baseCollection, where('vendorId', '==', selectedVendor), limit(20));
 
-    const unsubscribe = onSnapshot(productsQuery, (snapshot) => {
-      const nextProducts = snapshot.docs
-        .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
-        .sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt))
-        .slice(0, 20);
-      setCollectionProducts(nextProducts);
-      setCollectionLoading(false);
-    }, (firebaseError) => {
-      console.error('Vendor products listener error:', firebaseError);
-      setCollectionError('Unable to load products from Firebase.');
-      setCollectionLoading(false);
+      unsubscribe = onSnapshot(productsQuery, (snapshot) => {
+        console.debug('Firebase products snapshot received:', {
+          ...getFirebaseDebugContext(collectionName, queryDescription),
+          documentsReceived: snapshot.size
+        });
+        try {
+          const nextProducts = snapshot.docs
+            .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
+            .sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt))
+            .slice(0, 20);
+          setCollectionProducts(nextProducts);
+          setCollectionError(null);
+        } catch (error) {
+          logFirebaseProductFetchError(error, collectionName, queryDescription);
+          setCollectionError('Unable to load products from Firebase. Check the console for Firebase Product Fetch Error details.');
+        } finally {
+          setCollectionLoading(false);
+        }
+      }, (firebaseError) => {
+        logFirebaseProductFetchError(firebaseError, collectionName, queryDescription);
+        setCollectionError('Unable to load products from Firebase. Check the console for Firebase Product Fetch Error details.');
+        setCollectionLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [firebaseVendorsById, selectedVendor]);
 
   useEffect(() => {
@@ -401,9 +484,22 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     return marketplaceVendors.filter((vendor) => [vendor.vendorName, vendor.description].filter(Boolean).some((value) => String(value).toLowerCase().includes(queryText)));
   }, [marketplaceVendors, searchTerm]);
 
-  const visibleTopRated = useMemo(() => topRatedProducts.filter(matchesSearch), [searchTerm, topRatedProducts]);
-  const visibleProducts = useMemo(() => collectionProducts.filter(matchesSearch), [collectionProducts, searchTerm]);
-  const selectedCount = selectedVendorItem?.productCount ?? (selectedVendor === ALL_VENDORS ? collectionProducts.length : productCountByVendor[selectedVendor] || collectionProducts.length);
+  const fallbackCollectionProducts = useMemo(() => {
+    if (selectedVendor === ALL_VENDORS) return products;
+    return products.filter((product) => product.vendorId === selectedVendor);
+  }, [products, selectedVendor]);
+  const displayCollectionProducts = collectionProducts.length > 0 ? collectionProducts : fallbackCollectionProducts;
+  const displayTopRatedProducts = topRatedProducts.length > 0
+    ? topRatedProducts
+    : products
+        .filter((product) => Number(product.rating || 0) >= 4.7 || product.isTopRated)
+        .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
+        .slice(0, 10);
+  const blockingCollectionError = collectionError && displayCollectionProducts.length === 0 ? collectionError : null;
+  const blockingProductsError = error && displayCollectionProducts.length === 0 ? error : null;
+  const visibleTopRated = useMemo(() => displayTopRatedProducts.filter(matchesSearch), [searchTerm, displayTopRatedProducts]);
+  const visibleProducts = useMemo(() => displayCollectionProducts.filter(matchesSearch), [displayCollectionProducts, searchTerm]);
+  const selectedCount = selectedVendorItem?.productCount ?? (selectedVendor === ALL_VENDORS ? displayCollectionProducts.length : productCountByVendor[selectedVendor] || displayCollectionProducts.length);
   const collectionTitle = selectedVendorItem ? `${selectedVendorItem.vendorName} Collection` : 'All Products';
 
   const handleSelectProduct = (id: string) => {
@@ -442,7 +538,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search products, vendors and brands..."
+            placeholder="Search products, vendors..."
             className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-white outline-none placeholder:text-slate-400 sm:text-base"
           />
         </label>
@@ -524,9 +620,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           </span>
         </div>
 
-        {collectionError || error ? (
+        {blockingCollectionError || blockingProductsError ? (
           <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-5 text-sm text-rose-200">
-            {collectionError || error}
+            {blockingCollectionError || blockingProductsError}
           </div>
         ) : (collectionLoading || loading) && visibleProducts.length === 0 ? (
           <div className="grid grid-cols-2 gap-4">

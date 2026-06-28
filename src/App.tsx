@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
-import { db, saveUserToFirestore } from './firebase';
+import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
 
 // Modular View Imports
 import { HomeView } from './components/HomeView';
@@ -363,6 +363,30 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
   return undefined;
 };
 
+const getFirebaseErrorCode = (error: unknown) => error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : undefined;
+const getFirebaseErrorMessage = (error: unknown) => error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message) : undefined;
+
+const getFirebaseDebugContext = (collectionName: string, queryDescription: string, documentsReceived?: number) => ({
+  collectionName,
+  query: queryDescription,
+  firebaseProjectId,
+  currentUser: auth.currentUser ? {
+    uid: auth.currentUser.uid,
+    isAnonymous: auth.currentUser.isAnonymous
+  } : null,
+  ...(documentsReceived !== undefined ? { documentsReceived } : {})
+});
+
+const logFirebaseProductFetchError = (error: unknown, collectionName: string, queryDescription: string) => {
+  console.error(
+    'Firebase Product Fetch Error:',
+    error,
+    getFirebaseErrorCode(error),
+    getFirebaseErrorMessage(error),
+    getFirebaseDebugContext(collectionName, queryDescription)
+  );
+};
+
 const getDefaultProductColor = (product?: ProductItem) => (
   product?.variants?.[0]?.colorName || product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
 );
@@ -570,7 +594,7 @@ export default function App() {
     Math.round(((novaPoints - currentLevelFloor) / Math.max(1, nextLevelThreshold - currentLevelFloor)) * 100)
   );
 
-  const [productsData, setProductsData] = useState<Record<string, ProductItem>>(() => products);
+  const [productsData, setProductsData] = useState<Record<string, ProductItem>>({});
   const [productReviews, setProductReviews] = useState<Record<string, ProductReview[]>>(() => loadStoredProductReviews());
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -707,9 +731,15 @@ export default function App() {
 
   useEffect(() => {
     const loadProducts = async () => {
+      const collectionName = 'products';
+      const queryDescription = 'products getDocs';
+
       try {
         setProductsLoading(true);
-        const snapshot = await getDocs(collection(db, 'products'));
+        setProductsError(null);
+        await waitForFirebaseAuthReady();
+        const snapshot = await getDocs(collection(db, collectionName));
+        console.debug('Firebase products getDocs received:', getFirebaseDebugContext(collectionName, queryDescription, snapshot.size));
         const fetchedProducts: Record<string, ProductItem> = {};
 
         snapshot.forEach((doc: any) => {
@@ -775,16 +805,17 @@ export default function App() {
         });
 
         if (Object.keys(fetchedProducts).length > 0) {
-          setProductsData((prev) => ({ ...prev, ...fetchedProducts }));
+          setProductsData(fetchedProducts);
+          setProductsError(null);
         } else {
-          console.warn('Firestore returned no products; falling back to local sample data.');
-          setProductsData((prev) => ({ ...prev, ...products }));
-          setProductsError('Firestore did not return any products; using local sample data.');
+          console.warn('Firestore returned no products.', getFirebaseDebugContext(collectionName, queryDescription, 0));
+          setProductsData({});
+          setProductsError('Firestore returned no products from the products collection.');
         }
       } catch (error) {
-        console.error('Error loading Firebase products:', error);
-        setProductsData((prev) => ({ ...prev, ...products }));
-        setProductsError('Unable to load showroom items from Firestore. Showing local sample data instead.');
+        logFirebaseProductFetchError(error, collectionName, queryDescription);
+        setProductsData({});
+        setProductsError('Unable to load products from Firebase. Check the console for Firebase Product Fetch Error details.');
       } finally {
         setProductsLoading(false);
       }
