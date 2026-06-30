@@ -30,7 +30,32 @@ export interface ProductVariant {
   color?: string;
 }
 
-export interface ProductItem {
+// New variant structure for clothing products
+export interface ClothingVariant {
+  color: string;
+  sizes: string[];
+  stock: number;
+  images: string[];
+}
+
+// Clothing-specific fields
+export interface ClothingProduct {
+  brand?: string;
+  fabric?: 'Cotton' | 'Organic Cotton' | 'Polyester' | 'Linen' | 'Rayon' | 'Denim' | 'Silk' | 'Wool' | 'Viscose' | 'Nylon' | 'Lycra' | 'Spandex' | 'Leather' | 'Faux Leather' | 'Blend';
+  fit?: 'Slim Fit' | 'Regular Fit' | 'Relaxed Fit' | 'Oversized' | 'Skinny' | 'Straight' | 'Loose';
+  gender?: 'Men' | 'Women' | 'Unisex' | 'Kids';
+  occasion?: 'Casual' | 'Formal' | 'Office' | 'Party' | 'Sports' | 'Ethnic' | 'Daily Wear';
+  season?: 'Summer' | 'Winter' | 'Monsoon' | 'All Season';
+  pattern?: 'Solid' | 'Printed' | 'Graphic' | 'Checked' | 'Striped' | 'Floral' | 'Embroidered';
+  stretch?: 'Non Stretch' | 'Medium Stretch' | 'High Stretch';
+  sleeveType?: 'Half Sleeve' | 'Full Sleeve' | 'Sleeveless' | '3/4 Sleeve';
+  neckType?: 'Round Neck' | 'Crew Neck' | 'V Neck' | 'Polo' | 'Mandarin' | 'Hooded';
+  careInstructions?: string;
+  tags?: string[];
+  newVariants?: ClothingVariant[];
+}
+
+export interface ProductItem extends ClothingProduct {
   id: string;
   productId?: string;
   vendorId?: string;

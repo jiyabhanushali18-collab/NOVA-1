@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import chatRouter from './server/chatRouter';
 import analysisRouter from './server/analysisRouter';
+import productRouter from './server/productRouter';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -12,6 +13,7 @@ const app = express();
 app.use(express.json({ limit: '6mb' }));
 app.use('/api', chatRouter);
 app.use('/api', analysisRouter);
+app.use('/api', productRouter);
 
 const PORT = Number(process.env.PORT || 3000);
 
