@@ -61,33 +61,27 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Featured AI Assistant Banner */}
-      <section 
-        onClick={() => onNavigate('chat')}
-        className="glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
-      >
-        <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl group-hover:bg-indigo-300/40 transition-colors duration-500"></div>
-        <div className="flex justify-between items-center relative z-10">
-          <div className="max-w-[60%]">
-            <div className="inline-flex items-center space-x-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full mb-3 border border-white/80 shadow-sm">
-              <span className="material-symbols-outlined text-indigo-600 text-base leading-none">smart_toy</span>
-              <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">AI Assistant Active</span>
+      {/* NOVA Showroom CTA */}
+      <section>
+        <button
+          onClick={() => onNavigate('showroom')}
+          className="w-full glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
+        >
+          <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl group-hover:bg-indigo-300/40 transition-colors duration-500"></div>
+          <div className="flex justify-between items-center relative z-10">
+            <div className="max-w-[70%] text-left">
+              <div className="inline-flex items-center space-x-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full mb-3 border border-white/80 shadow-sm">
+                <span className="material-symbols-outlined text-indigo-600 text-base leading-none">local_mall</span>
+                <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">Explore</span>
+              </div>
+              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>NOVA Showroom</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Browse all products and drops →</p>
             </div>
-            <h2 className={`text-2xl font-bold leading-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Ask Nova<br />Anything</h2>
-            <button className="mt-2 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined leading-none">arrow_forward</span>
-            </button>
+            <div className="w-14 h-14 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center border border-white/80 shadow-sm text-indigo-600 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-3xl leading-none">inventory_2</span>
+            </div>
           </div>
-          <div className="w-24 h-24 relative">
-            <div className="absolute inset-0 bg-indigo-500/20 rounded-full glowing-orb blur-xl"></div>
-            <img 
-              alt="AI Orb Graphic" 
-              className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white/50 shadow-inner" 
-              referrerPolicy="no-referrer"
-              src={`/logoone.jpeg?t=${Date.now()}`}
-            />
-          </div>
-        </div>
+        </button>
       </section>
 
       {/* Explore NOVA Grid */}
@@ -182,23 +176,31 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* NOVA Showroom CTA */}
-      <section>
+      {/* Ask NOVA CTA */}
+      <section className="hidden">
         <button 
-          onClick={() => onNavigate('showroom')}
+          onClick={() => onNavigate('chat')}
           className="w-full glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300"
         >
           <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-200/30 rounded-full blur-3xl group-hover:bg-indigo-300/40 transition-colors duration-500"></div>
           <div className="flex justify-between items-center relative z-10">
             <div className="max-w-[70%] text-left">
               <div className="inline-flex items-center space-x-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full mb-3 border border-white/80 shadow-sm">
-                <span className="material-symbols-outlined text-indigo-600 text-base leading-none">local_mall</span>
-                <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">Explore</span>
+                <span className="material-symbols-outlined text-indigo-600 text-base leading-none">smart_toy</span>
+                <span className="text-xs font-semibold text-indigo-600 tracking-wide uppercase">AI Assistant Active</span>
               </div>
-              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>NOVA Showroom</h2>
-              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Browse all products & drops →</p>
+              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Ask Nova Anything</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Get instant answers and style guidance →</p>
             </div>
-            <div className="text-3xl">📦</div>
+            <div className="w-20 h-20 relative shrink-0">
+              <div className="absolute inset-0 bg-indigo-500/20 rounded-full glowing-orb blur-xl"></div>
+              <img
+                alt="AI Orb Graphic"
+                className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white/50 shadow-inner"
+                referrerPolicy="no-referrer"
+                src={`/logoone.jpeg?t=${Date.now()}`}
+              />
+            </div>
           </div>
         </button>
       </section>
