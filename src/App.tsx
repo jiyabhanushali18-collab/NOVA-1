@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
@@ -395,9 +395,36 @@ export default function App() {
   // Session authorization states loaded from localStorage
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
   const [screen, setScreen] = useState<ScreenId>('splash');
+  const screenRef = useRef<ScreenId>('splash');
+  const screenHistoryRef = useRef<ScreenId[]>(['splash']);
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
+
+  const replaceScreen = (to: ScreenId) => {
+    const historyStack = screenHistoryRef.current;
+    screenHistoryRef.current = historyStack.length > 0
+      ? [...historyStack.slice(0, -1), to]
+      : [to];
+    screenRef.current = to;
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({ novaScreen: to }, '', window.location.href);
+    }
+
+    setScreen(to);
+  };
+
+  const resetScreenHistory = (to: ScreenId) => {
+    screenHistoryRef.current = [to];
+    screenRef.current = to;
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({ novaScreen: to }, '', window.location.href);
+    }
+
+    setScreen(to);
+  };
 
   // Account management
   const { accounts, addAccount, removeAccount, replaceAccounts } = useAccounts();
@@ -526,7 +553,7 @@ export default function App() {
       console.error('Failed to save NOVA profile analysis:', error);
     }
 
-    setScreen('profile');
+    resetScreenHistory('profile');
   };
 
   const syncCurrentUserProfile = (extra?: { preferences?: Preference[]; measurements?: Measurement[] }) => {
@@ -542,6 +569,40 @@ export default function App() {
       extra
     );
   };
+
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.history.replaceState({ novaScreen: screenRef.current }, '', window.location.href);
+
+    const handleBrowserBack = () => {
+      const historyStack = screenHistoryRef.current;
+
+      if (historyStack.length > 1) {
+        historyStack.pop();
+        const previousScreen = historyStack[historyStack.length - 1] || 'home';
+        screenRef.current = previousScreen;
+        setScreen(previousScreen);
+        return;
+      }
+
+      if (screenRef.current !== 'home' && screenRef.current !== 'splash' && screenRef.current !== 'onboarding') {
+        screenHistoryRef.current = ['home'];
+        screenRef.current = 'home';
+        setScreen('home');
+      }
+    };
+
+    window.addEventListener('popstate', handleBrowserBack);
+
+    return () => {
+      window.removeEventListener('popstate', handleBrowserBack);
+    };
+  }, []);
   
 
   const [novaPoints, setNovaPoints] = useState<number>(() => {
@@ -880,6 +941,7 @@ export default function App() {
 
   // Navigation wrapper that logs activity for relevant screens
   const navigate = (to: ScreenId, opts?: { productId?: string }) => {
+    const currentScreen = screenRef.current;
     const time = new Date().toLocaleString();
     if (to === 'ar-tryon') {
       const prod = productsData[opts?.productId || selectedProductId];
@@ -897,6 +959,16 @@ export default function App() {
     } else if (to === 'wardrobe') {
       addRecentActivity({ id: Date.now().toString(), name: 'Virtual Wardrobe', time, badge: 'Wardrobe', icon: 'checkroom', color: 'bg-indigo-600/80', imageUrl: '' });
     }
+
+    if (to !== currentScreen) {
+      screenHistoryRef.current = [...screenHistoryRef.current, to].slice(-30);
+      screenRef.current = to;
+
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ novaScreen: to }, '', window.location.href);
+      }
+    }
+
     setScreen(to);
   };
 
@@ -1045,7 +1117,7 @@ export default function App() {
               handleUpdatePreferences(newPrefs);
               handleUpdateMeasurements(newMeasures);
               syncCurrentUserProfile({ preferences: newPrefs, measurements: newMeasures }).catch(() => undefined);
-              setScreen('profile-analysis');
+              replaceScreen('profile-analysis');
             }}
           />
         );
@@ -1118,15 +1190,15 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    setScreen('onboarding');
+    replaceScreen('onboarding');
   };
 
   const handleOnboardingComplete = () => {
     localStorage.setItem('onboarding_completed', 'true');
     if (!isLoggedIn) {
-      navigate('login');
+      replaceScreen('login');
     } else {
-      navigate('home');
+      resetScreenHistory('home');
     }
   };
 
@@ -1161,11 +1233,7 @@ export default function App() {
       accountService.setActiveLocalAccount(uid);
       setActiveAccountUid(uid);
     } catch {}
-    if (isSignUp) {
-      navigate('setup-preferences');
-    } else {
-      navigate('home');
-    }
+    resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
   };
 
   const handleLogout = () => {
@@ -1177,7 +1245,7 @@ export default function App() {
     setIsLoggedIn(false);
     setUserProfilePhoto('');
     setAnalysisProfile(null);
-    navigate('home');
+    resetScreenHistory('home');
   };
 
   // Navigation highlights checks
