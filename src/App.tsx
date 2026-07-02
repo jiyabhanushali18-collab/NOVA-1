@@ -827,6 +827,13 @@ export default function App() {
           const stock = data.stock !== undefined ? Number(data.stock) : undefined;
           const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName);
           const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl);
+          
+          // Filter out incomplete products
+          const productName = String(data.name || data.productName || '');
+          const productPrice = Number(data.discountPrice || data.price || 0);
+          if (!productName || productName === 'Unnamed Product' || productPrice === 0 || !imageUrl) {
+            return;
+          }
 
           fetchedProducts[id] = {
             id,
@@ -834,9 +841,9 @@ export default function App() {
             vendorId: data.vendorId ? String(data.vendorId) : undefined,
             vendorName,
             vendorLogoUrl,
-            name: String(data.name || data.productName || 'Unnamed Product'),
+            name: productName,
             category: String(data.category || 'Uncategorized'),
-            price: Number(data.discountPrice || data.price || 0),
+            price: productPrice,
             originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
             discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
             rating: Number(data.rating || 0),

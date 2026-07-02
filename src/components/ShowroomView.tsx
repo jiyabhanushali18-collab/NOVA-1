@@ -83,6 +83,22 @@ const getTimestampMs = (value: any) => {
   return 0;
 };
 
+const isValidProduct = (product: ProductItem): boolean => {
+  // Filter out products without proper names
+  if (!product.name || product.name === 'Unnamed Product' || product.name.trim() === '') {
+    return false;
+  }
+  // Filter out products without proper prices
+  if (!product.price || Number(product.price) === 0) {
+    return false;
+  }
+  // Filter out products using only fallback image
+  if (product.imageUrl === fallbackImage) {
+    return false;
+  }
+  return true;
+};
+
 const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Record<string, VendorItem>): ProductItem => {
   const images = [
     ...asStringArray(data.images),
@@ -377,12 +393,12 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
     const collectionName = 'products';
-    const queryDescription = 'products limit 80 top-rated client filter rating >= 4.7';
+    const queryDescription = 'products limit 1000 top-rated client filter rating >= 4.7';
 
     setTopRatedLoading(true);
     waitForFirebaseAuthReady().then(() => {
       if (cancelled) return;
-      const topRatedQuery = query(collection(db, collectionName), limit(80));
+      const topRatedQuery = query(collection(db, collectionName), limit(1000));
 
       unsubscribe = onSnapshot(topRatedQuery, (snapshot) => {
         console.debug('Firebase products snapshot received:', {
@@ -392,9 +408,10 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
         try {
           const nextProducts = snapshot.docs
             .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
+            .filter((product) => isValidProduct(product))
             .filter((product) => Number(product.rating || 0) >= 4.7)
             .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
-            .slice(0, 10);
+            .slice(0, 100);
           setTopRatedProducts(nextProducts);
         } catch (error) {
           logFirebaseProductFetchError(error, collectionName, queryDescription);
@@ -420,8 +437,8 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     let cancelled = false;
     const collectionName = 'products';
     const queryDescription = selectedVendor === ALL_VENDORS
-      ? 'products limit 80'
-      : `products where vendorId == ${selectedVendor} limit 20`;
+      ? 'products limit 1000'
+      : `products where vendorId == ${selectedVendor} limit 500`;
 
     setCollectionLoading(true);
     setCollectionError(null);
@@ -429,8 +446,8 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       if (cancelled) return;
       const baseCollection = collection(db, collectionName);
       const productsQuery = selectedVendor === ALL_VENDORS
-        ? query(baseCollection, limit(80))
-        : query(baseCollection, where('vendorId', '==', selectedVendor), limit(20));
+        ? query(baseCollection, limit(1000))
+        : query(baseCollection, where('vendorId', '==', selectedVendor), limit(500));
 
       unsubscribe = onSnapshot(productsQuery, (snapshot) => {
         console.debug('Firebase products snapshot received:', {
@@ -440,8 +457,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
         try {
           const nextProducts = snapshot.docs
             .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
+            .filter((product) => isValidProduct(product))
             .sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt))
-            .slice(0, 20);
+            .slice(0, 500);
           setCollectionProducts(nextProducts);
           setCollectionError(null);
         } catch (error) {

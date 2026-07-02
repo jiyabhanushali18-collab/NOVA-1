@@ -160,11 +160,17 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const completeLookItems = [
+  const allCompleteLookItems = [
     { id: 'cargo-pants', name: 'Cargo Pants', price: '₹1,899', rating: '4.5' },
     { id: 'white-sneakers', name: 'White Sneakers', price: '₹2,299', rating: '4.8' },
     { id: 'crossbody-bag', name: 'Crossbody Bag', price: '₹999', rating: '4.4' }
   ];
+
+  // Filter to only show items that have valid images
+  const completeLookItems = allCompleteLookItems.filter(item => {
+    const product = products[item.id];
+    return product && product.imageUrl && typeof product.imageUrl === 'string' && product.imageUrl.trim().length > 0;
+  });
 
   return (
     <div className="-mx-4 space-y-6">
@@ -525,65 +531,67 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         </div>
       </section>
 
-      {/* Complete The Look accessories suggestions list */}
-      <section className="px-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-bold text-slate-800">Complete the Look</h2>
-          <button 
-            onClick={() => onNavigate('home')}
-            className="text-xs font-semibold text-indigo-600 flex items-center hover:underline"
-          >
-            Explore All <span className="material-symbols-outlined text-sm ml-0.5">chevron_right</span>
-          </button>
-        </div>
-        
-        <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-          {completeLookItems.map((item) => (
-            <div 
-              key={item.id}
-              onClick={() => handleAddToCart(item.id, 'Default', 'One Size')}
-              className="min-w-[130px] glass-card rounded-2xl p-2.5 relative cursor-pointer border border-transparent hover:border-slate-200 transition-colors"
+      {/* Complete The Look accessories suggestions list - only show if there are valid items */}
+      {completeLookItems.length > 0 && (
+        <section className="px-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-base font-bold text-slate-800">Complete the Look</h2>
+            <button 
+              onClick={() => onNavigate('home')}
+              className="text-xs font-semibold text-indigo-600 flex items-center hover:underline"
             >
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  if (onToggleWishlist) {
-                    onToggleWishlist(item.id);
-                    const isSaved = wishlist.includes(item.id);
-                    setToastMessage(isSaved ? `Removed ${item.name} from Saved Items` : `✓ Saved ${item.name} to Saved Items!`);
-                    setTimeout(() => setToastMessage(null), 2500);
-                  }
-                }}
-                className={`absolute top-3.5 right-3.5 z-10 rounded-full p-1.5 shadow-md flex items-center justify-center transition-all cursor-pointer ${
-                  wishlist.includes(item.id)
-                    ? 'bg-red-50 text-red-600 border border-red-100'
-                    : 'text-slate-500 bg-white/80 hover:bg-white hover:text-red-500'
-                }`}
+              Explore All <span className="material-symbols-outlined text-sm ml-0.5">chevron_right</span>
+            </button>
+          </div>
+          
+          <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+            {completeLookItems.map((item) => (
+              <div 
+                key={item.id}
+                onClick={() => handleAddToCart(item.id, 'Default', 'One Size')}
+                className="min-w-[130px] glass-card rounded-2xl p-2.5 relative cursor-pointer border border-transparent hover:border-slate-200 transition-colors"
               >
-                <span className="material-symbols-outlined text-xs leading-none" style={{ fontVariationSettings: wishlist.includes(item.id) ? "'FILL' 1" : undefined }}>
-                  {wishlist.includes(item.id) ? 'favorite' : 'favorite_border'}
-                </span>
-              </button>
-              <div className="h-32 rounded-xl bg-slate-100 mb-2 overflow-hidden flex items-center justify-center">
-                <img 
-                  alt={item.name} 
-                  className="w-full h-full object-cover mix-blend-multiply" 
-                  referrerPolicy="no-referrer"
-                  src={products[item.id]?.imageUrl}
-                />
+                <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (onToggleWishlist) {
+                      onToggleWishlist(item.id);
+                      const isSaved = wishlist.includes(item.id);
+                      setToastMessage(isSaved ? `Removed ${item.name} from Saved Items` : `✓ Saved ${item.name} to Saved Items!`);
+                      setTimeout(() => setToastMessage(null), 2500);
+                    }
+                  }}
+                  className={`absolute top-3.5 right-3.5 z-10 rounded-full p-1.5 shadow-md flex items-center justify-center transition-all cursor-pointer ${
+                    wishlist.includes(item.id)
+                      ? 'bg-red-50 text-red-600 border border-red-100'
+                      : 'text-slate-500 bg-white/80 hover:bg-white hover:text-red-500'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xs leading-none" style={{ fontVariationSettings: wishlist.includes(item.id) ? "'FILL' 1" : undefined }}>
+                    {wishlist.includes(item.id) ? 'favorite' : 'favorite_border'}
+                  </span>
+                </button>
+                <div className="h-32 rounded-xl bg-slate-100 mb-2 overflow-hidden flex items-center justify-center">
+                  <img 
+                    alt={item.name} 
+                    className="w-full h-full object-cover mix-blend-multiply" 
+                    referrerPolicy="no-referrer"
+                    src={products[item.id]?.imageUrl}
+                  />
+                </div>
+                <div className="text-[11px] font-bold text-slate-800 truncate">{item.name}</div>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-xs font-extrabold text-indigo-600">{item.price}</span>
+                  <span className="text-[9px] font-bold text-slate-400 flex items-center">
+                    <span className="material-symbols-outlined text-[10px] text-amber-500 mr-0.5">star</span>
+                    {item.rating}
+                  </span>
+                </div>
               </div>
-              <div className="text-[11px] font-bold text-slate-800 truncate">{item.name}</div>
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-xs font-extrabold text-indigo-600">{item.price}</span>
-                <span className="text-[9px] font-bold text-slate-400 flex items-center">
-                  <span className="material-symbols-outlined text-[10px] text-amber-500 mr-0.5">star</span>
-                  {item.rating}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
