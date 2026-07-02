@@ -825,8 +825,8 @@ export default function App() {
           ].filter((value, index, array) => value && array.indexOf(value) === index);
           const imageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || images[0] || '';
           const stock = data.stock !== undefined ? Number(data.stock) : undefined;
-          const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName);
-          const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl);
+          const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName) || getStringValue(data.companyName) || getStringValue(data.storeName);
+          const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl);
           
           // Filter out incomplete products
           const productName = String(data.name || data.productName || '');

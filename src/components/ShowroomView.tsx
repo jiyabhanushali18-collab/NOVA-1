@@ -119,8 +119,8 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
     id,
     productId: String(data.productId || id),
     vendorId,
-    vendorName: getStringValue(data.vendorName) || vendor?.vendorName || 'NOVA Vendor',
-    vendorLogoUrl: getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || vendor?.logoUrl,
+    vendorName: getStringValue(data.vendorName) || getStringValue(data.companyName) || getStringValue(data.storeName) || vendor?.vendorName || 'NOVA Vendor',
+    vendorLogoUrl: getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl) || vendor?.logoUrl,
     name: String(data.name || data.productName || 'Unnamed Product'),
     category: String(data.category || 'Curated'),
     description: data.description ? String(data.description) : undefined,
@@ -150,8 +150,8 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
 const normalizeVendor = (id: string, data: Record<string, any>): VendorItem => ({
   id,
   vendorId: String(data.vendorId || id),
-  vendorName: String(data.vendorName || data.name || 'NOVA Vendor'),
-  logoUrl: getStringValue(data.logoUrl) || getStringValue(data.logo) || '',
+  vendorName: String(getStringValue(data.vendorName) || getStringValue(data.name) || getStringValue(data.companyName) || getStringValue(data.storeName) || 'NOVA Vendor'),
+  logoUrl: getStringValue(data.logoUrl) || getStringValue(data.vendorLogoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl) || getStringValue(data.avatarUrl) || '',
   bannerUrl: getStringValue(data.bannerUrl),
   description: data.description ? String(data.description) : undefined,
   followers: data.followers !== undefined ? Number(data.followers) : undefined,
@@ -163,13 +163,23 @@ const normalizeVendor = (id: string, data: Record<string, any>): VendorItem => (
 });
 
 const VendorLogo: React.FC<{ vendor?: Pick<VendorItem, 'vendorName' | 'logoUrl' | 'isVerified'>; size?: 'sm' | 'md' | 'lg' }> = ({ vendor, size = 'md' }) => {
+  const [hasImageError, setHasImageError] = useState(false);
   const dimension = size === 'lg' ? 'h-20 w-20' : size === 'sm' ? 'h-7 w-7' : 'h-14 w-14';
   const name = vendor?.vendorName || 'NOVA';
+  const logoUrl = vendor?.logoUrl;
+  const showImage = Boolean(logoUrl && !hasImageError);
 
   return (
     <div className={`${dimension} shrink-0 rounded-full border bg-white/95 p-0.5 ${vendor?.isVerified ? 'border-violet-300 shadow-[0_0_22px_rgba(167,139,250,0.55)]' : 'border-white/25'}`}>
-      {vendor?.logoUrl ? (
-        <img src={vendor.logoUrl} alt={name} loading="lazy" className="h-full w-full rounded-full object-cover" referrerPolicy="no-referrer" />
+      {showImage ? (
+        <img
+          src={logoUrl as string}
+          alt={name}
+          loading="lazy"
+          className="h-full w-full rounded-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={() => setHasImageError(true)}
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-white to-violet-100 text-sm font-black text-slate-950">
           {getInitials(name)}
