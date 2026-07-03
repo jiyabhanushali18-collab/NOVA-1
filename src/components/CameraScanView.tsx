@@ -5,12 +5,13 @@ import { CameraScanResult, ScanImageSource, ScanProductResult, runCameraScan } f
 interface CameraScanViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string }) => void;
   onProductMatched?: (product: ProductItem) => void;
+  userGender?: string;
 }
 
 const previewImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuD2NUEgLOUwK_v7hE4JYUKaRzKcCl9wvuCnJyQG-_L_crquoeM_bAtJHefPqGCbycHP0_cmZcffL8KrQVFWbiAp30-xINbUbzGsMCCxozik23wF1uzSgJ1_sj_lcs4xB7MGprn_Hudn4j5yf2R6VY8O1WnwnbX7QY6jBoXHHAiIOIpQlZIER60anAU9qeH3ck0N-dMYjnzmxGYOdgP2BVUZQ_VOtpLnzw-yJNVWv1mt7fhXmSrt5JwTbECdwP7a2rKSECAZQi4bd0Mw";
 const fallbackPairingImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuABd9U6uAi6diNk9_zmvjAknbQ4R_Xg_BpIUpHW12548vGoOE48-mCdcMrZod9meM-XorjORM53np1iJqk5K_AwI11wj_0-KKMCJNF9pgIsqVjJeZuwnxQO2peQ4SoFNlrFFR15Y7QmGsGEpNAdR87DMJmBBdCF7m4a8e47wNmebGMMeGwg1oYUII2iF6Y7fzsoEi1QmWlGbgL224l6AZCmXGJoIrgaek5Yt0dkux5yagz5Hm6gQ3aSolSVIv9xF9TNmbOk2Nv4BQ6k";
 
-export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onProductMatched }) => {
+export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onProductMatched, userGender }) => {
   const [scanning, setScanning] = useState(false);
   const [activeChip, setActiveChip] = useState<'clothing' | 'shoes' | 'accessories' | 'others'>('clothing');
   const [showSourceSheet, setShowSourceSheet] = useState(true);
@@ -31,8 +32,9 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   const detectedImage = currentResult?.item.cropDataUrl;
   const displayProduct = currentResult?.product;
   const displayColor = currentResult?.item.features.dominantColor || displayProduct?.colors?.[0] || '';
-  const categoryLabel = currentResult?.item.features.category || displayProduct?.category || '';
-  const materialLabel = currentResult?.item.features.fabric || displayProduct?.fabric || displayProduct?.details?.[0] || '';
+  const clothingTypeLabel = currentResult?.item.features.garmentType || currentResult?.item.label || displayProduct?.name || 'Unknown Clothing';
+  const categoryLabel = currentResult?.item.features.category || displayProduct?.category || 'Apparel';
+  const materialLabel = currentResult?.item.features.fabric || displayProduct?.fabric || displayProduct?.details?.[0] || 'Unknown Material';
   const pairingProduct = currentResult?.pairedWith[0];
 
   const openSource = (source: ScanImageSource) => {
@@ -58,7 +60,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
     setScanMessage('Scanning Outfit...');
 
     try {
-      const result = await runCameraScan(file, source, (message) => setScanMessage(message));
+      const result = await runCameraScan(file, source, (message) => setScanMessage(message), userGender);
       setScanResult(result);
       result.results.forEach((entry) => onProductMatched?.(entry.product));
     } catch (error) {
@@ -293,8 +295,8 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
               {/* Data specifications */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                  <h3 className="text-base font-bold text-slate-900 leading-none">{currentResult.item.label || displayProduct?.name || 'Detected Item'}</h3>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">{categoryLabel || 'Apparel'}</span>
+                  <h3 className="text-base font-bold text-slate-900 leading-none">{clothingTypeLabel}</h3>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">{categoryLabel}</span>
                 </div>
                 <p className="text-[10px] font-bold text-indigo-600 mb-1.5 leading-none">{currentResult.title}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-slate-600">

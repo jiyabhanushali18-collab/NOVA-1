@@ -30,6 +30,8 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
       }
       onAdd(acc);
       accountService.saveLocalAccounts([acc, ...accounts].slice(0, 5));
+      // clear any previous recent activity for this uid so a new account starts empty
+      try { localStorage.removeItem(`recent_activity_${acc.uid}`); } catch {}
       accountService.setActiveLocalAccount(acc.uid);
       onSwitch(acc.uid);
     } else {

@@ -927,21 +927,33 @@ export default function App() {
     }
   });
 
-  // Recent activity state (persisted) - starts empty, populated only by real user interactions
+  // Recent activity state (persisted per-account) - starts empty, populated only by real user interactions
+  const recentKeyFor = (uid?: string) => `recent_activity_${uid || 'guest'}`;
+
   const [recentActivityState, setRecentActivityState] = useState<any[]>(() => {
     try {
-      const saved = localStorage.getItem('recent_activity');
+      const saved = localStorage.getItem(recentKeyFor(activeUid));
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
     }
   });
 
+  // reload recent activity whenever active account changes (new account => no recent activity)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(recentKeyFor(activeUid));
+      setRecentActivityState(saved ? JSON.parse(saved) : []);
+    } catch (e) {
+      setRecentActivityState([]);
+    }
+  }, [activeUid]);
+
   const addRecentActivity = (entry: any) => {
     setRecentActivityState((prev: any[]) => {
       const updated = [entry, ...prev.filter((p) => p.name !== entry.name)];
       if (updated.length > 12) updated.splice(12);
-      try { localStorage.setItem('recent_activity', JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem(recentKeyFor(activeUid), JSON.stringify(updated)); } catch {}
       return updated;
     });
   };
@@ -1091,7 +1103,7 @@ export default function App() {
           />
         );
       case 'camera-scan':
-        return <CameraScanView onNavigate={navigate} onProductMatched={handleScannedProductMatched} />;
+        return <CameraScanView onNavigate={navigate} onProductMatched={handleScannedProductMatched} userGender={activeAccount?.gender} />;
       case 'profile':
         return (
           <ProfileView 
@@ -1244,6 +1256,10 @@ export default function App() {
         createdAt: Date.now()
       };
       addAccount(acc as any);
+      // if this is a newly signed-up account, clear any prior recent activity and then set active
+      if (isSignUp) {
+        try { localStorage.removeItem(`recent_activity_${uid}`); } catch {}
+      }
       accountService.setActiveLocalAccount(uid);
       setActiveAccountUid(uid);
     } catch {}
