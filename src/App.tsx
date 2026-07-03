@@ -993,6 +993,13 @@ export default function App() {
   const [selectedGarment, setSelectedGarment] = useState<string>('Lavender');
   const [selectedProductId, setSelectedProductId] = useState<string>('lavender-hoodie');
 
+  const handleScannedProductMatched = (product: ProductItem) => {
+    if (!product?.id) return;
+    setProductsData((current) => current[product.id] ? current : { ...current, [product.id]: product });
+    setSelectedProductId(product.id);
+    setSelectedColor(getDefaultProductColor(product));
+  };
+
   // Interactive Cart Handlers
   const handleAddToCart = (prodId: string, color: string, size: string) => {
     const isPresentIndex = cartItems.findIndex(
@@ -1084,7 +1091,7 @@ export default function App() {
           />
         );
       case 'camera-scan':
-        return <CameraScanView onNavigate={navigate} />;
+        return <CameraScanView onNavigate={navigate} onProductMatched={handleScannedProductMatched} />;
       case 'profile':
         return (
           <ProfileView 
