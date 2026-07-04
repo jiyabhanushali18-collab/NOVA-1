@@ -63,6 +63,7 @@ export interface ProductItem extends ClothingProduct {
   vendorLogoUrl?: string;
   name: string;
   category: string;
+  subcategory?: string;
   description?: string;
   price: number;
   originalPrice?: number;

@@ -32,9 +32,12 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   const detectedImage = currentResult?.item.cropDataUrl;
   const displayProduct = currentResult?.product;
   const displayColor = currentResult?.item.features.dominantColor || displayProduct?.colors?.[0] || '';
+  const secondaryColor = currentResult?.item.features.secondaryColor || displayProduct?.colors?.[1] || '';
   const clothingTypeLabel = currentResult?.item.features.garmentType || currentResult?.item.label || displayProduct?.name || 'Unknown Clothing';
   const categoryLabel = currentResult?.item.features.category || displayProduct?.category || 'Apparel';
   const materialLabel = currentResult?.item.features.fabric || displayProduct?.fabric || displayProduct?.details?.[0] || 'Unknown Material';
+  const patternLabel = currentResult?.item.features.pattern || displayProduct?.pattern || 'Detected';
+  const matchReasons = currentResult ? (currentResult.recommendationReasons.length > 0 ? currentResult.recommendationReasons : ['Same category', 'Same color', 'Same silhouette']) : [];
   const pairingProduct = currentResult?.pairedWith[0];
 
   const openSource = (source: ScanImageSource) => {
@@ -300,29 +303,35 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
                 </div>
                 <p className="text-[10px] font-bold text-indigo-600 mb-1.5 leading-none">{currentResult.title}</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-slate-600">
-                  <span className="text-slate-400 font-medium">Color</span>
+                  <span className="text-slate-400 font-medium">Primary Color</span>
                   <span className="text-slate-800 flex items-center gap-1">
                     <span className="w-2.5 h-2.5 rounded-full border border-white inline-block" style={{ backgroundColor: currentResult.item.features.colorHex }}></span>
                     {displayColor || 'Detected'}
                   </span>
                   
+                  <span className="text-slate-400 font-medium">Secondary Color</span>
+                  <span className="text-slate-800">{secondaryColor || 'Not detected'}</span>
+
                   <span className="text-slate-400 font-medium">Category</span>
-                  <span className="text-slate-800">{displayProduct?.category || categoryLabel || 'Apparel'}</span>
+                  <span className="text-slate-800">{categoryLabel || 'Apparel'}</span>
+
+                  <span className="text-slate-400 font-medium">Pattern</span>
+                  <span className="text-slate-800">{patternLabel}</span>
 
                   <span className="text-slate-400 font-medium">Material</span>
                   <span className="text-slate-800">{materialLabel || 'Detected fabric'}</span>
 
-                  {currentResult.kind === 'recommendation' ? (
-                    <>
-                      <span className="text-slate-400 font-medium font-bold">Recommended Based On</span>
-                      <span className="text-indigo-600 font-bold">{currentResult.recommendationReasons.join(', ')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-slate-400 font-medium font-bold">{currentResult.kind === 'similar' ? 'Similarity' : 'Match'}</span>
-                      <span className="text-indigo-600 font-bold">{currentResult.score}%</span>
-                    </>
-                  )}
+                  <span className="text-slate-400 font-medium font-bold">Similarity</span>
+                  <span className="text-indigo-600 font-bold">{currentResult.score}%</span>
+
+                  <span className="text-slate-400 font-medium">Matched Product</span>
+                  <span className="text-slate-800">{displayProduct?.name || 'No exact match found'}</span>
+
+                  <span className="text-slate-400 font-medium">Vendor</span>
+                  <span className="text-slate-800">{displayProduct?.vendorName || 'NOVA Partner'}</span>
+
+                  <span className="text-slate-400 font-medium font-bold">Why it matched</span>
+                  <span className="text-indigo-600 font-bold">{matchReasons.map((reason) => `✓ ${reason}`).join('  ')}</span>
                 </div>
               </div>
 

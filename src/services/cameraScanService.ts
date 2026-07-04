@@ -1,21 +1,28 @@
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem } from '../types';
+import { RuntimeProductMetadata, getRuntimeProductMetadata, primeRuntimeProductMetadata } from './productMetadataService';
 
 export type ScanImageSource = 'camera' | 'gallery';
 export type ScanMatchKind = 'exact' | 'similar' | 'recommendation';
 
 export interface ClothingFeatureVector {
   dominantColor: string;
+  secondaryColor: string;
   colorHex: string;
   category: string;
+  subcategory: string;
   garmentType: string;
+  bodySection: 'Top Wear' | 'Bottom Wear' | 'Full Body' | 'Footwear' | 'Accessory' | 'Unknown';
   pattern: string;
   shape: string;
   sleeveType: string;
   neckType: string;
+  fit: string;
   hasHood: boolean;
   fabric: string;
+  genderCategory: string;
+  confidence: Record<string, number>;
   tags: string[];
   histogram: number[];
   edgeDensity: number;
@@ -26,6 +33,8 @@ export interface DetectedClothingItem {
   id: string;
   label: string;
   cropDataUrl: string;
+  boundingBox: { x: number; y: number; width: number; height: number };
+  confidence: number;
   features: ClothingFeatureVector;
 }
 
@@ -50,12 +59,12 @@ export type ScanProgress = (message: string) => void;
 
 interface VisionProvider {
   compressImage(file: File): Promise<string>;
-  detectClothing(imageUrl: string): Promise<DetectedClothingItem[]>;
+  detectClothing(imageUrl: string, userGender?: string): Promise<DetectedClothingItem[]>;
 }
 
 const canvasSize = 512;
 const productCacheKey = 'nova_camera_scan_product_embeddings_v1';
-const candidateCacheKey = 'nova_camera_scan_candidate_cache_v1';
+const candidateCacheKey = 'nova_camera_scan_candidate_cache_v2';
 
 const safeArray = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
@@ -80,10 +89,47 @@ const inferProductGender = (product: ProductItem): ProductItem['gender'] | undef
   return undefined;
 };
 
+const fashionPalette = [
+  { name: 'Black', rgb: [20, 20, 24] },
+  { name: 'Charcoal', rgb: [55, 58, 63] },
+  { name: 'Grey', rgb: [128, 128, 128] },
+  { name: 'Silver', rgb: [188, 190, 192] },
+  { name: 'White', rgb: [244, 244, 240] },
+  { name: 'Off White', rgb: [232, 228, 214] },
+  { name: 'Cream', rgb: [242, 226, 190] },
+  { name: 'Beige', rgb: [205, 185, 148] },
+  { name: 'Tan', rgb: [180, 138, 92] },
+  { name: 'Brown', rgb: [115, 74, 45] },
+  { name: 'Navy Blue', rgb: [20, 38, 92] },
+  { name: 'Royal Blue', rgb: [36, 86, 196] },
+  { name: 'Sky Blue', rgb: [100, 170, 225] },
+  { name: 'Baby Blue', rgb: [176, 213, 238] },
+  { name: 'Denim Blue', rgb: [72, 104, 145] },
+  { name: 'Olive Green', rgb: [105, 118, 64] },
+  { name: 'Forest Green', rgb: [32, 92, 56] },
+  { name: 'Mint Green', rgb: [160, 210, 180] },
+  { name: 'Maroon', rgb: [115, 28, 44] },
+  { name: 'Wine', rgb: [92, 24, 50] },
+  { name: 'Red', rgb: [186, 42, 42] },
+  { name: 'Coral', rgb: [232, 104, 86] },
+  { name: 'Peach', rgb: [238, 170, 136] },
+  { name: 'Pink', rgb: [224, 130, 170] },
+  { name: 'Lavender', rgb: [185, 172, 226] },
+  { name: 'Lilac', rgb: [204, 178, 222] },
+  { name: 'Purple', rgb: [112, 70, 155] },
+  { name: 'Mustard', rgb: [202, 154, 42] },
+  { name: 'Yellow', rgb: [224, 196, 64] },
+  { name: 'Orange', rgb: [214, 118, 44] }
+];
+
 const colorAliasMap = new Map<string, string>([
   ['white', 'white'], ['off white', 'white'], ['off-white', 'white'], ['ivory', 'white'], ['cream', 'white'], ['bone', 'white'], ['snow', 'white'], ['pearl', 'white'],
   ['black', 'black'], ['ebony', 'black'], ['charcoal', 'black'], ['grey', 'grey'], ['gray', 'grey'], ['silver', 'grey'],
-  ['navy', 'blue'], ['denim', 'blue'], ['sky blue', 'blue'], ['royal blue', 'blue'], ['beige', 'beige'], ['tan', 'beige'], ['sand', 'beige']
+  ['navy', 'blue'], ['navy blue', 'blue'], ['denim', 'blue'], ['denim blue', 'blue'], ['sky blue', 'blue'], ['royal blue', 'blue'], ['baby blue', 'blue'],
+  ['olive', 'green'], ['olive green', 'green'], ['forest green', 'green'], ['mint green', 'green'],
+  ['beige', 'beige'], ['tan', 'beige'], ['sand', 'beige'], ['cream', 'beige'],
+  ['maroon', 'red'], ['wine', 'red'], ['coral', 'red'], ['peach', 'pink'],
+  ['lavender', 'purple'], ['lilac', 'purple']
 ]);
 
 const normalizeColor = (color: string) => {
@@ -97,8 +143,12 @@ const getColorQueryValues = (color: string) => {
     white: ['White', 'Off-White', 'Ivory', 'Cream', 'Bone', 'Snow', 'Pearl'],
     black: ['Black', 'Charcoal', 'Ebony'],
     grey: ['Grey', 'Gray', 'Silver'],
-    blue: ['Blue', 'Navy', 'Denim', 'Sky Blue', 'Royal Blue'],
-    beige: ['Beige', 'Tan', 'Sand']
+    blue: ['Blue', 'Navy', 'Navy Blue', 'Denim', 'Denim Blue', 'Sky Blue', 'Royal Blue', 'Baby Blue'],
+    green: ['Green', 'Olive', 'Olive Green', 'Forest Green', 'Mint Green'],
+    beige: ['Beige', 'Tan', 'Sand', 'Cream', 'Off White'],
+    red: ['Red', 'Maroon', 'Wine', 'Coral'],
+    pink: ['Pink', 'Peach', 'Coral'],
+    purple: ['Purple', 'Lavender', 'Lilac']
   };
   return [...new Set([color, normalized, ...(synonyms[normalized] || [])])].slice(0, 10);
 };
@@ -109,23 +159,135 @@ const areColorsEquivalent = (a: string, b: string) => {
   return normalizedA === normalizedB || normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA);
 };
 
-const inferGarmentType = (categoryHint: string, edgeDensity: number, aspectRatio: number, dominantColor: string, pattern: string) => {
+const novaTaxonomy = {
+  Men: {
+    'Top Wear': ['T-Shirt', 'Oversized T-Shirt', 'Polo Shirt', 'Henley', 'Casual Shirt', 'Formal Shirt', 'Kurta', 'Hoodie', 'Sweatshirt', 'Sweater', 'Jacket', 'Blazer', 'Nehru Jacket'],
+    'Bottom Wear': ['Jeans', 'Cargo Pants', 'Joggers', 'Track Pants', 'Shorts', 'Trousers', 'Chinos'],
+    Ethnic: ['Kurta', 'Sherwani', 'Pathani Suit', 'Dhoti']
+  },
+  Women: {
+    'Top Wear': ['Crop Top', 'Tank Top', 'Tube Top', 'T-Shirt', 'Shirt', 'Kurti', 'Blouse', 'Hoodie', 'Sweatshirt', 'Jacket'],
+    'Bottom Wear': ['Jeans', 'Palazzo', 'Leggings', 'Skirt', 'Shorts', 'Trousers'],
+    Ethnic: ['Kurti', 'Saree', 'Lehenga', 'Salwar Suit', 'Dupatta'],
+    'One Piece': ['Dress', 'Maxi Dress', 'Mini Dress', 'Gown', 'Jumpsuit']
+  },
+  Unisex: {
+    'Top Wear': ['Oversized Hoodie', 'Oversized T-Shirt', 'Sweatshirt', 'Jacket']
+  }
+} as const;
+
+const canonicalCategoryNames = Array.from(new Set(Object.values(novaTaxonomy).flatMap((groups) => Object.values(groups).flat())));
+
+const novaSubcategoryMeta = new Map<string, { subcategory: string; category: ClothingFeatureVector['bodySection']; gender: string }>();
+Object.entries(novaTaxonomy).forEach(([gender, groups]) => {
+  Object.entries(groups).forEach(([category, subcategories]) => {
+    subcategories.forEach((subcategory) => {
+      const key = normalizeText(subcategory);
+      if (!novaSubcategoryMeta.has(key)) {
+        novaSubcategoryMeta.set(key, {
+          subcategory,
+          category: category === 'Ethnic' ? 'Top Wear' : category === 'One Piece' ? 'Full Body' : category as ClothingFeatureVector['bodySection'],
+          gender
+        });
+      } else if (gender === 'Unisex') {
+        novaSubcategoryMeta.set(key, { subcategory, category: novaSubcategoryMeta.get(key)!.category, gender });
+      }
+    });
+  });
+});
+
+const topWearCategories = new Set(['t shirt', 'oversized t shirt', 'polo shirt', 'henley', 'casual shirt', 'formal shirt', 'shirt', 'polo', 'hoodie', 'oversized hoodie', 'sweatshirt', 'sweater', 'jacket', 'blazer', 'nehru jacket', 'crop top', 'tank top', 'tube top', 'sleeveless top', 'kurti', 'kurta', 'blouse']);
+const bottomWearCategories = new Set(['jeans', 'cargo pants', 'joggers', 'track pants', 'shorts', 'trousers', 'chinos', 'palazzo', 'leggings', 'skirt', 'dhoti']);
+const fullBodyCategories = new Set(['dress', 'maxi dress', 'mini dress', 'gown', 'jumpsuit', 'saree', 'lehenga', 'salwar suit', 'sherwani', 'pathani suit']);
+
+const taxonomyMetaFor = (subcategory: string) => novaSubcategoryMeta.get(normalizeText(subcategory));
+
+const canonicalSubcategoryFromText = (value: string, genderHint?: string) => {
+  const text = normalizeText(value);
+  if (!text) return '';
+  const exact = taxonomyMetaFor(text);
+  if (exact) return exact.subcategory;
+  if (text.includes('oversized') && text.includes('hood')) return 'Oversized Hoodie';
+  if (text.includes('oversized') && (text.includes('t shirt') || text.includes('tshirt') || text.includes('tee'))) return 'Oversized T-Shirt';
+  if (text.includes('crop')) return 'Crop Top';
+  if (text.includes('tube')) return 'Tube Top';
+  if (text.includes('tank')) return 'Tank Top';
+  if (text.includes('sleeveless') && (text.includes('top') || text.includes('tee'))) return 'Tank Top';
+  if (text.includes('polo')) return 'Polo Shirt';
+  if (text.includes('henley')) return 'Henley';
+  if (text.includes('formal') && text.includes('shirt')) return 'Formal Shirt';
+  if (text.includes('casual') && text.includes('shirt')) return 'Casual Shirt';
+  if (text.includes('t shirt') || text.includes('tshirt') || text.includes('tee')) return 'T-Shirt';
+  if (text.includes('hoodie') || text.includes('hooded')) return 'Hoodie';
+  if (text.includes('sweatshirt')) return 'Sweatshirt';
+  if (text.includes('sweater')) return 'Sweater';
+  if (text.includes('nehru')) return 'Nehru Jacket';
+  if (text.includes('blazer')) return 'Blazer';
+  if (text.includes('jacket') || text.includes('coat')) return 'Jacket';
+  if (text.includes('kurti')) return 'Kurti';
+  if (text.includes('kurta')) return normalizeText(genderHint || '') === 'women' ? 'Kurti' : 'Kurta';
+  if (text.includes('sherwani')) return 'Sherwani';
+  if (text.includes('pathani')) return 'Pathani Suit';
+  if (text.includes('dhoti')) return 'Dhoti';
+  if (text.includes('saree') || text.includes('sari')) return 'Saree';
+  if (text.includes('lehenga')) return 'Lehenga';
+  if (text.includes('salwar')) return 'Salwar Suit';
+  if (text.includes('dupatta')) return 'Dupatta';
+  if (text.includes('maxi')) return 'Maxi Dress';
+  if (text.includes('mini')) return 'Mini Dress';
+  if (text.includes('gown')) return 'Gown';
+  if (text.includes('jumpsuit')) return 'Jumpsuit';
+  if (text.includes('dress')) return 'Dress';
+  if (text.includes('cargo')) return 'Cargo Pants';
+  if (text.includes('jogger')) return 'Joggers';
+  if (text.includes('track')) return 'Track Pants';
+  if (text.includes('chino')) return 'Chinos';
+  if (text.includes('palazzo')) return 'Palazzo';
+  if (text.includes('legging')) return 'Leggings';
+  if (text.includes('jean') || text.includes('denim pant')) return 'Jeans';
+  if (text.includes('trouser') || text.includes('pant')) return 'Trousers';
+  if (text.includes('shorts') || text.includes('short pant')) return 'Shorts';
+  if (text.includes('skirt')) return 'Skirt';
+  if (text.includes('blouse')) return 'Blouse';
+  if (text.includes('shirt')) return 'Shirt';
+  return canonicalCategoryNames.find((category) => normalizeText(category) === text) || '';
+};
+
+const canonicalCategoryFromText = (value: string) => {
+  return canonicalSubcategoryFromText(value);
+};
+
+const bodySectionForCategory = (category: string): ClothingFeatureVector['bodySection'] => {
+  const normalized = normalizeText(category);
+  if (normalized.includes('top wear') || normalized === 'tops') return 'Top Wear';
+  if (normalized.includes('bottom wear')) return 'Bottom Wear';
+  if (topWearCategories.has(normalized)) return 'Top Wear';
+  if (bottomWearCategories.has(normalized)) return 'Bottom Wear';
+  if (fullBodyCategories.has(normalized)) return 'Full Body';
+  if (normalized === 'shoes') return 'Footwear';
+  return 'Unknown';
+};
+
+const inferGarmentType = (categoryHint: string, edgeDensity: number, aspectRatio: number, dominantColor: string, pattern: string): string => {
   const lowerCategory = normalizeText(categoryHint);
   if (lowerCategory.includes('footwear') || lowerCategory.includes('shoe')) return 'Shoes';
-  // explicit kurta/ethnic hints win
+  if (lowerCategory.includes('kurti')) return 'Kurti';
   if (lowerCategory.includes('kurta') || lowerCategory.includes('ethnic') || lowerCategory.includes('kurtas')) return 'Kurta';
 
   // bottoms
   if (lowerCategory.includes('bottom') || lowerCategory.includes('pant') || lowerCategory.includes('jean') || lowerCategory.includes('trouser')) {
     if (lowerCategory.includes('short')) return 'Shorts';
     if (aspectRatio > 1.4) return 'Skirt';
-    return 'Jeans';
+    return normalizeColor(dominantColor) === 'blue' ? 'Jeans' : 'Trousers';
   }
 
-  // heuristics: kurta tends to be topwear with visible texture/embroidery (moderate edge density)
   if (lowerCategory.includes('top') || lowerCategory.includes('top wear') || lowerCategory.includes('topwear')) {
-    if (edgeDensity >= 0.11) return 'Kurta';
-    if (pattern === 'Printed' && edgeDensity >= 0.09) return 'Kurta';
+    if (aspectRatio >= 0.78 && aspectRatio <= 1.18 && edgeDensity >= 0.12 && edgeDensity <= 0.22 && pattern !== 'Printed') return 'Hoodie';
+    if (aspectRatio >= 0.95 && edgeDensity < 0.16) return 'Crop Top';
+    if (aspectRatio >= 0.82 && edgeDensity < 0.12) return 'Tank Top';
+    if (pattern === 'Embroidered' || pattern === 'Floral') return 'Kurta';
+    if (edgeDensity >= 0.18) return 'Shirt';
+    if (edgeDensity >= 0.11) return 'T-Shirt';
   }
 
   if (lowerCategory.includes('dress')) return 'Dress';
@@ -133,21 +295,35 @@ const inferGarmentType = (categoryHint: string, edgeDensity: number, aspectRatio
   if (lowerCategory.includes('short')) return 'Shorts';
   if (lowerCategory.includes('hood')) return 'Hoodie';
   if (lowerCategory.includes('jacket') || lowerCategory.includes('coat') || lowerCategory.includes('sweater')) return 'Jacket';
-  if (lowerCategory.includes('polo')) return 'Polo Shirt';
+  if (lowerCategory.includes('polo')) return 'Polo';
   if (lowerCategory.includes('t shirt') || lowerCategory.includes('tee') || lowerCategory.includes('tshirt')) return 'T-Shirt';
 
+  if (aspectRatio >= 0.78 && aspectRatio <= 1.18 && edgeDensity >= 0.12 && edgeDensity <= 0.22 && pattern !== 'Printed') return 'Hoodie';
   if (edgeDensity > 0.22) return 'Jacket';
   if (edgeDensity > 0.18) return 'Shirt';
-  if (edgeDensity > 0.13) return 'Polo Shirt';
+  if (edgeDensity > 0.13) return 'Polo';
   if (edgeDensity >= 0.08) return 'T-Shirt';
-
-  if (aspectRatio > 1.2) return 'Dress';
 
   return 'Unknown Clothing';
 };
 
+const inferGenderForDetectedGarment = (garmentType: string, userGender?: string) => {
+  const normalizedUserGender = normalizeText(userGender || '');
+  if (normalizedUserGender === 'men' || normalizedUserGender === 'women') return normalizedUserGender === 'men' ? 'Men' : 'Women';
+  const meta = taxonomyMetaFor(garmentType);
+  if (meta?.gender === 'Men' || meta?.gender === 'Women' || meta?.gender === 'Unisex') return meta.gender;
+  const normalized = normalizeText(garmentType);
+  if (['crop top', 'tank top', 'tube top', 'kurti', 'blouse', 'saree', 'lehenga', 'salwar suit', 'dupatta', 'dress', 'maxi dress', 'mini dress', 'gown', 'jumpsuit', 'palazzo', 'leggings', 'skirt'].includes(normalized)) return 'Women';
+  if (['kurta', 'sherwani', 'pathani suit', 'dhoti', 'nehru jacket', 'henley', 'formal shirt', 'casual shirt'].includes(normalized)) return 'Men';
+  return 'Unisex';
+};
+
 const normalizeProduct = (id: string, data: Record<string, any>): ProductItem | null => {
-  const colors = safeArray(data.colors).length > 0 ? safeArray(data.colors) : ['Standard'];
+  const metadataColors = [
+    firstString(data.primaryColor, data.primary_colour, data.color, data.colour),
+    firstString(data.secondaryColor, data.secondary_colour)
+  ].filter(Boolean);
+  const colors = safeArray(data.colors).length > 0 ? safeArray(data.colors) : metadataColors.length > 0 ? metadataColors : ['Standard'];
   const imageList = [
     ...safeArray(data.images),
     ...safeArray(data.imageUrls),
@@ -168,6 +344,7 @@ const normalizeProduct = (id: string, data: Record<string, any>): ProductItem | 
     vendorLogoUrl: firstString(data.vendorLogoUrl, data.logoUrl) || undefined,
     name,
     category: firstString(data.category, data.Category) || 'Uncategorized',
+    subcategory: firstString(data.subcategory, data.subCategory, data.Subcategory) || undefined,
     description: firstString(data.description),
     price,
     originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : undefined,
@@ -218,24 +395,7 @@ const drawToCanvas = async (imageUrl: string, crop?: { x: number; y: number; wid
 };
 
 const colorNameFromRgb = (r: number, g: number, b: number) => {
-  const palette = [
-    { name: 'Black', rgb: [25, 25, 30] },
-    { name: 'White', rgb: [240, 240, 235] },
-    { name: 'Grey', rgb: [128, 128, 128] },
-    { name: 'Lavender', rgb: [190, 185, 255] },
-    { name: 'Blue', rgb: [55, 105, 190] },
-    { name: 'Navy', rgb: [25, 45, 95] },
-    { name: 'Denim', rgb: [70, 105, 145] },
-    { name: 'Beige', rgb: [205, 180, 135] },
-    { name: 'Brown', rgb: [120, 75, 45] },
-    { name: 'Olive', rgb: [105, 120, 65] },
-    { name: 'Green', rgb: [65, 145, 90] },
-    { name: 'Red', rgb: [180, 55, 55] },
-    { name: 'Pink', rgb: [220, 130, 170] },
-    { name: 'Yellow', rgb: [220, 190, 70] }
-  ];
-
-  return palette
+  return fashionPalette
     .map((entry) => ({
       ...entry,
       distance: Math.hypot(r - entry.rgb[0], g - entry.rgb[1], b - entry.rgb[2])
@@ -243,28 +403,36 @@ const colorNameFromRgb = (r: number, g: number, b: number) => {
     .sort((a, b) => a.distance - b.distance)[0].name;
 };
 
-const extractFeaturesFromCanvas = (canvas: HTMLCanvasElement, categoryHint = 'Top Wear'): ClothingFeatureVector => {
+const extractFeaturesFromCanvas = (canvas: HTMLCanvasElement, categoryHint = 'Top Wear', userGender?: string): ClothingFeatureVector => {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Canvas unavailable');
   const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const histogram = new Array(12).fill(0);
-  let rTotal = 0;
-  let gTotal = 0;
-  let bTotal = 0;
   let sampleCount = 0;
   let edgeHits = 0;
+  const colorBuckets = new Map<string, { name: string; r: number; g: number; b: number; count: number }>();
 
   for (let i = 0; i < data.length; i += 16) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
+    const alpha = data[i + 3];
+    if (alpha < 180) continue;
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
+    const saturation = max === 0 ? 0 : (max - min) / max;
+    if (max > 248 || max < 8) continue;
     const hueBucket = Math.min(11, Math.floor(((max === min ? 0 : max === r ? (60 * ((g - b) / (max - min)) + 360) % 360 : max === g ? 60 * ((b - r) / (max - min)) + 120 : 60 * ((r - g) / (max - min)) + 240) / 360) * 12));
     histogram[hueBucket] += 1;
-    rTotal += r;
-    gTotal += g;
-    bTotal += b;
+    if (saturation > 0.08 || max < 235) {
+      const bucketKey = `${Math.round(r / 24) * 24},${Math.round(g / 24) * 24},${Math.round(b / 24) * 24}`;
+      const existing = colorBuckets.get(bucketKey) || { name: '', r: 0, g: 0, b: 0, count: 0 };
+      existing.r += r;
+      existing.g += g;
+      existing.b += b;
+      existing.count += 1;
+      colorBuckets.set(bucketKey, existing);
+    }
     sampleCount += 1;
   }
 
@@ -280,34 +448,231 @@ const extractFeaturesFromCanvas = (canvas: HTMLCanvasElement, categoryHint = 'To
   }
 
   const normalizedHistogram = histogram.map((value) => Number((value / Math.max(1, sampleCount)).toFixed(4)));
-  const avgR = Math.round(rTotal / Math.max(1, sampleCount));
-  const avgG = Math.round(gTotal / Math.max(1, sampleCount));
-  const avgB = Math.round(bTotal / Math.max(1, sampleCount));
-  const dominantColor = colorNameFromRgb(avgR, avgG, avgB);
+  const dominantBuckets = Array.from(colorBuckets.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 2)
+    .map((bucket) => {
+      const avgR = Math.round(bucket.r / Math.max(1, bucket.count));
+      const avgG = Math.round(bucket.g / Math.max(1, bucket.count));
+      const avgB = Math.round(bucket.b / Math.max(1, bucket.count));
+      return {
+        r: avgR,
+        g: avgG,
+        b: avgB,
+        name: colorNameFromRgb(avgR, avgG, avgB),
+        share: bucket.count / Math.max(1, sampleCount)
+      };
+    });
+  const primaryBucket = dominantBuckets[0] || { r: 153, g: 153, b: 153, name: 'Grey', share: 0 };
+  const secondaryBucket = dominantBuckets.find((bucket) => normalizeColor(bucket.name) !== normalizeColor(primaryBucket.name)) || dominantBuckets[1] || primaryBucket;
+  const dominantColor = primaryBucket.name;
+  const secondaryColor = secondaryBucket.name;
   const edgeDensity = Number((edgeHits / Math.max(1, (width / 6) * (height / 6))).toFixed(3));
   const aspectRatio = Number((width / Math.max(1, height)).toFixed(2));
-  const pattern = edgeDensity > 0.18 ? 'Printed' : edgeDensity > 0.11 ? 'Textured' : 'Solid';
-  const garmentType = inferGarmentType(categoryHint, edgeDensity, aspectRatio, dominantColor, pattern);
-  const sleeveType = garmentType === 'Hoodie' || garmentType === 'Jacket' || garmentType === 'Sweatshirt' ? 'Full Sleeve' : garmentType === 'Shorts' || garmentType === 'Skirt' ? 'Short Sleeve' : 'Regular';
-  const neckType = garmentType === 'Hoodie' ? 'Hooded' : garmentType === 'Polo Shirt' ? 'Collared' : garmentType === 'Shirt' ? 'Collared' : 'Round';
-  const fabric = dominantColor === 'Denim' || garmentType === 'Jeans' ? 'Denim' : edgeDensity > 0.16 ? 'Textured Blend' : 'Cotton Blend';
+  const colorSpread = dominantBuckets.length > 1 ? Math.abs((dominantBuckets[0]?.share || 0) - (dominantBuckets[1]?.share || 0)) : 1;
+  const pattern = edgeDensity > 0.26 ? 'Graphic' : edgeDensity > 0.22 ? 'Printed' : edgeDensity > 0.17 ? 'Textured' : colorSpread < 0.09 ? 'Abstract' : edgeDensity > 0.11 ? 'Textured' : 'Solid';
+  const rawGarmentType = inferGarmentType(categoryHint, edgeDensity, aspectRatio, dominantColor, pattern);
+  const garmentType = canonicalSubcategoryFromText(rawGarmentType, userGender) || rawGarmentType;
+  const taxonomyMeta = taxonomyMetaFor(garmentType);
+  const bodySection = taxonomyMeta?.category || bodySectionForCategory(garmentType) || bodySectionForCategory(categoryHint);
+  const detectedGender = inferGenderForDetectedGarment(garmentType, userGender);
+  const sleeveType = bodySection === 'Bottom Wear' || bodySection === 'Footwear'
+    ? 'Not applicable'
+    : garmentType === 'Tank Top' || garmentType === 'Tube Top' || garmentType === 'Crop Top' || garmentType === 'Blouse'
+      ? 'Sleeveless'
+      : garmentType === 'Hoodie' || garmentType === 'Oversized Hoodie' || garmentType === 'Jacket' || garmentType === 'Sweatshirt' || garmentType === 'Blazer' || garmentType === 'Kurti' || garmentType === 'Kurta'
+        ? 'Full Sleeve'
+        : 'Half Sleeve';
+  const neckType = garmentType === 'Hoodie' || garmentType === 'Oversized Hoodie' ? 'Hooded' : garmentType === 'Polo Shirt' || garmentType === 'Shirt' || garmentType === 'Casual Shirt' || garmentType === 'Formal Shirt' || garmentType === 'Blazer' ? 'Collar' : garmentType === 'Kurta' || garmentType === 'Kurti' || garmentType === 'Nehru Jacket' ? 'Mandarin' : aspectRatio > 0.95 ? 'Square' : 'Round';
+  const fit = aspectRatio > 1.1 ? 'Relaxed' : aspectRatio < 0.62 ? 'Slim' : 'Regular';
+  const fabric = normalizeColor(dominantColor) === 'blue' && garmentType === 'Jeans' ? 'Denim' : edgeDensity > 0.16 ? 'Textured Blend' : 'Cotton Blend';
+  const categoryConfidence = garmentType === 'Unknown Clothing' ? 0.45 : bodySection !== 'Unknown' ? 0.84 : 0.68;
 
   return {
     dominantColor,
-    colorHex: `#${[avgR, avgG, avgB].map((value) => value.toString(16).padStart(2, '0')).join('')}`,
-    category: categoryHint,
+    secondaryColor,
+    colorHex: `#${[primaryBucket.r, primaryBucket.g, primaryBucket.b].map((value) => value.toString(16).padStart(2, '0')).join('')}`,
+    category: bodySection,
+    subcategory: garmentType,
     garmentType,
+    bodySection,
     pattern,
     shape: aspectRatio > 1.1 ? 'wide' : aspectRatio < 0.65 ? 'long' : 'regular',
     sleeveType,
     neckType,
-    hasHood: garmentType === 'Hoodie',
+    fit,
+    hasHood: garmentType === 'Hoodie' || garmentType === 'Oversized Hoodie',
     fabric,
-    tags: [dominantColor, pattern, garmentType, categoryHint, garmentType === 'Hoodie' ? 'hooded' : 'style'].map(normalizeText),
+    genderCategory: detectedGender,
+    confidence: {
+      category: categoryConfidence,
+      bodySection: bodySection === 'Unknown' ? 0.52 : 0.82,
+      sleeveType: sleeveType === 'Not applicable' ? 0.95 : 0.7,
+      neckType: 0.62,
+      fit: 0.58,
+      primaryColor: Math.min(0.95, Math.max(0.55, primaryBucket.share * 2.4)),
+      secondaryColor: secondaryBucket === primaryBucket ? 0.3 : Math.min(0.82, Math.max(0.42, secondaryBucket.share * 2)),
+      pattern: pattern === 'Solid' ? 0.72 : 0.62,
+      material: 0.52,
+      genderCategory: detectedGender === 'Unisex' ? 0.55 : 0.78
+    },
+    tags: [dominantColor, secondaryColor, pattern, garmentType, bodySection, sleeveType, neckType, fabric].map(normalizeText),
     histogram: normalizedHistogram,
     edgeDensity,
     aspectRatio
   };
+};
+
+interface GarmentCandidate {
+  label: string;
+  category: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  areaShare: number;
+  confidence: number;
+}
+
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+
+const saturationForRgb = (r: number, g: number, b: number) => {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  return max === 0 ? 0 : (max - min) / max;
+};
+
+const inferCandidateCategory = (candidate: Pick<GarmentCandidate, 'x' | 'y' | 'width' | 'height'>, imageWidth: number, imageHeight: number) => {
+  const centerY = (candidate.y + candidate.height / 2) / Math.max(1, imageHeight);
+  const aspectRatio = candidate.width / Math.max(1, candidate.height);
+  const areaShare = (candidate.width * candidate.height) / Math.max(1, imageWidth * imageHeight);
+  if (centerY > 0.66 && aspectRatio < 1.25) return 'Bottom Wear';
+  if (areaShare > 0.5 && candidate.height > imageHeight * 0.62) return 'Full Body';
+  return 'Top Wear';
+};
+
+const locateGarmentCandidates = (canvas: HTMLCanvasElement): GarmentCandidate[] => {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return [];
+  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const gridW = 72;
+  const gridH = 72;
+  const cellW = width / gridW;
+  const cellH = height / gridH;
+  const cornerSamples = [
+    [0, 0],
+    [width - 1, 0],
+    [0, height - 1],
+    [width - 1, height - 1]
+  ].map(([x, y]) => {
+    const idx = (Math.max(0, Math.min(height - 1, y)) * width + Math.max(0, Math.min(width - 1, x))) * 4;
+    return [data[idx], data[idx + 1], data[idx + 2]];
+  });
+  const bg = cornerSamples.reduce((acc, rgb) => [acc[0] + rgb[0], acc[1] + rgb[1], acc[2] + rgb[2]], [0, 0, 0]).map((value) => value / cornerSamples.length);
+  const occupied = new Array(gridW * gridH).fill(false);
+  let occupiedCells = 0;
+
+  for (let gy = 0; gy < gridH; gy += 1) {
+    for (let gx = 0; gx < gridW; gx += 1) {
+      const px = Math.min(width - 1, Math.max(0, Math.floor((gx + 0.5) * cellW)));
+      const py = Math.min(height - 1, Math.max(0, Math.floor((gy + 0.5) * cellH)));
+      const idx = (py * width + px) * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const alpha = data[idx + 3];
+      const brightness = (r + g + b) / 3;
+      const bgBrightness = (bg[0] + bg[1] + bg[2]) / 3;
+      const bgDistance = Math.hypot(r - bg[0], g - bg[1], b - bg[2]);
+      const saturation = saturationForRgb(r, g, b);
+      const isVisiblePixel = alpha > 50 && (
+        bgDistance > 34 ||
+        Math.abs(brightness - bgBrightness) > 30 ||
+        saturation > 0.16 ||
+        brightness < 42
+      );
+      if (isVisiblePixel) {
+        occupied[gy * gridW + gx] = true;
+        occupiedCells += 1;
+      }
+    }
+  }
+
+  const visited = new Array(gridW * gridH).fill(false);
+  const components: GarmentCandidate[] = [];
+  const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  for (let start = 0; start < occupied.length; start += 1) {
+    if (!occupied[start] || visited[start]) continue;
+    const queue = [start];
+    visited[start] = true;
+    let minX = gridW;
+    let minY = gridH;
+    let maxX = 0;
+    let maxY = 0;
+    let count = 0;
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const cx = current % gridW;
+      const cy = Math.floor(current / gridW);
+      minX = Math.min(minX, cx);
+      minY = Math.min(minY, cy);
+      maxX = Math.max(maxX, cx);
+      maxY = Math.max(maxY, cy);
+      count += 1;
+
+      neighbors.forEach(([dx, dy]) => {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || nx >= gridW || ny < 0 || ny >= gridH) return;
+        const next = ny * gridW + nx;
+        if (!occupied[next] || visited[next]) return;
+        visited[next] = true;
+        queue.push(next);
+      });
+    }
+
+    const areaShare = count / (gridW * gridH);
+    if (areaShare < 0.025) continue;
+    const padX = 3;
+    const padY = 3;
+    const x = Math.max(0, Math.floor((minX - padX) * cellW));
+    const y = Math.max(0, Math.floor((minY - padY) * cellH));
+    const right = Math.min(width, Math.ceil((maxX + 1 + padX) * cellW));
+    const bottom = Math.min(height, Math.ceil((maxY + 1 + padY) * cellH));
+    const boxAreaShare = ((right - x) * (bottom - y)) / Math.max(1, width * height);
+    if (boxAreaShare < 0.08) continue;
+    const category = inferCandidateCategory({ x, y, width: right - x, height: bottom - y }, width, height);
+    components.push({
+      label: category,
+      category,
+      x,
+      y,
+      width: right - x,
+      height: bottom - y,
+      areaShare: boxAreaShare,
+      confidence: clamp01(0.42 + areaShare * 2.2 + Math.min(0.22, occupiedCells / (gridW * gridH)))
+    });
+  }
+
+  const overallShare = occupiedCells / (gridW * gridH);
+  if (components.length === 0 && overallShare > 0.15) {
+    components.push({
+      label: 'Detected Garment',
+      category: 'Top Wear',
+      x: Math.round(width * 0.04),
+      y: Math.round(height * 0.04),
+      width: Math.round(width * 0.92),
+      height: Math.round(height * 0.92),
+      areaShare: 0.85,
+      confidence: 0.62
+    });
+  }
+
+  return components
+    .sort((a, b) => (b.confidence * b.areaShare) - (a.confidence * a.areaShare))
+    .slice(0, 5);
 };
 
 class BrowserVisionProvider implements VisionProvider {
@@ -321,42 +686,257 @@ class BrowserVisionProvider implements VisionProvider {
     }
   }
 
-  async detectClothing(imageUrl: string) {
+  async detectClothing(imageUrl: string, userGender?: string) {
     const image = await loadImage(imageUrl);
+    const fullCanvas = await drawToCanvas(imageUrl);
+    const localizedCandidates = locateGarmentCandidates(fullCanvas);
     const portrait = image.naturalHeight > image.naturalWidth * 1.12;
-    const crops = portrait
+    const ratioX = image.naturalWidth / Math.max(1, fullCanvas.width);
+    const ratioY = image.naturalHeight / Math.max(1, fullCanvas.height);
+    const fallbackCrops = portrait
       ? [
-          { label: 'Top Wear', category: 'Top Wear', x: 0.14, y: 0.12, width: 0.72, height: 0.42 },
-          { label: 'Bottom Wear', category: 'Bottom Wear', x: 0.18, y: 0.48, width: 0.64, height: 0.34 },
-          { label: 'Footwear', category: 'Footwear', x: 0.18, y: 0.78, width: 0.64, height: 0.18 }
+          { label: 'Top Wear', category: 'Top Wear', x: Math.round(image.naturalWidth * 0.14), y: Math.round(image.naturalHeight * 0.12), width: Math.round(image.naturalWidth * 0.72), height: Math.round(image.naturalHeight * 0.42), areaShare: 0.3, confidence: 0.52 },
+          { label: 'Bottom Wear', category: 'Bottom Wear', x: Math.round(image.naturalWidth * 0.18), y: Math.round(image.naturalHeight * 0.48), width: Math.round(image.naturalWidth * 0.64), height: Math.round(image.naturalHeight * 0.34), areaShare: 0.22, confidence: 0.48 },
+          { label: 'Full Body', category: 'Full Body', x: Math.round(image.naturalWidth * 0.08), y: Math.round(image.naturalHeight * 0.06), width: Math.round(image.naturalWidth * 0.84), height: Math.round(image.naturalHeight * 0.82), areaShare: 0.69, confidence: 0.46 }
         ]
       : [
-          { label: 'Top Wear', category: 'Top Wear', x: 0.08, y: 0.08, width: 0.84, height: 0.84 },
-          // extra tighter center crop helps when image is a close-up of the top
-          { label: 'Top Wear (center)', category: 'Top Wear', x: 0.18, y: 0.12, width: 0.64, height: 0.7 }
+          { label: 'Detected Garment', category: 'Top Wear', x: Math.round(image.naturalWidth * 0.06), y: Math.round(image.naturalHeight * 0.06), width: Math.round(image.naturalWidth * 0.88), height: Math.round(image.naturalHeight * 0.88), areaShare: 0.77, confidence: 0.5 },
+          { label: 'Detected Garment (center)', category: 'Top Wear', x: Math.round(image.naturalWidth * 0.16), y: Math.round(image.naturalHeight * 0.1), width: Math.round(image.naturalWidth * 0.68), height: Math.round(image.naturalHeight * 0.76), areaShare: 0.52, confidence: 0.46 }
         ];
 
+    const localizedCrops = localizedCandidates.map((candidate) => ({
+      ...candidate,
+      x: Math.round(candidate.x * ratioX),
+      y: Math.round(candidate.y * ratioY),
+      width: Math.round(candidate.width * ratioX),
+      height: Math.round(candidate.height * ratioY)
+    }));
+    const crops = [...localizedCrops, ...fallbackCrops]
+      .filter((crop) => crop.width * crop.height >= image.naturalWidth * image.naturalHeight * 0.08)
+      .sort((a, b) => (b.confidence * b.areaShare) - (a.confidence * a.areaShare))
+      .slice(0, localizedCrops.length > 0 ? 5 : 3);
+
     const items = await Promise.all(crops.map(async (crop, index) => {
+      const cropX = Math.max(0, Math.min(image.naturalWidth - 1, crop.x));
+      const cropY = Math.max(0, Math.min(image.naturalHeight - 1, crop.y));
+      const cropWidth = Math.max(1, Math.min(image.naturalWidth - cropX, crop.width));
+      const cropHeight = Math.max(1, Math.min(image.naturalHeight - cropY, crop.height));
       const canvas = await drawToCanvas(imageUrl, {
-        x: Math.round(image.naturalWidth * crop.x),
-        y: Math.round(image.naturalHeight * crop.y),
-        width: Math.round(image.naturalWidth * crop.width),
-        height: Math.round(image.naturalHeight * crop.height)
+        x: cropX,
+        y: cropY,
+        width: cropWidth,
+        height: cropHeight
       });
-      const features = extractFeaturesFromCanvas(canvas, crop.category);
+      const features = extractFeaturesFromCanvas(canvas, crop.category, userGender);
       return {
         id: `detected-${index + 1}`,
         label: features.garmentType || crop.label,
         cropDataUrl: canvas.toDataURL('image/jpeg', 0.82),
+        boundingBox: {
+          x: cropX / Math.max(1, image.naturalWidth),
+          y: cropY / Math.max(1, image.naturalHeight),
+          width: cropWidth / Math.max(1, image.naturalWidth),
+          height: cropHeight / Math.max(1, image.naturalHeight)
+        },
+        confidence: Math.max(crop.confidence, features.confidence.category || 0),
         features
       };
     }));
 
-    return items.filter((item) => item.cropDataUrl);
+    const meaningfulItems = items.filter((item) => item.cropDataUrl && item.confidence >= 0.42);
+    if (meaningfulItems.length > 0) return meaningfulItems.sort((a, b) => b.confidence - a.confidence);
+
+    const fullFeatures = extractFeaturesFromCanvas(fullCanvas, 'Top Wear', userGender);
+    const hasVisibleGarment = fullFeatures.edgeDensity > 0.035 || localizedCandidates.length > 0;
+    if (!hasVisibleGarment) return [];
+    return [{
+      id: 'detected-1',
+      label: fullFeatures.garmentType || 'Detected Garment',
+      cropDataUrl: fullCanvas.toDataURL('image/jpeg', 0.82),
+      boundingBox: { x: 0, y: 0, width: 1, height: 1 },
+      confidence: Math.max(0.5, fullFeatures.confidence.category),
+      features: fullFeatures
+    }];
   }
 }
 
-const visionProvider: VisionProvider = new BrowserVisionProvider();
+interface GeminiDetectedGarment {
+  garmentType?: string;
+  category?: string;
+  subcategory?: string;
+  genderCategory?: string;
+  dominantColor?: string;
+  secondaryColor?: string;
+  pattern?: string;
+  sleeveType?: string;
+  neckType?: string;
+  fit?: string;
+  material?: string;
+  confidence?: number;
+}
+
+const geminiFashionPrompt = `
+You are NOVA's fashion vision classifier. Analyze the image and identify clothing only.
+Return ONLY valid JSON. Do not include markdown, prose, or explanations.
+
+Detect clothing in these scenarios: worn on a person, hanging, flat lay, folded, mannequin, ecommerce/product photo, transparent PNG, mirror selfie, partial garments, and multiple garments.
+Never require a human body, face, or pose. If multiple garments exist, return all detected garments sorted by largest visible garment first.
+Return an empty items array only if absolutely no garment exists.
+
+Use only these NOVA subcategories:
+Men: T-Shirt, Oversized T-Shirt, Polo Shirt, Henley, Casual Shirt, Formal Shirt, Kurta, Hoodie, Sweatshirt, Sweater, Jacket, Blazer, Nehru Jacket, Jeans, Cargo Pants, Joggers, Track Pants, Shorts, Trousers, Chinos, Sherwani, Pathani Suit, Dhoti.
+Women: Crop Top, Tank Top, Tube Top, T-Shirt, Shirt, Kurti, Blouse, Hoodie, Sweatshirt, Jacket, Jeans, Palazzo, Leggings, Skirt, Shorts, Trousers, Saree, Lehenga, Salwar Suit, Dupatta, Dress, Maxi Dress, Mini Dress, Gown, Jumpsuit.
+Unisex: Oversized Hoodie, Oversized T-Shirt, Sweatshirt, Jacket.
+
+JSON schema:
+{
+  "items": [
+    {
+      "garmentType": "Kurta",
+      "category": "Top Wear",
+      "subcategory": "Kurta",
+      "genderCategory": "Men",
+      "dominantColor": "Sky Blue",
+      "secondaryColor": "Pink",
+      "pattern": "Ethnic Print",
+      "sleeveType": "Full Sleeve",
+      "neckType": "Mandarin",
+      "fit": "Regular",
+      "material": "Cotton Blend",
+      "confidence": 96
+    }
+  ]
+}
+
+Valid categories: Top Wear, Bottom Wear, Full Body, Footwear, Accessory, Unknown.
+Valid patterns: Solid, Printed, Graphic, Striped, Checked, Floral, Paisley, Ethnic Print, Abstract, Tie Dye, Embroidered, Textured.
+Use fashion color names such as Navy Blue, Sky Blue, Royal Blue, Olive Green, Forest Green, Beige, Cream, Wine, Mustard, Lavender, Lilac, Peach, Coral, Maroon.
+Do not classify Kurta as T-Shirt or Crop Top. Do not classify Crop Top as Dress. Do not classify Hoodie as Sweatshirt unless confidence is very low.
+`;
+
+const extractJsonObject = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start >= 0 && end > start) return trimmed.slice(start, end + 1);
+  return trimmed;
+};
+
+const getGeminiApiKey = () => {
+  const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env || {};
+  return env.VITE_GEMINI_API_KEY || env.VITE_GOOGLE_API_KEY || env.GEMINI_API_KEY || '';
+};
+
+class GeminiVisionProvider implements VisionProvider {
+  private fallback = new BrowserVisionProvider();
+
+  async compressImage(file: File) {
+    return this.fallback.compressImage(file);
+  }
+
+  async detectClothing(imageUrl: string, userGender?: string) {
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) return this.fallback.detectClothing(imageUrl, userGender);
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: geminiFashionPrompt },
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: imageUrl.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '')
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: 'application/json'
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error(`Gemini vision request failed: ${response.status}`);
+      const payload = await response.json();
+      const text = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || '';
+      const parsed = JSON.parse(extractJsonObject(text)) as { items?: GeminiDetectedGarment[] };
+      const garments = Array.isArray(parsed.items) ? parsed.items : [];
+      if (garments.length === 0) return [];
+
+      const canvas = await drawToCanvas(imageUrl);
+      const lowLevelFeatures = extractFeaturesFromCanvas(canvas, 'Top Wear', userGender);
+
+      return garments.slice(0, 5).map((garment, index): DetectedClothingItem => {
+        const garmentType = canonicalSubcategoryFromText(garment.subcategory || garment.garmentType || '', garment.genderCategory || userGender)
+          || garment.subcategory
+          || garment.garmentType
+          || 'Unknown Clothing';
+        const category = (garment.category || taxonomyMetaFor(garmentType)?.category || bodySectionForCategory(garmentType) || 'Unknown') as ClothingFeatureVector['bodySection'];
+        const confidence = Math.max(0.1, Math.min(1, Number(garment.confidence || 72) / 100));
+        const features: ClothingFeatureVector = {
+          ...lowLevelFeatures,
+          dominantColor: garment.dominantColor || lowLevelFeatures.dominantColor,
+          secondaryColor: garment.secondaryColor || lowLevelFeatures.secondaryColor,
+          category,
+          subcategory: garmentType,
+          garmentType,
+          bodySection: category,
+          pattern: garment.pattern || lowLevelFeatures.pattern,
+          sleeveType: garment.sleeveType || lowLevelFeatures.sleeveType,
+          neckType: garment.neckType || lowLevelFeatures.neckType,
+          fit: garment.fit || lowLevelFeatures.fit,
+          hasHood: normalizeText(garmentType).includes('hood') || normalizeText(garment.neckType || '').includes('hood'),
+          fabric: garment.material || lowLevelFeatures.fabric,
+          genderCategory: garment.genderCategory || inferGenderForDetectedGarment(garmentType, userGender),
+          confidence: {
+            ...lowLevelFeatures.confidence,
+            category: confidence,
+            bodySection: confidence,
+            sleeveType: garment.sleeveType ? confidence : lowLevelFeatures.confidence.sleeveType,
+            neckType: garment.neckType ? confidence : lowLevelFeatures.confidence.neckType,
+            fit: garment.fit ? confidence : lowLevelFeatures.confidence.fit,
+            primaryColor: garment.dominantColor ? confidence : lowLevelFeatures.confidence.primaryColor,
+            secondaryColor: garment.secondaryColor ? confidence : lowLevelFeatures.confidence.secondaryColor,
+            pattern: garment.pattern ? confidence : lowLevelFeatures.confidence.pattern,
+            material: garment.material ? confidence : lowLevelFeatures.confidence.material,
+            genderCategory: garment.genderCategory ? confidence : lowLevelFeatures.confidence.genderCategory
+          },
+          tags: [
+            garment.dominantColor || lowLevelFeatures.dominantColor,
+            garment.secondaryColor || lowLevelFeatures.secondaryColor,
+            garment.pattern || lowLevelFeatures.pattern,
+            garmentType,
+            category,
+            garment.sleeveType || lowLevelFeatures.sleeveType,
+            garment.neckType || lowLevelFeatures.neckType,
+            garment.material || lowLevelFeatures.fabric
+          ].map(normalizeText)
+        };
+
+        return {
+          id: `gemini-detected-${index + 1}`,
+          label: garmentType,
+          cropDataUrl: imageUrl,
+          boundingBox: { x: 0, y: 0, width: 1, height: 1 },
+          confidence,
+          features
+        };
+      }).sort((a, b) => b.confidence - a.confidence);
+    } catch (error) {
+      console.warn('[scan] Gemini vision failed, falling back to browser vision.', error);
+      return this.fallback.detectClothing(imageUrl, userGender);
+    }
+  }
+}
+
+const visionProvider: VisionProvider = new GeminiVisionProvider();
 
 const getStoredJson = <T>(key: string, fallback: T): T => {
   try {
@@ -375,40 +955,150 @@ const setStoredJson = (key: string, value: unknown) => {
   }
 };
 
-const categoryCandidates = (category: string, garmentType: string, userGender?: string) => {
-  const values = [category, garmentType];
-  const lower = normalizeText(`${category} ${garmentType}`);
-  if (lower.includes('top') || lower.includes('hoodie') || lower.includes('t shirt') || lower.includes('polo') || lower.includes('shirt') || lower.includes('jacket') || lower.includes('kurta')) values.push('Streetwear', 'Outerwear', 'Casual wear', 'Top Wear', 'Ethnic Wear', 'Kurta', 'Kurtas');
-  // also add kurta when garmentType explicitly indicates kurta
-  if (normalizeText(garmentType).includes('kurta')) values.push('Kurta', 'Kurtas', "Men's Kurtas", "Women's Kurtas");
-  if (lower.includes('bottom') || lower.includes('jeans') || lower.includes('pant') || lower.includes('trouser')) values.push('Casual', 'Bottom Wear', 'Jeans', 'Trousers');
-  if (lower.includes('dress') || lower.includes('skirt') || lower.includes('shorts')) values.push('Dresses', 'Skirts', 'Shorts');
-  if (lower.includes('kurta')) values.push('Kurta', 'Kurtas', "Men's Kurtas", "Women's Kurtas", 'Ethnic Wear');
-  if (lower.includes('shoe') || lower.includes('foot')) values.push('Footwear', 'Shoes');
-  if (userGender === 'Women') values.push('Women', 'Womenswear', "Women's", "Womens Clothing");
-  if (userGender === 'Men') values.push('Men', 'Menswear', "Men's", "Mens Clothing");
+const categoryCandidates = (category: string, garmentType: string) => {
+  const detected = canonicalSubcategoryFromText(garmentType) || canonicalSubcategoryFromText(category) || garmentType || category;
+  const normalized = normalizeText(detected);
+  const values = [detected];
+
+  if (normalized === 'crop top') values.push('Crop Tops');
+  if (normalized === 'tank top') values.push('Tank Tops', 'Sleeveless Top', 'Sleeveless Tops');
+  if (normalized === 'tube top') values.push('Tube Tops');
+  if (normalized === 't shirt') values.push('T-Shirts', 'Tees');
+  if (normalized === 'oversized t shirt') values.push('Oversized T-Shirts');
+  if (normalized === 'polo shirt') values.push('Polo', 'Polo Shirts');
+  if (normalized === 'casual shirt') values.push('Casual Shirts');
+  if (normalized === 'formal shirt') values.push('Formal Shirts');
+  if (normalized === 'hoodie') values.push('Hoodies');
+  if (normalized === 'oversized hoodie') values.push('Oversized Hoodies');
+  if (normalized === 'sweatshirt') values.push('Sweatshirts');
+  if (normalized === 'sweater') values.push('Sweaters');
+  if (normalized === 'jacket') values.push('Jackets');
+  if (normalized === 'blazer') values.push('Blazers');
+  if (normalized === 'nehru jacket') values.push('Nehru Jackets');
+  if (normalized === 'kurta') values.push('Kurtas');
+  if (normalized === 'kurti') values.push('Kurtis');
+  if (normalized === 'dress') values.push('Dresses');
+  if (normalized === 'maxi dress') values.push('Maxi Dresses');
+  if (normalized === 'mini dress') values.push('Mini Dresses');
+  if (normalized === 'saree') values.push('Sarees');
+  if (normalized === 'lehenga') values.push('Lehengas');
+  if (normalized === 'salwar suit') values.push('Salwar Suits');
+  if (normalized === 'jumpsuit') values.push('Jumpsuits');
+  if (normalized === 'jeans') values.push('Jeans');
+  if (normalized === 'trousers') values.push('Trousers');
+  if (normalized === 'cargo pants') values.push('Cargo Pants', 'Cargos');
+  if (normalized === 'joggers') values.push('Jogger');
+  if (normalized === 'track pants') values.push('Track Pants');
+  if (normalized === 'chinos') values.push('Chino');
+  if (normalized === 'palazzo') values.push('Palazzos');
+  if (normalized === 'leggings') values.push('Legging');
+  if (normalized === 'shorts') values.push('Shorts');
+  if (normalized === 'skirt') values.push('Skirts');
+
   return values.filter((value, index, arr) => value && arr.indexOf(value) === index).slice(0, 10);
+};
+
+const productCategoryText = (product: ProductItem) => normalizeText([
+  product.category,
+  product.subcategory,
+  product.name,
+  product.description,
+  ...(product.tags || [])
+].join(' '));
+
+const productCoreCategoryText = (product: ProductItem) => normalizeText([
+  product.category,
+  product.subcategory,
+  product.name,
+  ...(product.tags || [])
+].join(' '));
+
+const metadataCategoryText = (metadata: RuntimeProductMetadata) => normalizeText([
+  metadata.category,
+  metadata.subcategory,
+  metadata.gender,
+  metadata.searchableText
+].join(' '));
+
+const hardCategoryConflicts: Record<string, string[]> = {
+  'crop top': ['dress', 'gown', 'saree', 'kurti', 'kurta', 'jean', 'trouser', 'shorts', 'skirt'],
+  'tank top': ['dress', 'gown', 'saree', 'kurti', 'kurta', 'jean', 'trouser', 'shorts', 'skirt'],
+  'tube top': ['dress', 'gown', 'saree', 'kurti', 'kurta', 'jean', 'trouser', 'shorts', 'skirt'],
+  't shirt': ['dress', 'gown', 'saree', 'kurti', 'jean', 'trouser', 'shorts', 'skirt'],
+  hoodie: ['t shirt', 'tee', 'shirt', 'dress', 'jean', 'trouser', 'shorts', 'skirt'],
+  sweatshirt: ['t shirt', 'tee', 'shirt', 'dress', 'jean', 'trouser', 'shorts', 'skirt'],
+  jacket: ['t shirt', 'tee', 'dress', 'jean', 'trouser', 'shorts', 'skirt'],
+  blazer: ['t shirt', 'tee', 'dress', 'jean', 'trouser', 'shorts', 'skirt'],
+  shirt: ['kurti', 'saree', 'dress', 'jean', 'trouser', 'shorts', 'skirt'],
+  'polo shirt': ['kurti', 'saree', 'dress', 'jean', 'trouser', 'shorts', 'skirt'],
+  jeans: ['trouser', 'pant', 'dress', 'skirt', 'shorts'],
+  trousers: ['jean', 'denim', 'dress', 'skirt', 'shorts'],
+  dress: ['crop top', 'tank top', 't shirt', 'jean', 'trouser', 'shorts'],
+  kurta: ['crop top', 'tank top', 't shirt', 'dress', 'jean', 'trouser', 'shorts'],
+  kurti: ['crop top', 'tank top', 't shirt', 'dress', 'jean', 'trouser', 'shorts'],
+  saree: ['dress', 'jean', 'trouser', 'shorts'],
+  shorts: ['jean', 'trouser', 'dress', 'skirt'],
+  skirt: ['jean', 'trouser', 'shorts', 'dress']
+};
+
+const productMatchesDetectedCategory = (product: ProductItem, features: ClothingFeatureVector) => {
+  const detected = normalizeText(canonicalSubcategoryFromText(features.garmentType, features.genderCategory) || features.garmentType);
+  const metadata = getRuntimeProductMetadata(product);
+  const categoryText = metadataCategoryText(metadata);
+  const coreCategoryText = normalizeText([metadata.category, metadata.subcategory].join(' '));
+  const productCanonical = canonicalSubcategoryFromText(metadata.subcategory, metadata.gender);
+  if (productCanonical && normalizeText(productCanonical) === detected) return true;
+  const allowed = categoryCandidates(features.category, features.garmentType).map(normalizeText);
+  const productCategory = normalizeText(metadata.category || '');
+  const productSubcategory = normalizeText(metadata.subcategory || '');
+  if (allowed.some((value) => value === productCategory || value === productSubcategory)) return true;
+  if (detected === 'crop top' && (categoryText.includes('top') || categoryText.includes('tops')) && !categoryText.includes('dress')) return true;
+  if (detected === 'jeans') return categoryText.includes('jean') || categoryText.includes('denim');
+  if (detected === 'trousers') return (categoryText.includes('trouser') || categoryText.includes('pant') || categoryText.includes('chino')) && !categoryText.includes('jean');
+  if (detected === 'shirt') return categoryText.includes('shirt') && !categoryText.includes('kurti') && !categoryText.includes('kurta') && !categoryText.includes('t shirt');
+  const conflicts = hardCategoryConflicts[detected] || [];
+  return !conflicts.some((conflict) => coreCategoryText.includes(conflict)) && textScore(features.garmentType, metadata.category) >= 0.5;
+};
+
+const productIsAcceptableFallback = (product: ProductItem, features: ClothingFeatureVector) => {
+  const detected = normalizeText(canonicalSubcategoryFromText(features.garmentType, features.genderCategory) || features.garmentType);
+  const metadata = getRuntimeProductMetadata(product);
+  const coreCategoryText = normalizeText([metadata.category, metadata.subcategory].join(' '));
+  const conflicts = hardCategoryConflicts[detected] || [];
+  if (conflicts.some((conflict) => coreCategoryText.includes(conflict))) return false;
+  const productBodySection = bodySectionForCategory(canonicalSubcategoryFromText(metadata.subcategory, metadata.gender) || metadata.category);
+  return productBodySection === 'Unknown' || features.bodySection === 'Unknown' || productBodySection === features.bodySection;
+};
+
+const getDocsWithRetry = async (candidateQuery: ReturnType<typeof query>) => {
+  try {
+    return await getDocs(candidateQuery);
+  } catch (error) {
+    console.warn('[scan] Firestore candidate query failed once, retrying.', error);
+    return getDocs(candidateQuery);
+  }
 };
 
 const fetchCandidates = async (features: ClothingFeatureVector, userGender?: string): Promise<ProductItem[]> => {
   await waitForFirebaseAuthReady();
   const cache = getStoredJson<Record<string, { at: number; products: ProductItem[] }>>(candidateCacheKey, {});
-  const cacheKey = `${features.category}|${normalizeColor(features.dominantColor)}|${features.tags.slice(0, 4).join(',')}|${userGender || 'any'}`;
+  const allowedCategories = categoryCandidates(features.category, features.garmentType);
+  const cacheKey = `${features.garmentType}|${allowedCategories.join(',')}|${normalizeColor(features.dominantColor)}|${userGender || 'any'}`;
   const cached = cache[cacheKey];
-  if (cached && Date.now() - cached.at < 1000 * 60 * 8) return cached.products;
+  if (cached && Date.now() - cached.at < 1000 * 60 * 8) {
+    primeRuntimeProductMetadata(cached.products);
+    return cached.products;
+  }
 
   const productsRef = collection(db, 'products');
-  const colorQueries = getColorQueryValues(features.dominantColor);
-  const tagsForQuery = [...features.tags.slice(0, 10), ...colorQueries.map(normalizeText)];
-  if (userGender) tagsForQuery.push(normalizeText(userGender));
-
+  const allowedTags = allowedCategories.map(normalizeText).filter(Boolean).slice(0, 10);
   const queries = [
-    query(productsRef, where('category', 'in', categoryCandidates(features.category, features.garmentType, userGender)), limit(24)),
-    query(productsRef, where('colors', 'array-contains-any', colorQueries), limit(24)),
-    query(productsRef, where('tags', 'array-contains-any', tagsForQuery), limit(24))
+    query(productsRef, where('subcategory', 'in', allowedCategories), limit(48)),
+    query(productsRef, where('category', 'in', allowedCategories), limit(48)),
+    query(productsRef, where('tags', 'array-contains-any', allowedTags), limit(48))
   ];
 
-  const snapshots = await Promise.allSettled(queries.map((candidateQuery) => getDocs(candidateQuery)));
+  const snapshots = await Promise.allSettled(queries.map((candidateQuery) => getDocsWithRetry(candidateQuery)));
   const productMap = new Map<string, ProductItem>();
   snapshots.forEach((result) => {
     if (result.status !== 'fulfilled') return;
@@ -418,41 +1108,33 @@ const fetchCandidates = async (features: ClothingFeatureVector, userGender?: str
     });
   });
 
-  if (productMap.size === 0) {
-    const fallbackSnapshot = await getDocs(query(productsRef, limit(40)));
+  primeRuntimeProductMetadata(Array.from(productMap.values()));
+  let products = Array.from(productMap.values()).filter((product) => productMatchesDetectedCategory(product, features));
+
+  if (products.length === 0) {
+    const fallbackSnapshot = await getDocsWithRetry(query(productsRef, limit(120)));
     fallbackSnapshot.forEach((docSnap) => {
       const product = normalizeProduct(docSnap.id, docSnap.data());
       if (product) productMap.set(product.id, product);
     });
+    primeRuntimeProductMetadata(Array.from(productMap.values()));
+    products = Array.from(productMap.values()).filter((product) => productMatchesDetectedCategory(product, features));
   }
 
-  let products = Array.from(productMap.values());
   if (userGender) {
     const genderFiltered = products.filter((product) => {
-      const actualGender = product.gender || inferProductGender(product);
+      const actualGender = getRuntimeProductMetadata(product).gender || product.gender || inferProductGender(product);
       return !actualGender || actualGender === 'Unisex' || normalizeText(actualGender) === normalizeText(userGender);
     });
     if (genderFiltered.length > 0) products = genderFiltered;
-  }
-
-  // If our detected garment type is Kurta, prefer products that explicitly reference 'kurta' in category/name/tags
-  try {
-    if (normalizeText(features.garmentType) === 'kurta') {
-      const kurtaFiltered = products.filter((p) => {
-        const hay = normalizeText([p.category, p.name, ...(p.tags || [])].join(' '));
-        return hay.includes('kurta') || hay.includes('kurtas') || hay.includes('ethnic');
-      });
-      if (kurtaFiltered.length > 0) products = kurtaFiltered;
-    }
-  } catch (e) {
-    // ignore
   }
 
   // For male users, deprioritize or exclude products that are clearly dresses/kurti/saree
   try {
     if (normalizeText(userGender || '') === 'men') {
       const filtered = products.filter((p) => {
-        const hay = normalizeText([p.category, p.name, ...(p.tags || [])].join(' '));
+        const metadata = getRuntimeProductMetadata(p);
+        const hay = normalizeText([metadata.category, metadata.subcategory, metadata.gender, metadata.searchableText].join(' '));
         if (hay.includes('dress') || hay.includes('kurti') || hay.includes('saree') || hay.includes('lehenga') || hay.includes('gown')) return false;
         return true;
       });
@@ -472,41 +1154,63 @@ const productFeatureFromMetadata = (product: ProductItem): ClothingFeatureVector
   const text = normalizeText([
     product.name,
     product.category,
+    product.subcategory,
     product.description,
     ...(product.details || []),
     ...(product.tags || [])
   ].join(' '));
   const color = product.colors?.[0] || 'Standard';
-  const category = product.category || 'Uncategorized';
-  let garmentType = category;
-  if (text.includes('kurta') || text.includes('kurtas')) garmentType = 'Kurta';
-  if (text.includes('shoe') || text.includes('sneaker')) garmentType = 'Shoes';
-  else if (text.includes('jean') || text.includes('pant') || text.includes('trouser')) garmentType = 'Jeans';
-  else if (text.includes('dress')) garmentType = 'Dress';
-  else if (text.includes('skirt')) garmentType = 'Skirt';
-  else if (text.includes('short')) garmentType = 'Shorts';
-  else if (text.includes('hood')) garmentType = 'Hoodie';
-  else if (text.includes('polo')) garmentType = 'Polo Shirt';
-  else if (text.includes('t shirt') || text.includes('tee')) garmentType = 'T-Shirt';
-  else if (text.includes('jacket')) garmentType = 'Jacket';
-  else if (text.includes('blazer')) garmentType = 'Blazer';
-  else if (text.includes('sweatshirt')) garmentType = 'Sweatshirt';
-  else if (text.includes('shirt')) garmentType = 'Shirt';
-  const pattern = product.pattern || (text.includes('print') || text.includes('graphic') ? 'Printed' : text.includes('stripe') ? 'Striped' : 'Solid');
+  const secondaryColor = product.colors?.[1] || color;
+  const garmentType = canonicalSubcategoryFromText(product.subcategory || '', product.gender)
+    || canonicalSubcategoryFromText(text, product.gender)
+    || canonicalSubcategoryFromText(product.category || '', product.gender)
+    || product.subcategory
+    || product.category
+    || 'Uncategorized';
+  const bodySection = taxonomyMetaFor(garmentType)?.category || bodySectionForCategory(garmentType);
+  const pattern = product.pattern || (
+    text.includes('floral') ? 'Floral'
+      : text.includes('graphic') ? 'Graphic'
+        : text.includes('stripe') ? 'Striped'
+          : text.includes('check') ? 'Checked'
+            : text.includes('embroider') ? 'Embroidered'
+              : text.includes('print') ? 'Printed'
+                : text.includes('abstract') ? 'Abstract'
+                  : text.includes('texture') ? 'Textured'
+                    : 'Solid'
+  );
   const genderTag = product.gender ? [product.gender] : [];
+  const fit = product.fit || (text.includes('oversized') ? 'Oversized' : text.includes('relaxed') ? 'Relaxed' : text.includes('slim') ? 'Slim' : 'Regular');
 
   return {
     dominantColor: color,
+    secondaryColor,
     colorHex: '#999999',
-    category,
+    category: bodySection,
+    subcategory: garmentType,
     garmentType,
+    bodySection,
     pattern,
     shape: text.includes('oversized') ? 'wide' : text.includes('slim') ? 'long' : 'regular',
-    sleeveType: product.sleeveType || (text.includes('sleeve') ? 'Full Sleeve' : 'Regular'),
-    neckType: product.neckType || (text.includes('hood') ? 'Hooded' : text.includes('v neck') ? 'V Neck' : 'Standard'),
+    sleeveType: product.sleeveType || (text.includes('sleeveless') || text.includes('tank') ? 'Sleeveless' : text.includes('half sleeve') || text.includes('short sleeve') ? 'Half Sleeve' : text.includes('sleeve') ? 'Full Sleeve' : 'Regular'),
+    neckType: product.neckType || (text.includes('hood') ? 'Hooded' : text.includes('v neck') ? 'V Neck' : text.includes('square neck') ? 'Square' : text.includes('collar') ? 'Collar' : 'Round'),
+    fit,
     hasHood: text.includes('hood'),
     fabric: product.fabric || (text.includes('denim') ? 'Denim' : text.includes('cotton') ? 'Cotton Blend' : 'Blend'),
-    tags: [category, garmentType, pattern, color, ...(product.tags || []), ...genderTag].map(normalizeText),
+    genderCategory: product.gender || 'Unisex',
+    confidence: {
+      category: 0.9,
+      bodySection: 0.86,
+      sleeveType: product.sleeveType ? 0.9 : 0.55,
+      neckType: product.neckType ? 0.9 : 0.55,
+      fit: product.fit ? 0.9 : 0.55,
+      primaryColor: product.colors?.[0] ? 0.9 : 0.5,
+      secondaryColor: product.colors?.[1] ? 0.85 : 0.35,
+      pattern: product.pattern ? 0.9 : 0.58,
+      material: product.fabric ? 0.9 : 0.55,
+      genderCategory: product.gender ? 0.9 : 0.5
+    },
+    tags: [bodySection, product.category, product.subcategory || '', garmentType, pattern, color, secondaryColor, fit, ...(product.tags || []), ...genderTag].map(normalizeText),
     histogram: new Array(12).fill(0),
     edgeDensity: pattern === 'Solid' ? 0.04 : 0.16,
     aspectRatio: 0.75
@@ -545,7 +1249,18 @@ const getProductImageEmbedding = async (product: ProductItem) => {
   try {
     const canvas = await drawToCanvas(product.imageUrl);
     const features = extractFeaturesFromCanvas(canvas, product.category);
-    cache[cacheId] = { ...productFeatureFromMetadata(product), ...features };
+    const metadata = productFeatureFromMetadata(product);
+    const metadataHasUsableColor = product.colors?.some((color) => normalizeText(color) !== 'standard');
+    cache[cacheId] = {
+      ...features,
+      ...metadata,
+      dominantColor: metadataHasUsableColor ? metadata.dominantColor : features.dominantColor,
+      secondaryColor: metadataHasUsableColor ? metadata.secondaryColor : features.secondaryColor,
+      histogram: features.histogram,
+      edgeDensity: features.edgeDensity,
+      aspectRatio: features.aspectRatio,
+      colorHex: features.colorHex
+    };
     setStoredJson(productCacheKey, cache);
     return cache[cacheId];
   } catch {
@@ -557,60 +1272,52 @@ const getProductImageEmbedding = async (product: ProductItem) => {
 };
 
 const scoreProduct = async (item: DetectedClothingItem, product: ProductItem, userGender?: string) => {
-  const productFeatures = await getProductImageEmbedding(product);
+  const productMetadata = getRuntimeProductMetadata(product);
   const color = Math.max(
-    textScore(item.features.dominantColor, productFeatures.dominantColor),
-    product.colors?.some((productColor) => areColorsEquivalent(productColor, item.features.dominantColor)) ? 1 : 0
+    textScore(item.features.dominantColor, productMetadata.primaryColor),
+    textScore(item.features.secondaryColor, productMetadata.secondaryColor),
+    areColorsEquivalent(productMetadata.primaryColor, item.features.dominantColor) ? 1 : 0,
+    areColorsEquivalent(productMetadata.secondaryColor, item.features.dominantColor) ? 0.85 : 0
   );
-  const category = Math.max(textScore(item.features.category, product.category), textScore(item.features.garmentType, productFeatures.garmentType));
-  const pattern = textScore(item.features.pattern, productFeatures.pattern);
-  const shape = textScore(item.features.shape, productFeatures.shape);
-  const sleeve = textScore(item.features.sleeveType, productFeatures.sleeveType);
-  const neck = textScore(item.features.neckType, productFeatures.neckType);
-  const hood = item.features.hasHood === productFeatures.hasHood ? 1 : 0;
-  const fabric = textScore(item.features.fabric, productFeatures.fabric);
-  const histogram = cosineSimilarity(item.features.histogram, productFeatures.histogram);
-  const edge = Math.max(0, 1 - Math.abs(item.features.edgeDensity - productFeatures.edgeDensity));
-  const whitePrintedBonus = areColorsEquivalent(item.features.dominantColor, 'white') && areColorsEquivalent(productFeatures.dominantColor, 'white') && (item.features.pattern === 'Printed' || productFeatures.pattern === 'Printed') ? 0.15 : 0;
-  const inferredGender = product.gender || inferProductGender(product);
+  const pattern = normalizeText(item.features.pattern) === normalizeText(productMetadata.pattern)
+    ? 1
+    : textScore(item.features.pattern, productMetadata.pattern) || (item.features.pattern === 'Solid' ? 0.15 : 0.25);
+  const fit = textScore(item.features.fit, productMetadata.fit);
+  const sleeve = item.features.sleeveType === 'Not applicable' ? 1 : textScore(item.features.sleeveType, productMetadata.sleeveType);
+  const neck = item.features.neckType === 'Not applicable' ? 1 : textScore(item.features.neckType, productMetadata.neckType);
+  const itemMaterial = normalizeText(item.features.fabric);
+  const productMaterial = normalizeText(productMetadata.material);
+  const material = Math.max(textScore(item.features.fabric, productMetadata.material), itemMaterial && productMaterial && itemMaterial.includes(productMaterial) ? 1 : 0);
+  const inferredGender = productMetadata.gender || product.gender || inferProductGender(product);
   const genderMatch = userGender && inferredGender
-    ? (inferredGender === 'Unisex' || normalizeText(inferredGender) === normalizeText(userGender) ? 1 : -0.3)
-    : 0;
+    ? (inferredGender === 'Unisex' || normalizeText(inferredGender) === normalizeText(userGender) ? 1 : 0.7)
+    : 1;
+  const category = productMatchesDetectedCategory(product, item.features) ? 1 : productIsAcceptableFallback(product, item.features) ? 0.45 : 0;
 
-  // heavy penalty for dress-category when scanning as Men and detected item isn't a dress
-  const dressPenalty = (userGender && normalizeText(userGender) === 'men') && (normalizeText(product.category || '').includes('dress') || normalizeText(product.name || '').includes('dress')) ? -0.4 : 0;
-
-  // boost when garment type matches strongly (e.g., detected Kurta -> product Kurta)
-  const garmentMatch = (normalizeText(item.features.garmentType || '') === normalizeText(productFeatures.garmentType || '')) ? 1 : 0;
-  const garmentCategoryMatch = normalizeText(product.category || '').includes(normalizeText(item.features.garmentType || '')) ? 1 : 0;
-  const garmentBoost = Math.max(garmentMatch, garmentCategoryMatch) ? 0.10 : 0;
-
-  return Math.round(100 * (
-    color * 0.22 +
-    category * 0.20 +
-    pattern * 0.12 +
-    genderMatch * 0.12 +
-    dressPenalty +
-    shape * 0.08 +
-    sleeve * 0.07 +
-    neck * 0.07 +
-    hood * 0.05 +
-    fabric * 0.05 +
-    histogram * 0.04 +
-    edge * 0.02 +
-    whitePrintedBonus +
-    garmentBoost
-  ));
+  const weightedSimilarity = (
+    category * 0.40 +
+    color * 0.20 +
+    pattern * 0.15 +
+    sleeve * 0.10 +
+    neck * 0.05 +
+    fit * 0.05 +
+    material * 0.05
+  );
+  const strictScore = weightedSimilarity * genderMatch;
+  return Math.max(0, Math.min(100, Math.round(strictScore * 100)));
 };
 
 const reasonsForRecommendation = (item: DetectedClothingItem, product: ProductItem) => {
   const reasons = new Set<string>();
-  if (product.colors?.some((color) => normalizeText(color).includes(normalizeText(item.features.dominantColor)))) reasons.add('Color');
-  if (textScore(product.category, item.features.category) > 0 || textScore(product.category, item.features.garmentType) > 0) reasons.add('Category');
-  if (textScore(product.pattern || '', item.features.pattern) > 0 || item.features.pattern === 'Solid') reasons.add('Pattern');
-  if (textScore([product.name, product.description, ...(product.details || [])].join(' '), item.features.garmentType) > 0) reasons.add('Style');
-  if (reasons.size === 0) ['Color', 'Style', 'Pattern', 'Category'].forEach((reason) => reasons.add(reason));
-  return Array.from(reasons).slice(0, 4);
+  const productMetadata = getRuntimeProductMetadata(product);
+  if (productMatchesDetectedCategory(product, item.features)) reasons.add('Same category');
+  if (textScore(productMetadata.neckType, item.features.neckType) > 0) reasons.add('Same neckline');
+  if (areColorsEquivalent(productMetadata.primaryColor, item.features.dominantColor)) reasons.add('Same color');
+  if (textScore(productMetadata.fit, item.features.fit) > 0) reasons.add('Same silhouette');
+  if (textScore(productMetadata.material, item.features.fabric) > 0) reasons.add('Similar fabric');
+  if (textScore(productMetadata.pattern, item.features.pattern) > 0) reasons.add('Same pattern');
+  if (reasons.size === 0) ['Same category', 'Same color', 'Similar fabric'].forEach((reason) => reasons.add(reason));
+  return Array.from(reasons).slice(0, 5);
 };
 
 const findPairedProducts = (products: ProductItem[], selected: ProductItem) => (
@@ -619,9 +1326,46 @@ const findPairedProducts = (products: ProductItem[], selected: ProductItem) => (
     .slice(0, 5)
 );
 
+const createDetectedProductPlaceholder = (item: DetectedClothingItem): ProductItem => ({
+  id: `detected-placeholder-${item.id}`,
+  productId: `detected-placeholder-${item.id}`,
+  name: `${item.features.dominantColor} ${item.features.garmentType || 'Garment'}`,
+  category: item.features.garmentType || item.features.category || 'Detected Garment',
+  subcategory: item.features.garmentType || undefined,
+  description: 'Detected garment. No exact catalog product found.',
+  price: 0,
+  rating: 0,
+  reviewsCount: 0,
+  imageUrl: item.cropDataUrl,
+  mainImage: item.cropDataUrl,
+  images: [item.cropDataUrl],
+  imageUrls: [item.cropDataUrl],
+  colors: [item.features.dominantColor, item.features.secondaryColor].filter(Boolean),
+  sizes: ['One Size'],
+  inStock: false,
+  details: [item.features.pattern, item.features.fabric, item.features.fit].filter(Boolean),
+  fabric: item.features.fabric as ProductItem['fabric'],
+  pattern: item.features.pattern as ProductItem['pattern'],
+  sleeveType: item.features.sleeveType as ProductItem['sleeveType'],
+  neckType: item.features.neckType as ProductItem['neckType'],
+  gender: item.features.genderCategory as ProductItem['gender'],
+  tags: item.features.tags
+});
+
 const matchItem = async (item: DetectedClothingItem, userGender?: string): Promise<ScanProductResult> => {
   const candidates = await fetchCandidates(item.features, userGender);
-  if (candidates.length === 0) throw new Error('Unable to fetch products.');
+  if (candidates.length === 0) {
+    const placeholder = createDetectedProductPlaceholder(item);
+    return {
+      item,
+      product: placeholder,
+      kind: 'recommendation',
+      score: 0,
+      title: 'No Exact Match Found',
+      recommendationReasons: ['Detected clothing', 'No catalog product found'],
+      pairedWith: []
+    };
+  }
 
   const scored = await Promise.all(candidates.map(async (product) => ({
     product,
@@ -652,18 +1396,18 @@ const matchItem = async (item: DetectedClothingItem, userGender?: string): Promi
     kind,
     score: best.score,
     title: kind === 'exact' ? 'Exact Match Found' : kind === 'similar' ? 'Similar Product Found' : 'No Exact Match Found',
-    recommendationReasons: kind === 'recommendation' ? reasonsForRecommendation(item, best.product) : [],
+    recommendationReasons: reasonsForRecommendation(item, best.product),
     pairedWith: findPairedProducts(scored.map((entry) => entry.product), best.product)
   };
 };
 
 export const runCameraScan = async (file: File, source: ScanImageSource, onProgress?: ScanProgress, userGender?: string): Promise<CameraScanResult> => {
-  onProgress?.('Scanning Outfit...');
+  onProgress?.('Analyzing Clothing...');
   const compressedImageUrl = await visionProvider.compressImage(file);
-  const items = await visionProvider.detectClothing(compressedImageUrl);
+  const items = await visionProvider.detectClothing(compressedImageUrl, userGender);
   if (items.length === 0) throw new Error("Couldn't detect clothing.");
 
-  onProgress?.('Finding Similar Products...');
+  onProgress?.('Filtering Category Matches...');
   const results = await Promise.all(items.map((item) => matchItem(item, userGender)));
   return {
     source,
