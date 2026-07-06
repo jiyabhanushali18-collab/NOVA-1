@@ -1,4 +1,4 @@
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { collection, getDocsFromServer, limit, query, where } from 'firebase/firestore';
 import { db, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem } from '../types';
 import { RuntimeProductMetadata, getRuntimeProductMetadata, primeRuntimeProductMetadata } from './productMetadataService';
@@ -64,7 +64,6 @@ interface VisionProvider {
 
 const canvasSize = 512;
 const productCacheKey = 'nova_camera_scan_product_embeddings_v1';
-const candidateCacheKey = 'nova_camera_scan_candidate_cache_v2';
 
 const safeArray = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
@@ -161,18 +160,17 @@ const areColorsEquivalent = (a: string, b: string) => {
 
 const novaTaxonomy = {
   Men: {
-    'Top Wear': ['T-Shirt', 'Oversized T-Shirt', 'Polo Shirt', 'Henley', 'Casual Shirt', 'Formal Shirt', 'Kurta', 'Hoodie', 'Sweatshirt', 'Sweater', 'Jacket', 'Blazer', 'Nehru Jacket'],
-    'Bottom Wear': ['Jeans', 'Cargo Pants', 'Joggers', 'Track Pants', 'Shorts', 'Trousers', 'Chinos'],
-    Ethnic: ['Kurta', 'Sherwani', 'Pathani Suit', 'Dhoti']
+    'Top Wear': ['T-Shirt', 'Polo Shirt', 'Shirt', 'Kurta', 'Hoodie', 'Sweatshirt', 'Jacket'],
+    'Bottom Wear': ['Jeans', 'Cargo Pants', 'Joggers', 'Trousers']
   },
   Women: {
-    'Top Wear': ['Crop Top', 'Tank Top', 'Tube Top', 'T-Shirt', 'Shirt', 'Kurti', 'Blouse', 'Hoodie', 'Sweatshirt', 'Jacket'],
-    'Bottom Wear': ['Jeans', 'Palazzo', 'Leggings', 'Skirt', 'Shorts', 'Trousers'],
-    Ethnic: ['Kurti', 'Saree', 'Lehenga', 'Salwar Suit', 'Dupatta'],
-    'One Piece': ['Dress', 'Maxi Dress', 'Mini Dress', 'Gown', 'Jumpsuit']
+    'Top Wear': ['Crop Top', 'T-Shirt', 'Polo Shirt', 'Shirt', 'Kurti', 'Hoodie', 'Sweatshirt', 'Jacket'],
+    'Bottom Wear': ['Jeans', 'Palazzo', 'Leggings', 'Skirt', 'Trousers', 'Joggers', 'Cargo Pants'],
+    'One Piece': ['Dress', 'Jumpsuit']
   },
   Unisex: {
-    'Top Wear': ['Oversized Hoodie', 'Oversized T-Shirt', 'Sweatshirt', 'Jacket']
+    'Top Wear': ['T-Shirt', 'Polo Shirt', 'Shirt', 'Hoodie', 'Sweatshirt', 'Jacket'],
+    'Bottom Wear': ['Jeans', 'Trousers', 'Joggers', 'Cargo Pants']
   }
 } as const;
 
@@ -186,7 +184,7 @@ Object.entries(novaTaxonomy).forEach(([gender, groups]) => {
       if (!novaSubcategoryMeta.has(key)) {
         novaSubcategoryMeta.set(key, {
           subcategory,
-          category: category === 'Ethnic' ? 'Top Wear' : category === 'One Piece' ? 'Full Body' : category as ClothingFeatureVector['bodySection'],
+          category: category === 'One Piece' ? 'Full Body' : category as ClothingFeatureVector['bodySection'],
           gender
         });
       } else if (gender === 'Unisex') {
@@ -202,55 +200,119 @@ const fullBodyCategories = new Set(['dress', 'maxi dress', 'mini dress', 'gown',
 
 const taxonomyMetaFor = (subcategory: string) => novaSubcategoryMeta.get(normalizeText(subcategory));
 
+const supportedNovaSubcategories = new Set(canonicalCategoryNames.map(normalizeText));
+
+const unsupportedSubcategoryMap = new Map<string, string>([
+  ['henley', 'T-Shirt'],
+  ['oversized t shirt', 'T-Shirt'],
+  ['oversized tee', 'T-Shirt'],
+  ['oversized tshirt', 'T-Shirt'],
+  ['oversized hoodie', 'Hoodie'],
+  ['tube top', 'Crop Top'],
+  ['tank top', 'Crop Top'],
+  ['sleeveless top', 'Crop Top'],
+  ['blouse', 'Shirt'],
+  ['casual shirt', 'Shirt'],
+  ['formal shirt', 'Shirt'],
+  ['sweater', 'Sweatshirt'],
+  ['blazer', 'Jacket'],
+  ['nehru jacket', 'Jacket'],
+  ['shorts', 'Trousers'],
+  ['chinos', 'Trousers'],
+  ['track pants', 'Joggers'],
+  ['maxi dress', 'Dress'],
+  ['mini dress', 'Dress'],
+  ['gown', 'Dress'],
+  ['saree', 'Dress'],
+  ['sari', 'Dress'],
+  ['lehenga', 'Dress'],
+  ['salwar suit', 'Kurti'],
+  ['dupatta', 'Kurti'],
+  ['sherwani', 'Kurta'],
+  ['pathani suit', 'Kurta'],
+  ['dhoti', 'Trousers']
+]);
+
+const normalizeSupportedSubcategory = (value: string, genderHint?: string) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+  const mapped = unsupportedSubcategoryMap.get(normalized);
+  if (mapped) return mapped;
+  const exact = canonicalCategoryNames.find((category) => normalizeText(category) === normalized);
+  if (exact && supportedNovaSubcategories.has(normalizeText(exact))) return exact;
+  if (normalized.includes('oversized') && (normalized.includes('t shirt') || normalized.includes('tshirt') || normalized.includes('tee'))) return 'T-Shirt';
+  if (normalized.includes('henley')) return 'T-Shirt';
+  if (normalized.includes('tube') || normalized.includes('tank') || normalized.includes('sleeveless top')) return 'Crop Top';
+  if (normalized.includes('blouse')) return 'Shirt';
+  if (normalized.includes('sweater')) return 'Sweatshirt';
+  if (normalized.includes('blazer') || normalized.includes('nehru')) return 'Jacket';
+  if (normalized.includes('short') || normalized.includes('chino')) return 'Trousers';
+  if (normalized.includes('saree') || normalized.includes('sari') || normalized.includes('lehenga') || normalized.includes('gown')) return 'Dress';
+  if (normalized.includes('sherwani') || normalized.includes('pathani')) return 'Kurta';
+  if (normalized.includes('salwar')) return normalizeText(genderHint || '') === 'men' ? 'Kurta' : 'Kurti';
+  return '';
+};
+
 const canonicalSubcategoryFromText = (value: string, genderHint?: string) => {
   const text = normalizeText(value);
   if (!text) return '';
+  const supported = normalizeSupportedSubcategory(text, genderHint);
+  if (supported) return supported;
   const exact = taxonomyMetaFor(text);
   if (exact) return exact.subcategory;
-  if (text.includes('oversized') && text.includes('hood')) return 'Oversized Hoodie';
-  if (text.includes('oversized') && (text.includes('t shirt') || text.includes('tshirt') || text.includes('tee'))) return 'Oversized T-Shirt';
+  if (text.includes('oversized') && text.includes('hood')) return 'Hoodie';
+  if (text.includes('oversized') && (text.includes('t shirt') || text.includes('tshirt') || text.includes('tee'))) return 'T-Shirt';
   if (text.includes('crop')) return 'Crop Top';
-  if (text.includes('tube')) return 'Tube Top';
-  if (text.includes('tank')) return 'Tank Top';
-  if (text.includes('sleeveless') && (text.includes('top') || text.includes('tee'))) return 'Tank Top';
+  if (text.includes('tube')) return 'Crop Top';
+  if (text.includes('tank')) return 'Crop Top';
+  if (text.includes('sleeveless') && (text.includes('top') || text.includes('tee'))) return 'Crop Top';
   if (text.includes('polo')) return 'Polo Shirt';
-  if (text.includes('henley')) return 'Henley';
-  if (text.includes('formal') && text.includes('shirt')) return 'Formal Shirt';
-  if (text.includes('casual') && text.includes('shirt')) return 'Casual Shirt';
+  if (text.includes('henley')) return 'T-Shirt';
+  if (text.includes('formal') && text.includes('shirt')) return 'Shirt';
+  if (text.includes('casual') && text.includes('shirt')) return 'Shirt';
   if (text.includes('t shirt') || text.includes('tshirt') || text.includes('tee')) return 'T-Shirt';
   if (text.includes('hoodie') || text.includes('hooded')) return 'Hoodie';
   if (text.includes('sweatshirt')) return 'Sweatshirt';
-  if (text.includes('sweater')) return 'Sweater';
-  if (text.includes('nehru')) return 'Nehru Jacket';
-  if (text.includes('blazer')) return 'Blazer';
+  if (text.includes('sweater')) return 'Sweatshirt';
+  if (text.includes('nehru')) return 'Jacket';
+  if (text.includes('blazer')) return 'Jacket';
   if (text.includes('jacket') || text.includes('coat')) return 'Jacket';
   if (text.includes('kurti')) return 'Kurti';
   if (text.includes('kurta')) return normalizeText(genderHint || '') === 'women' ? 'Kurti' : 'Kurta';
-  if (text.includes('sherwani')) return 'Sherwani';
-  if (text.includes('pathani')) return 'Pathani Suit';
-  if (text.includes('dhoti')) return 'Dhoti';
-  if (text.includes('saree') || text.includes('sari')) return 'Saree';
-  if (text.includes('lehenga')) return 'Lehenga';
-  if (text.includes('salwar')) return 'Salwar Suit';
-  if (text.includes('dupatta')) return 'Dupatta';
-  if (text.includes('maxi')) return 'Maxi Dress';
-  if (text.includes('mini')) return 'Mini Dress';
-  if (text.includes('gown')) return 'Gown';
+  if (text.includes('sherwani')) return 'Kurta';
+  if (text.includes('pathani')) return 'Kurta';
+  if (text.includes('dhoti')) return 'Trousers';
+  if (text.includes('saree') || text.includes('sari')) return 'Dress';
+  if (text.includes('lehenga')) return 'Dress';
+  if (text.includes('salwar')) return normalizeText(genderHint || '') === 'men' ? 'Kurta' : 'Kurti';
+  if (text.includes('dupatta')) return 'Kurti';
+  if (text.includes('maxi')) return 'Dress';
+  if (text.includes('mini')) return 'Dress';
+  if (text.includes('gown')) return 'Dress';
   if (text.includes('jumpsuit')) return 'Jumpsuit';
   if (text.includes('dress')) return 'Dress';
   if (text.includes('cargo')) return 'Cargo Pants';
   if (text.includes('jogger')) return 'Joggers';
-  if (text.includes('track')) return 'Track Pants';
-  if (text.includes('chino')) return 'Chinos';
+  if (text.includes('track')) return 'Joggers';
+  if (text.includes('chino')) return 'Trousers';
   if (text.includes('palazzo')) return 'Palazzo';
   if (text.includes('legging')) return 'Leggings';
   if (text.includes('jean') || text.includes('denim pant')) return 'Jeans';
   if (text.includes('trouser') || text.includes('pant')) return 'Trousers';
-  if (text.includes('shorts') || text.includes('short pant')) return 'Shorts';
+  if (text.includes('shorts') || text.includes('short pant')) return 'Trousers';
   if (text.includes('skirt')) return 'Skirt';
-  if (text.includes('blouse')) return 'Blouse';
+  if (text.includes('blouse')) return 'Shirt';
   if (text.includes('shirt')) return 'Shirt';
   return canonicalCategoryNames.find((category) => normalizeText(category) === text) || '';
+};
+
+const fallbackSupportedSubcategoryForCategory = (categoryHint: string, genderHint?: string) => {
+  const category = normalizeText(categoryHint);
+  const gender = normalizeText(genderHint || '');
+  if (category.includes('bottom')) return 'Trousers';
+  if (category.includes('full') || category.includes('one piece')) return 'Dress';
+  if (gender === 'women') return 'Crop Top';
+  return 'T-Shirt';
 };
 
 const canonicalCategoryFromText = (value: string) => {
@@ -276,7 +338,7 @@ const inferGarmentType = (categoryHint: string, edgeDensity: number, aspectRatio
 
   // bottoms
   if (lowerCategory.includes('bottom') || lowerCategory.includes('pant') || lowerCategory.includes('jean') || lowerCategory.includes('trouser')) {
-    if (lowerCategory.includes('short')) return 'Shorts';
+    if (lowerCategory.includes('short')) return 'Trousers';
     if (aspectRatio > 1.4) return 'Skirt';
     return normalizeColor(dominantColor) === 'blue' ? 'Jeans' : 'Trousers';
   }
@@ -284,7 +346,7 @@ const inferGarmentType = (categoryHint: string, edgeDensity: number, aspectRatio
   if (lowerCategory.includes('top') || lowerCategory.includes('top wear') || lowerCategory.includes('topwear')) {
     if (aspectRatio >= 0.78 && aspectRatio <= 1.18 && edgeDensity >= 0.12 && edgeDensity <= 0.22 && pattern !== 'Printed') return 'Hoodie';
     if (aspectRatio >= 0.95 && edgeDensity < 0.16) return 'Crop Top';
-    if (aspectRatio >= 0.82 && edgeDensity < 0.12) return 'Tank Top';
+    if (aspectRatio >= 0.82 && edgeDensity < 0.12) return 'Crop Top';
     if (pattern === 'Embroidered' || pattern === 'Floral') return 'Kurta';
     if (edgeDensity >= 0.18) return 'Shirt';
     if (edgeDensity >= 0.11) return 'T-Shirt';
@@ -292,16 +354,16 @@ const inferGarmentType = (categoryHint: string, edgeDensity: number, aspectRatio
 
   if (lowerCategory.includes('dress')) return 'Dress';
   if (lowerCategory.includes('skirt')) return 'Skirt';
-  if (lowerCategory.includes('short')) return 'Shorts';
+  if (lowerCategory.includes('short')) return 'Trousers';
   if (lowerCategory.includes('hood')) return 'Hoodie';
   if (lowerCategory.includes('jacket') || lowerCategory.includes('coat') || lowerCategory.includes('sweater')) return 'Jacket';
-  if (lowerCategory.includes('polo')) return 'Polo';
+  if (lowerCategory.includes('polo')) return 'Polo Shirt';
   if (lowerCategory.includes('t shirt') || lowerCategory.includes('tee') || lowerCategory.includes('tshirt')) return 'T-Shirt';
 
   if (aspectRatio >= 0.78 && aspectRatio <= 1.18 && edgeDensity >= 0.12 && edgeDensity <= 0.22 && pattern !== 'Printed') return 'Hoodie';
   if (edgeDensity > 0.22) return 'Jacket';
   if (edgeDensity > 0.18) return 'Shirt';
-  if (edgeDensity > 0.13) return 'Polo';
+  if (edgeDensity > 0.13) return 'Polo Shirt';
   if (edgeDensity >= 0.08) return 'T-Shirt';
 
   return 'Unknown Clothing';
@@ -313,8 +375,8 @@ const inferGenderForDetectedGarment = (garmentType: string, userGender?: string)
   const meta = taxonomyMetaFor(garmentType);
   if (meta?.gender === 'Men' || meta?.gender === 'Women' || meta?.gender === 'Unisex') return meta.gender;
   const normalized = normalizeText(garmentType);
-  if (['crop top', 'tank top', 'tube top', 'kurti', 'blouse', 'saree', 'lehenga', 'salwar suit', 'dupatta', 'dress', 'maxi dress', 'mini dress', 'gown', 'jumpsuit', 'palazzo', 'leggings', 'skirt'].includes(normalized)) return 'Women';
-  if (['kurta', 'sherwani', 'pathani suit', 'dhoti', 'nehru jacket', 'henley', 'formal shirt', 'casual shirt'].includes(normalized)) return 'Men';
+  if (['crop top', 'kurti', 'dress', 'jumpsuit', 'palazzo', 'leggings', 'skirt'].includes(normalized)) return 'Women';
+  if (['kurta'].includes(normalized)) return 'Men';
   return 'Unisex';
 };
 
@@ -472,18 +534,18 @@ const extractFeaturesFromCanvas = (canvas: HTMLCanvasElement, categoryHint = 'To
   const colorSpread = dominantBuckets.length > 1 ? Math.abs((dominantBuckets[0]?.share || 0) - (dominantBuckets[1]?.share || 0)) : 1;
   const pattern = edgeDensity > 0.26 ? 'Graphic' : edgeDensity > 0.22 ? 'Printed' : edgeDensity > 0.17 ? 'Textured' : colorSpread < 0.09 ? 'Abstract' : edgeDensity > 0.11 ? 'Textured' : 'Solid';
   const rawGarmentType = inferGarmentType(categoryHint, edgeDensity, aspectRatio, dominantColor, pattern);
-  const garmentType = canonicalSubcategoryFromText(rawGarmentType, userGender) || rawGarmentType;
+  const garmentType = canonicalSubcategoryFromText(rawGarmentType, userGender) || fallbackSupportedSubcategoryForCategory(categoryHint, userGender);
   const taxonomyMeta = taxonomyMetaFor(garmentType);
   const bodySection = taxonomyMeta?.category || bodySectionForCategory(garmentType) || bodySectionForCategory(categoryHint);
   const detectedGender = inferGenderForDetectedGarment(garmentType, userGender);
   const sleeveType = bodySection === 'Bottom Wear' || bodySection === 'Footwear'
     ? 'Not applicable'
-    : garmentType === 'Tank Top' || garmentType === 'Tube Top' || garmentType === 'Crop Top' || garmentType === 'Blouse'
+    : garmentType === 'Crop Top'
       ? 'Sleeveless'
-      : garmentType === 'Hoodie' || garmentType === 'Oversized Hoodie' || garmentType === 'Jacket' || garmentType === 'Sweatshirt' || garmentType === 'Blazer' || garmentType === 'Kurti' || garmentType === 'Kurta'
+      : garmentType === 'Hoodie' || garmentType === 'Jacket' || garmentType === 'Sweatshirt' || garmentType === 'Kurti' || garmentType === 'Kurta'
         ? 'Full Sleeve'
         : 'Half Sleeve';
-  const neckType = garmentType === 'Hoodie' || garmentType === 'Oversized Hoodie' ? 'Hooded' : garmentType === 'Polo Shirt' || garmentType === 'Shirt' || garmentType === 'Casual Shirt' || garmentType === 'Formal Shirt' || garmentType === 'Blazer' ? 'Collar' : garmentType === 'Kurta' || garmentType === 'Kurti' || garmentType === 'Nehru Jacket' ? 'Mandarin' : aspectRatio > 0.95 ? 'Square' : 'Round';
+  const neckType = garmentType === 'Hoodie' ? 'Hooded' : garmentType === 'Polo Shirt' ? 'Polo Collar' : garmentType === 'Shirt' || garmentType === 'Jacket' ? 'Collar' : garmentType === 'Kurta' || garmentType === 'Kurti' ? 'Mandarin Collar' : aspectRatio > 0.95 ? 'Square Neck' : 'Round Neck';
   const fit = aspectRatio > 1.1 ? 'Relaxed' : aspectRatio < 0.62 ? 'Slim' : 'Regular';
   const fabric = normalizeColor(dominantColor) === 'blue' && garmentType === 'Jeans' ? 'Denim' : edgeDensity > 0.16 ? 'Textured Blend' : 'Cotton Blend';
   const categoryConfidence = garmentType === 'Unknown Clothing' ? 0.45 : bodySection !== 'Unknown' ? 0.84 : 0.68;
@@ -501,7 +563,7 @@ const extractFeaturesFromCanvas = (canvas: HTMLCanvasElement, categoryHint = 'To
     sleeveType,
     neckType,
     fit,
-    hasHood: garmentType === 'Hoodie' || garmentType === 'Oversized Hoodie',
+    hasHood: garmentType === 'Hoodie',
     fabric,
     genderCategory: detectedGender,
     confidence: {
@@ -744,7 +806,11 @@ class BrowserVisionProvider implements VisionProvider {
     }));
 
     const meaningfulItems = items.filter((item) => item.cropDataUrl && item.confidence >= 0.42);
-    if (meaningfulItems.length > 0) return meaningfulItems.sort((a, b) => b.confidence - a.confidence);
+    if (meaningfulItems.length > 0) {
+      return meaningfulItems
+        .sort((a, b) => (b.confidence * b.boundingBox.width * b.boundingBox.height) - (a.confidence * a.boundingBox.width * a.boundingBox.height))
+        .slice(0, 1);
+    }
 
     const fullFeatures = extractFeaturesFromCanvas(fullCanvas, 'Top Wear', userGender);
     const hasVisibleGarment = fullFeatures.edgeDensity > 0.035 || localizedCandidates.length > 0;
@@ -764,7 +830,9 @@ interface GeminiDetectedGarment {
   garmentType?: string;
   category?: string;
   subcategory?: string;
+  gender?: string;
   genderCategory?: string;
+  primaryColor?: string;
   dominantColor?: string;
   secondaryColor?: string;
   pattern?: string;
@@ -776,42 +844,69 @@ interface GeminiDetectedGarment {
 }
 
 const geminiFashionPrompt = `
-You are NOVA's fashion vision classifier. Analyze the image and identify clothing only.
+You are NOVA Vision AI, a professional fashion recognition engine.
+Your only job is to identify the PRIMARY clothing item in the image.
 Return ONLY valid JSON. Do not include markdown, prose, or explanations.
 
-Detect clothing in these scenarios: worn on a person, hanging, flat lay, folded, mannequin, ecommerce/product photo, transparent PNG, mirror selfie, partial garments, and multiple garments.
-Never require a human body, face, or pose. If multiple garments exist, return all detected garments sorted by largest visible garment first.
-Return an empty items array only if absolutely no garment exists.
+If multiple garments are visible, identify the largest and most visible garment only.
+Ignore face, hair, background, trees, buildings, furniture, bags, shoes, jewellery, and sunglasses.
+Never invent a category. The returned subcategory must be one of the supported NOVA subcategories.
 
-Use only these NOVA subcategories:
-Men: T-Shirt, Oversized T-Shirt, Polo Shirt, Henley, Casual Shirt, Formal Shirt, Kurta, Hoodie, Sweatshirt, Sweater, Jacket, Blazer, Nehru Jacket, Jeans, Cargo Pants, Joggers, Track Pants, Shorts, Trousers, Chinos, Sherwani, Pathani Suit, Dhoti.
-Women: Crop Top, Tank Top, Tube Top, T-Shirt, Shirt, Kurti, Blouse, Hoodie, Sweatshirt, Jacket, Jeans, Palazzo, Leggings, Skirt, Shorts, Trousers, Saree, Lehenga, Salwar Suit, Dupatta, Dress, Maxi Dress, Mini Dress, Gown, Jumpsuit.
-Unisex: Oversized Hoodie, Oversized T-Shirt, Sweatshirt, Jacket.
+Supported NOVA subcategories:
+Top Wear: T-Shirt, Polo Shirt, Shirt, Hoodie, Sweatshirt, Jacket, Crop Top, Kurta, Kurti.
+Bottom Wear: Jeans, Trousers, Joggers, Cargo Pants, Skirt, Leggings, Palazzo.
+One Piece: Dress, Jumpsuit.
 
-JSON schema:
+Never return these unsupported subcategories:
+Henley, Oversized T-Shirt, Tube Top, Tank Top, Blouse, Sweater, Blazer, Nehru Jacket, Shorts, Saree, Lehenga, Sherwani, Pathani Suit, Salwar Suit, Dhoti, Casual Shirt, Formal Shirt, Chinos, Track Pants, Maxi Dress, Mini Dress, Gown, Dupatta.
+
+Map unsupported lookalikes to supported categories:
+Henley -> T-Shirt.
+Oversized T-Shirt -> T-Shirt.
+Tube Top -> Crop Top.
+Tank Top -> Crop Top.
+Blouse -> Shirt.
+Sweater -> Sweatshirt.
+Blazer -> Jacket.
+Nehru Jacket -> Jacket.
+Shorts -> Trousers if absolutely necessary.
+Saree, Lehenga, Gown, Maxi Dress, Mini Dress -> Dress.
+Sherwani, Pathani Suit -> Kurta.
+Salwar Suit, Dupatta -> Kurti.
+
+Category knowledge:
+T-Shirt: round neck, hip length, casual, no button placket. Never classify Kurta as T-Shirt.
+Polo Shirt: must have polo collar and short front placket. Never classify normal Shirt as Polo Shirt.
+Shirt: front buttons and fold collar. Never classify Kurta as Shirt.
+Kurta: long traditional Indian top, mandarin/band collar, ethnic prints, straight cut, knee length or longer.
+Kurti: women's ethnic top, traditional silhouette, longer than Crop Top.
+Crop Top: ends above waist. Never classify as Hoodie or Kurti.
+Hoodie: must contain a visible hood. If hood is absent, do not classify as Hoodie.
+Sweatshirt: similar to Hoodie but has no hood.
+Jacket: outerwear, usually open front, often layered.
+
+Allowed colors: Black, White, Grey, Charcoal, Brown, Tan, Beige, Cream, Maroon, Wine, Red, Orange, Coral, Peach, Pink, Purple, Lavender, Lilac, Sky Blue, Royal Blue, Navy Blue, Olive, Forest Green, Green, Mustard, Yellow.
+Allowed patterns: Solid, Printed, Graphic, Striped, Checked, Floral, Paisley, Ethnic Print, Abstract, Tie Dye, Textured.
+Allowed neck types: Round Neck, V Neck, Mandarin Collar, Collar, Polo Collar, Square Neck, Boat Neck, Sweetheart Neck, Hooded.
+Allowed sleeve types: Sleeveless, Half Sleeve, Three Quarter Sleeve, Full Sleeve, Puff Sleeve.
+Allowed fits: Slim, Regular, Relaxed.
+Allowed materials: Cotton, Cotton Blend, Polyester, Polyester Blend, Denim, Linen, Silk, Unknown.
+Allowed gender values: Men, Women, Unisex. Infer gender only from the garment.
+
+Return this exact JSON shape:
 {
-  "items": [
-    {
-      "garmentType": "Kurta",
-      "category": "Top Wear",
-      "subcategory": "Kurta",
-      "genderCategory": "Men",
-      "dominantColor": "Sky Blue",
-      "secondaryColor": "Pink",
-      "pattern": "Ethnic Print",
-      "sleeveType": "Full Sleeve",
-      "neckType": "Mandarin",
-      "fit": "Regular",
-      "material": "Cotton Blend",
-      "confidence": 96
-    }
-  ]
+  "category": "Top Wear",
+  "subcategory": "Crop Top",
+  "gender": "Women",
+  "primaryColor": "Tan",
+  "secondaryColor": "Black",
+  "pattern": "Printed",
+  "neckType": "Square Neck",
+  "sleeveType": "Full Sleeve",
+  "fit": "Regular",
+  "material": "Polyester Blend",
+  "confidence": 98
 }
-
-Valid categories: Top Wear, Bottom Wear, Full Body, Footwear, Accessory, Unknown.
-Valid patterns: Solid, Printed, Graphic, Striped, Checked, Floral, Paisley, Ethnic Print, Abstract, Tie Dye, Embroidered, Textured.
-Use fashion color names such as Navy Blue, Sky Blue, Royal Blue, Olive Green, Forest Green, Beige, Cream, Wine, Mustard, Lavender, Lilac, Peach, Coral, Maroon.
-Do not classify Kurta as T-Shirt or Crop Top. Do not classify Crop Top as Dress. Do not classify Hoodie as Sweatshirt unless confidence is very low.
 `;
 
 const extractJsonObject = (value: string) => {
@@ -866,23 +961,22 @@ class GeminiVisionProvider implements VisionProvider {
       if (!response.ok) throw new Error(`Gemini vision request failed: ${response.status}`);
       const payload = await response.json();
       const text = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || '';
-      const parsed = JSON.parse(extractJsonObject(text)) as { items?: GeminiDetectedGarment[] };
-      const garments = Array.isArray(parsed.items) ? parsed.items : [];
+      const parsed = JSON.parse(extractJsonObject(text)) as GeminiDetectedGarment & { items?: GeminiDetectedGarment[] };
+      const garments = Array.isArray(parsed.items) ? parsed.items : [parsed];
       if (garments.length === 0) return [];
 
       const canvas = await drawToCanvas(imageUrl);
       const lowLevelFeatures = extractFeaturesFromCanvas(canvas, 'Top Wear', userGender);
 
-      return garments.slice(0, 5).map((garment, index): DetectedClothingItem => {
-        const garmentType = canonicalSubcategoryFromText(garment.subcategory || garment.garmentType || '', garment.genderCategory || userGender)
-          || garment.subcategory
-          || garment.garmentType
-          || 'Unknown Clothing';
-        const category = (garment.category || taxonomyMetaFor(garmentType)?.category || bodySectionForCategory(garmentType) || 'Unknown') as ClothingFeatureVector['bodySection'];
+      return garments.slice(0, 1).map((garment, index): DetectedClothingItem => {
+        const genderCategory = garment.genderCategory || garment.gender || userGender;
+        const garmentType = canonicalSubcategoryFromText(garment.subcategory || garment.garmentType || '', genderCategory)
+          || fallbackSupportedSubcategoryForCategory(garment.category || '', genderCategory);
+        const category = (normalizeText(garment.category || '') === 'one piece' ? 'Full Body' : garment.category || taxonomyMetaFor(garmentType)?.category || bodySectionForCategory(garmentType) || 'Unknown') as ClothingFeatureVector['bodySection'];
         const confidence = Math.max(0.1, Math.min(1, Number(garment.confidence || 72) / 100));
         const features: ClothingFeatureVector = {
           ...lowLevelFeatures,
-          dominantColor: garment.dominantColor || lowLevelFeatures.dominantColor,
+          dominantColor: garment.primaryColor || garment.dominantColor || lowLevelFeatures.dominantColor,
           secondaryColor: garment.secondaryColor || lowLevelFeatures.secondaryColor,
           category,
           subcategory: garmentType,
@@ -894,7 +988,7 @@ class GeminiVisionProvider implements VisionProvider {
           fit: garment.fit || lowLevelFeatures.fit,
           hasHood: normalizeText(garmentType).includes('hood') || normalizeText(garment.neckType || '').includes('hood'),
           fabric: garment.material || lowLevelFeatures.fabric,
-          genderCategory: garment.genderCategory || inferGenderForDetectedGarment(garmentType, userGender),
+          genderCategory: genderCategory || inferGenderForDetectedGarment(garmentType, userGender),
           confidence: {
             ...lowLevelFeatures.confidence,
             category: confidence,
@@ -902,14 +996,14 @@ class GeminiVisionProvider implements VisionProvider {
             sleeveType: garment.sleeveType ? confidence : lowLevelFeatures.confidence.sleeveType,
             neckType: garment.neckType ? confidence : lowLevelFeatures.confidence.neckType,
             fit: garment.fit ? confidence : lowLevelFeatures.confidence.fit,
-            primaryColor: garment.dominantColor ? confidence : lowLevelFeatures.confidence.primaryColor,
+            primaryColor: garment.primaryColor || garment.dominantColor ? confidence : lowLevelFeatures.confidence.primaryColor,
             secondaryColor: garment.secondaryColor ? confidence : lowLevelFeatures.confidence.secondaryColor,
             pattern: garment.pattern ? confidence : lowLevelFeatures.confidence.pattern,
             material: garment.material ? confidence : lowLevelFeatures.confidence.material,
-            genderCategory: garment.genderCategory ? confidence : lowLevelFeatures.confidence.genderCategory
+            genderCategory: genderCategory ? confidence : lowLevelFeatures.confidence.genderCategory
           },
           tags: [
-            garment.dominantColor || lowLevelFeatures.dominantColor,
+            garment.primaryColor || garment.dominantColor || lowLevelFeatures.dominantColor,
             garment.secondaryColor || lowLevelFeatures.secondaryColor,
             garment.pattern || lowLevelFeatures.pattern,
             garmentType,
@@ -1072,23 +1166,17 @@ const productIsAcceptableFallback = (product: ProductItem, features: ClothingFea
 
 const getDocsWithRetry = async (candidateQuery: ReturnType<typeof query>) => {
   try {
-    return await getDocs(candidateQuery);
+    return await getDocsFromServer(candidateQuery);
   } catch (error) {
     console.warn('[scan] Firestore candidate query failed once, retrying.', error);
-    return getDocs(candidateQuery);
+    return getDocsFromServer(candidateQuery);
   }
 };
 
 const fetchCandidates = async (features: ClothingFeatureVector, userGender?: string): Promise<ProductItem[]> => {
   await waitForFirebaseAuthReady();
-  const cache = getStoredJson<Record<string, { at: number; products: ProductItem[] }>>(candidateCacheKey, {});
   const allowedCategories = categoryCandidates(features.category, features.garmentType);
   const cacheKey = `${features.garmentType}|${allowedCategories.join(',')}|${normalizeColor(features.dominantColor)}|${userGender || 'any'}`;
-  const cached = cache[cacheKey];
-  if (cached && Date.now() - cached.at < 1000 * 60 * 8) {
-    primeRuntimeProductMetadata(cached.products);
-    return cached.products;
-  }
 
   const productsRef = collection(db, 'products');
   const allowedTags = allowedCategories.map(normalizeText).filter(Boolean).slice(0, 10);
@@ -1100,6 +1188,12 @@ const fetchCandidates = async (features: ClothingFeatureVector, userGender?: str
 
   const snapshots = await Promise.allSettled(queries.map((candidateQuery) => getDocsWithRetry(candidateQuery)));
   const productMap = new Map<string, ProductItem>();
+  console.debug('[scan] Firestore product candidate snapshots received:', {
+    cacheKey,
+    snapshotCount: snapshots.length,
+    fulfilledSnapshots: snapshots.filter((result) => result.status === 'fulfilled').length,
+    documentCounts: snapshots.map((result) => result.status === 'fulfilled' ? result.value.size : 0)
+  });
   snapshots.forEach((result) => {
     if (result.status !== 'fulfilled') return;
     result.value.forEach((docSnap) => {
@@ -1145,8 +1239,11 @@ const fetchCandidates = async (features: ClothingFeatureVector, userGender?: str
   }
 
   products = products.slice(0, 40);
-  cache[cacheKey] = { at: Date.now(), products };
-  setStoredJson(candidateCacheKey, cache);
+  console.debug('[scan] Firestore product candidates loaded:', {
+    cacheKey,
+    productsLoaded: products.length,
+    productIds: products.map((product) => product.id)
+  });
   return products;
 };
 

@@ -83,6 +83,20 @@ const getTimestampMs = (value: any) => {
   return 0;
 };
 
+const getProductImageVersion = (data: Record<string, any>) => (
+  getTimestampMs(data.imageUpdatedAt)
+  || getTimestampMs(data.updatedAt)
+  || getTimestampMs(data.modifiedAt)
+  || getTimestampMs(data.createdAt)
+  || Number(data.version || 0)
+);
+
+const withImageVersion = (url: string, version: number) => {
+  if (!url || !version || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(String(version))}`;
+};
+
 const isValidProduct = (product: ProductItem): boolean => {
   // Filter out products without proper names
   if (!product.name || product.name === 'Unnamed Product' || product.name.trim() === '') {
@@ -100,20 +114,27 @@ const isValidProduct = (product: ProductItem): boolean => {
 };
 
 const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Record<string, VendorItem>): ProductItem => {
+  const imageVersion = getProductImageVersion(data);
   const images = [
     ...asStringArray(data.images),
     ...asStringArray(data.imageUrls)
-  ].filter((value, index, array) => value && array.indexOf(value) === index);
+  ]
+    .map((value) => withImageVersion(value, imageVersion))
+    .filter((value, index, array) => value && array.indexOf(value) === index);
   const vendorId = data.vendorId ? String(data.vendorId) : undefined;
   const vendor = vendorId ? vendorsById[vendorId] : undefined;
   const stock = data.stock !== undefined ? Number(data.stock) : undefined;
   const colors = Array.isArray(data.colors) ? data.colors.map(String).filter(Boolean) : ['Standard'];
-  const variants = normalizeProductVariants(data, colors);
+  const variants = normalizeProductVariants(data, colors).map((variant) => ({
+    ...variant,
+    images: variant.images.map((image) => withImageVersion(image, imageVersion)),
+    thumbnail: withImageVersion(variant.thumbnail, imageVersion)
+  }));
   const allImages = [
     ...images,
     ...variants.flatMap((variant) => variant.images || [])
   ].filter((value, index, array) => value && array.indexOf(value) === index);
-  const imageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || allImages[0] || fallbackImage;
+  const imageUrl = withImageVersion(getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || allImages[0] || fallbackImage, imageVersion);
 
   return {
     id,
@@ -413,7 +434,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       unsubscribe = onSnapshot(topRatedQuery, (snapshot) => {
         console.debug('Firebase products snapshot received:', {
           ...getFirebaseDebugContext(collectionName, queryDescription),
-          documentsReceived: snapshot.size
+          documentsReceived: snapshot.size,
+          fromCache: snapshot.metadata.fromCache,
+          changedDocumentIds: snapshot.docChanges().map((change) => `${change.type}:${change.doc.id}`)
         });
         try {
           const nextProducts = snapshot.docs
@@ -462,7 +485,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       unsubscribe = onSnapshot(productsQuery, (snapshot) => {
         console.debug('Firebase products snapshot received:', {
           ...getFirebaseDebugContext(collectionName, queryDescription),
-          documentsReceived: snapshot.size
+          documentsReceived: snapshot.size,
+          fromCache: snapshot.metadata.fromCache,
+          changedDocumentIds: snapshot.docChanges().map((change) => `${change.type}:${change.doc.id}`)
         });
         try {
           const nextProducts = snapshot.docs

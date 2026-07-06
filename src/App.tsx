@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
@@ -33,6 +33,29 @@ const getStringValue = (value: unknown): string | undefined => {
   const candidate = record.imageUrl || record.url || record.src || record.image;
   if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   return undefined;
+};
+
+const getTimestampMs = (value: any) => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return new Date(value).getTime() || 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  return 0;
+};
+
+const getProductImageVersion = (data: Record<string, any>) => (
+  getTimestampMs(data.imageUpdatedAt)
+  || getTimestampMs(data.updatedAt)
+  || getTimestampMs(data.modifiedAt)
+  || getTimestampMs(data.createdAt)
+  || Number(data.version || 0)
+);
+
+const withImageVersion = (url: string, version: number) => {
+  if (!url || !version || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(String(version))}`;
 };
 
 const getColorValue = (value: unknown): string | undefined => {
@@ -143,39 +166,6 @@ const saveStoredProductReviews = (reviews: Record<string, ProductReview[]>) => {
     localStorage.setItem(productReviewsStorageKey, JSON.stringify(reviews));
   } catch {
     // ignore storage writing failures
-  }
-};
-
-const loadFirestoreProductReviews = async (): Promise<Record<string, ProductReview[]>> => {
-  try {
-    const reviewsSnapshot = await getDocs(collection(db, 'product_reviews'));
-    const reviewsByProduct: Record<string, ProductReview[]> = {};
-    
-    reviewsSnapshot.forEach((doc) => {
-      const data = doc.data();
-      const productId = data.productId;
-      if (productId) {
-        const review: ProductReview = {
-          id: doc.id,
-          reviewer: String(data.reviewer || 'Guest'),
-          rating: Number(data.rating || 0),
-          text: String(data.text || ''),
-          date: String(data.date || new Date().toLocaleDateString()),
-          source: data.source === 'tryon' ? 'tryon' : 'product',
-          accountUid: data.accountUid ? String(data.accountUid) : undefined
-        };
-        
-        if (!reviewsByProduct[productId]) {
-          reviewsByProduct[productId] = [];
-        }
-        reviewsByProduct[productId].push(review);
-      }
-    });
-    
-    return reviewsByProduct;
-  } catch (error) {
-    console.error('Error loading reviews from Firestore:', error);
-    return {};
   }
 };
 
@@ -657,8 +647,13 @@ export default function App() {
 
   const [productsData, setProductsData] = useState<Record<string, ProductItem>>({});
   const [productReviews, setProductReviews] = useState<Record<string, ProductReview[]>>(() => loadStoredProductReviews());
+  const productReviewsRef = useRef(productReviews);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
   const [productsError, setProductsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    productReviewsRef.current = productReviews;
+  }, [productReviews]);
 
   useEffect(() => {
     setProductsData((current) => {
@@ -791,105 +786,156 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const loadProducts = async () => {
-      const collectionName = 'products';
-      const queryDescription = 'products getDocs';
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    const collectionName = 'products';
+    const queryDescription = 'products realtime listener';
 
-      try {
-        setProductsLoading(true);
-        setProductsError(null);
-        await waitForFirebaseAuthReady();
-        const snapshot = await getDocs(collection(db, collectionName));
-        console.debug('Firebase products getDocs received:', getFirebaseDebugContext(collectionName, queryDescription, snapshot.size));
-        const fetchedProducts: Record<string, ProductItem> = {};
+    setProductsLoading(true);
+    setProductsError(null);
+    console.debug('Firestore products listener connecting:', getFirebaseDebugContext(collectionName, queryDescription));
 
-        snapshot.forEach((doc: any) => {
-          const data = doc.data() as any;
-          const id = doc.id;
-          const colors = Array.isArray(data.colors)
-            ? data.colors
-                .map((value: unknown) => String(value))
-                .map((value: string) => value.trim())
-                .filter((value: string) => value.length > 0)
-            : ['Standard'];
-          const imageUrls = [
-            ...asStringArray(data.images),
-            ...asStringArray(data.imageUrls)
-          ].filter((value, index, array) => value && array.indexOf(value) === index);
-          const colorImages = buildColorImages({ ...data }, colors);
-          const variants = normalizeProductVariants(data, colors, colorImages);
-          const variantImages = variants.flatMap((variant) => variant.images || []);
-          const images = [
-            ...imageUrls,
-            ...variantImages
-          ].filter((value, index, array) => value && array.indexOf(value) === index);
-          const imageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || images[0] || '';
-          const stock = data.stock !== undefined ? Number(data.stock) : undefined;
-          const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName) || getStringValue(data.companyName) || getStringValue(data.storeName);
-          const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl);
-          
-          // Filter out incomplete products
-          const productName = String(data.name || data.productName || '');
-          const productPrice = Number(data.discountPrice || data.price || 0);
-          if (!productName || productName === 'Unnamed Product' || productPrice === 0 || !imageUrl) {
-            return;
-          }
+    waitForFirebaseAuthReady().then(() => {
+      if (cancelled) return;
 
-          fetchedProducts[id] = {
-            id,
-            productId: String(data.productId || id),
-            vendorId: data.vendorId ? String(data.vendorId) : undefined,
-            vendorName,
-            vendorLogoUrl,
-            name: productName,
-            category: String(data.category || 'Uncategorized'),
-            price: productPrice,
-            originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
-            discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
-            rating: Number(data.rating || 0),
-            reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
-            imageUrl,
-            mainImage: imageUrl,
-            images: images.length > 0 ? images : imageUrl ? [imageUrl] : undefined,
-            imageUrls: images.length > 0 ? images : undefined,
-            colorImages,
-            variants: variants.length > 0 ? variants : undefined,
-            defaultVariantId: variants[0]?.id,
-            colors: variants.length > 0 ? variants.map((variant) => variant.colorName) : colors,
-            sizes: Array.isArray(data.sizes)
-              ? data.sizes
+      unsubscribe = onSnapshot(collection(db, collectionName), (snapshot) => {
+        const changedDocumentIds = snapshot.docChanges().map((change) => `${change.type}:${change.doc.id}`);
+        console.debug('Firestore products snapshot received:', {
+          ...getFirebaseDebugContext(collectionName, queryDescription, snapshot.size),
+          fromCache: snapshot.metadata.fromCache,
+          changedDocumentIds
+        });
+
+        try {
+          const fetchedProducts: Record<string, ProductItem> = {};
+
+          snapshot.forEach((doc: any) => {
+            const data = doc.data() as any;
+            const id = doc.id;
+            const colors = Array.isArray(data.colors)
+              ? data.colors
                   .map((value: unknown) => String(value))
                   .map((value: string) => value.trim())
                   .filter((value: string) => value.length > 0)
-              : ['One Size'],
-            inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
-            stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,
-            isTopRated: Boolean(data.isTopRated),
-            isFeatured: Boolean(data.isFeatured),
-            badge: data.badge ? String(data.badge) : data.isTopRated ? 'Top Pick' : undefined,
-            details: Array.isArray(data.details) ? data.details.map(String) : Array.isArray(data.description) ? data.description.map(String) : data.description ? [String(data.description)] : [],
-            createdAt: data.createdAt
-          };
-        });
+              : ['Standard'];
+            const imageVersion = getProductImageVersion(data);
+            const imageUrls = [
+              ...asStringArray(data.images),
+              ...asStringArray(data.imageUrls)
+            ]
+              .map((value) => withImageVersion(value, imageVersion))
+              .filter((value, index, array) => value && array.indexOf(value) === index);
+            const colorImages = buildColorImages({ ...data }, colors);
+            const versionedColorImages = colorImages
+              ? Object.fromEntries(Object.entries(colorImages).map(([key, value]) => [
+                  key,
+                  Array.isArray(value)
+                    ? value.map((item) => withImageVersion(item, imageVersion))
+                    : withImageVersion(value, imageVersion)
+                ]))
+              : undefined;
+            const variants = normalizeProductVariants(data, colors, versionedColorImages);
+            const versionedVariants = variants.map((variant) => ({
+              ...variant,
+              images: variant.images.map((image) => withImageVersion(image, imageVersion)),
+              thumbnail: withImageVersion(variant.thumbnail, imageVersion)
+            }));
+            const variantImages = versionedVariants.flatMap((variant) => variant.images || []);
+            const images = [
+              ...imageUrls,
+              ...variantImages
+            ].filter((value, index, array) => value && array.indexOf(value) === index);
+            const rawImageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || versionedVariants[0]?.images?.[0] || images[0] || '';
+            const imageUrl = withImageVersion(rawImageUrl, imageVersion);
+            const stock = data.stock !== undefined ? Number(data.stock) : undefined;
+            const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName) || getStringValue(data.companyName) || getStringValue(data.storeName);
+            const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl);
 
-        if (Object.keys(fetchedProducts).length > 0) {
-          setProductsData(fetchedProducts);
-          setProductsError(null);
-        } else {
-          console.warn('Firestore returned no products.', getFirebaseDebugContext(collectionName, queryDescription, 0));
+            const productName = String(data.name || data.productName || '');
+            const productPrice = Number(data.discountPrice || data.price || 0);
+            if (!productName || productName === 'Unnamed Product' || productPrice === 0 || !imageUrl) {
+              return;
+            }
+
+            const nextProduct: ProductItem = {
+              id,
+              productId: String(data.productId || id),
+              vendorId: data.vendorId ? String(data.vendorId) : undefined,
+              vendorName,
+              vendorLogoUrl,
+              name: productName,
+              category: String(data.category || 'Uncategorized'),
+              price: productPrice,
+              originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
+              discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
+              rating: Number(data.rating || 0),
+              reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
+              imageUrl,
+              mainImage: imageUrl,
+              images: images.length > 0 ? images : imageUrl ? [imageUrl] : undefined,
+              imageUrls: images.length > 0 ? images : undefined,
+              colorImages: versionedColorImages,
+              variants: versionedVariants.length > 0 ? versionedVariants : undefined,
+              defaultVariantId: versionedVariants[0]?.id,
+              colors: versionedVariants.length > 0 ? versionedVariants.map((variant) => variant.colorName) : colors,
+              sizes: Array.isArray(data.sizes)
+                ? data.sizes
+                    .map((value: unknown) => String(value))
+                    .map((value: string) => value.trim())
+                    .filter((value: string) => value.length > 0)
+                : ['One Size'],
+              inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
+              stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,
+              isTopRated: Boolean(data.isTopRated),
+              isFeatured: Boolean(data.isFeatured),
+              badge: data.badge ? String(data.badge) : data.isTopRated ? 'Top Pick' : undefined,
+              details: Array.isArray(data.details) ? data.details.map(String) : Array.isArray(data.description) ? data.description.map(String) : data.description ? [String(data.description)] : [],
+              createdAt: data.createdAt
+            };
+
+            const reviews = productReviewsRef.current[id] || [];
+            if (reviews.length > 0) {
+              const aggregate = calculateRatingFromReviews(nextProduct, reviews);
+              nextProduct.rating = aggregate.rating;
+              nextProduct.reviewsCount = aggregate.reviewsCount;
+            }
+
+            fetchedProducts[id] = nextProduct;
+          });
+
+          if (Object.keys(fetchedProducts).length > 0) {
+            setProductsData(fetchedProducts);
+            setProductsError(null);
+          } else {
+            console.warn('Firestore returned no products.', getFirebaseDebugContext(collectionName, queryDescription, 0));
+            setProductsData({});
+            setProductsError('Firestore returned no products from the products collection.');
+          }
+        } catch (error) {
+          logFirebaseProductFetchError(error, collectionName, queryDescription);
           setProductsData({});
-          setProductsError('Firestore returned no products from the products collection.');
+          setProductsError('Unable to process products from Firebase. Check the console for Firebase Product Fetch Error details.');
+        } finally {
+          setProductsLoading(false);
         }
-      } catch (error) {
+      }, (error) => {
         logFirebaseProductFetchError(error, collectionName, queryDescription);
         setProductsData({});
         setProductsError('Unable to load products from Firebase. Check the console for Firebase Product Fetch Error details.');
-      } finally {
         setProductsLoading(false);
-      }
-    };
+      });
+    }).catch((error) => {
+      logFirebaseProductFetchError(error, collectionName, queryDescription);
+      setProductsData({});
+      setProductsError('Unable to connect to Firebase. Check the console for Firebase Product Fetch Error details.');
+      setProductsLoading(false);
+    });
 
-    loadProducts();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+      console.debug('Firestore products listener disconnected:', getFirebaseDebugContext(collectionName, queryDescription));
+    };
   }, []);
 
   // Persistent wishlist/favorites state
