@@ -1009,7 +1009,11 @@ export default function App() {
     });
   };
 
-  const scanCount = recentActivityState.filter((entry) => entry.badge === 'Scan' || entry.badge === 'Camera Scan').length;
+  const recentScanItems = recentActivityState
+    .filter((entry) => entry.badge === 'Scan' || entry.badge === 'Camera Scan')
+    .slice(0, 6);
+
+  const scanCount = recentScanItems.length;
 
   // Navigation wrapper that logs activity for relevant screens
   const navigate = (to: ScreenId, opts?: { productId?: string }) => {
@@ -1257,7 +1261,7 @@ export default function App() {
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} />;
+        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} recentScans={recentScanItems} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':
