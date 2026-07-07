@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, User, Check, AlertCircle, RefreshCw, Smartphone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { apiUrl } from '../services/apiClient';
 
 interface AuthViewProps {
   onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => void;
+  onProceedToEmailVerification?: (email: string, name: string, address?: string, pinCode?: string) => void;
   initialMode?: 'login' | 'signup';
 }
 
@@ -22,7 +24,7 @@ const SEED_USERS: RegisterUser[] = [
   { name: 'Guest Tester', email: 'guest@nova.ai', phone: '+91 99999 88888' }
 ];
 
-export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode = 'login' }) => {
+export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToEmailVerification, initialMode = 'login' }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   
   // Form input fields
@@ -108,8 +110,89 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
     }, 500);
   };
 
+  const handleSignupWithEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    // Validate inputs
+    if (!name.trim()) {
+      setError('Please provide your Full Name.');
+      return;
+    }
+
+    if (!email.trim()) {
+      setError('Please provide your email address.');
+      return;
+    }
+
+    if (pinCode.trim() && !/^\d{6}$/.test(pinCode.trim())) {
+      setError('Please enter a valid 6-digit PIN code.');
+      return;
+    }
+
+    let normalizedEmail = email.trim().toLowerCase();
+
+    // Validate email format
+    if (!normalizedEmail.includes('@')) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Request OTP from backend
+      console.debug('OTP send request started.', { email: normalizedEmail, endpoint: apiUrl('/api/auth/send-otp') });
+      const response = await fetch(apiUrl('/api/auth/send-otp'), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: normalizedEmail })
+      });
+
+      const data = await response.json();
+      console.debug('OTP send response received.', { status: response.status, success: data.success, expiresIn: data.expiresIn });
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to send verification code. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccess('Verification code sent to your email!');
+      
+      // Proceed to email verification screen
+      setTimeout(() => {
+        setIsSubmitting(false);
+        if (onProceedToEmailVerification) {
+          onProceedToEmailVerification(normalizedEmail, name.trim(), address.trim() || undefined, pinCode.trim() || undefined);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Error sending OTP:', err);
+      setError('Network error. Please check your connection and try again.');
+      setIsSubmitting(false);
+    }
+  };
+
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // For signup, use email-based verification flow
+    if (mode === 'signup') {
+      await handleSignupWithEmail(e);
+      return;
+    }
+
+    // For login, continue with phone-based flow
     setError(null);
     setSuccess(null);
 
@@ -125,39 +208,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, initialMode 
       return;
     }
 
-    let signupEmailValue: string | undefined;
-
-    if (mode === 'signup') {
-      if (!name.trim()) {
-        setError('Please provide your Full Name to register.');
-        return;
-      }
-      if (!email.trim()) {
-        setError('Please provide your email address to register.');
-        return;
-      }
-        if (pinCode.trim() && !/^\d{6}$/.test(pinCode.trim())) {
-          setError('Please enter a valid 6-digit PIN code.');
-          return;
-        }
-        let normalizedEmail = email.trim().toLowerCase();
-        // Enforce @gmail.com domain requirement
-        if (normalizedEmail.includes('@')) {
-          if (!normalizedEmail.endsWith('@gmail.com')) {
-            setError('Email must be a @gmail.com address.');
-            return;
-          }
-          if (!/^[^\s@]+@gmail\.com$/.test(normalizedEmail)) {
-            setError('Please provide a valid @gmail.com email address.');
-            return;
-          }
-        } else {
-          normalizedEmail = `${normalizedEmail}@gmail.com`;
-        }
-        signupEmailValue = normalizedEmail;
-      }
-
-      await loginWithPhone(normalizedPhone, signupEmailValue, address.trim() || undefined, pinCode.trim() || undefined);
+    await loginWithPhone(normalizedPhone);
   };
 
   return (

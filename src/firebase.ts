@@ -1,6 +1,6 @@
 import { FirebaseOptions, getApp, getApps, initializeApp } from 'firebase/app';
 import { getFirestore, setDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, User, signInWithCustomToken } from 'firebase/auth';
 
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
 
@@ -42,6 +42,17 @@ const initializeAnonymousAuth = async (): Promise<User | null> => {
     );
     return auth.currentUser;
   }
+};
+
+export const signInWithServerCustomToken = async (customToken: string): Promise<User> => {
+  const credential = await signInWithCustomToken(auth, customToken);
+  authReadyPromise = Promise.resolve(credential.user);
+  console.debug('Firebase custom token sign-in completed.', {
+    uid: credential.user.uid,
+    email: credential.user.email,
+    projectId: firebaseProjectId
+  });
+  return credential.user;
 };
 
 export const waitForFirebaseAuthReady = (): Promise<User | null> => {
@@ -108,25 +119,32 @@ export const saveUserToFirestore = async (
   phone: string,
   isNewUser: boolean = false,
   address?: string,
-  pinCode?: string
+  pinCode?: string,
+  uid?: string
 ): Promise<void> => {
   try {
-    const normalizedEmail = email.toLowerCase().replace(/[@.]/g, '_');
-    const userRef = doc(db, 'users', normalizedEmail);
-    const userData: any = {
-      uid: normalizedEmail,
+    const normalizedEmail = email.trim().toLowerCase();
+    const docId = uid || auth.currentUser?.uid || normalizedEmail.replace(/[@.]/g, '_');
+    const userRef = doc(db, 'users', docId);
+    const userData: any = Object.fromEntries(Object.entries({
+      uid: docId,
       name,
-      email,
+      email: normalizedEmail,
       phone,
-      username: email.split('@')[0] || name,
-      createdAt: isNewUser ? serverTimestamp() : new Date(),
+      username: normalizedEmail.split('@')[0] || name,
+      createdAt: isNewUser ? serverTimestamp() : undefined,
       lastLogin: serverTimestamp(),
-      profilePhoto: undefined
-    };
+      updatedAt: serverTimestamp(),
+      photoURL: '',
+      profilePhoto: undefined,
+      preferences: {}
+    }).filter(([, value]) => value !== undefined));
     if (address) userData.address = address;
     if (pinCode) userData.pinCode = pinCode;
     
     await setDoc(userRef, userData, { merge: true });
+    await setDoc(doc(db, 'users', docId, 'profile', 'meta'), userData, { merge: true });
+    console.debug('Firestore user profile saved.', { uid: docId, email: normalizedEmail });
   } catch (err) {
     console.error('Error saving user to Firestore:', err);
     throw err;

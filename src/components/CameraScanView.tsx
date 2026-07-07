@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
 import { ProductItem, ScreenId } from '../types';
 import { CameraScanResult, ScanImageSource, ScanProductResult, runCameraScan } from '../services/cameraScanService';
 
@@ -25,7 +27,16 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setActiveItemIndex(0);
+    if (!scanResult?.results?.length) {
+      setActiveItemIndex(0);
+      return;
+    }
+
+    const bestIndex = scanResult.results.reduce((selectedIndex, result, index, allResults) => {
+      return result.score > allResults[selectedIndex].score ? index : selectedIndex;
+    }, 0);
+
+    setActiveItemIndex(bestIndex);
   }, [scanResult]);
 
   const currentResult: ScanProductResult | undefined = scanResult?.results[activeItemIndex] || scanResult?.results[0];
@@ -40,9 +51,48 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   const matchReasons = currentResult ? (currentResult.recommendationReasons.length > 0 ? currentResult.recommendationReasons : ['Same category', 'Same color', 'Same silhouette']) : [];
   const pairingProduct = currentResult?.pairedWith[0];
 
+  const isNative = Capacitor.getPlatform?.() !== 'web';
+
+  const createFileFromDataUrl = async (dataUrl: string, fileName = 'camera-scan.jpg'): Promise<File> => {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    return new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+  };
+
+  const openNativeCamera = async () => {
+    try {
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        quality: 80,
+        correctOrientation: true,
+        direction: CameraDirection.Rear
+      });
+
+      if (!photo || !photo.dataUrl) {
+        throw new Error('Camera photo unavailable');
+      }
+
+      const file = await createFileFromDataUrl(photo.dataUrl, 'camera-scan.jpg');
+      await handleFileSelected('camera', file);
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Unable to open camera.';
+      setErrorMessage(message.includes('Permission') ? 'Camera permission denied. Please enable camera access.' : 'Could not open native camera. Using upload instead.');
+      setShowSourceSheet(true);
+    }
+  };
+
   const openSource = (source: ScanImageSource) => {
     setScanSource(source);
     setShowSourceSheet(false);
+
+    if (source === 'camera' && isNative) {
+      openNativeCamera();
+      return;
+    }
+
     requestAnimationFrame(() => {
       if (source === 'camera') cameraInputRef.current?.click();
       else galleryInputRef.current?.click();
@@ -65,7 +115,10 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
     try {
       const result = await runCameraScan(file, source, (message) => setScanMessage(message), userGender);
       setScanResult(result);
-      result.results.forEach((entry) => onProductMatched?.(entry.product));
+      if (result.results.length > 0) {
+        const bestResult = result.results.reduce((best, entry) => (entry.score > best.score ? entry : best), result.results[0]);
+        onProductMatched?.(bestResult.product);
+      }
     } catch (error) {
       const message = error instanceof Error && error.message.includes('fetch products')
         ? 'Unable to fetch products. Please try again.'

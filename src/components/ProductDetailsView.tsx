@@ -54,7 +54,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   setSelectedColor,
   wishlist = [],
   onToggleWishlist,
-  selectedProductId = 'lavender-hoodie',
+  selectedProductId,
   isDarkMode = false,
   reviews = [],
   averageRating,
@@ -63,7 +63,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   onSubmitReview,
   currentUserName
 }) => {
-  const mainProduct = products[selectedProductId] || products['lavender-hoodie'];
+  const fallbackProduct = Object.values(products)[0] || products['lavender-hoodie'];
+  const mainProduct = selectedProductId ? products[selectedProductId] || fallbackProduct : fallbackProduct;
   const [selectedSize, setSelectedSize] = useState('M');
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);

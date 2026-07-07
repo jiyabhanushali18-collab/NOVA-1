@@ -1,24 +1,36 @@
-import express from 'express';
-import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import chatRouter from './server/chatRouter';
-import analysisRouter from './server/analysisRouter';
-import productRouter from './server/productRouter';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
+import express from 'express';
+import path from 'path';
+import { createServer as createViteServer } from 'vite';
+
 const app = express();
 app.use(express.json({ limit: '6mb' }));
-app.use('/api', chatRouter);
-app.use('/api', analysisRouter);
-app.use('/api', productRouter);
 
 const PORT = Number(process.env.PORT || 3000);
 
 async function start() {
   try {
+    const [
+      { default: authRouter },
+      { default: chatRouter },
+      { default: analysisRouter },
+      { default: productRouter }
+    ] = await Promise.all([
+      import('./server/authRouter.ts'),
+      import('./server/chatRouter.ts'),
+      import('./server/analysisRouter.ts'),
+      import('./server/productRouter.ts')
+    ]);
+
+    app.use('/api', authRouter);
+    app.use('/api', chatRouter);
+    app.use('/api', analysisRouter);
+    app.use('/api', productRouter);
+
     // Create Vite server for development
     const vite = await createViteServer({
       server: { middlewareMode: true }
@@ -33,7 +45,7 @@ async function start() {
     });
 
     // Start server
-    const server = app.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`\n✨ Server running at http://localhost:${PORT}\n`);
     });
   } catch (error) {

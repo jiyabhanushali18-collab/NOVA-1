@@ -12,6 +12,7 @@ export type ScreenId =
   | 'wardrobe'
   | 'login'
   | 'signup'
+  | 'email-verification'
   | 'splash'
   | 'onboarding'
   | 'setup-preferences'

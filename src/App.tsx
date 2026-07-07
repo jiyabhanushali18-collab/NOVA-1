@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview } from './types';
 import { products } from './data';
-import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
+import { auth, db, firebaseProjectId, saveUserToFirestore, signInWithServerCustomToken, waitForFirebaseAuthReady } from './firebase';
 
 // Modular View Imports
 import { HomeView } from './components/HomeView';
@@ -16,6 +16,7 @@ import { ChatView } from './components/ChatView';
 import { CartView } from './components/CartView';
 import { ShowroomView } from './components/ShowroomView';
 import { AuthView } from './components/AuthView';
+import { EmailVerificationView } from './components/EmailVerificationView';
 import { SplashView } from './components/SplashView';
 import { OnboardingView } from './components/OnboardingView';
 import { SetupPreferencesView } from './components/SetupPreferencesView';
@@ -390,6 +391,9 @@ export default function App() {
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
+
+  // Email verification state
+  const [pendingEmailVerification, setPendingEmailVerification] = useState<{ email: string; name: string; address?: string; pinCode?: string } | null>(null);
 
   const replaceScreen = (to: ScreenId) => {
     const historyStack = screenHistoryRef.current;
@@ -1006,6 +1010,15 @@ export default function App() {
 
   // Navigation wrapper that logs activity for relevant screens
   const navigate = (to: ScreenId, opts?: { productId?: string }) => {
+    if (opts?.productId) {
+      const selectedId = opts.productId;
+      setSelectedProductId(selectedId);
+      const prod = productsData[selectedId] || products[selectedId];
+      if (prod) {
+        setSelectedColor(getDefaultProductColor(prod));
+      }
+    }
+
     const currentScreen = screenRef.current;
     const time = new Date().toLocaleString();
     if (to === 'ar-tryon') {
@@ -1274,6 +1287,78 @@ export default function App() {
     }
   };
 
+  const handleProceedToEmailVerification = (email: string, name: string, address?: string, pinCode?: string) => {
+    // Store pending verification data
+    setPendingEmailVerification({ email, name, address, pinCode });
+    // Navigate to email verification screen
+    resetScreenHistory('email-verification');
+  };
+
+  const handleEmailVerificationSuccess = async (verificationResult: { uid?: string; email: string; customToken?: string }) => {
+    if (!pendingEmailVerification) {
+      // Fallback to home if no pending verification data
+      resetScreenHistory('home');
+      return;
+    }
+
+    const { email, name, address, pinCode } = pendingEmailVerification;
+    let firebaseUid = verificationResult.uid || email;
+
+    if (verificationResult.customToken) {
+      try {
+        const user = await signInWithServerCustomToken(verificationResult.customToken);
+        firebaseUid = user.uid;
+        console.debug('OTP verified user signed in.', { uid: user.uid, email: user.email });
+      } catch (err) {
+        console.error('Failed to sign in verified Firebase user:', err);
+      }
+    } else {
+      console.warn('OTP verification did not return a Firebase custom token; continuing with local login state.');
+    }
+
+    // Complete the signup with email verified
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userName', name);
+    localStorage.setItem('userEmail', email);
+    localStorage.setItem('userPhone', ''); // No phone for email-based signup
+    if (address) localStorage.setItem('userAddress', address);
+    if (pinCode) localStorage.setItem('userPinCode', pinCode);
+
+    setUserName(name);
+    setUserEmail(email);
+    setUserPhone('');
+    setIsLoggedIn(true);
+    setPendingEmailVerification(null);
+
+    // Save user details to Firestore (isSignUp=true for email-based signup)
+    saveUserToFirestore(name, email, '', true, address, pinCode, firebaseUid).then(() => {
+      console.debug('Firestore write success after OTP verification.', { uid: firebaseUid, email });
+    }).catch(err => {
+      console.error('Failed to save user data:', err);
+    });
+
+    // Persist account to device list and set active
+    try {
+      const uid = firebaseUid;
+      const acc = {
+        uid,
+        username: email.split('@')[0] || name,
+        email,
+        profilePhoto: undefined,
+        createdAt: Date.now()
+      };
+      addAccount(acc as any);
+      try { localStorage.removeItem(`recent_activity_${uid}`); } catch {}
+      accountService.setActiveLocalAccount(uid);
+      setActiveAccountUid(uid);
+    } catch (err) {
+      console.error('Failed to manage account:', err);
+    }
+
+    // Navigate to setup preferences for new signup
+    resetScreenHistory('setup-preferences');
+  };
+
   const handleLoginSuccess = (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => {
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('userName', name);
@@ -1337,7 +1422,7 @@ export default function App() {
   };
 
   // Determine if full-screen preview camera active (no standard header/nav shown on live tryon to emulate immersive filter experience!)
-  const isImmersiveAR = screen === 'ar-tryon' || screen === 'setup-preferences' || screen === 'profile-analysis';
+  const isImmersiveAR = screen === 'ar-tryon' || screen === 'setup-preferences' || screen === 'profile-analysis' || screen === 'email-verification';
 
   // Splash Screen Guard
   if (screen === 'splash') {
@@ -1349,11 +1434,32 @@ export default function App() {
     return <OnboardingView onComplete={handleOnboardingComplete} />;
   }
 
+  // Email Verification Screen Guard
+  if (screen === 'email-verification' && pendingEmailVerification) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center max-w-md mx-auto relative bg-gradient-to-b from-indigo-50/50 via-white to-purple-50/50 shadow-2xl overflow-hidden font-sans border-x border-indigo-100">
+        <main className="flex-grow relative px-4 py-3 bg-white/20 flex flex-col justify-center">
+          <EmailVerificationView
+            email={pendingEmailVerification.email}
+            name={pendingEmailVerification.name}
+            address={pendingEmailVerification.address}
+            pinCode={pendingEmailVerification.pinCode}
+            onVerificationSuccess={handleEmailVerificationSuccess}
+            onChangeEmail={() => {
+              setPendingEmailVerification(null);
+              resetScreenHistory('signup');
+            }}
+          />
+        </main>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center max-w-md mx-auto relative bg-gradient-to-b from-indigo-50/50 via-white to-purple-50/50 shadow-2xl overflow-hidden font-sans border-x border-indigo-100">
         <main className="flex-grow relative px-4 py-3 bg-white/20 flex flex-col justify-center">
-          <AuthView onLoginSuccess={handleLoginSuccess} />
+          <AuthView onLoginSuccess={handleLoginSuccess} onProceedToEmailVerification={handleProceedToEmailVerification} />
         </main>
       </div>
     );
