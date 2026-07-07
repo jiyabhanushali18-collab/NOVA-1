@@ -5,6 +5,11 @@ import axios from "axios";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
+console.log("=== AUTH ROUTER ENV ===");
+console.log("BREVO_API_KEY:", process.env.BREVO_API_KEY);
+console.log("BREVO_SENDER_EMAIL:", process.env.BREVO_SENDER_EMAIL);
+console.log("=======================");
+
 const router = express.Router();
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
