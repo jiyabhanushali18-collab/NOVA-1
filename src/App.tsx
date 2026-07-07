@@ -391,6 +391,7 @@ export default function App() {
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
+  const [userAddress, setUserAddress] = useState<string>(() => localStorage.getItem('userAddress') || '');
 
   // Email verification state
   const [pendingEmailVerification, setPendingEmailVerification] = useState<{ email: string; name: string; address?: string; pinCode?: string } | null>(null);
@@ -1171,6 +1172,7 @@ export default function App() {
             setUserName={setUserName} 
             userEmail={userEmail}
             userPhone={userPhone}
+            userAddress={userAddress}
             profilePhoto={userProfilePhoto || activeAccount?.profilePhoto}
             analysisProfile={analysisProfile}
             onLogout={handleLogout}
@@ -1327,6 +1329,7 @@ export default function App() {
     setUserName(name);
     setUserEmail(email);
     setUserPhone('');
+    setUserAddress(address || '');
     setIsLoggedIn(true);
     setPendingEmailVerification(null);
 
@@ -1369,6 +1372,7 @@ export default function App() {
     setUserName(name);
     setUserEmail(email);
     setUserPhone(phone);
+    setUserAddress(address || '');
     setIsLoggedIn(true);
     
     // Save user details to Firestore

@@ -9,6 +9,7 @@ interface ProfileViewProps {
   setUserName: (name: string) => void;
   userEmail?: string;
   userPhone?: string;
+  userAddress?: string;
   profilePhoto?: string;
   analysisProfile?: NovaAnalysisProfile | null;
   onLogout: () => void;
@@ -41,6 +42,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onNavigate, 
   userName,
   setUserName,
+  userAddress,
   userEmail = 'arjun.mehta@email.com',
   userPhone = '+91 98765 43210',
   profilePhoto,
@@ -334,14 +336,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [profileName, setProfileName] = useState(userName);
   const [profileEmail, setProfileEmail] = useState(userEmail);
   const [profilePhone, setProfilePhone] = useState(userPhone);
-  const [profileLocation, setProfileLocation] = useState('Bangalore, India');
+  const [profileLocation, setProfileLocation] = useState(userAddress || 'Bangalore, India');
 
   // Sync state if user settings change or log in with another account
   React.useEffect(() => {
     setProfileName(userName);
     setProfileEmail(userEmail);
     setProfilePhone(userPhone);
-  }, [userName, userEmail, userPhone]);
+    setProfileLocation(userAddress || 'Bangalore, India');
+  }, [userName, userEmail, userPhone, userAddress]);
 
   const handleSaveMeasurements = (e: React.FormEvent) => {
     e.preventDefault();
