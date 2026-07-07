@@ -1009,6 +1009,8 @@ export default function App() {
     });
   };
 
+  const scanCount = recentActivityState.filter((entry) => entry.badge === 'Scan' || entry.badge === 'Camera Scan').length;
+
   // Navigation wrapper that logs activity for relevant screens
   const navigate = (to: ScreenId, opts?: { productId?: string }) => {
     if (opts?.productId) {
@@ -1255,7 +1257,7 @@ export default function App() {
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} />;
+        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':

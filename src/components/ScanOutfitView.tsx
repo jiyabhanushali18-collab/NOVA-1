@@ -4,9 +4,10 @@ import { recentScans } from '../data';
 
 interface ScanOutfitViewProps {
   onNavigate: (screen: ScreenId) => void;
+  scanCount?: number;
 }
 
-export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate }) => {
+export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scanCount }) => {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
 
   const handleShare = async () => {
@@ -64,7 +65,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate }) =>
           <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-0.5 mb-1">
             <span className="material-symbols-outlined text-[10px]">history</span> History
           </span>
-          <span className="text-2xl font-extrabold text-indigo-600 leading-none">18</span>
+          <span className="text-2xl font-extrabold text-indigo-600 leading-none">{scanCount ?? recentScans.length}</span>
           <span className="text-[9px] font-bold text-slate-500 mt-0.5">Scans total</span>
         </div>
       </section>

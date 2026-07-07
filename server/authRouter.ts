@@ -94,7 +94,7 @@ const sendOTPEmail = async (email: string, otp: string): Promise<{ ok: boolean; 
     ],
     subject: "Verify your NOVA Account",
     htmlContent: `
-      <h2>Welcome to NOVA Vision Labs</h2>
+      <h2>NOVA - The Future of Fashion</h2>
       <p>Your verification code is:</p>
       <h1 style="letter-spacing:6px">${otp}</h1>
       <p>This code expires in 5 minutes.</p>
