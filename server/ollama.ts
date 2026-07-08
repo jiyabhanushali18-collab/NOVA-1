@@ -1,6 +1,19 @@
-const OLLAMA_URL = "http://localhost:11434/api/generate";
+const OLLAMA_URL = "http://localhost:11434/api/chat";
 
-export async function askModel(prompt: string): Promise<string> {
+const conversation = [
+  {
+    role: "system",
+    content:
+      "You are NOVA AI. You are friendly, intelligent and concise. Remember the conversation naturally."
+  }
+];
+
+export async function askModel(message: string): Promise<string> {
+  conversation.push({
+    role: "user",
+    content: message,
+  });
+
   const response = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: {
@@ -8,12 +21,8 @@ export async function askModel(prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: "qwen2.5:7b",
-      prompt,
+      messages: conversation,
       stream: false,
-      options: {
-        temperature: 0.4,
-        num_predict: 300,
-      },
     }),
   });
 
@@ -23,5 +32,12 @@ export async function askModel(prompt: string): Promise<string> {
 
   const data = await response.json();
 
-  return data.response.trim();
+  const reply = data.message.content;
+
+  conversation.push({
+    role: "assistant",
+    content: reply,
+  });
+
+  return reply;
 }
