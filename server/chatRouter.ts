@@ -158,10 +158,56 @@ router.post('/chat', async (req: any, res: any) => {
     const products = await readProductCatalog();
     const relevant = findRelevantRules(latestMessage, rules);
     const retrievedContext = buildKnowledgeContext(relevant);
-    const prompt = `You are NOVA, a high-end personal fashion stylist.\nUse the retrieved fashion intelligence to answer the user's question clearly and confidently.\nRespond with outfit guidance, color pairing recommendations, and styling rules when relevant.\nDo not invent product details beyond the style knowledge.\n\nFashion Rules:\n${retrievedContext}\n\nUser Question:\n${latestMessage}`;
+    const prompt = `
+    You are NOVA AI.
+
+    You are a smart and friendly AI assistant.
+
+    General Rules:
+    - Answer any question naturally.
+    - If the user asks about coding, help with coding.
+    - If the user asks about writing, help with writing.
+    - If the user asks about math, solve it.
+    - If the user asks about fashion, use the fashion knowledge provided below.
+    - Only use fashion rules when they are relevant.
+
+    Fashion Knowledge:
+    ${retrievedContext}
+
+    User:
+    ${latestMessage}
+    `;
 
     const reply = await askModel(prompt);
-    const pairingProducts = findProductSuggestions(latestMessage, products);
+    const fashionKeywords = [
+      "shirt",
+      "tshirt",
+      "t-shirt",
+      "hoodie",
+      "jeans",
+      "pant",
+      "cargo",
+      "dress",
+      "shoe",
+      "sneaker",
+      "fashion",
+      "style",
+      "outfit",
+      "wear",
+      "color",
+      "colour",
+      "jacket",
+      "kurta",
+      "blazer"
+    ];
+
+    const isFashionQuery = fashionKeywords.some(keyword =>
+      latestMessage.toLowerCase().includes(keyword)
+    );
+
+    const pairingProducts = isFashionQuery
+      ? findProductSuggestions(latestMessage, products)
+      : [];
 
     res.json({ reply, pairingProducts });
   } catch (error: any) {
