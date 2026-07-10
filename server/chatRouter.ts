@@ -12,7 +12,12 @@ router.post("/chat", async (req, res) => {
         ? messages[messages.length - 1].content
         : message;
 
-    const reply = await askModel(latestMessage);
+    const sessionId =
+      req.ip ||
+      req.headers["x-forwarded-for"]?.toString() ||
+      "default";
+
+    const reply = await askModel(sessionId, latestMessage);
 
     res.json({
       reply,
