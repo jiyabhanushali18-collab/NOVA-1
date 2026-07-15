@@ -6,7 +6,7 @@ import { COUNTRIES, Country } from '../utils/countries';
 
 interface AuthViewProps {
   onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => void;
-  onProceedToEmailVerification?: (email: string, name: string, address?: string, pinCode?: string) => void;
+  onProceedToEmailVerification?: (email: string, name: string, address?: string, pinCode?: string, phone?: string) => void;
   initialMode?: 'login' | 'signup';
   prefilledName?: string;
   prefilledAddress?: string;
@@ -156,6 +156,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToE
       return;
     }
 
+    const cleanPhone = phoneNumber.trim();
+    const fullPhone = getFullPhoneNumber(cleanPhone, selectedCountry);
+    if (!cleanPhone) {
+      setError('Please provide a phone number for your account.');
+      return;
+    }
+    if (!isValidPhoneNumber(fullPhone)) {
+      setError(`Please provide a valid phone number for ${selectedCountry.name}.`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -185,7 +196,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToE
       setTimeout(() => {
         setIsSubmitting(false);
         if (onProceedToEmailVerification) {
-          onProceedToEmailVerification(normalizedEmail, name.trim(), address.trim() || undefined, pinCode.trim() || undefined);
+          onProceedToEmailVerification(normalizedEmail, name.trim(), address.trim() || undefined, pinCode.trim() || undefined, fullPhone);
         }
       }, 500);
     } catch (err) {

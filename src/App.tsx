@@ -411,7 +411,7 @@ export default function App() {
   }, []);
 
   // Email verification state
-  const [pendingEmailVerification, setPendingEmailVerification] = useState<{ email: string; name: string; address?: string; pinCode?: string } | null>(null);
+  const [pendingEmailVerification, setPendingEmailVerification] = useState<{ email: string; name: string; address?: string; pinCode?: string; phone?: string } | null>(null);
 
   const replaceScreen = (to: ScreenId) => {
     const historyStack = screenHistoryRef.current;
@@ -1312,9 +1312,9 @@ export default function App() {
     }
   };
 
-  const handleProceedToEmailVerification = (email: string, name: string, address?: string, pinCode?: string) => {
+  const handleProceedToEmailVerification = (email: string, name: string, address?: string, pinCode?: string, phone?: string) => {
     // Store pending verification data
-    setPendingEmailVerification({ email, name, address, pinCode });
+    setPendingEmailVerification({ email, name, address, pinCode, phone });
     // Navigate to email verification screen
     resetScreenHistory('email-verification');
   };
@@ -1326,7 +1326,7 @@ export default function App() {
       return;
     }
 
-    const { email, name, address, pinCode } = pendingEmailVerification;
+    const { email, name, address, pinCode, phone } = pendingEmailVerification;
     let firebaseUid = verificationResult.uid || email;
 
     if (verificationResult.customToken) {
@@ -1345,20 +1345,20 @@ export default function App() {
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
-    localStorage.setItem('userPhone', ''); // No phone for email-based signup
+    if (phone) localStorage.setItem('userPhone', phone);
     if (address) localStorage.setItem('userAddress', address);
     if (pinCode) localStorage.setItem('userPinCode', pinCode);
 
     setUserName(name);
     setUserEmail(email);
-    setUserPhone('');
+    setUserPhone(phone || '');
     setUserAddress(address || '');
     setIsLoggedIn(true);
     setPendingEmailVerification(null);
 
     // Save user details to Firestore (isSignUp=true for email-based signup)
-    saveUserToFirestore(name, email, '', true, address, pinCode, firebaseUid).then(() => {
-      console.debug('Firestore write success after OTP verification.', { uid: firebaseUid, email });
+    saveUserToFirestore(name, email, phone || '', true, address, pinCode, firebaseUid).then(() => {
+      console.debug('Firestore write success after OTP verification.', { uid: firebaseUid, email, phone });
     }).catch(err => {
       console.error('Failed to save user data:', err);
     });
