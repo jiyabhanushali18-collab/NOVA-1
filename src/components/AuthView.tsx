@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Phone, User, Check, AlertCircle, RefreshCw, Smartphone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Phone, User, Check, AlertCircle, RefreshCw, Smartphone, ArrowRight, ShieldCheck, ChevronDown } from 'lucide-react';
 import { apiUrl } from '../services/apiClient';
+import { COUNTRIES, Country } from '../utils/countries';
 
 interface AuthViewProps {
   onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => void;
@@ -33,6 +34,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToE
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [pinCode, setPinCode] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]); // Default to India
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -57,31 +60,35 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToE
   const normalizePhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, '');
     if (!digits) return '';
-    if (value.trim().startsWith('+')) {
-      return `+${digits}`;
+    // For the input field, we only accept digits without country code
+    // The country code will be added when submitting
+    if (digits.length >= 10 && digits.length <= 12) {
+      return digits;
     }
-    if (digits.length === 10) {
-      return `+91${digits}`;
+    if (digits.length > 12) {
+      return digits.slice(0, 12);
     }
-    if (digits.length === 11 && digits.startsWith('0')) {
-      return `+91${digits.slice(1)}`;
-    }
-    if (digits.length >= 11 && digits.length <= 15) {
-      return `+${digits}`;
-    }
-    return '';
+    return digits;
+  };
+
+  const getFullPhoneNumber = (phone: string, country: Country) => {
+    const digits = phone.replace(/\D/g, '');
+    if (!digits) return '';
+    // Combine country code with phone digits
+    return `${country.dialCode}${digits}`;
   };
 
   const isValidPhoneNumber = (value: string) => {
     return /^\+[1-9]\d{9,14}$/.test(value);
   };
 
-  const loginWithPhone = async (phone: string, signupEmail?: string, signupAddress?: string, signupPinCode?: string) => {
+  const loginWithPhone = async (phone: string, country: Country, signupEmail?: string, signupAddress?: string, signupPinCode?: string) => {
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
 
-    const normalizedPhone = phone.replace(/\s+/g, '');
+    const fullPhone = getFullPhoneNumber(phone, country);
+    const normalizedPhone = fullPhone.replace(/\s+/g, '');
     const matched = registeredUsers.find(
       (u) => u.phone.replace(/\s+/g, '') === normalizedPhone
     );
@@ -198,17 +205,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToE
 
     const cleanPhone = phoneNumber.trim();
     if (!cleanPhone) {
-      setError('Please provide your phone number in E.164 format, for example +919876543210.');
+      setError(`Please provide your phone number.`);
       return;
     }
 
-    const normalizedPhone = cleanPhone.replace(/\s+/g, '');
-    if (!isValidPhoneNumber(normalizedPhone)) {
-      setError('Please provide a valid phone number in E.164 format, for example +919876543210.');
+    const fullPhone = getFullPhoneNumber(cleanPhone, selectedCountry);
+    if (!isValidPhoneNumber(fullPhone)) {
+      setError(`Please provide a valid phone number for ${selectedCountry.name}.`);
       return;
     }
 
-    await loginWithPhone(normalizedPhone);
+    await loginWithPhone(cleanPhone, selectedCountry);
   };
 
   return (
@@ -323,18 +330,72 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToE
 
             <div className="space-y-1 text-left">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Phone Number</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Phone className="w-4.5 h-4.5" />
+              <div className="flex gap-2">
+                {/* Country Selector Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                    className="h-[42px] px-3 bg-slate-50/80 border border-slate-200 rounded-xl font-semibold text-xs flex items-center gap-2 hover:bg-white hover:border-indigo-600 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm whitespace-nowrap"
+                  >
+                    <span className="text-base">{selectedCountry.flag}</span>
+                    <span className="text-slate-800">{selectedCountry.dialCode}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+
+                  {/* Country Dropdown Menu */}
+                  {isCountryDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-64 max-h-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-y-auto">
+                      <div className="sticky top-0 p-2 bg-white border-b border-slate-100">
+                        <input
+                          type="text"
+                          placeholder="Search country..."
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          onChange={(e) => {
+                            // Could be used for filtering countries
+                          }}
+                        />
+                      </div>
+                      {COUNTRIES.map((country) => (
+                        <button
+                          key={country.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCountry(country);
+                            setIsCountryDropdownOpen(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 hover:bg-indigo-50 transition-colors ${
+                            selectedCountry.code === country.code ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'
+                          }`}
+                        >
+                          <span className="text-base w-6">{country.flag}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-slate-900 truncate">{country.name}</div>
+                            <div className="text-slate-400 text-[10px]">{country.dialCode}</div>
+                          </div>
+                          {selectedCountry.code === country.code && (
+                            <Check className="w-4 h-4 text-indigo-600 shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <input
-                  type="tel"
-                  placeholder="+919876543210"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
-                  required
-                />
+
+                {/* Phone Number Input */}
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Phone className="w-4.5 h-4.5" />
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="9876543210"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(normalizePhoneNumber(e.target.value))}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                    required
+                  />
+                </div>
               </div>
               <span className="text-[9px] text-slate-400 block mt-1 ml-1 leading-tight">
                 {mode === 'login'

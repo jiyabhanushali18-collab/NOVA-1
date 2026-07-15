@@ -32,8 +32,10 @@ async function start() {
     app.use('/api', productRouter);
 
     // Create Vite server for development
+    // Allow overriding Vite HMR/WebSocket port via env to avoid conflicts
+    const hmrPort = Number(process.env.VITE_WS_PORT || process.env.HMR_PORT || 24679);
     const vite = await createViteServer({
-      server: { middlewareMode: true }
+      server: { middlewareMode: true, hmr: { port: hmrPort } }
     });
 
     // Use Vite's connect instance as middleware

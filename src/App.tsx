@@ -392,6 +392,23 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
   const [userAddress, setUserAddress] = useState<string>(() => localStorage.getItem('userAddress') || '');
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    try {
+      return /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth < 768);
+    } catch (e) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const onResize = () => setIsMobile(/Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || window.innerWidth < 768);
+      window.addEventListener('resize', onResize);
+      return () => window.removeEventListener('resize', onResize);
+    } catch (e) {
+      // noop in non-browser environments
+    }
+  }, []);
 
   // Email verification state
   const [pendingEmailVerification, setPendingEmailVerification] = useState<{ email: string; name: string; address?: string; pinCode?: string } | null>(null);
@@ -1494,9 +1511,12 @@ export default function App() {
             className="flex items-center space-x-2 cursor-pointer select-none group"
           >
             {/* Elegant futuristic brand logo icon incorporating vivid lavender/blue gradients */}
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white font-extrabold shadow-md shadow-indigo-500/30 group-hover:scale-105 transition-transform">
-              N
-            </div>
+            {/* Logo: desktop/mobile image fallback. Place images in public/assets/ */}
+            {isMobile ? (
+              <img src="/assets/nova-mobile.png" alt="NOVA" className="w-8 h-8 rounded-xl object-cover shadow-md shadow-indigo-500/30" />
+            ) : (
+              <img src="/assets/nova-desktop.png" alt="NOVA" className="w-8 h-8 rounded-xl object-cover shadow-md shadow-indigo-500/30" />
+            )}
             <div className="leading-none">
               <span className={`text-base font-black tracking-tight group-hover:text-indigo-600 transition-colors ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
