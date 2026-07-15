@@ -9,7 +9,7 @@ interface EmailVerificationViewProps {
   address?: string;
   pinCode?: string;
   onVerificationSuccess: (result: { uid?: string; email: string; customToken?: string }) => void;
-  onChangeEmail: () => void;
+  onChangeEmail?: (newEmail: string) => void;
 }
 
 export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
@@ -27,6 +27,9 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   const [resendCountdown, setResendCountdown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [attemptsRemaining, setAttemptsRemaining] = useState(3);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editedEmail, setEditedEmail] = useState(email);
+  const [currentEmail, setCurrentEmail] = useState(email);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Focus first input on mount
@@ -141,7 +144,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
 
     try {
       const otpString = otp.join('');
-      console.debug('OTP verify request started.', { email, endpoint: apiUrl('/api/auth/verify-otp'), otpLength: otpString.length });
+      console.debug('OTP verify request started.', { email: currentEmail, endpoint: apiUrl('/api/auth/verify-otp'), otpLength: otpString.length });
       const response = await fetch(apiUrl('/api/auth/verify-otp'), {
         method: 'POST',
         headers: {
@@ -149,7 +152,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          email,
+          email: currentEmail,
           otp: otpString,
           name,
           address,
@@ -175,12 +178,60 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
 
       // Navigate after brief delay to show success animation
       setTimeout(() => {
-        onVerificationSuccess({ uid: data.uid, email: data.email || email, customToken: data.customToken });
+        onVerificationSuccess({ uid: data.uid, email: data.email || currentEmail, customToken: data.customToken });
       }, 1500);
     } catch (err) {
       console.error('Verification error:', err);
       setError('Network error. Please try again.');
       setLoading(false);
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!editedEmail.trim()) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedEmail.trim())) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setResendLoading(true);
+    setError(null);
+
+    try {
+      console.debug('OTP send to new email started.', { email: editedEmail, endpoint: apiUrl('/api/auth/send-otp') });
+      const response = await fetch(apiUrl('/api/auth/send-otp'), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: editedEmail.trim() })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to send OTP to new email');
+        setResendLoading(false);
+        return;
+      }
+
+      // Update the current email and close edit mode
+      setCurrentEmail(editedEmail.trim());
+      setIsEditingEmail(false);
+      setOtp(['', '', '', '', '', '']);
+      setAttemptsRemaining(3);
+      setResendCountdown(30);
+      setResendLoading(false);
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      console.error('Email change error:', err);
+      setError('Failed to update email. Please try again.');
+      setResendLoading(false);
     }
   };
 
@@ -191,14 +242,14 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
     setError(null);
 
     try {
-      console.debug('OTP resend request started.', { email, endpoint: apiUrl('/api/auth/send-otp') });
+      console.debug('OTP resend request started.', { email: currentEmail, endpoint: apiUrl('/api/auth/send-otp') });
       const response = await fetch(apiUrl('/api/auth/send-otp'), {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: currentEmail })
       });
 
       const data = await response.json();
@@ -280,16 +331,57 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
               <p className="text-slate-600">
                 We've sent a 6-digit verification code to
               </p>
-              <p className="text-slate-900 font-semibold mt-1">{email}</p>
+              <p className="text-slate-900 font-semibold mt-1">{currentEmail}</p>
             </div>
 
-            {/* Change Email Link */}
-            <button
-              onClick={onChangeEmail}
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium mb-8 transition-colors"
-            >
-              Change Email
-            </button>
+            {/* Change Email Button - Shows unless editing */}
+            {!isEditingEmail && (
+              <button
+                onClick={() => setIsEditingEmail(true)}
+                className="w-full px-4 py-2.5 mb-8 text-sm font-semibold text-indigo-600 bg-indigo-50 border-2 border-indigo-200 rounded-lg hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200 active:scale-95"
+              >
+                Use Different Email
+              </button>
+            )}
+
+            {/* Email Edit Form */}
+            {isEditingEmail && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-8 p-4 bg-indigo-50 border-2 border-indigo-200 rounded-lg"
+              >
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">Change Email Address</label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="email"
+                    value={editedEmail}
+                    onChange={(e) => setEditedEmail(e.target.value)}
+                    placeholder="new@email.com"
+                    className="flex-1 px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleChangeEmail}
+                    disabled={resendLoading}
+                    className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all"
+                  >
+                    {resendLoading ? 'Sending...' : 'Send OTP'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingEmail(false);
+                      setEditedEmail(currentEmail);
+                    }}
+                    className="flex-1 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             {/* OTP Input Boxes */}
             <div className="mb-8">

@@ -1472,10 +1472,6 @@ export default function App() {
             address={pendingEmailVerification.address}
             pinCode={pendingEmailVerification.pinCode}
             onVerificationSuccess={handleEmailVerificationSuccess}
-            onChangeEmail={() => {
-              setPendingEmailVerification(null);
-              resetScreenHistory('signup');
-            }}
           />
         </main>
       </div>
@@ -1486,7 +1482,13 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center max-w-md mx-auto relative bg-gradient-to-b from-indigo-50/50 via-white to-purple-50/50 shadow-2xl overflow-hidden font-sans border-x border-indigo-100">
         <main className="flex-grow relative px-4 py-3 bg-white/20 flex flex-col justify-center">
-          <AuthView onLoginSuccess={handleLoginSuccess} onProceedToEmailVerification={handleProceedToEmailVerification} />
+          <AuthView 
+            onLoginSuccess={handleLoginSuccess} 
+            onProceedToEmailVerification={handleProceedToEmailVerification}
+            prefilledName={pendingEmailVerification?.name}
+            prefilledAddress={pendingEmailVerification?.address}
+            prefilledPinCode={pendingEmailVerification?.pinCode}
+          />
         </main>
       </div>
     );

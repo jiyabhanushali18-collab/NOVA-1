@@ -8,6 +8,9 @@ interface AuthViewProps {
   onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => void;
   onProceedToEmailVerification?: (email: string, name: string, address?: string, pinCode?: string) => void;
   initialMode?: 'login' | 'signup';
+  prefilledName?: string;
+  prefilledAddress?: string;
+  prefilledPinCode?: string;
 }
 
 interface RegisterUser {
@@ -25,15 +28,17 @@ const SEED_USERS: RegisterUser[] = [
   { name: 'Guest Tester', email: 'guest@nova.ai', phone: '+91 99999 88888' }
 ];
 
-export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToEmailVerification, initialMode = 'login' }) => {
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onProceedToEmailVerification, initialMode = 'login', prefilledName = '', prefilledAddress = '', prefilledPinCode = '' }) => {
+  // If there are prefilled values, start in signup mode
+  const hasPrefilledData = prefilledName || prefilledAddress || prefilledPinCode;
+  const [mode, setMode] = useState<'login' | 'signup'>(hasPrefilledData ? 'signup' : initialMode);
   
   // Form input fields
-  const [name, setName] = useState('');
+  const [name, setName] = useState(prefilledName);
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [address, setAddress] = useState('');
-  const [pinCode, setPinCode] = useState('');
+  const [address, setAddress] = useState(prefilledAddress);
+  const [pinCode, setPinCode] = useState(prefilledPinCode);
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]); // Default to India
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   

@@ -107,12 +107,6 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
               </div>
               <div className="flex items-center gap-1.5 bg-white py-1 px-2.5 rounded-full border border-slate-50 shadow-sm">
                 <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[12px] font-bold">percent</span>
-                </div>
-                <span className="text-[10px] font-black text-slate-700">Hot Coupons</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white py-1 px-2.5 rounded-full border border-slate-50 shadow-sm">
-                <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[12px] font-bold">verified</span>
                 </div>
                 <span className="text-[10px] font-black text-slate-700">Hygiene Fit</span>
