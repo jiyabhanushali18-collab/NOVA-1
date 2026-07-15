@@ -1114,6 +1114,20 @@ const metadataCategoryText = (metadata: RuntimeProductMetadata) => normalizeText
   metadata.searchableText
 ].join(' '));
 
+const productCanonicalSubcategory = (product: ProductItem) => {
+  const metadata = getRuntimeProductMetadata(product);
+  return canonicalSubcategoryFromText(metadata.subcategory, metadata.gender)
+    || canonicalSubcategoryFromText(metadata.searchableText, metadata.gender)
+    || canonicalSubcategoryFromText(metadata.category, metadata.gender);
+};
+
+const detectedCanonicalSubcategory = (features: ClothingFeatureVector) => (
+  canonicalSubcategoryFromText(features.garmentType, features.genderCategory)
+    || canonicalSubcategoryFromText(features.subcategory, features.genderCategory)
+    || canonicalSubcategoryFromText(features.category, features.genderCategory)
+    || features.garmentType
+);
+
 const hardCategoryConflicts: Record<string, string[]> = {
   'crop top': ['dress', 'gown', 'saree', 'kurti', 'kurta', 'jean', 'trouser', 'shorts', 'skirt'],
   'tank top': ['dress', 'gown', 'saree', 'kurti', 'kurta', 'jean', 'trouser', 'shorts', 'skirt'],
@@ -1136,17 +1150,19 @@ const hardCategoryConflicts: Record<string, string[]> = {
 };
 
 const productMatchesDetectedCategory = (product: ProductItem, features: ClothingFeatureVector) => {
-  const detected = normalizeText(canonicalSubcategoryFromText(features.garmentType, features.genderCategory) || features.garmentType);
+  const detected = normalizeText(detectedCanonicalSubcategory(features));
   const metadata = getRuntimeProductMetadata(product);
   const categoryText = metadataCategoryText(metadata);
   const coreCategoryText = normalizeText([metadata.category, metadata.subcategory].join(' '));
-  const productCanonical = canonicalSubcategoryFromText(metadata.subcategory, metadata.gender);
+  const productCanonical = productCanonicalSubcategory(product);
   if (productCanonical && normalizeText(productCanonical) === detected) return true;
   const allowed = categoryCandidates(features.category, features.garmentType).map(normalizeText);
   const productCategory = normalizeText(metadata.category || '');
   const productSubcategory = normalizeText(metadata.subcategory || '');
   if (allowed.some((value) => value === productCategory || value === productSubcategory)) return true;
-  if (detected === 'crop top' && (categoryText.includes('top') || categoryText.includes('tops')) && !categoryText.includes('dress')) return true;
+  if (detected === 'crop top') {
+    return categoryText.includes('crop') || categoryText.includes('tank') || categoryText.includes('tube') || categoryText.includes('sleeveless top');
+  }
   if (detected === 'jeans') return categoryText.includes('jean') || categoryText.includes('denim');
   if (detected === 'trousers') return (categoryText.includes('trouser') || categoryText.includes('pant') || categoryText.includes('chino')) && !categoryText.includes('jean');
   if (detected === 'shirt') return categoryText.includes('shirt') && !categoryText.includes('kurti') && !categoryText.includes('kurta') && !categoryText.includes('t shirt');
@@ -1155,10 +1171,12 @@ const productMatchesDetectedCategory = (product: ProductItem, features: Clothing
 };
 
 const productIsAcceptableFallback = (product: ProductItem, features: ClothingFeatureVector) => {
-  const detected = normalizeText(canonicalSubcategoryFromText(features.garmentType, features.genderCategory) || features.garmentType);
+  const detected = normalizeText(detectedCanonicalSubcategory(features));
   const metadata = getRuntimeProductMetadata(product);
   const coreCategoryText = normalizeText([metadata.category, metadata.subcategory].join(' '));
   const conflicts = hardCategoryConflicts[detected] || [];
+  const productCanonical = productCanonicalSubcategory(product);
+  if (productCanonical && normalizeText(productCanonical) !== detected) return false;
   if (conflicts.some((conflict) => coreCategoryText.includes(conflict))) return false;
   const productBodySection = bodySectionForCategory(canonicalSubcategoryFromText(metadata.subcategory, metadata.gender) || metadata.category);
   return productBodySection === 'Unknown' || features.bodySection === 'Unknown' || productBodySection === features.bodySection;
@@ -1339,6 +1357,27 @@ const cosineSimilarity = (a: number[], b: number[]) => {
   return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 };
 
+const exactCatalogMatchScore = (item: DetectedClothingItem, product: ProductItem, userGender?: string) => {
+  const metadata = getRuntimeProductMetadata(product);
+  const detectedSubcategory = normalizeText(detectedCanonicalSubcategory(item.features));
+  const productSubcategory = normalizeText(productCanonicalSubcategory(product));
+  const sameSubcategory = Boolean(detectedSubcategory && productSubcategory && detectedSubcategory === productSubcategory);
+  const samePrimaryColor = areColorsEquivalent(metadata.primaryColor, item.features.dominantColor);
+  const sameSecondaryColor = areColorsEquivalent(metadata.secondaryColor, item.features.secondaryColor)
+    || areColorsEquivalent(metadata.secondaryColor, item.features.dominantColor);
+  const samePattern = normalizeText(metadata.pattern) === normalizeText(item.features.pattern);
+  const sameSleeve = item.features.sleeveType === 'Not applicable' || textScore(metadata.sleeveType, item.features.sleeveType) > 0;
+  const sameNeck = item.features.neckType === 'Not applicable' || textScore(metadata.neckType, item.features.neckType) > 0;
+  const inferredGender = metadata.gender || product.gender || inferProductGender(product);
+  const sameGender = !userGender || !inferredGender || inferredGender === 'Unisex' || normalizeText(inferredGender) === normalizeText(userGender);
+  const exactSignals = [sameSubcategory, samePrimaryColor, samePattern, sameSleeve, sameNeck, sameGender].filter(Boolean).length;
+
+  if (sameSubcategory && samePrimaryColor && samePattern && sameGender) return 98;
+  if (sameSubcategory && (samePrimaryColor || sameSecondaryColor) && sameGender && exactSignals >= 4) return 94;
+  if (sameSubcategory && sameGender && exactSignals >= 3) return 90;
+  return 0;
+};
+
 const getProductImageEmbedding = async (product: ProductItem) => {
   const cache = getStoredJson<Record<string, ClothingFeatureVector>>(productCacheKey, {});
   const cacheId = `${product.id}:${product.imageUrl}`;
@@ -1370,6 +1409,7 @@ const getProductImageEmbedding = async (product: ProductItem) => {
 
 const scoreProduct = async (item: DetectedClothingItem, product: ProductItem, userGender?: string) => {
   const productMetadata = getRuntimeProductMetadata(product);
+  const exactScore = exactCatalogMatchScore(item, product, userGender);
   const color = Math.max(
     textScore(item.features.dominantColor, productMetadata.primaryColor),
     textScore(item.features.secondaryColor, productMetadata.secondaryColor),
@@ -1390,18 +1430,21 @@ const scoreProduct = async (item: DetectedClothingItem, product: ProductItem, us
     ? (inferredGender === 'Unisex' || normalizeText(inferredGender) === normalizeText(userGender) ? 1 : 0.7)
     : 1;
   const category = productMatchesDetectedCategory(product, item.features) ? 1 : productIsAcceptableFallback(product, item.features) ? 0.45 : 0;
+  const detectedSubcategory = normalizeText(detectedCanonicalSubcategory(item.features));
+  const productSubcategory = normalizeText(productCanonicalSubcategory(product));
+  const wrongKnownSubcategoryPenalty = detectedSubcategory && productSubcategory && detectedSubcategory !== productSubcategory ? 0.55 : 1;
 
   const weightedSimilarity = (
-    category * 0.40 +
-    color * 0.20 +
+    category * 0.50 +
+    color * 0.18 +
     pattern * 0.15 +
-    sleeve * 0.10 +
+    sleeve * 0.07 +
     neck * 0.05 +
-    fit * 0.05 +
+    fit * 0.03 +
     material * 0.05
   );
-  const strictScore = weightedSimilarity * genderMatch;
-  return Math.max(0, Math.min(100, Math.round(strictScore * 100)));
+  const strictScore = weightedSimilarity * genderMatch * wrongKnownSubcategoryPenalty;
+  return Math.max(exactScore, Math.max(0, Math.min(100, Math.round(strictScore * 100))));
 };
 
 const reasonsForRecommendation = (item: DetectedClothingItem, product: ProductItem) => {
