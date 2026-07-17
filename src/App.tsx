@@ -26,6 +26,7 @@ import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
 import { normalizeProductVariants } from './utils/productVariants';
+import { useI18n } from './i18n';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -383,6 +384,7 @@ const getDefaultProductColor = (product?: ProductItem) => (
 );
 
 export default function App() {
+  const { t } = useI18n();
   // Session authorization states loaded from localStorage
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
   const [screen, setScreen] = useState<ScreenId>('splash');
@@ -1637,8 +1639,8 @@ export default function App() {
             isDarkMode ? 'bg-slate-900' : 'bg-white'
           }`}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Saved Items ({wishlist.length})</h3>
-              <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}>Close</button>
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>{t('profile.settings.wishlist')} ({wishlist.length})</h3>
+              <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}>{t('common.close')}</button>
             </div>
             {wishlist.length === 0 ? (
               <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -1694,7 +1696,7 @@ export default function App() {
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('home') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
-            <span className="text-[10px] font-bold">Home</span>
+            <span className="text-[10px] font-bold">{t('nav.home')}</span>
           </button>
 
           <button 
@@ -1702,7 +1704,7 @@ export default function App() {
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('scan') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
-            <span className="text-[10px] font-bold">Scan</span>
+            <span className="text-[10px] font-bold">{t('nav.scan')}</span>
           </button>
 
           <button 
@@ -1710,7 +1712,7 @@ export default function App() {
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('wardrobe') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
-            <span className="text-[10px] font-bold">Wardrobe</span>
+            <span className="text-[10px] font-bold">{t('nav.wardrobe')}</span>
           </button>
 
           <button 
@@ -1718,7 +1720,7 @@ export default function App() {
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('chat') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
-            <span className="text-[10px] font-bold">Stylist AI</span>
+            <span className="text-[10px] font-bold">{t('nav.stylist')}</span>
           </button>
 
           <button 
@@ -1726,7 +1728,7 @@ export default function App() {
             className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('profile') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>
-            <span className="text-[10px] font-bold">Profile</span>
+            <span className="text-[10px] font-bold">{t('nav.profile')}</span>
           </button>
         </nav>
       )}

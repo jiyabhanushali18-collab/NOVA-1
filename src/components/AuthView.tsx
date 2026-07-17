@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, ChevronDown, LockKeyhole, UserRound, Sparkles, Plus, CalendarDays, Clock3 } from 'lucide-react';
 import { apiUrl } from '../services/apiClient';
 import { COUNTRIES, Country } from '../utils/countries';
+import { useI18n } from '../i18n';
 
 interface AuthViewProps {
   onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string, uid?: string) => void;
@@ -39,7 +40,33 @@ const SEED_USERS: RegisterUser[] = [
   { uid: 'guest_tester_001', name: 'Guest Tester', email: 'guest@nova.ai', phone: '+91 99999 88888', accountType: 'Guest', createdAt: '8 Jun 2026', lastActive: 'Last week', linkedPhone: false }
 ];
 
+const normalizeStoredUser = (user: Partial<RegisterUser>, index: number): RegisterUser => ({
+  uid: user.uid || `legacy_user_${index}_${(user.email || user.phone || 'account').replace(/[^a-z0-9]/gi, '_')}`,
+  name: user.name || 'NOVA User',
+  email: user.email || `legacy${index}@nova.ai`,
+  phone: user.phone || '',
+  address: user.address,
+  pinCode: user.pinCode,
+  username: user.username,
+  accountType: user.accountType || 'Registered',
+  avatar: user.avatar,
+  createdAt: user.createdAt || 'Recently',
+  lastActive: user.lastActive || 'Recently',
+  linkedPhone: user.linkedPhone ?? user.accountType !== 'Guest'
+});
+
+const mergeSeedUsers = (users: RegisterUser[]) => {
+  const byUid = new Map(users.map((user) => [user.uid, user]));
+  SEED_USERS.forEach((seedUser) => {
+    if (!byUid.has(seedUser.uid)) {
+      byUid.set(seedUser.uid, seedUser);
+    }
+  });
+  return Array.from(byUid.values());
+};
+
 export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestContinue, onProceedToEmailVerification, initialMode = 'login', prefilledName = '', prefilledAddress = '', prefilledPinCode = '' }) => {
+  const { t } = useI18n();
   // If there are prefilled values, start in signup mode
   const hasPrefilledData = prefilledName || prefilledAddress || prefilledPinCode;
   const [mode, setMode] = useState<'login' | 'signup'>(hasPrefilledData ? 'signup' : initialMode);
@@ -69,20 +96,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     } else {
       try {
         const parsed = JSON.parse(existing) as Partial<RegisterUser>[];
-        setRegisteredUsers(parsed.map((user, index) => ({
-          uid: user.uid || `legacy_user_${index}_${(user.email || user.phone || 'account').replace(/[^a-z0-9]/gi, '_')}`,
-          name: user.name || 'NOVA User',
-          email: user.email || `legacy${index}@nova.ai`,
-          phone: user.phone || '',
-          address: user.address,
-          pinCode: user.pinCode,
-          username: user.username,
-          accountType: user.accountType || 'Registered',
-          avatar: user.avatar,
-          createdAt: user.createdAt || 'Recently',
-          lastActive: user.lastActive || 'Recently',
-          linkedPhone: user.linkedPhone ?? user.accountType !== 'Guest'
-        })));
+        const migratedUsers = mergeSeedUsers(parsed.map(normalizeStoredUser));
+        localStorage.setItem('nova_registered_users', JSON.stringify(migratedUsers));
+        setRegisteredUsers(migratedUsers);
       } catch {
         setRegisteredUsers(SEED_USERS);
         localStorage.setItem('nova_registered_users', JSON.stringify(SEED_USERS));
@@ -168,7 +184,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     const matches = findAccountsByPhone(normalizedPhone);
 
     if (mode === 'login' && matches.length === 0) {
-      setError("This phone number isn't registered.");
+      setError(t('auth.notRegistered'));
       setIsSubmitting(false);
       return;
     }
@@ -354,8 +370,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white font-extrabold shadow-lg shadow-indigo-600/20 mb-3 hover:scale-105 transition-transform duration-300">
             N
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-slate-950">NOVA VISION LABS</h2>
-          <p className="text-xs font-bold text-slate-400 mt-0.5 tracking-wider uppercase font-mono">AR & AI Curation Engine</p>
+          <h2 className="text-2xl font-black tracking-tight text-slate-950">{t('app.novaVisionLabs')}</h2>
+          <p className="text-xs font-bold text-slate-400 mt-0.5 tracking-wider uppercase font-mono">{t('app.curationEngine')}</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -375,8 +391,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                       <UserRound className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-black text-slate-950">Continue as Guest</h3>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1">Instantly explore NOVA without creating an account.</p>
+                      <h3 className="text-sm font-black text-slate-950">{t('auth.continueAsGuest')}</h3>
+                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1">{t('auth.guestDescription')}</p>
                     </div>
                   </div>
                   <button
@@ -384,7 +400,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                     onClick={onGuestContinue}
                     className="mt-4 w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#4F46E5] to-[#2563EB] text-white text-xs font-bold shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] overflow-hidden"
                   >
-                    Continue as Guest <ArrowRight className="w-4 h-4" />
+                    {t('auth.continueAsGuest')} <ArrowRight className="w-4 h-4" />
                   </button>
                 </motion.div>
 
@@ -394,8 +410,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                       <LockKeyhole className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-black text-slate-950">Registered User</h3>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1">Sign in using your registered phone number.</p>
+                      <h3 className="text-sm font-black text-slate-950">{t('auth.registeredUser')}</h3>
+                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1">{t('auth.registeredDescription')}</p>
                     </div>
                   </div>
                   <button
@@ -403,17 +419,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                     onClick={goToSignIn}
                     className="mt-4 w-full py-3 px-4 rounded-2xl bg-white text-indigo-600 text-xs font-bold border border-indigo-200 shadow-sm flex items-center justify-center gap-1.5 transition-all hover:border-indigo-400 active:scale-[0.98]"
                   >
-                    Sign In <ArrowRight className="w-4 h-4" />
+                    {t('auth.signIn')} <ArrowRight className="w-4 h-4" />
                   </button>
                 </motion.div>
               </div>
 
               <div className="pt-2 text-center space-y-2">
-                <p className="text-[11px] font-semibold text-slate-500">Want to save your wardrobe and preferences?</p>
+                <p className="text-[11px] font-semibold text-slate-500">{t('auth.savePrompt')}</p>
                 <button type="button" onClick={goToSignup} className="text-xs font-black text-indigo-600 hover:text-indigo-700">
-                  Create an Account
+                  {t('auth.createAccount')}
                 </button>
-                <p className="text-[9px] text-slate-400 leading-relaxed">Guest data may not be recoverable after uninstalling the app.</p>
+                <p className="text-[9px] text-slate-400 leading-relaxed">{t('auth.guestWarning')}</p>
               </div>
             </motion.div>
           ) : entryPath === 'account-selection' ? (
@@ -426,12 +442,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
               className="space-y-4"
             >
               <div className="text-center">
-                <h3 className="text-xl font-black tracking-tight text-slate-950">Welcome Back</h3>
+                <h3 className="text-xl font-black tracking-tight text-slate-950">{t('auth.chooseAccountTitle')}</h3>
                 <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                  Multiple accounts were found for this phone number.
+                  {t('auth.chooseAccountFound')}
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Choose the account you'd like to continue with.
+                  {t('auth.chooseAccountPrompt')}
                 </p>
               </div>
 
@@ -486,13 +502,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                             <div className="grid grid-cols-2 gap-2 mt-3">
                               <div className="rounded-2xl bg-slate-50 px-3 py-2">
                                 <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                  <CalendarDays className="w-3 h-3" /> Created
+                                  <CalendarDays className="w-3 h-3" /> {t('common.created')}
                                 </div>
                                 <p className="text-[10px] font-bold text-slate-700 mt-1">{account.createdAt || 'Recently'}</p>
                               </div>
                               <div className="rounded-2xl bg-slate-50 px-3 py-2">
                                 <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                  <Clock3 className="w-3 h-3" /> Last Active
+                                  <Clock3 className="w-3 h-3" /> {t('common.lastActive')}
                                 </div>
                                 <p className="text-[10px] font-bold text-slate-700 mt-1">{account.lastActive || 'Recently'}</p>
                               </div>
@@ -518,7 +534,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                             </>
                           ) : (
                             <>
-                              Continue <ArrowRight className="w-4 h-4" />
+                              {t('auth.continue')} <ArrowRight className="w-4 h-4" />
                             </>
                           )}
                         </button>
@@ -530,13 +546,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
 
               <div className="pt-1 space-y-2 text-center">
                 <button type="button" onClick={goToSignup} className="w-full py-2.5 rounded-2xl text-xs font-black text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100 flex items-center justify-center gap-1.5">
-                  <Plus className="w-4 h-4" /> Create New Account
+                  <Plus className="w-4 h-4" /> {t('auth.createNewAccount')}
                 </button>
                 <button type="button" onClick={goToSignIn} className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-800">
-                  Use Different Phone Number
+                  {t('auth.useDifferentPhone')}
                 </button>
                 <button type="button" onClick={goToChoice} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-700">
-                  Back
+                  {t('auth.back')}
                 </button>
               </div>
             </motion.div>
@@ -554,7 +570,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                 <div className="text-center pb-1">
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">
                     {mode === 'login' ? <LockKeyhole className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
-                    {mode === 'login' ? 'Registered User' : 'Create Account'}
+                    {mode === 'login' ? t('auth.registeredUser') : t('auth.createAccount')}
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
                     {mode === 'login'
@@ -629,7 +645,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                 )}
 
                 <div className="space-y-1 text-left">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Phone Number</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">{t('auth.phoneNumber')}</label>
               <div className="flex gap-2">
                 {/* Country Selector Dropdown */}
                 <div className="relative">
@@ -709,13 +725,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                 <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <span className="text-[11px] font-semibold leading-relaxed">{error}</span>
-                  {mode === 'login' && error === "This phone number isn't registered." && (
+                  {mode === 'login' && error === t('auth.notRegistered') && (
                     <div className="flex gap-2 mt-3">
                       <button type="button" onClick={goToSignup} className="px-3 py-2 rounded-xl bg-white text-rose-600 border border-rose-100 text-[10px] font-black">
-                        Create Account
+                        {t('auth.createAccount')}
                       </button>
                       <button type="button" onClick={goToChoice} className="px-3 py-2 rounded-xl bg-rose-100/60 text-rose-600 text-[10px] font-black">
-                        Back
+                        {t('auth.back')}
                       </button>
                     </div>
                   )}
@@ -741,12 +757,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      {mode === 'login' ? 'Continue' : 'Create Account'} <ArrowRight className="w-4 h-4" />
+                      {mode === 'login' ? t('auth.continue') : t('auth.createAccount')} <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
                 <button type="button" onClick={goToChoice} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-700">
-                  Back
+                  {t('auth.back')}
                 </button>
                 <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-400 font-mono tracking-wide leading-none uppercase">
                   <ShieldCheck className="w-4.5 h-4.5 text-emerald-500 leading-none" /> Guest and registered flows separated

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem } from '../types';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
+import { languages, LocaleCode, useI18n } from '../i18n';
 
 interface ProfileViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -67,6 +68,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onRemoveAccount,
   onSwitchAccount
 }) => {
+  const { locale, language, setLocale, t } = useI18n();
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [profileToast, setProfileToast] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -299,21 +301,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setTimeout(() => setProfileToast(null), 1500);
   };
 
-  // Language state
-  const [selectedLanguage, setSelectedLanguage] = useState(() => {
-    return localStorage.getItem('app_language') || 'English';
-  });
+  const [pendingLocale, setPendingLocale] = useState<LocaleCode>(locale);
+  const [isApplyingLanguage, setIsApplyingLanguage] = useState(false);
 
-  const handleLanguageSelect = (lang: string) => {
-    setSelectedLanguage(lang);
-    localStorage.setItem('app_language', lang);
-    setLanguageModalOpen(false);
-    setProfileToast(`🌐 Language configured to: ${lang}`);
-    setTimeout(() => setProfileToast(null), 2500);
+  React.useEffect(() => {
+    if (isLanguageModalOpen) {
+      setPendingLocale(locale);
+    }
+  }, [isLanguageModalOpen, locale]);
+
+  const handleApplyLanguage = () => {
+    if (pendingLocale === locale || isApplyingLanguage) return;
+    setIsApplyingLanguage(true);
+    window.setTimeout(() => {
+      const nextLanguage = languages.find((item) => item.code === pendingLocale) || languages[0];
+      setLocale(pendingLocale);
+      setIsApplyingLanguage(false);
+      setIsLanguageModalOpen(false);
+      setProfileToast(t('profile.language.configured', { language: nextLanguage.label }));
+      setTimeout(() => setProfileToast(null), 2500);
+    }, 250);
   };
 
   const setLanguageModalOpen = (open: boolean) => {
     setIsLanguageModalOpen(open);
+    if (open) {
+      setPendingLocale(locale);
+    }
   };
 
   // Modal edit values states
@@ -732,13 +746,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <section className={`rounded-3xl overflow-hidden shadow-sm ${isDarkMode ? 'bg-slate-800/40 divide-slate-700/50' : 'glass-card divide-slate-150'}`}>
         <ul className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-slate-150'}`}>
           {[
-            { label: 'Wishlist (Saved Items)', icon: 'favorite', action: () => setIsWishlistModalOpen(true), extra: wishlist.length > 0 ? `${wishlist.length} Items` : '0' },
-            { label: 'Payment Methods', icon: 'payment', action: () => setIsPaymentModalOpen(true), extra: `${paymentMethods.filter((p: any) => p.type === 'Credit Card').length} Card(s), ${paymentMethods.filter((p: any) => p.type === 'UPI').length} UPI` },
-            { label: 'Addresses', icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
-            { label: 'Dark Mode', icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
-            { label: 'Privacy & Security', icon: 'lock', action: () => setIsPrivacyModalOpen(true) },
-            { label: 'Notifications', icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
-            { label: 'Language', icon: 'language', extra: selectedLanguage, action: () => setIsLanguageModalOpen(true) }
+            { label: t('profile.settings.wishlist'), icon: 'favorite', action: () => setIsWishlistModalOpen(true), extra: wishlist.length > 0 ? `${wishlist.length} Items` : '0' },
+            { label: t('profile.settings.paymentMethods'), icon: 'payment', action: () => setIsPaymentModalOpen(true), extra: `${paymentMethods.filter((p: any) => p.type === 'Credit Card').length} Card(s), ${paymentMethods.filter((p: any) => p.type === 'UPI').length} UPI` },
+            { label: t('profile.settings.addresses'), icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
+            { label: t('profile.settings.darkMode'), icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
+            { label: t('profile.settings.privacy'), icon: 'lock', action: () => setIsPrivacyModalOpen(true) },
+            { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
+            { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
             <li key={item.label}>
               <button 
@@ -763,7 +777,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             >
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined">logout</span>
-                <span className="text-sm font-bold">Logout</span>
+                <span className="text-sm font-bold">{t('profile.settings.logout')}</span>
               </div>
             </button>
           </li>
@@ -1433,7 +1447,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-950 flex items-center gap-2">
                 <span className="material-symbols-outlined text-indigo-600">language</span>
-                Choose Language
+                {t('profile.language.title')}
               </h3>
               <button 
                 onClick={() => setIsLanguageModalOpen(false)}
@@ -1444,25 +1458,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
 
             <div className="space-y-1.5 pt-2">
-              {[
-                { label: 'English', sub: 'English' },
-                { label: 'Español', sub: 'Spanish' },
-                { label: 'Français', sub: 'French' },
-                { label: '日本語', sub: 'Japanese' },
-                { label: 'Deutsch', sub: 'German' },
-                { label: 'हिन्दी', sub: 'Hindi' }
-              ].map((lang) => (
+              {languages.map((lang) => (
                 <button 
-                  key={lang.label}
+                  key={lang.code}
                   type="button"
-                  onClick={() => handleLanguageSelect(lang.label)}
-                  className={`w-full p-3.5 rounded-2xl flex items-center justify-between border transition-all text-left ${selectedLanguage === lang.label ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-bold' : 'border-slate-100 hover:border-slate-300 text-slate-700 font-semibold bg-slate-50/50'}`}
+                  onClick={() => setPendingLocale(lang.code)}
+                  className={`w-full p-3.5 rounded-2xl flex items-center justify-between border transition-all text-left ${pendingLocale === lang.code ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-bold' : 'border-slate-100 hover:border-slate-300 text-slate-700 font-semibold bg-slate-50/50'}`}
                 >
                   <div className="leading-none">
-                    <span className="text-xs block">{lang.label}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">{lang.sub}</span>
+                    <span className="text-xs block">{lang.nativeName}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">{lang.label}</span>
                   </div>
-                  {selectedLanguage === lang.label && (
+                  {pendingLocale === lang.code && (
                     <span className="material-symbols-outlined text-indigo-600 font-bold text-base">check</span>
                   )}
                 </button>
@@ -1471,10 +1478,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <button 
               type="button"
+              onClick={handleApplyLanguage}
+              disabled={pendingLocale === locale || isApplyingLanguage}
+              className="w-full py-3 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition-colors disabled:opacity-45 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isApplyingLanguage && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+              {isApplyingLanguage ? t('profile.language.applying') : t('profile.language.apply')}
+            </button>
+
+            <button 
+              type="button"
               onClick={() => setIsLanguageModalOpen(false)}
               className="w-full py-3 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
             >
-              Cancel
+              {t('profile.language.cancel')}
             </button>
           </div>
         </div>
