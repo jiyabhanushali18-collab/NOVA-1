@@ -1385,8 +1385,11 @@ export default function App() {
     resetScreenHistory('setup-preferences');
   };
 
-  const handleLoginSuccess = (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string) => {
+  const handleLoginSuccess = (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string, uid?: string) => {
+    const selectedUid = uid || email;
     localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('novaSessionType', 'registered');
+    localStorage.setItem('novaSelectedAccountUid', selectedUid);
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
     localStorage.setItem('userPhone', phone);
@@ -1399,33 +1402,79 @@ export default function App() {
     setIsLoggedIn(true);
     
     // Save user details to Firestore
-    saveUserToFirestore(name, email, phone, isSignUp, address, pinCode).catch(err => {
+    saveUserToFirestore(name, email, phone, isSignUp, address, pinCode, selectedUid).catch(err => {
       console.error('Failed to save user data:', err);
     });
     
     // Persist account to device list and set active
     try {
-      const uid = email; // fallback: using email as uid when auth uid not available in this flow
       const acc = {
-        uid,
+        uid: selectedUid,
         username: email.split('@')[0] || name,
+        name,
         email,
+        phone,
         profilePhoto: undefined,
         createdAt: Date.now()
       };
       addAccount(acc as any);
       // if this is a newly signed-up account, clear any prior recent activity and then set active
       if (isSignUp) {
-        try { localStorage.removeItem(`recent_activity_${uid}`); } catch {}
+        try { localStorage.removeItem(`recent_activity_${selectedUid}`); } catch {}
       }
-      accountService.setActiveLocalAccount(uid);
-      setActiveAccountUid(uid);
+      accountService.setActiveLocalAccount(selectedUid);
+      setActiveAccountUid(selectedUid);
     } catch {}
     resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
   };
 
+  const handleGuestContinue = () => {
+    const guestId = `guest_${Date.now()}`;
+    const guestName = 'Guest User';
+    const guestEmail = `${guestId}@guest.nova.ai`;
+
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('novaSessionType', 'guest');
+    localStorage.setItem('novaGuestId', guestId);
+    localStorage.setItem('userName', guestName);
+    localStorage.setItem('userEmail', guestEmail);
+    localStorage.setItem('userPhone', '');
+    localStorage.setItem('novaGuestProfile', JSON.stringify({
+      guestId,
+      profileType: 'anonymous',
+      preferences: [],
+      featureAccess: 'limited',
+      createdAt: Date.now()
+    }));
+
+    setUserName(guestName);
+    setUserEmail(guestEmail);
+    setUserPhone('');
+    setUserAddress('');
+    setIsLoggedIn(true);
+
+    try {
+      const acc = {
+        uid: guestId,
+        username: guestName,
+        email: guestEmail,
+        profilePhoto: undefined,
+        isGuest: true,
+        createdAt: Date.now()
+      };
+      addAccount(acc as any);
+      accountService.setActiveLocalAccount(guestId);
+      setActiveAccountUid(guestId);
+    } catch {}
+
+    resetScreenHistory('home');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('novaSessionType');
+    localStorage.removeItem('novaGuestId');
+    localStorage.removeItem('novaGuestProfile');
     accountService.setActiveLocalAccount(undefined);
     setActiveAccountUid(undefined);
     localStorage.removeItem('userProfilePhoto');
@@ -1484,6 +1533,7 @@ export default function App() {
         <main className="flex-grow relative px-4 py-3 bg-white/20 flex flex-col justify-center">
           <AuthView 
             onLoginSuccess={handleLoginSuccess} 
+            onGuestContinue={handleGuestContinue}
             onProceedToEmailVerification={handleProceedToEmailVerification}
             prefilledName={pendingEmailVerification?.name}
             prefilledAddress={pendingEmailVerification?.address}

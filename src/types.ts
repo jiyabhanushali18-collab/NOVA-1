@@ -214,6 +214,9 @@ export interface NovaAccount {
   name?: string;
   username: string;
   email: string;
+  phone?: string;
+  accountType?: 'Guest' | 'Registered' | 'Premium';
+  isGuest?: boolean;
   profilePhoto?: string;
   gender?: string;
   size?: string;
