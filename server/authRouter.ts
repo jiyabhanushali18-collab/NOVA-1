@@ -1,9 +1,7 @@
-import express, { Request, Response } from 'express';
-import crypto from 'crypto';
-import admin, { initError as firebaseInitError } from './firebaseAdmin';
-import axios from "axios";
-import { getFirestore } from "firebase-admin/firestore";
+import { initError as firebaseInitError } from "./firebaseAdmin";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import "./firebaseAdmin";
 
 console.log("=== AUTH ROUTER ENV ===");
 console.log("BREVO_API_KEY:", process.env.BREVO_API_KEY);
@@ -370,7 +368,7 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       const username = normalizedEmail.split('@')[0] || displayName;
       try {
         const userDocRef = firestore.collection(USERS_COLLECTION).doc(uid);
-        const nowTs = (admin as any).firestore.FieldValue.serverTimestamp();
+        const nowTs = FieldValue.serverTimestamp();
         const userData: Record<string, unknown> = {
           uid,
           email: normalizedEmail,
