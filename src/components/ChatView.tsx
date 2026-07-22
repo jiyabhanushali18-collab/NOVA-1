@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ScreenId, ChatMessage } from '../types';
-import { products } from '../data';
+import { ScreenId, ChatMessage, ProductItem } from '../types';
 
 interface ChatViewProps {
   onNavigate: (screen: ScreenId) => void;
   userName: string;
+  products?: Record<string, ProductItem>;
 }
 
-export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName }) => {
+export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName, products = {} }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'init',
@@ -87,8 +87,8 @@ Ask me anything—I'm ready to craft suggestions!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isPairingResult: true,
         pairingProducts: [
-          { name: 'Lavender Hoodie', price: 1499, imageUrl: products['lavender-hoodie'].imageUrl },
-          { name: 'Cargo Pants', price: 1899, imageUrl: products['cargo-pants'].imageUrl }
+          { name: 'Lavender Hoodie', price: 1499, imageUrl: products['lavender-hoodie']?.imageUrl || '' },
+          { name: 'Cargo Pants', price: 1899, imageUrl: products['cargo-pants']?.imageUrl || '' }
         ]
       };
       setMessages((prev) => [...prev, errMsg]);

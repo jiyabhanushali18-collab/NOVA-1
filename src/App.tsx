@@ -1160,6 +1160,7 @@ export default function App() {
             recentActivity={recentActivityState}
             onToggleWishlist={handleToggleWishlist}
             isDarkMode={isDarkMode}
+            products={productsData}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
               const prod = productsData[id] || products[id];
@@ -1284,7 +1285,7 @@ export default function App() {
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':
-        return <ChatView userName={userName} onNavigate={navigate} />;
+        return <ChatView userName={userName} onNavigate={navigate} products={productsData} />;
       case 'cart':
         return (
           <CartView 
@@ -1297,7 +1298,7 @@ export default function App() {
           />
         );
       default:
-        return <HomeView userName={userName} onNavigate={navigate} recentActivity={recentActivityState} isDarkMode={isDarkMode} />;
+        return <HomeView userName={userName} onNavigate={navigate} recentActivity={recentActivityState} isDarkMode={isDarkMode} products={productsData} />;
     }
   };
 

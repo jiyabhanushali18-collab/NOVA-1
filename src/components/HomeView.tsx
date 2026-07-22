@@ -1,6 +1,5 @@
 import React from 'react';
-import { ScreenId } from '../types';
-import { products } from '../data';
+import { ScreenId, ProductItem } from '../types';
 
 interface HomeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -10,6 +9,7 @@ interface HomeViewProps {
   onToggleWishlist?: (productId: string) => void;
   onSelectProduct?: (productId: string) => void;
   isDarkMode?: boolean;
+  products?: Record<string, ProductItem>;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ 
@@ -19,7 +19,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   recentActivity = [],
   onToggleWishlist,
   onSelectProduct,
-  isDarkMode = false
+  isDarkMode = false,
+  products = {}
 }) => {
   const activityList = recentActivity;
   return (
@@ -218,7 +219,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
         <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
           {activityList.map((activity) => {
-            const matched = Object.values(products).find(p => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+            const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
             const isSaved = matched ? wishlist.includes(matched.id) : false;
             return (
               <div 
