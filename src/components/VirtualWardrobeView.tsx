@@ -170,6 +170,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -274,12 +275,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
     // Send the real garment image to Python
       const result = await aiService.uploadGarment(file);
-
+      console.log("Processed image:", result.processed_image);
+      setProcessedImage(result.processed_image);
+      console.log("Saving processed image to state:", result.processed_image);
       console.log("NOVA upload result:", result);
 
-      if (result.success) {
-        alert(`Garment uploaded successfully: ${result.filename}`);
-      }
+      setProcessedImage(result.processed_image);
 
     } catch (error) {
       console.error("NOVA garment upload failed:", error);
@@ -631,7 +632,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,.28),transparent_32%),radial-gradient(circle_at_100%_80%,rgba(59,130,246,.18),transparent_35%)]" />
                   <p className="relative z-10 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Scanned Garment Detail</p>
                   <div className="relative z-10 aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-[#070812]">
-                    <img src={scanImage} alt="Scanned garment detail" className="h-full w-full object-cover" />
+                   <img src={scanImage} alt="Scanned garment detail" className="h-full w-full object-cover"/>
                     <motion.div animate={{ y: ['-20%', '110%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }} className="absolute left-0 right-0 top-0 h-16 bg-gradient-to-b from-transparent via-[#c084fc]/35 to-transparent" />
                     {[
                       'left-3 top-3 border-l-2 border-t-2',
@@ -689,6 +690,15 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                         <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-2 border-[#a855f7] border-t-transparent" />
                         <p className="text-xs font-black text-[#d8b4fe]">{processingSteps[processingStep]}</p>
                       </motion.div>
+                    ) : processedImage ? (
+                      <motion.img
+                        initial={{ opacity: 0, y: 24, scale: 0.94 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.45 }}
+                        src={processedImage}
+                        alt="Processed garment"
+                        className="h-full w-full object-contain p-4 drop-shadow-2xl"
+                      />
                     ) : generatedItem ? (
                       <motion.img initial={{ opacity: 0, y: 24, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.45, ease: 'easeOut' }} src={generatedItem.generatedImage} alt="Generated garment" className="h-full w-full object-contain p-2 drop-shadow-2xl" />
                     ) : (

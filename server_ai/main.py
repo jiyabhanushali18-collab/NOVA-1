@@ -4,13 +4,16 @@ from pathlib import Path
 import shutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from server_ai.remove_bg import remove_background
+from ai.remove_bg import remove_background
+from ai.texture import extract_texture
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
     title="NOVA AI Server",
     version="1.0.0"
 )
 
+app.mount("/output", StaticFiles(directory="output"), name="output")
 # Allow React App
 app.add_middleware(
     CORSMiddleware,
@@ -49,10 +52,15 @@ async def upload_image(file: UploadFile = File(...)):
         
     output_path = Path("output") / f"{Path(file.filename).stem}_no_bg.png"
 
-    remove_background(file_path, output_path)   
+    remove_background(file_path, output_path)
+
+    texture_path = Path("output") / f"{Path(file.filename).stem}_texture.jpg"
+
+    extract_texture(file_path, texture_path)
 
     return {
         "success": True,
         "filename": file.filename,
-        "path": str(file_path)
-    }    
+        "path": str(file_path),
+        "processed_image": f"http://127.0.0.1:8000/output/{output_path.name}"
+    }
