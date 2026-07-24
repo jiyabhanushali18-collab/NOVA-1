@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from server_ai.remove_bg import remove_background
 
 app = FastAPI(
     title="NOVA AI Server",
@@ -14,6 +15,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173"
     ],
@@ -43,6 +46,10 @@ async def upload_image(file: UploadFile = File(...)):
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+        
+    output_path = Path("output") / f"{Path(file.filename).stem}_no_bg.png"
+
+    remove_background(file_path, output_path)   
 
     return {
         "success": True,

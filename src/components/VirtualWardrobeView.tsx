@@ -4,6 +4,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } f
 import { db } from '../firebase';
 import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
 import accountService from '../services/accountService';
+import aiService from "../services/aiService";
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -175,7 +176,18 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [colorFilter, setColorFilter] = useState('All');
   const [patternFilter, setPatternFilter] = useState('All');
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const result = await aiService.checkConnection();
+        console.log("✅ AI Server:", result);
+      } catch (error) {
+        console.error("❌ Could not connect to AI Server", error);
+      }
+    };
 
+    testConnection();
+  }, []);
   useEffect(() => {
     const loadWardrobe = async () => {
       setIsLoading(true);
@@ -240,34 +252,45 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     reader.readAsDataURL(file);
   };
 
-  const handleAnalyze = () => {
-    if (!selectedCategory || !profile.gender || !profile.size) return;
-    setIsProcessing(true);
-    setGeneratedItem(null);
-    setProcessingStep(0);
-    processingSteps.forEach((_, index) => {
-      window.setTimeout(() => setProcessingStep(index), index * 520);
-    });
-    window.setTimeout(() => {
-      const attributes = analyzeScan(selectedCategory, profile.gender!, scanMethod);
-      const item: WardrobeItem = {
-        id: makeId(),
-        category: selectedCategory,
-        gender: profile.gender!,
-        size: profile.size!,
-        generatedImage: generateGarmentImage(selectedCategory, attributes),
-        originalScan: scanImage,
-        colors: [attributes.primaryColor, attributes.secondaryColor],
-        pattern: attributes.pattern,
-        fabric: attributes.fabric,
-        tags: [selectedCategory, attributes.style, attributes.pattern, attributes.fabric, attributes.sleeveType, attributes.neckType],
-        dateAdded: new Date().toISOString(),
-        attributes
-      };
-      setProcessingStep(processingSteps.length - 1);
-      setGeneratedItem(item);
+  const handleAnalyze = async () => {
+    if (!scanImage) {
+      alert("Please upload or scan a garment first.");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+    // scanImage is currently a base64/data URL.
+    // Convert it back into a File so we can send it to FastAPI.
+      const response = await fetch(scanImage);
+      const blob = await response.blob();
+
+      const file = new File(
+        [blob],
+        `nova-${Date.now()}.jpg`,
+        { type: blob.type || "image/jpeg" }
+      );
+
+    // Send the real garment image to Python
+      const result = await aiService.uploadGarment(file);
+
+      console.log("NOVA upload result:", result);
+
+      if (result.success) {
+        alert(`Garment uploaded successfully: ${result.filename}`);
+      }
+
+    } catch (error) {
+      console.error("NOVA garment upload failed:", error);
+
+      alert(
+        "Could not send the garment to the NOVA AI server. Make sure the AI server is running."
+      );
+
+    } finally {
       setIsProcessing(false);
-    }, 2500);
+    }
   };
 
   const saveItem = async () => {
