@@ -3,3 +3,5 @@ uvicorn
 python-multipart
 pillow
 rembg
+google-cloud-vision
+python-dotenv

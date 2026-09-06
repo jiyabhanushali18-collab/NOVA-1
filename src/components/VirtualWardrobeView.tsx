@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
+import { ScreenId, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
 import accountService from '../services/accountService';
 import aiService from "../services/aiService";
-import { findSimilarProductsByVector, ProductMatch } from "../services/productMetadataService";
+import { findSimilarProductsByVector, getPairedItem, ProductMatch } from "../services/productMetadataService";
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -75,24 +75,12 @@ const getScanSample = (category = 'Kurti') => {
 
 const sampleScan = getScanSample('Kurti');
 
-const makeId = () => `wardrobe-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const storageKey = (userId: string) => `nova_wardrobe_${userId}`;
 const profileKey = (userId: string) => `nova_wardrobe_profile_${userId}`;
 
-const colorHex: Record<string, string> = {
-  Blue: '#4f46e5',
-  Ivory: '#f8fafc',
-  Rose: '#ec4899',
-  Mint: '#5eead4',
-  Charcoal: '#1e293b',
-  Sand: '#d6b98c',
-  Maroon: '#8a1238',
-  Lilac: '#a78bfa'
-};
-
 const processingSteps = ['Detecting Pattern', 'Detecting Colors', 'Extracting Vectors', 'Matching Catalog', 'Complete'];
 
-export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false }) => {
+export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName }) => {
   const userId = accountService.getUserDocId(userEmail);
   const username = userEmail ? userEmail.split('@')[0] : userId;
   const [profile, setProfile] = useState<WardrobeProfile>(() => {
@@ -112,6 +100,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [processingStep, setProcessingStep] = useState(0);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [matchedProducts, setMatchedProducts] = useState<ProductMatch[]>([]);
+  const [scannedMatch, setScannedMatch] = useState<ProductMatch | null>(null);
+  const [pairedProduct, setPairedProduct] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -216,13 +206,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       }
 
       setProcessingStep(2);
-      // Generate vector embedding array from Python server
       const embedding = await aiService.getEmbedding(file);
 
       setProcessingStep(3);
       const scannedAttributes = {
-        category: result?.category ?? result?.attributes?.category,
-        primaryColor: result?.primaryColor ?? result?.attributes?.primaryColor,
+        category: result?.category ?? result?.attributes?.category ?? selectedCategory,
+        primaryColor: result?.primaryColor ?? result?.attributes?.primaryColor ?? 'Blue',
         subcategory: result?.subcategory ?? result?.attributes?.subcategory,
         pattern: result?.pattern ?? result?.attributes?.pattern,
         sleeveType: result?.sleeveType ?? result?.attributes?.sleeveType,
@@ -230,8 +219,19 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         fit: result?.fit ?? result?.attributes?.fit,
         material: result?.material ?? result?.attributes?.material
       };
+
       const matches = await findSimilarProductsByVector(embedding, scannedAttributes, 5);
       setMatchedProducts(matches);
+
+      if (matches.length > 0) {
+        setScannedMatch(matches[0]);
+      }
+
+      const paired = await getPairedItem(
+        String(scannedAttributes.category || ''), 
+        String(scannedAttributes.primaryColor || '')
+      );
+      setPairedProduct(paired);
 
       setProcessingStep(4);
     } catch (error) {
@@ -435,6 +435,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                     setScanImage(getScanSample(category));
                     setProcessingStep(0);
                     setMatchedProducts([]);
+                    setScannedMatch(null);
+                    setPairedProduct(null);
                   }}
                   className="min-h-24 rounded-xl border border-[#25253a] bg-[#171827] p-2 text-center shadow-sm transition-transform active:scale-[0.98]"
                 >
@@ -663,21 +665,90 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               {matchedProducts.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-[20px] border border-[#30264c] bg-[#171827]/90 p-3">
                   <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#c084fc]">
-                    {matchedProducts[0].matchType === 'Exact Match' ? 'Exact Matches' : 'Similar Matches (Vector Search)'}
+                    {matchedProducts[0].matchType === 'Exact Match' ? 'Exact Match Found' : 'Similar Matches'}
                   </p>
-                  <div className="space-y-2">
-                    {matchedProducts.map((match) => (
-                      <div key={match.productId} className="flex items-center justify-between rounded-xl bg-white/[0.05] p-2 text-xs">
-                        <div>
-                          <div className="font-bold text-slate-100">{match.subcategory}</div>
-                          <div className="text-[10px] text-slate-400">{match.primaryColor} • {match.material}</div>
-                        </div>
-                        <span className="rounded-full bg-[#251a3b] px-2 py-0.5 text-[10px] font-black text-[#d8b4fe]">
-                          {match.matchType} • {match.similarityScore}%
-                        </span>
-                      </div>
-                    ))}
+                  
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.05] p-2 text-xs">
+                    {scannedMatch?.imageUrl && (
+                      <img src={scannedMatch.imageUrl} alt={scannedMatch.name || 'Matched Product'} className="h-14 w-14 rounded-lg object-cover" />
+                    )}
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-100">{scannedMatch?.name || scannedMatch?.subcategory}</div>
+                      <div className="text-[10px] text-slate-400">{scannedMatch?.primaryColor} • {scannedMatch?.material}</div>
+                    </div>
+                    <span className="rounded-full bg-[#251a3b] px-2 py-0.5 text-[10px] font-black text-[#d8b4fe]">
+                      {matchedProducts[0].similarityScore}%
+                    </span>
                   </div>
+
+                  {pairedProduct && (
+                    <div 
+                      className="mt-3 flex cursor-pointer items-center justify-between rounded-xl border border-purple-500/30 bg-[#201733] p-2"
+                      onClick={() => {
+                        setSelectedItem({
+                          id: String(pairedProduct.id || 'paired-1'),
+                          category: String(pairedProduct.category || 'Bottom Wear'),
+                          colors: pairedProduct.colors || ['White'],
+                          pattern: String(pairedProduct.pattern || 'Solid'),
+                          fabric: String(pairedProduct.fabric || 'Cotton'),
+                          size: profile.size || 'M',
+                          dateAdded: new Date().toISOString(),
+                          generatedImage: String(pairedProduct.imageUrl || pairedProduct.mainImage || ''),
+                          tags: ['Paired'],
+                          attributes: {
+                            category: String(pairedProduct.category || 'Bottom Wear'),
+                            primaryColor: String(pairedProduct.colors?.[0] || 'White'),
+                            secondaryColor: 'Standard',
+                            pattern: String(pairedProduct.pattern || 'Solid'),
+                            neckType: 'Regular',
+                            sleeveType: 'Regular',
+                            fit: 'Regular Fit',
+                            material: String(pairedProduct.fabric || 'Cotton')
+                          }
+                        });
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <img src={pairedProduct.imageUrl || pairedProduct.mainImage} alt={pairedProduct.name} className="h-10 w-10 rounded-md object-cover" />
+                        <div>
+                          <p className="text-[9px] font-bold uppercase text-[#c084fc]">Paired With</p>
+                          <p className="text-xs font-bold text-white">{pairedProduct.name || pairedProduct.category}</p>
+                        </div>
+                      </div>
+                      <span className="material-symbols-outlined text-sm text-[#c084fc]">chevron_right</span>
+                    </div>
+                  )}
+
+                  <button 
+                    className="mt-3 w-full rounded-xl bg-gradient-to-r from-[#8b4cf6] to-[#b45cf7] py-2.5 text-xs font-black text-white"
+                    onClick={() => {
+                      if (scannedMatch) {
+                        setSelectedItem({
+                          id: String(scannedMatch.productId || `match-${Date.now()}`),
+                          category: String(scannedMatch.category || 'Top Wear'),
+                          colors: [String(scannedMatch.primaryColor || 'Standard')],
+                          pattern: String(scannedMatch.pattern || 'Solid'),
+                          fabric: String(scannedMatch.material || 'Cotton'),
+                          size: profile.size || 'M',
+                          dateAdded: new Date().toISOString(),
+                          generatedImage: String(scannedMatch.imageUrl || processedImage || scanImage),
+                          tags: ['Scanned Match'],
+                          attributes: {
+                            category: String(scannedMatch.category || 'Top Wear'),
+                            primaryColor: String(scannedMatch.primaryColor || 'Standard'),
+                            secondaryColor: String(scannedMatch.secondaryColor || scannedMatch.primaryColor || 'Standard'),
+                            pattern: String(scannedMatch.pattern || 'Solid'),
+                            neckType: String(scannedMatch.neckType || 'Regular'),
+                            sleeveType: String(scannedMatch.sleeveType || 'Regular'),
+                            fit: String(scannedMatch.fit || 'Regular Fit'),
+                            material: String(scannedMatch.material || 'Cotton')
+                          }
+                        });
+                      }
+                    }}
+                  >
+                    View Details
+                  </button>
                 </motion.div>
               )}
 
@@ -707,8 +778,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   ['Color', selectedItem.colors.join(', ')],
                   ['Pattern', selectedItem.pattern],
                   ['Fabric', selectedItem.fabric],
-                  ['Neck', selectedItem.attributes.neckType],
-                  ['Sleeve', selectedItem.attributes.sleeveType],
+                  ['Neck', selectedItem.attributes?.neckType || 'Regular'],
+                  ['Sleeve', selectedItem.attributes?.sleeveType || 'Regular'],
                   ['Size', selectedItem.size],
                   ['Date Added', new Date(selectedItem.dateAdded).toLocaleDateString()]
                 ].map(([label, value]) => (

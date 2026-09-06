@@ -1,66 +1,29 @@
-from fastapi import FastAPI, UploadFile, File
+import os
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
-import shutil
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from ai.remove_bg import remove_background
-from ai.texture import extract_texture
-from fastapi.staticfiles import StaticFiles
+from vision_service import analyze_image_with_vision
 
-app = FastAPI(
-    title="NOVA AI Server",
-    version="1.0.0"
-)
+app = FastAPI()
 
-app.mount("/output", StaticFiles(directory="output"), name="output")
-# Allow React App
+# Enable CORS so React frontend can communicate with FastAPI
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.get("/")
-def home():
-    return {
-        "message": "NOVA AI Server is Running 🚀"
-    }
+async def root():
+    return {"status": "AI Vision Server is running"}
 
-@app.get("/health")
-def health():
-    return {
-        "status": "healthy"
-    }
-
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-
-@app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
-    file_path = UPLOAD_DIR / file.filename
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    output_path = Path("output") / f"{Path(file.filename).stem}_no_bg.png"
-
-    remove_background(file_path, output_path)
-
-    texture_path = Path("output") / f"{Path(file.filename).stem}_texture.jpg"
-
-    extract_texture(file_path, texture_path)
-
-    return {
-        "success": True,
-        "filename": file.filename,
-        "path": str(file_path),
-        "processed_image": f"http://127.0.0.1:8000/output/{output_path.name}"
-    }
+@app.post("/api/analyze-vision")
+async def analyze_vision_endpoint(file: UploadFile = File(...)):
+    try:
+        image_bytes = await file.read()
+        results = analyze_image_with_vision(image_bytes)
+        return {"status": "success", "data": results}
+    except Exception as e:
+        print(f"❌ Vision API Processing Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
