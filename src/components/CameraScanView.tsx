@@ -138,9 +138,10 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   };
 
   const handleViewDetails = () => {
-    if (!displayProduct) return;
-    onProductMatched?.(displayProduct);
-    onNavigate('product-details', { productId: displayProduct.id });
+    const product = pairingProduct || displayProduct;
+    if (!product) return;
+    onProductMatched?.(product);
+    onNavigate('product-details', { productId: product.id });
   };
 
   const goToPreviousItem = () => {
