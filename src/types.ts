@@ -5,7 +5,6 @@ export type WardrobeSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type WardrobeScanMethod = 'Live Scan' | 'Upload Photo';
 
 export interface WardrobeDetectedAttributes {
-<<<<<<< HEAD
   category?: string;
   primaryColor?: string;
   secondaryColor?: string;
@@ -14,17 +13,10 @@ export interface WardrobeDetectedAttributes {
   neckType?: string;
   fit?: string;
   material?: string;
-=======
-  primaryColor: string;
-  secondaryColor: string;
-  pattern: string;
-  fabric: string;
-  style: string;
-  sleeveType: string;
-  neckType: string;
+  fabric?: string;
+  style?: string;
   rise?: string;
   length?: string;
->>>>>>> e62f32f31b9f107a939cba2a3d51796f8e7cde6c
 }
 
 export interface WardrobeItem {
@@ -35,16 +27,13 @@ export interface WardrobeItem {
   fabric: string;
   size: WardrobeSize | string;
   dateAdded: string;
-<<<<<<< HEAD
   generatedImage: string;
+  originalScan?: string;
   tags: string[];
-  attributes: Record<string, any>;
-=======
   /** Kept locally so closet insights can suggest neglected pieces. */
   lastWorn?: string;
   timesWorn?: number;
   attributes: WardrobeDetectedAttributes;
->>>>>>> e62f32f31b9f107a939cba2a3d51796f8e7cde6c
 }
 
 export interface WardrobeProfile {

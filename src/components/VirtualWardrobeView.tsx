@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { ScreenId, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
+import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
 import accountService from '../services/accountService';
 import aiService from "../services/aiService";
 import { findSimilarProductsByVector, getPairedItem, ProductMatch } from "../services/productMetadataService";
+import { resolveColorHex } from '../utils/colors';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -78,12 +79,10 @@ const sampleScan = getScanSample('Kurti');
 const storageKey = (userId: string) => `nova_wardrobe_${userId}`;
 const profileKey = (userId: string) => `nova_wardrobe_profile_${userId}`;
 const outfitsKey = (userId: string) => `nova_wardrobe_outfits_${userId}`;
+const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const processingSteps = ['Detecting Pattern', 'Detecting Colors', 'Extracting Vectors', 'Matching Catalog', 'Complete'];
 
-<<<<<<< HEAD
-export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName }) => {
-=======
 const topCategories = ['T-Shirt', 'Shirt', 'Polo', 'Hoodie', 'Sweatshirt', 'Jacket', 'Blazer', 'Kurti', 'Crop Top'];
 const bottomCategories = ['Jeans', 'Trousers', 'Shorts', 'Leggings', 'Palazzo'];
 const isBottomWear = (category: string) => bottomCategories.includes(category);
@@ -186,7 +185,6 @@ const toDataUrl = async (source: string) => {
 };
 
 export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false }) => {
->>>>>>> e62f32f31b9f107a939cba2a3d51796f8e7cde6c
   const userId = accountService.getUserDocId(userEmail);
   const username = userEmail ? userEmail.split('@')[0] : userId;
   const [profile, setProfile] = useState<WardrobeProfile>(() => {
@@ -331,23 +329,13 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       }
 
       setProcessingStep(2);
-<<<<<<< HEAD
-      const embedding = await aiService.getEmbedding(file);
-
-      setProcessingStep(3);
-      const scannedAttributes = {
-        category: result?.category ?? result?.attributes?.category ?? selectedCategory,
-        primaryColor: result?.primaryColor ?? result?.attributes?.primaryColor ?? 'Blue',
-=======
-      // Generate vector embedding array from Python server
       let embedding: number[] = [];
       try { embedding = await aiService.getEmbedding(file); } catch { /* Catalog matching is optional. */ }
 
       setProcessingStep(3);
       const scannedAttributes = {
         category: selectedCategory || result?.category || result?.attributes?.category,
-        primaryColor: result?.primaryColor ?? result?.attributes?.primaryColor,
->>>>>>> e62f32f31b9f107a939cba2a3d51796f8e7cde6c
+        primaryColor: result?.primaryColor ?? result?.attributes?.primaryColor ?? 'Blue',
         subcategory: result?.subcategory ?? result?.attributes?.subcategory,
         pattern: result?.pattern ?? result?.attributes?.pattern,
         sleeveType: result?.sleeveType ?? result?.attributes?.sleeveType,
@@ -355,12 +343,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         fit: result?.fit ?? result?.attributes?.fit,
         material: result?.material ?? result?.attributes?.material
       };
-<<<<<<< HEAD
-
-      const matches = await findSimilarProductsByVector(embedding, scannedAttributes, 5);
-      setMatchedProducts(matches);
-=======
-      if (embedding.length) setMatchedProducts(await findSimilarProductsByVector(embedding, scannedAttributes, 5));
+        const matches = embedding.length ? await findSimilarProductsByVector(embedding, scannedAttributes, 5) : [];
+        setMatchedProducts(matches);
 
       // Analyze the garment crop, not the original person/background photo.
       let garmentForAnalysis = scanImage;
@@ -383,13 +367,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         } : {})
       };
       setGeneratedItem({
-        id: makeId(), category, gender: profile.gender || 'Female', size: profile.size || 'M',
+        id: makeId(), category, size: profile.size || 'M',
         generatedImage: result.processed_image, originalScan: scanImage,
         colors: [color, ...(secondaryColor !== '—' ? [secondaryColor] : [])], pattern, fabric: detected.fabric,
         tags: [category, color, pattern, detected.style].filter(Boolean), dateAdded: new Date().toISOString(),
         timesWorn: 0, attributes: detected
       });
->>>>>>> e62f32f31b9f107a939cba2a3d51796f8e7cde6c
 
       if (matches.length > 0) {
         setScannedMatch(matches[0]);
@@ -523,7 +506,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   }, {});
   const mostCommonColor = Object.entries(colorCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
   const colorStats = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]).slice(0, 4)
-    .map(([label, count]) => [label, Math.round((count / Math.max(1, items.length)) * 100), colorHex[label] || '#8b5cf6']);
+    .map(([label, count]) => [label, Math.round((count / Math.max(1, items.length)) * 100), resolveColorHex(label) || '#8b5cf6']);
   const tops = items.filter((item) => topCategories.includes(item.category));
   const bottoms = items.filter((item) => bottomCategories.includes(item.category));
   const onePieces = items.filter((item) => ['Dress', 'Saree', 'Co-ord Set', 'Ethnic Wear'].includes(item.category));
@@ -1017,14 +1000,9 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   ['Color', selectedItem.colors.join(', ')],
                   ['Pattern', selectedItem.pattern],
                   ['Fabric', selectedItem.fabric],
-<<<<<<< HEAD
-                  ['Neck', selectedItem.attributes?.neckType || 'Regular'],
-                  ['Sleeve', selectedItem.attributes?.sleeveType || 'Regular'],
-=======
                   ...(isBottomWear(selectedItem.category)
-                    ? [['Rise', selectedItem.attributes.rise || 'Not specified'], ['Length', selectedItem.attributes.length || 'Not specified']]
-                    : [['Neck', selectedItem.attributes.neckType], ['Sleeve', selectedItem.attributes.sleeveType]]),
->>>>>>> e62f32f31b9f107a939cba2a3d51796f8e7cde6c
+                    ? [['Rise', selectedItem.attributes?.rise || 'Not specified'], ['Length', selectedItem.attributes?.length || 'Not specified']]
+                    : [['Neck', selectedItem.attributes?.neckType || 'Regular'], ['Sleeve', selectedItem.attributes?.sleeveType || 'Regular']]),
                   ['Size', selectedItem.size],
                   ['Date Added', new Date(selectedItem.dateAdded).toLocaleDateString()]
                 ].map(([label, value]) => (
