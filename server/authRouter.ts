@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
-import axios from "axios";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 import { initError as firebaseInitError } from "./firebaseAdmin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -8,8 +8,8 @@ import { getAuth } from "firebase-admin/auth";
 import "./firebaseAdmin";
 
 console.log("=== AUTH ROUTER ENV ===");
-console.log("BREVO_API_KEY loaded:", Boolean(process.env.BREVO_API_KEY));
-console.log("BREVO_SENDER_EMAIL:", process.env.BREVO_SENDER_EMAIL);
+console.log("SMTP configured:", Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS));
+console.log("SMTP sender:", process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@novavisionlabs.com');
 console.log("=======================");
 
 const router = express.Router();
@@ -17,10 +17,14 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
 const MAX_OTP_ATTEMPTS = 3;
 
-const getBrevoConfig = () => ({
-  apiKey: process.env.BREVO_API_KEY || '',
-  senderEmail: process.env.BREVO_SENDER_EMAIL || 'noreply@novavisionlabs.com',
-  senderName: process.env.BREVO_SENDER_NAME || 'NOVA Vision Labs'
+const getSmtpConfig = () => ({
+  host: process.env.SMTP_HOST || '',
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: process.env.SMTP_SECURE === 'true',
+  user: process.env.SMTP_USER || '',
+  pass: process.env.SMTP_PASS || '',
+  fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@novavisionlabs.com',
+  fromName: process.env.SMTP_FROM_NAME || 'NOVA Vision Labs'
 });
 
 interface OTPRecord {
@@ -60,14 +64,17 @@ const USERS_COLLECTION = 'users';
 
 const maskEmail = (email: string) => email.replace(/^(.).+(@.+)$/, '$1***$2');
 
-const getSafeBrevoConfigStatus = () => {
-  const { apiKey, senderEmail, senderName } = getBrevoConfig();
+const getSafeSmtpConfigStatus = () => {
+  const { host, port, secure, user, pass, fromEmail, fromName } = getSmtpConfig();
   return {
-    apiKeyLoaded: Boolean(apiKey),
-    apiKeyLength: apiKey.length,
-    senderEmail,
-    senderName,
-    endpoint: 'https://api.brevo.com/v3/smtp/email'
+    configured: Boolean(host && user && pass),
+    host: host || null,
+    port,
+    secure,
+    user: user ? maskEmail(user) : null,
+    passwordLoaded: Boolean(pass),
+    fromEmail,
+    fromName
   };
 };
 
@@ -83,78 +90,74 @@ const isValidEmail = (email?: string) =>
   typeof email === 'string' &&
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-// send email via Brevo SDK (or log in dev mode)
+let smtpTransporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let smtpTransporterKey = '';
+
+const getSmtpTransporter = () => {
+  const config = getSmtpConfig();
+  if (!config.host || !config.user || !config.pass) return null;
+
+  const configKey = `${config.host}:${config.port}:${config.secure}:${config.user}`;
+  if (!smtpTransporter || smtpTransporterKey !== configKey) {
+    smtpTransporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth: { user: config.user, pass: config.pass }
+    });
+    smtpTransporterKey = configKey;
+  }
+  return smtpTransporter;
+};
+
 const sendOTPEmail = async (email: string, otp: string): Promise<{ ok: boolean; status?: number; error?: string }> => {
-  const { apiKey, senderEmail, senderName } = getBrevoConfig();
-  const requestBody = {
-    sender: {
-      email: senderEmail,
-      name: senderName,
-    },
-    to: [
-      {
-        email,
-      },
-    ],
-    subject: "Verify your NOVA Account",
-    htmlContent: `
+  const config = getSmtpConfig();
+  const transporter = getSmtpTransporter();
+  const html = `
       <h2>NOVA - The Future of Fashion</h2>
       <p>Your verification code is:</p>
       <h1 style="letter-spacing:6px">${otp}</h1>
       <p>This code expires in 5 minutes.</p>
       <p>If you didn't request this email, please ignore it.</p>
-    `,
-  };
+    `;
 
-  if (!apiKey) {
-    console.log("[OTP] Brevo API key not loaded; email not sent.", {
+  if (!transporter) {
+    console.log("[OTP] SMTP is not configured; email not sent.", {
       recipient: maskEmail(email),
-      senderEmail,
+      senderEmail: config.fromEmail,
       otpLength: otp.length
     });
     return { ok: true };
   }
 
   try {
-    console.log("[Brevo] Sending OTP email.", {
+    console.log("[SMTP] Sending OTP email.", {
       recipient: maskEmail(email),
-      senderEmail,
-      senderName,
-      endpoint: "https://api.brevo.com/v3/smtp/email",
-      bodyFields: Object.keys(requestBody),
-      authHeader: "api-key",
-      contentType: "application/json",
-      accept: "application/json"
+      senderEmail: config.fromEmail,
+      host: config.host,
+      port: config.port,
+      secure: config.secure
     });
 
-    const response = await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      requestBody,
-      {
-        headers: {
-          "Accept": "application/json",
-          "api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000
-      }
-    );
+    const response = await transporter.sendMail({
+      from: { address: config.fromEmail, name: config.fromName },
+      to: email,
+      subject: "Verify your NOVA Account",
+      text: `Your NOVA verification code is ${otp}. This code expires in 5 minutes.`,
+      html
+    });
 
-    console.log("[Brevo] OTP email accepted.", {
-      status: response.status,
-      messageId: response.data?.messageId,
+    console.log("[SMTP] OTP email accepted.", {
+      messageId: response.messageId,
       recipient: maskEmail(email)
     });
-    return { ok: true, status: response.status };
+    return { ok: true };
   } catch (error: any) {
-    const brevoMessage = error.response?.data?.message || error.message;
-    console.error("[Brevo] OTP email failed.", {
-      status: error.response?.status,
-      response: error.response?.data,
+    console.error("[SMTP] OTP email failed.", {
       message: error.message,
       recipient: maskEmail(email)
     });
-    return { ok: false, status: error.response?.status, error: brevoMessage };
+    return { ok: false, status: 502, error: error.message || 'SMTP delivery failed' };
   }
 };
 // Helper: get OTP doc ref
@@ -424,7 +427,7 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
 router.get('/auth/otp-config', async (_req: Request, res: Response) => {
   res.json({
     success: true,
-    brevo: getSafeBrevoConfigStatus(),
+    smtp: getSafeSmtpConfigStatus(),
     firebase: {
       enabled: firebaseEnabled,
       adminInitialized: Boolean(firebaseEnabled && auth && firestore),

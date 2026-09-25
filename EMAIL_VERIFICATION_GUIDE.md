@@ -9,16 +9,16 @@ The Email Verification flow has been fully implemented for the NOVA mobile appli
 ## 📋 What Was Implemented
 
 ### 1. Backend OTP Service (`server/authRouter.ts`)
-- **POST `/api/auth/send-otp`** - Generates and sends OTP via Brevo
+- **POST `/api/auth/send-otp`** - Generates and sends OTP via SMTP
   - Accepts: `{ email }`
   - Returns: Success message with expiration time
   - Features:
     - Generates 6-digit secure random OTP
     - Hashes OTP for secure storage
-    - Sends via Brevo Transactional Email API
+    - Sends through any SMTP provider using Nodemailer
     - Rate limits: 30-second cooldown between resends
     - OTP expires after 5 minutes
-    - Dev mode: Logs OTP to console if `BREVO_API_KEY` not configured
+    - Dev mode: Logs that delivery is disabled if SMTP is not configured
 
 - **POST `/api/auth/verify-otp`** - Verifies OTP and returns success
   - Accepts: `{ email, otp }`
@@ -95,29 +95,32 @@ The Email Verification flow has been fully implemented for the NOVA mobile appli
 ✅ **Data Privacy**
 - OTP only stored on backend, never sent to frontend
 - Email verification status stored in Firestore
-- Brevo API key never exposed
+- SMTP credentials never exposed
 
 ---
 
 ## 🚀 How to Use
 
-### 1. Setup Brevo (Production)
+### 1. Configure SMTP (Production)
 
-To enable email sending in production:
+Add these values to `.env.local` (or your deployment environment):
 
-1. Sign up at [Brevo](https://www.brevo.com)
-2. Get your API key from Settings → SMTP & API
-3. Add to `.env.local`:
-   ```env
-   BREVO_API_KEY=your-api-key-here
-   BREVO_SENDER_EMAIL=noreply@yourdomain.com
-   BREVO_SENDER_NAME=NOVA Vision Labs
-   ```
+```env
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+SMTP_FROM_NAME=NOVA Vision Labs
+```
+
+For implicit TLS providers, use port `465` and set `SMTP_SECURE=true`. Gmail requires an app password for `SMTP_PASS`.
 
 ### 2. Development Mode
 
-If `BREVO_API_KEY` is not set:
-- OTP will be logged to server console (backend terminal)
+If the SMTP variables are not set:
+- OTP delivery is disabled and the backend logs the recipient and OTP length
 - Verification still works normally
 - Perfect for local testing
 
@@ -175,7 +178,7 @@ NOVA-1/
 │   ├── types.ts                ← MODIFIED: Added email-verification ScreenId
 │   └── ... other files
 ├── server.ts                   ← MODIFIED: Registered authRouter
-├── .env.local                  ← MODIFIED: Added Brevo config
+├── .env.local                  ← MODIFIED: Added SMTP config
 └── package.json
 ```
 
@@ -199,7 +202,7 @@ NOVA-1/
             Backend: /api/auth/send-otp
             - Generate 6-digit OTP
             - Hash and store with expiration
-            - Send via Brevo Email API
+            - Send via SMTP
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ Email Verification Screen                                   │
@@ -420,8 +423,8 @@ Document ID: Firebase UID
 - [x] Firebase user creation on success
 - [x] Firestore document creation
 - [x] Navigation to profile setup
-- [x] Dev mode logging if no Brevo key
-- [x] Brevo email integration ready
+- [x] Dev mode behavior when SMTP is not configured
+- [x] SMTP email integration ready
 - [x] No API keys exposed in frontend
 - [x] Existing auth flow unchanged
 
@@ -443,7 +446,7 @@ Document ID: Firebase UID
    - Soft shadows
 
 3. **Production Deployment**
-   - Set `BREVO_API_KEY` in production
+  - Set all SMTP variables in production
    - Use Redis for OTP storage (instead of in-memory)
    - Consider rate limiting per IP
    - Monitor email sending metrics
@@ -458,14 +461,14 @@ Document ID: Firebase UID
 ## 📞 Support & Troubleshooting
 
 ### OTP not being sent?
-- Check `BREVO_API_KEY` is set in `.env.local`
+- Check `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` are set in `.env.local`
 - Check server console for OTP in dev mode
-- Verify Brevo account has email credits
+- Verify your SMTP provider account and sender authorization
 
 ### Verification fails with network error?
 - Ensure backend is running (`npm run dev`)
 - Check network connectivity
-- Verify `BREVO_API_KEY` format is correct
+- Verify the SMTP host, port, secure mode, and credentials match your provider
 
 ### UI looks different on mobile?
 - Check device is using same viewport width

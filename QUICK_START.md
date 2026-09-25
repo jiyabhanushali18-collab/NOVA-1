@@ -178,7 +178,7 @@ kill -9 <PID>
 
 ### Issue: No OTP in server logs
 **Check:**
-- Is `BREVO_API_KEY` set? (should be empty for dev mode)
+- Are `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` set? (leave empty for dev mode)
 - Is server running in correct terminal?
 - Look carefully at terminal output
 
@@ -218,11 +218,16 @@ npx cap run ios
 ## 🎯 Next Steps
 
 After successful test:
-1. Get Brevo API key: https://www.brevo.com
+1. Get SMTP credentials from your email provider.
 2. Add to `.env.local`:
    ```env
-   BREVO_API_KEY=your-actual-key
-   BREVO_SENDER_EMAIL=noreply@yourapp.com
+   SMTP_HOST=smtp.your-provider.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=your-smtp-username
+   SMTP_PASS=your-smtp-password
+   SMTP_FROM_EMAIL=noreply@yourapp.com
+   SMTP_FROM_NAME=NOVA Vision Labs
    ```
 3. Restart server
 4. Emails will be sent instead of logged

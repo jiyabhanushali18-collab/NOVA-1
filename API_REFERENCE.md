@@ -44,7 +44,7 @@
   "retryAfter": 25
 }
 
-// Brevo API error
+// SMTP delivery error
 {
   "success": false,
   "error": "Failed to send verification email. Please try again."
@@ -165,14 +165,18 @@ interface AuthViewProps {
 ### Optional (Development)
 ```env
 # For testing without email delivery
-BREVO_API_KEY=           # Leave empty for dev mode
+SMTP_HOST=               # Leave SMTP settings empty for dev mode
 ```
 
 ### Required (Production)
 ```env
-BREVO_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxx
-BREVO_SENDER_EMAIL=noreply@yourdomain.com
-BREVO_SENDER_NAME=NOVA Vision Labs
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+SMTP_FROM_NAME=NOVA Vision Labs
 ```
 
 ---
@@ -303,7 +307,7 @@ After successful OTP verification, the app automatically:
 |-----------|------|-------|
 | OTP Generation | < 1ms | Cryptographic generation |
 | OTP Hashing | < 1ms | SHA-256 hashing |
-| Email Send | 1-2s | Brevo API call |
+| Email Send | 1-2s | SMTP delivery |
 | OTP Verification | < 10ms | Hash comparison + validation |
 | Firebase Create | 2-3s | Auth + Firestore |
 
@@ -322,16 +326,16 @@ After successful OTP verification, the app automatically:
 - Solution: Request new OTP
 
 ### Email not received
-- Check BREVO_API_KEY is set
-- Check sender email is authorized in Brevo
+- Check `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` are set
+- Check the sender email is authorized by your SMTP provider
 - Check spam folder
 - In dev mode, check server console logs
 
 ### Network timeout
 - Ensure backend is running (`npm run dev`)
 - Check network connectivity
-- Verify BREVO_API_KEY format
-- Check Brevo API status
+- Verify the SMTP host, port, and secure mode
+- Check your SMTP provider status
 
 ---
 

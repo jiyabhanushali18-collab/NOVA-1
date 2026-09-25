@@ -1,7 +1,7 @@
 # 📊 Implementation Summary: NOVA Email Verification
 
 ## Overview
-Complete email verification system for NOVA signup flow using OTP (One-Time Password) with Brevo transactional email integration.
+Complete email verification system for NOVA signup flow using OTP (One-Time Password) with SMTP email integration.
 
 ---
 
@@ -9,7 +9,7 @@ Complete email verification system for NOVA signup flow using OTP (One-Time Pass
 
 ### 1. Backend
 **`server/authRouter.ts`** (NEW)
-- POST `/api/auth/send-otp` - Generate and send OTP via Brevo
+- POST `/api/auth/send-otp` - Generate and send OTP via SMTP
 - POST `/api/auth/verify-otp` - Verify OTP and return success
 - Features: OTP hashing, rate limiting, expiration, attempt tracking
 
@@ -92,10 +92,14 @@ Complete email verification system for NOVA signup flow using OTP (One-Time Pass
 ### 5. Environment Configuration
 **`.env.local`**
 ```diff
-+ # Brevo Email Configuration
-+ # BREVO_API_KEY=your-api-key
-+ # BREVO_SENDER_EMAIL=noreply@yourdomain.com
-+ # BREVO_SENDER_NAME=NOVA Vision Labs
++ # SMTP Email Configuration
++ # SMTP_HOST=smtp.your-provider.com
++ # SMTP_PORT=587
++ # SMTP_SECURE=false
++ # SMTP_USER=your-smtp-username
++ # SMTP_PASS=your-smtp-password
++ # SMTP_FROM_EMAIL=noreply@yourdomain.com
++ # SMTP_FROM_NAME=NOVA Vision Labs
 ```
 
 ---
@@ -160,7 +164,7 @@ Backend (/api/auth/send-otp)
     - Generate random 6-digit OTP
     - Hash OTP with SHA-256
     - Store: email → {otpHash, createdAt, expiresAt, attempts}
-    - Send email via Brevo API
+    - Send email via SMTP
     ↓
 Frontend (EmailVerificationView)
     - Show verification screen
@@ -196,7 +200,7 @@ Frontend (App.tsx)
 - [x] POST /api/auth/verify-otp
 - [x] OTP generation (6 digits)
 - [x] OTP hashing (SHA-256)
-- [x] Email sending (Brevo API)
+- [x] Email sending (SMTP)
 - [x] 5-minute expiration
 - [x] 30-second resend cooldown
 - [x] Max 3 attempts tracking
@@ -274,17 +278,21 @@ Frontend (App.tsx)
 ### 1. Development (Done ✓)
 ```bash
 npm run dev
-# OTP logged to console
-# No BREVO_API_KEY needed
+# OTP delivery is disabled unless SMTP is configured
+# No SMTP credentials needed for local flow testing
 ```
 
 ### 2. Production
 ```bash
-# 1. Get Brevo API key from https://www.brevo.com
+# 1. Get SMTP credentials from your email provider
 # 2. Add to .env or CI/CD secrets:
-BREVO_API_KEY=xxx
-BREVO_SENDER_EMAIL=noreply@yourdomain.com
-BREVO_SENDER_NAME=NOVA Vision Labs
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+SMTP_FROM_NAME=NOVA Vision Labs
 
 # 3. Deploy
 npm run build
@@ -308,7 +316,7 @@ npm run start
 |-----------|---------|-------|
 | OTP Generation | < 1ms | Instant |
 | OTP Hashing | < 1ms | SHA-256 |
-| Email Send | 1-2s | Brevo API |
+| Email Send | 1-2s | SMTP delivery |
 | OTP Verify | < 10ms | Hash + validation |
 | Firebase Create | 2-3s | Auth + Firestore |
 
@@ -325,7 +333,7 @@ npm run start
 - `motion/react` - Animations
 - `lucide-react` - Icons
 - `firebase` - Auth & Firestore
-- `axios` - HTTP (for Brevo fallback)
+- `nodemailer` - SMTP email delivery
 
 ---
 
@@ -367,7 +375,7 @@ curl -X POST http://localhost:3000/api/auth/verify-otp \
 ✅ Verify Button with Loading State
 ✅ Success Animation
 ✅ Backend OTP Endpoints
-✅ Brevo Email Integration
+✅ SMTP Email Integration
 ✅ 5-Minute Expiration
 ✅ Max 3 Attempts
 ✅ Firebase User Creation
@@ -397,9 +405,9 @@ curl -X POST http://localhost:3000/api/auth/verify-otp \
 
 ## ✨ What's Next?
 
-1. **Add Brevo API Key** (Optional for testing)
-   - Update `.env.local` with real key
-   - Emails will be sent instead of logged
+1. **Configure SMTP** (Optional for testing)
+    - Update `.env.local` with SMTP credentials
+    - Emails will be sent instead of skipped
 
 2. **Scale to Production**
    - Replace in-memory OTP store with Redis
