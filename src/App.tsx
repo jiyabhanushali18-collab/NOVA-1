@@ -1568,7 +1568,7 @@ export default function App() {
     <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
-        : 'bg-slate-50 border-x border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-purple-50/40'
+        : 'nova-page-wash border-x border-[#e7e9f5] text-[#17213A]'
     }`}>
       
       {/* 1. Header Toolbar (Hidden when immersive AR camera is loaded to mimic device viewport) */}
@@ -1576,19 +1576,16 @@ export default function App() {
         <header className={`sticky top-0 z-40 backdrop-blur-xl px-6 py-4 flex items-center justify-between transition-colors duration-300 ${
           isDarkMode
             ? 'bg-slate-900/85 border-b border-slate-800/40'
-            : 'bg-white/85 border-b border-indigo-100/40'
+            : 'bg-white/78 border-b border-[#e7e9f5]/80 shadow-[0_4px_18px_rgba(91,75,255,0.04)]'
         }`}>
           <div 
                     onClick={() => navigate('home')}
             className="flex items-center space-x-2 cursor-pointer select-none group"
           >
-            {/* Elegant futuristic brand logo icon incorporating vivid lavender/blue gradients */}
-            {/* Logo: desktop/mobile image fallback. Place images in public/assets/ */}
-            {isMobile ? (
-              <img src="/assets/nova-mobile.png" alt="NOVA" className="w-8 h-8 rounded-xl object-cover shadow-md shadow-indigo-500/30" />
-            ) : (
-              <img src="/assets/nova-desktop.png" alt="NOVA" className="w-8 h-8 rounded-xl object-cover shadow-md shadow-indigo-500/30" />
-            )}
+            <span
+              aria-hidden="true"
+              className="h-8 w-8 shrink-0 rounded-xl bg-[url('/novalogo_withoutbg.png')] bg-[length:78px_auto] bg-[center_top] bg-no-repeat drop-shadow-md transition-transform group-hover:scale-105"
+            />
             <div className="leading-none">
               <span className={`text-base font-black tracking-tight group-hover:text-indigo-600 transition-colors ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
@@ -1601,7 +1598,7 @@ export default function App() {
             {/* Quick Wishlist widget (opens modal) */}
             <button 
               onClick={() => setIsWishlistOpen(true)}
-              className="w-10 h-10 rounded-full bg-rose-50/40 hover:bg-rose-50 flex items-center justify-center relative transition-colors border border-rose-100/40"
+              className="nova-interactive w-10 h-10 rounded-[15px] bg-gradient-to-br from-[#fff4f8] to-[#ffeaf4] hover:brightness-105 flex items-center justify-center relative border border-[#f7dce8]"
               title="View Wishlist"
             >
               <span className="material-symbols-outlined text-rose-500 text-[20px]" style={{ fontVariationSettings: wishlist.length > 0 ? "'FILL' 1" : undefined }}>favorite</span>
@@ -1615,7 +1612,7 @@ export default function App() {
             {/* Quick Shopping Cart widget */}
             <button 
               onClick={() => navigate('cart')}
-              className="w-10 h-10 rounded-full bg-indigo-50/40 flex items-center justify-center relative hover:bg-indigo-50 transition-colors border border-indigo-100/40"
+              className="nova-interactive w-10 h-10 rounded-[15px] bg-gradient-to-br from-[#f1efff] to-[#eaf2ff] flex items-center justify-center relative hover:brightness-105 border border-[#e0e2fa]"
               title="View Cart"
             >
               <span className="material-symbols-outlined text-indigo-600 text-[20px]">local_mall</span>
@@ -1629,7 +1626,7 @@ export default function App() {
             {/* Quick profile thumbnail widget */}
             <button 
               onClick={() => navigate('profile')}
-              className="w-9 h-9 rounded-full overflow-hidden border-2 border-indigo-100 hover:border-indigo-350 transition-all shadow"
+              className="nova-interactive w-9 h-9 rounded-full overflow-hidden border-2 border-white ring-2 ring-[#e8e9ff] hover:ring-[#cfcaff] shadow-[0_5px_14px_rgba(91,75,255,0.16)]"
             >
               <img 
                 alt="Account profile" 
@@ -1702,48 +1699,48 @@ export default function App() {
       )}
       {/* 3. Bottom persistent device Navigation Tab-Bar (Hidden during immersive Tryon filtering) */}
       {!isImmersiveAR && (
-        <nav className={`fixed bottom-0 inset-x-0 max-w-md mx-auto backdrop-blur-2xl px-6 py-2 pb-5 flex items-center justify-between z-40 shadow-2xl transition-colors duration-300 ${
+        <nav className={`fixed bottom-0 inset-x-0 max-w-md mx-auto backdrop-blur-2xl px-5 py-2 pb-5 flex items-center justify-between z-40 shadow-2xl transition-colors duration-300 ${
           isDarkMode
             ? 'bg-slate-900/85 border-t border-slate-800/50 shadow-slate-950/50'
-            : 'bg-white/85 border-t border-indigo-100/50 shadow-indigo-950/15'
+            : 'bg-white/82 border-t border-[#e7e9f5] shadow-[0_-10px_28px_rgba(91,75,255,0.09)]'
         }`}>
           <button 
             onClick={() => navigate('home')}
-            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('home') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('home') ? 'text-[#5B4BFF]' : 'text-[#7b879e] hover:text-[#5B4BFF]'}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('home') ? 'bg-[#eee9ff]' : ''}`} style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
             <span className="text-[10px] font-bold">{t('nav.home')}</span>
           </button>
 
           <button 
             onClick={() => navigate('scan-outfit')}
-            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('scan') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('scan') ? 'text-[#5B4BFF]' : 'text-[#7b879e] hover:text-[#5B4BFF]'}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('scan') ? 'bg-[#eee9ff]' : ''}`} style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
             <span className="text-[10px] font-bold">{t('nav.scan')}</span>
           </button>
 
           <button 
             onClick={() => navigate('wardrobe')}
-            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('wardrobe') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('wardrobe') ? 'text-[#5B4BFF]' : 'text-[#7b879e] hover:text-[#5B4BFF]'}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('wardrobe') ? 'bg-[#eee9ff]' : ''}`} style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
             <span className="text-[10px] font-bold">{t('nav.wardrobe')}</span>
           </button>
 
           <button 
             onClick={() => navigate('chat')}
-            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('chat') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('chat') ? 'text-[#5B4BFF]' : 'text-[#7b879e] hover:text-[#5B4BFF]'}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('chat') ? 'bg-[#eee9ff]' : ''}`} style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
             <span className="text-[10px] font-bold">{t('nav.stylist')}</span>
           </button>
 
           <button 
             onClick={() => navigate('profile')}
-            className={`flex flex-col items-center space-y-1 py-1.5 px-3 transition-colors ${isTabActive('profile') ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('profile') ? 'text-[#5B4BFF]' : 'text-[#7b879e] hover:text-[#5B4BFF]'}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('profile') ? 'bg-[#eee9ff]' : ''}`} style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>
             <span className="text-[10px] font-bold">{t('nav.profile')}</span>
           </button>
         </nav>
