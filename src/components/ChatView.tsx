@@ -106,11 +106,11 @@ Ask me anything—I'm ready to craft suggestions!`,
           return (
             <div 
               key={m.id} 
-              className={`flex flex-col max-w-[85%] ${isUser ? 'self-end bg-indigo-600 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-md border border-indigo-600' : 'self-start bg-white text-slate-800 rounded-2xl rounded-tl-none px-4 py-3 shadow border border-slate-100'}`}
+              className={`flex flex-col max-w-[85%] ${isUser ? 'self-end bg-[#5B45E7] text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-md border border-[#5B45E7]' : 'self-start bg-white text-[#17182B] rounded-2xl rounded-tl-none px-4 py-3 shadow border border-[#E8E5F0]'}`}
               style={{ alignSelf: isUser ? 'flex-end' : 'flex-start' }}
             >
               {/* Message Header info */}
-              <div className={`flex justify-between items-center gap-4 mb-1.5 pb-1 text-[9px] font-bold uppercase tracking-widest opacity-80 border-b ${isUser ? 'border-white/25' : 'border-slate-100'}`}>
+              <div className={`flex justify-between items-center gap-4 mb-1.5 pb-1 text-[9px] font-bold uppercase tracking-widest opacity-80 border-b ${isUser ? 'border-white/25' : 'border-[#E8E5F0]'}`}>
                 <span>{isUser ? userName : 'NOVA Curation Engine'}</span>
                 <span>{m.timestamp}</span>
               </div>
@@ -120,8 +120,8 @@ Ask me anything—I'm ready to craft suggestions!`,
 
               {/* Dynamic matched Products shortcuts embedded */}
               {m.isPairingResult && m.pairingProducts && (
-                <div className={`mt-4 pt-3.5 border-t flex flex-col gap-2.5 ${isUser ? 'border-white/20' : 'border-indigo-50'}`}>
-                  <div className={`text-[10px] font-bold ${isUser ? 'text-white/80' : 'text-indigo-600'} uppercase tracking-wide flex items-center gap-1`}>
+                <div className={`mt-4 pt-3.5 border-t flex flex-col gap-2.5 ${isUser ? 'border-white/20' : 'border-[#E8E5F0]'}`}>
+                  <div className={`text-[10px] font-bold ${isUser ? 'text-white/80' : 'text-[#5B45E7]'} uppercase tracking-wide flex items-center gap-1`}>
                     <span className="material-symbols-outlined text-[13px] leading-none">mall</span> Click to Shop suggestions
                   </div>
                   <div className="overflow-x-auto flex gap-2 hide-scrollbar py-0.5">
@@ -132,14 +132,14 @@ Ask me anything—I'm ready to craft suggestions!`,
                           if (p.name.includes('Hoodie')) onNavigate('product-details');
                           else alert(`Redirecting simulation to checkout parameters for: ${p.name}`);
                         }}
-                        className={`min-w-[150px] p-2.5 rounded-xl flex flex-col items-start gap-2 border cursor-pointer hover:shadow-sm transition-shadow ${isUser ? 'bg-indigo-700/60 border-indigo-500 text-white' : 'bg-slate-50 border-slate-150 text-slate-800'}`}
+                        className={`min-w-[150px] p-2.5 rounded-xl flex flex-col items-start gap-2 border cursor-pointer hover:shadow-sm transition-shadow ${isUser ? 'bg-[#4E3AC8]/70 border-white/20 text-white' : 'bg-[#F4F1FF] border-[#E8E5F0] text-[#17182B]'}`}
                       >
-                        <div className="w-full h-20 rounded-lg bg-slate-200 overflow-hidden shrink-0">
+                        <div className="w-full h-20 rounded-lg bg-[#EAE5FF] overflow-hidden shrink-0">
                           <img alt={p.name} className="w-full h-full object-cover" src={p.imageUrl} onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'; }} />
                         </div>
                         <div className="leading-tight w-full">
                           <div className="text-[11px] font-bold line-clamp-2">{p.name}</div>
-                          <div className="text-[10px] font-semibold mt-1.5 opacity-90 text-indigo-500 leading-none">₹{p.price.toLocaleString('en-IN')}</div>
+                          <div className="text-[10px] font-semibold mt-1.5 opacity-90 text-[#5B45E7] leading-none">₹{p.price.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
                     ))}
@@ -151,11 +151,11 @@ Ask me anything—I'm ready to craft suggestions!`,
         })}
 
         {sending && (
-          <div className="flex items-center gap-2 self-start bg-white text-slate-500 rounded-2xl rounded-tl-none px-4 py-3.5 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-2 self-start bg-white text-[#697386] rounded-2xl rounded-tl-none px-4 py-3.5 shadow-sm border border-[#E8E5F0]">
             <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-slate-300 animate-bounce"></div>
-              <div className="w-2 h-2 rounded-full bg-slate-300 animate-bounce [animation-delay:0.2s]"></div>
-              <div className="w-2 h-2 rounded-full bg-slate-300 animate-bounce [animation-delay:0.4s]"></div>
+              <div className="w-2 h-2 rounded-full bg-[#5B45E7] animate-bounce"></div>
+              <div className="w-2 h-2 rounded-full bg-[#5B45E7] animate-bounce [animation-delay:0.2s]"></div>
+              <div className="w-2 h-2 rounded-full bg-[#5B45E7] animate-bounce [animation-delay:0.4s]"></div>
             </div>
             <span className="text-[10px] font-bold tracking-wide uppercase">NOVA is styling...</span>
           </div>
@@ -165,14 +165,14 @@ Ask me anything—I'm ready to craft suggestions!`,
 
       {/* Suggested prompts chips block */}
       {messages.length === 1 && (
-        <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Suggested Prompts</p>
+        <div className="px-4 py-2 border-t border-[#E8E5F0] bg-[#EAE5FF]/50">
+          <p className="text-[10px] font-bold text-[#697386] uppercase tracking-widest mb-1.5">Suggested Prompts</p>
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             {quickPrompts.map((p) => (
               <button
                 key={p}
                 onClick={() => handleSend(p)}
-                className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 shadow-sm text-xs font-semibold whitespace-nowrap shrink-0 transition-colors"
+                className="px-3.5 py-2 rounded-xl bg-white border border-[#E8E5F0] text-[#697386] hover:text-[#5B45E7] hover:border-[#5B45E7] shadow-sm text-xs font-semibold whitespace-nowrap shrink-0 transition-colors"
               >
                 {p}
               </button>
@@ -182,19 +182,19 @@ Ask me anything—I'm ready to craft suggestions!`,
       )}
 
       {/* Chat text area input block */}
-      <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
+      <div className="p-3 bg-white border-t border-[#E8E5F0] flex items-center gap-2">
         <input 
           type="text" 
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSend(inputVal); }}
           placeholder="Ask about style matches, items, colors..."
-          className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-800 focus:outline-none focus:border-indigo-600"
+          className="flex-1 p-3 bg-[#F4F1FF] border border-[#E8E5F0] rounded-xl text-xs font-semibold text-[#17182B] placeholder:text-[#697386] focus:outline-none focus:border-[#5B45E7]"
           disabled={sending}
         />
         <button 
           onClick={() => handleSend(inputVal)}
-          className="w-11 h-11 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-colors disabled:opacity-50"
+          className="w-11 h-11 bg-[#5B45E7] text-white rounded-xl flex items-center justify-center hover:opacity-95 transition-opacity disabled:opacity-50"
           disabled={sending || !inputVal.trim()}
         >
           <span className="material-symbols-outlined leading-none text-lg">send</span>

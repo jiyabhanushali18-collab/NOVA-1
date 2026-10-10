@@ -104,14 +104,14 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
 
   return (
     <div className="space-y-3">
-      <button disabled={loading} onClick={handleGoogle} className="w-full py-2 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold disabled:opacity-50">Continue with Google</button>
+      <button disabled={loading} onClick={handleGoogle} className="w-full py-2.5 rounded-xl bg-[#5B45E7] text-white font-bold disabled:opacity-50 hover:opacity-95 transition-opacity">Continue with Google</button>
 
-      <div className="text-center text-slate-400 text-sm">or</div>
+      <div className="text-center text-[#697386] text-sm">or</div>
 
       <form onSubmit={handleEmailLogin} className="space-y-2">
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full p-2 rounded border" />
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full p-2 rounded border" />
-        <button disabled={loading} type="submit" className="w-full py-2 rounded bg-white border font-bold">Sign in</button>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full p-2.5 rounded-xl border border-[#E8E5F0] bg-[#F4F1FF] text-[#17182B] placeholder:text-[#697386] focus:outline-none focus:border-[#5B45E7]" />
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full p-2.5 rounded-xl border border-[#E8E5F0] bg-[#F4F1FF] text-[#17182B] placeholder:text-[#697386] focus:outline-none focus:border-[#5B45E7]" />
+        <button disabled={loading} type="submit" className="w-full py-2.5 rounded-xl bg-white border border-[#E8E5F0] text-[#17182B] hover:bg-[#F0EDFF] font-bold transition-colors">Sign in</button>
       </form>
 
       {error && <div className="text-xs text-red-500">{error}</div>}

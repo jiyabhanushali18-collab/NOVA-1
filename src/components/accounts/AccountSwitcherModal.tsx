@@ -56,20 +56,20 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-md mx-auto p-4 pb-6 bg-gradient-to-br from-purple-900/40 via-indigo-900/30 to-slate-900/20 rounded-t-3xl backdrop-blur-md border-t border-white/10">
+      <div className="relative w-full max-w-md mx-auto p-4 pb-6 bg-white rounded-t-3xl border-t border-[#E8E5F0] shadow-2xl">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-bold text-white">Accounts</h3>
-          <button onClick={onClose} className="text-white/80">Close</button>
+          <h3 className="text-lg font-bold text-[#17182B]">Accounts</h3>
+          <button onClick={onClose} className="text-[#697386] hover:text-[#17182B] font-semibold text-sm">Close</button>
         </div>
 
-        {toast && <div className="mb-3 text-sm text-amber-300">{toast}</div>}
+        {toast && <div className="mb-3 text-sm text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200">{toast}</div>}
 
         {!showAdd ? (
           <>
             <ManageAccountsView accounts={accounts} activeUid={activeUid} onSwitch={onSwitch} onRemove={handleRemove} />
 
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => setShowAdd(true)} disabled={accounts.length >= 5} className={`py-2 rounded ${accounts.length >= 5 ? 'bg-slate-600/30 text-slate-400' : 'bg-white text-black font-bold'}`}>
+              <button onClick={() => setShowAdd(true)} disabled={accounts.length >= 5} className={`py-2 rounded-xl ${accounts.length >= 5 ? 'bg-[#EAE5FF] text-[#9AA3B5]' : 'bg-[#5B45E7] text-white font-bold hover:opacity-95 transition-opacity'}`}>
                 Add Account
               </button>
               <button
@@ -79,7 +79,7 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
                   onClose();
                   onLogout();
                 }}
-                className="py-2 rounded bg-red-600 text-white"
+                className="py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors"
               >
                 Log Out
               </button>

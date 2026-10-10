@@ -364,14 +364,14 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm bg-white/90 backdrop-blur-3xl rounded-[28px] border border-white/80 shadow-2xl shadow-indigo-950/10 p-7 relative overflow-hidden flex flex-col"
+        className="w-full max-w-sm bg-white rounded-[28px] border border-[#E8E5F0] shadow-xl shadow-[#5B45E7]/8 p-7 relative overflow-hidden flex flex-col"
       >
         <div className="flex flex-col items-center text-center pb-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white font-extrabold shadow-lg shadow-indigo-600/20 mb-3 hover:scale-105 transition-transform duration-300">
+          <div className="w-12 h-12 rounded-2xl bg-[#5B45E7] flex items-center justify-center text-white font-extrabold shadow-lg shadow-[#5B45E7]/25 mb-3 hover:scale-105 transition-transform duration-300">
             N
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-slate-950">{t('app.novaVisionLabs')}</h2>
-          <p className="text-xs font-bold text-slate-400 mt-0.5 tracking-wider uppercase font-mono">{t('app.curationEngine')}</p>
+          <h2 className="text-2xl font-black tracking-tight text-[#17182B]">{t('app.novaVisionLabs')}</h2>
+          <p className="text-xs font-bold text-[#697386] mt-0.5 tracking-wider uppercase font-mono">{t('app.curationEngine')}</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -385,39 +385,39 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
               className="space-y-4"
             >
               <div className="space-y-3">
-                <motion.div whileHover={{ y: -3, scale: 1.01 }} className="rounded-[24px] border border-indigo-100 bg-white/70 p-4 shadow-lg shadow-indigo-950/5">
+                <motion.div whileHover={{ y: -3, scale: 1.01 }} className="rounded-[24px] border border-[#E8E5F0] bg-[#F4F1FF]/55 p-4 shadow-sm">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-2xl bg-[#F0EDFF] text-[#5B45E7] flex items-center justify-center">
                       <UserRound className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-black text-slate-950">{t('auth.continueAsGuest')}</h3>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1">{t('auth.guestDescription')}</p>
+                      <h3 className="text-sm font-black text-[#17182B]">{t('auth.continueAsGuest')}</h3>
+                      <p className="text-[11px] text-[#697386] leading-relaxed mt-1">{t('auth.guestDescription')}</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={onGuestContinue}
-                    className="mt-4 w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#4F46E5] to-[#2563EB] text-white text-xs font-bold shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] overflow-hidden"
+                    className="mt-4 w-full py-3 px-4 rounded-2xl bg-[#5B45E7] hover:bg-[#4935CC] text-white text-xs font-bold shadow-lg shadow-[#5B45E7]/25 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] overflow-hidden"
                   >
                     {t('auth.continueAsGuest')} <ArrowRight className="w-4 h-4" />
                   </button>
                 </motion.div>
 
-                <motion.div whileHover={{ y: -3, scale: 1.01 }} className="rounded-[24px] border border-slate-200 bg-white/60 p-4 shadow-lg shadow-slate-950/5">
+                <motion.div whileHover={{ y: -3, scale: 1.01 }} className="rounded-[24px] border border-[#E8E5F0] bg-white p-4 shadow-sm">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-700 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-2xl bg-[#F0EDFF] text-[#5B45E7] flex items-center justify-center">
                       <LockKeyhole className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-black text-slate-950">{t('auth.registeredUser')}</h3>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-1">{t('auth.registeredDescription')}</p>
+                      <h3 className="text-sm font-black text-[#17182B]">{t('auth.registeredUser')}</h3>
+                      <p className="text-[11px] text-[#697386] leading-relaxed mt-1">{t('auth.registeredDescription')}</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={goToSignIn}
-                    className="mt-4 w-full py-3 px-4 rounded-2xl bg-white text-indigo-600 text-xs font-bold border border-indigo-200 shadow-sm flex items-center justify-center gap-1.5 transition-all hover:border-indigo-400 active:scale-[0.98]"
+                    className="mt-4 w-full py-3 px-4 rounded-2xl bg-white text-[#5B45E7] text-xs font-bold border border-[#E8E5F0] shadow-sm flex items-center justify-center gap-1.5 transition-all hover:bg-[#F0EDFF] hover:border-[#5B45E7]/30 active:scale-[0.98]"
                   >
                     {t('auth.signIn')} <ArrowRight className="w-4 h-4" />
                   </button>
@@ -425,11 +425,11 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
               </div>
 
               <div className="pt-2 text-center space-y-2">
-                <p className="text-[11px] font-semibold text-slate-500">{t('auth.savePrompt')}</p>
-                <button type="button" onClick={goToSignup} className="text-xs font-black text-indigo-600 hover:text-indigo-700">
+                <p className="text-[11px] font-semibold text-[#697386]">{t('auth.savePrompt')}</p>
+                <button type="button" onClick={goToSignup} className="text-xs font-black text-[#5B45E7] hover:text-[#4935CC]">
                   {t('auth.createAccount')}
                 </button>
-                <p className="text-[9px] text-slate-400 leading-relaxed">{t('auth.guestWarning')}</p>
+                <p className="text-[9px] text-[#697386] leading-relaxed">{t('auth.guestWarning')}</p>
               </div>
             </motion.div>
           ) : entryPath === 'account-selection' ? (
@@ -442,11 +442,11 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
               className="space-y-4"
             >
               <div className="text-center">
-                <h3 className="text-xl font-black tracking-tight text-slate-950">{t('auth.chooseAccountTitle')}</h3>
-                <p className="text-xs text-slate-500 leading-relaxed mt-2">
+                <h3 className="text-xl font-black tracking-tight text-[#17182B]">{t('auth.chooseAccountTitle')}</h3>
+                <p className="text-xs text-[#697386] leading-relaxed mt-2">
                   {t('auth.chooseAccountFound')}
                 </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-[#697386] leading-relaxed">
                   {t('auth.chooseAccountPrompt')}
                 </p>
               </div>
@@ -469,15 +469,15 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       whileHover={{ y: -3 }}
                       whileTap={{ scale: 1.02 }}
-                      className={`rounded-[24px] bg-white/75 p-[1px] shadow-lg transition-all duration-300 ${
+                      className={`rounded-[24px] bg-white p-[1px] shadow-sm transition-all duration-300 ${
                         isSelected
-                          ? 'bg-gradient-to-r from-[#4F46E5] to-[#2563EB] shadow-indigo-500/25'
-                          : 'border border-indigo-100/80 shadow-indigo-950/5'
+                          ? 'bg-[#5B45E7] shadow-[#5B45E7]/20'
+                          : 'border border-[#E8E5F0]'
                       }`}
                     >
-                      <div className="rounded-[23px] bg-white/90 p-4">
+                      <div className="rounded-[23px] bg-white p-4">
                         <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-100 to-blue-100 text-indigo-700 flex items-center justify-center font-black shadow-inner overflow-hidden">
+                          <div className="w-12 h-12 rounded-2xl bg-[#F0EDFF] text-[#5B45E7] flex items-center justify-center font-black shadow-inner overflow-hidden">
                             {account.avatar ? (
                               <img src={account.avatar} alt={account.name} className="w-full h-full object-cover" />
                             ) : (
@@ -487,30 +487,30 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <h4 className="text-sm font-black text-slate-950 truncate">{account.name}</h4>
-                                {account.username && <p className="text-[10px] font-semibold text-slate-400 truncate">@{account.username}</p>}
+                                <h4 className="text-sm font-black text-[#17182B] truncate">{account.name}</h4>
+                                {account.username && <p className="text-[10px] font-semibold text-[#697386] truncate">@{account.username}</p>}
                               </div>
                               <div className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${
                                 account.accountType === 'Premium'
-                                  ? 'bg-indigo-50 text-indigo-600'
-                                  : 'bg-slate-100 text-slate-600'
+                                  ? 'bg-[#F0EDFF] text-[#5B45E7]'
+                                  : 'bg-[#F4F1FF] text-[#697386]'
                               }`}>
                                 {account.accountType || 'Registered'}
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 mt-3">
-                              <div className="rounded-2xl bg-slate-50 px-3 py-2">
-                                <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                              <div className="rounded-2xl bg-[#F4F1FF] px-3 py-2 border border-[#E8E5F0]/60">
+                                <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#697386]">
                                   <CalendarDays className="w-3 h-3" /> {t('common.created')}
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-700 mt-1">{account.createdAt || 'Recently'}</p>
+                                <p className="text-[10px] font-bold text-[#17182B] mt-1">{account.createdAt || 'Recently'}</p>
                               </div>
-                              <div className="rounded-2xl bg-slate-50 px-3 py-2">
-                                <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                              <div className="rounded-2xl bg-[#F4F1FF] px-3 py-2 border border-[#E8E5F0]/60">
+                                <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#697386]">
                                   <Clock3 className="w-3 h-3" /> {t('common.lastActive')}
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-700 mt-1">{account.lastActive || 'Recently'}</p>
+                                <p className="text-[10px] font-bold text-[#17182B] mt-1">{account.lastActive || 'Recently'}</p>
                               </div>
                             </div>
                           </div>
@@ -522,8 +522,8 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                           onClick={() => handleSelectAccount(account)}
                           className={`mt-4 w-full py-3 px-4 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-70 ${
                             isSelected
-                              ? 'bg-gradient-to-r from-[#4F46E5] to-[#2563EB] text-white shadow-lg shadow-indigo-600/25'
-                              : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                              ? 'bg-[#5B45E7] text-white shadow-lg shadow-[#5B45E7]/25'
+                              : 'bg-[#F0EDFF] text-[#5B45E7] hover:bg-[#EAE5FF]'
                           }`}
                         >
                           {isSelected && isSubmitting ? (
@@ -545,13 +545,13 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
               </div>
 
               <div className="pt-1 space-y-2 text-center">
-                <button type="button" onClick={goToSignup} className="w-full py-2.5 rounded-2xl text-xs font-black text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100 flex items-center justify-center gap-1.5">
+                <button type="button" onClick={goToSignup} className="w-full py-2.5 rounded-2xl text-xs font-black text-[#5B45E7] bg-[#F0EDFF] hover:bg-[#EAE5FF] flex items-center justify-center gap-1.5">
                   <Plus className="w-4 h-4" /> {t('auth.createNewAccount')}
                 </button>
-                <button type="button" onClick={goToSignIn} className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-800">
+                <button type="button" onClick={goToSignIn} className="w-full py-2 text-xs font-bold text-[#697386] hover:text-[#17182B]">
                   {t('auth.useDifferentPhone')}
                 </button>
-                <button type="button" onClick={goToChoice} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-700">
+                <button type="button" onClick={goToChoice} className="w-full py-2 text-xs font-bold text-[#697386] hover:text-[#17182B]">
                   {t('auth.back')}
                 </button>
               </div>
@@ -568,11 +568,11 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
             >
               <div className="space-y-3.5">
                 <div className="text-center pb-1">
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#F0EDFF] border border-[#E8E5F0] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#5B45E7] mb-3">
                     {mode === 'login' ? <LockKeyhole className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                     {mode === 'login' ? t('auth.registeredUser') : t('auth.createAccount')}
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
+                  <p className="text-xs text-[#697386] leading-relaxed">
                     {mode === 'login'
                       ? 'Enter your registered phone number. OTP verification is coming next.'
                       : 'Create an account to preserve your wardrobe, preferences, and profile.'}
@@ -582,9 +582,9 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                 {mode === 'signup' && (
               <>
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Full Name</label>
+                  <label className="text-[10px] font-black text-[#697386] uppercase tracking-widest block ml-1 leading-none">Full Name</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#697386]">
                       <User className="w-4.5 h-4.5" />
                     </div>
                     <input
@@ -592,16 +592,16 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                       placeholder="Arjun Mehta"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                      className="w-full pl-10 pr-4 py-3 bg-[#F4F1FF]/70 border border-[#E8E5F0] rounded-xl text-xs font-semibold text-[#17182B] placeholder-[#9AA3B5] focus:outline-none focus:border-[#5B45E7] focus:bg-white focus:ring-1 focus:ring-[#5B45E7] transition-all shadow-sm"
                       required={mode === 'signup'}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Email Address</label>
+                  <label className="text-[10px] font-black text-[#697386] uppercase tracking-widest block ml-1 leading-none">Email Address</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#697386]">
                       <ShieldCheck className="w-4.5 h-4.5" />
                     </div>
                     <input
@@ -609,27 +609,27 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                      className="w-full pl-10 pr-4 py-3 bg-[#F4F1FF]/70 border border-[#E8E5F0] rounded-xl text-xs font-semibold text-[#17182B] placeholder-[#9AA3B5] focus:outline-none focus:border-[#5B45E7] focus:bg-white focus:ring-1 focus:ring-[#5B45E7] transition-all shadow-sm"
                       required={mode === 'signup'}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">Address</label>
+                  <label className="text-[10px] font-black text-[#697386] uppercase tracking-widest block ml-1 leading-none">Address</label>
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="Street, locality, city"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      className="w-full pl-3 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                      className="w-full pl-3 pr-4 py-3 bg-[#F4F1FF]/70 border border-[#E8E5F0] rounded-xl text-xs font-semibold text-[#17182B] placeholder-[#9AA3B5] focus:outline-none focus:border-[#5B45E7] focus:bg-white focus:ring-1 focus:ring-[#5B45E7] transition-all shadow-sm"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">PIN Code</label>
+                  <label className="text-[10px] font-black text-[#697386] uppercase tracking-widest block ml-1 leading-none">PIN Code</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -637,7 +637,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                       maxLength={6}
                       value={pinCode}
                       onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                      className="w-full pl-3 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                      className="w-full pl-3 pr-4 py-3 bg-[#F4F1FF]/70 border border-[#E8E5F0] rounded-xl text-xs font-semibold text-[#17182B] placeholder-[#9AA3B5] focus:outline-none focus:border-[#5B45E7] focus:bg-white focus:ring-1 focus:ring-[#5B45E7] transition-all shadow-sm"
                     />
                   </div>
                 </div>
@@ -645,28 +645,28 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                 )}
 
                 <div className="space-y-1 text-left">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1 leading-none">{t('auth.phoneNumber')}</label>
+              <label className="text-[10px] font-black text-[#697386] uppercase tracking-widest block ml-1 leading-none">{t('auth.phoneNumber')}</label>
               <div className="flex gap-2">
                 {/* Country Selector Dropdown */}
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                    className="h-[42px] px-3 bg-slate-50/80 border border-slate-200 rounded-xl font-semibold text-xs flex items-center gap-2 hover:bg-white hover:border-indigo-600 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm whitespace-nowrap"
+                    className="h-[42px] px-3 bg-[#F4F1FF]/70 border border-[#E8E5F0] rounded-xl font-semibold text-xs flex items-center gap-2 hover:bg-white hover:border-[#5B45E7] focus:outline-none focus:border-[#5B45E7] focus:bg-white focus:ring-1 focus:ring-[#5B45E7] transition-all shadow-sm whitespace-nowrap"
                   >
                     <span className="text-base">{selectedCountry.flag}</span>
-                    <span className="text-slate-800">{selectedCountry.dialCode}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-[#17182B]">{selectedCountry.dialCode}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#697386]" />
                   </button>
 
                   {/* Country Dropdown Menu */}
                   {isCountryDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-64 max-h-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-y-auto">
-                      <div className="sticky top-0 p-2 bg-white border-b border-slate-100">
+                    <div className="absolute top-full left-0 mt-2 w-64 max-h-64 bg-white border border-[#E8E5F0] rounded-xl shadow-lg z-50 overflow-y-auto">
+                      <div className="sticky top-0 p-2 bg-white border-b border-[#E8E5F0]">
                         <input
                           type="text"
                           placeholder="Search country..."
-                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                          className="w-full px-3 py-2 text-xs border border-[#E8E5F0] rounded-lg focus:outline-none focus:border-[#5B45E7] focus:ring-1 focus:ring-[#5B45E7]"
                           onChange={(e) => {
                             // Could be used for filtering countries
                           }}
@@ -680,17 +680,17 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                             setSelectedCountry(country);
                             setIsCountryDropdownOpen(false);
                           }}
-                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 hover:bg-indigo-50 transition-colors ${
-                            selectedCountry.code === country.code ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center gap-2 hover:bg-[#F0EDFF] transition-colors ${
+                            selectedCountry.code === country.code ? 'bg-[#F0EDFF] text-[#5B45E7]' : 'text-[#17182B]'
                           }`}
                         >
                           <span className="text-base w-6">{country.flag}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-slate-900 truncate">{country.name}</div>
-                            <div className="text-slate-400 text-[10px]">{country.dialCode}</div>
+                            <div className="font-semibold text-[#17182B] truncate">{country.name}</div>
+                            <div className="text-[#697386] text-[10px]">{country.dialCode}</div>
                           </div>
                           {selectedCountry.code === country.code && (
-                            <Check className="w-4 h-4 text-indigo-600 shrink-0" />
+                            <Check className="w-4 h-4 text-[#5B45E7] shrink-0" />
                           )}
                         </button>
                       ))}
@@ -700,7 +700,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
 
                 {/* Phone Number Input */}
                 <div className="relative flex-1">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#697386]">
                     <Phone className="w-4.5 h-4.5" />
                   </div>
                   <input
@@ -708,12 +708,12 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                     placeholder="9876543210"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(normalizePhoneNumber(e.target.value))}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all shadow-sm"
+                    className="w-full pl-10 pr-4 py-3 bg-[#F4F1FF]/70 border border-[#E8E5F0] rounded-xl text-xs font-semibold text-[#17182B] placeholder-[#9AA3B5] focus:outline-none focus:border-[#5B45E7] focus:bg-white focus:ring-1 focus:ring-[#5B45E7] transition-all shadow-sm"
                     required
                   />
                 </div>
               </div>
-                  <span className="text-[9px] text-slate-400 block mt-1 ml-1 leading-tight">
+                  <span className="text-[9px] text-[#697386] block mt-1 ml-1 leading-tight">
                     {mode === 'login'
                       ? 'Only registered phone numbers can continue.'
                       : 'Use a valid phone number to register and continue.'}
@@ -751,7 +751,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#4F46E5] to-[#2563EB] text-white text-xs font-bold shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer disabled:opacity-70 active:scale-[0.98]"
+                  className="w-full py-3 px-4 rounded-2xl bg-[#5B45E7] hover:bg-[#4935CC] text-white text-xs font-bold shadow-lg shadow-[#5B45E7]/25 flex items-center justify-center gap-1.5 transition-all outline-none focus:ring-2 focus:ring-[#5B45E7]/40 cursor-pointer disabled:opacity-70 active:scale-[0.98]"
                 >
                   {isSubmitting ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -761,10 +761,10 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                     </>
                   )}
                 </button>
-                <button type="button" onClick={goToChoice} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-700">
+                <button type="button" onClick={goToChoice} className="w-full py-2 text-xs font-bold text-[#697386] hover:text-[#17182B]">
                   {t('auth.back')}
                 </button>
-                <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-400 font-mono tracking-wide leading-none uppercase">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-[#697386] font-mono tracking-wide leading-none uppercase">
                   <ShieldCheck className="w-4.5 h-4.5 text-emerald-500 leading-none" /> Guest and registered flows separated
                 </div>
               </div>

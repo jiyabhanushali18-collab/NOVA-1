@@ -25,17 +25,17 @@ interface SizeChartEntry {
 const iconClass = 'h-8 w-8 stroke-[1.9]';
 
 const OptionIcon = ({ name, selected, muted = false }: { name: IconName; selected?: boolean; muted?: boolean }) => {
-  const className = `${iconClass} ${selected ? 'text-white' : muted ? 'text-slate-300' : 'text-slate-700'}`;
+  const className = `${iconClass} ${selected ? 'text-white' : muted ? 'text-[#9AA3B5]' : 'text-[#5B45E7]'}`;
 
   if (name === 'briefcase') return <BriefcaseBusiness className={className} />;
-  if (name === 'shoe') return <span className={`material-symbols-outlined text-[36px] leading-none ${selected ? 'text-white' : 'text-slate-700'}`}>footprint</span>;
-  if (name === 'minimal') return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-white' : 'text-slate-700'}`}>contrast</span>;
+  if (name === 'shoe') return <span className={`material-symbols-outlined text-[36px] leading-none ${selected ? 'text-white' : 'text-[#5B45E7]'}`}>footprint</span>;
+  if (name === 'minimal') return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-white' : 'text-[#5B45E7]'}`}>contrast</span>;
   if (name === 'shirt') return <Shirt className={className} />;
-  if (name === 'backpack') return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-white' : 'text-slate-700'}`}>backpack</span>;
-  if (name === 'compress') return <span className={`material-symbols-outlined text-[38px] leading-none ${muted ? 'text-slate-300' : 'text-slate-700'}`}>compress</span>;
-  if (name === 'target') return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-indigo-600' : 'text-slate-700'}`}>select_check_box</span>;
+  if (name === 'backpack') return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-white' : 'text-[#5B45E7]'}`}>backpack</span>;
+  if (name === 'compress') return <span className={`material-symbols-outlined text-[38px] leading-none ${muted ? 'text-[#9AA3B5]' : 'text-[#5B45E7]'}`}>compress</span>;
+  if (name === 'target') return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-[#5B45E7]' : 'text-[#5B45E7]'}`}>select_check_box</span>;
   if (name === 'waves') return <Waves className={className} />;
-  return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-indigo-600' : 'text-slate-700'}`}>weekend</span>;
+  return <span className={`material-symbols-outlined text-[38px] leading-none ${selected ? 'text-[#5B45E7]' : 'text-[#5B45E7]'}`}>weekend</span>;
 };
 
 const styleOptions = [
@@ -147,23 +147,23 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f3ff] px-3 py-3 text-slate-900">
-      <div className="mx-auto flex min-h-[calc(100vh-24px)] w-full max-w-[860px] flex-col overflow-hidden rounded-[22px] border border-white bg-white px-5 py-5 shadow-[0_24px_70px_rgba(74,58,130,0.14)] sm:px-8 sm:py-8">
+    <div className="min-h-screen bg-[#F4F1FF] nova-page-wash px-3 py-3 text-[#17182B]">
+      <div className="mx-auto flex min-h-[calc(100vh-24px)] w-full max-w-[860px] flex-col overflow-hidden rounded-[22px] border border-[#E8E5F0] bg-white px-5 py-5 shadow-[0_24px_70px_rgba(91,69,231,0.08)] sm:px-8 sm:py-8">
         <header className="mb-7">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Sparkles className="h-10 w-10 fill-violet-500 text-violet-500" />
-              <span className="text-[34px] font-black leading-none tracking-[0.03em] text-violet-600 sm:text-[42px]">NOVA</span>
+              <Sparkles className="h-10 w-10 fill-[#5B45E7] text-[#5B45E7]" />
+              <span className="text-[34px] font-black leading-none tracking-[0.03em] text-[#5B45E7] sm:text-[42px]">NOVA</span>
             </div>
-            <h1 className="hidden text-lg font-extrabold text-slate-950 sm:block">Profile Customization</h1>
-            <span className="shrink-0 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-extrabold text-violet-700 shadow-sm">
+            <h1 className="hidden text-lg font-extrabold text-[#17182B] sm:block">Profile Customization</h1>
+            <span className="shrink-0 rounded-2xl border border-[#E8E5F0] bg-[#F0EDFF] px-4 py-3 text-sm font-extrabold text-[#5B45E7] shadow-sm">
               Step {step} of 2
             </span>
           </div>
-          <h1 className="mt-5 text-center text-base font-extrabold text-slate-950 sm:hidden">Profile Customization</h1>
-          <div className="mt-8 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <h1 className="mt-5 text-center text-base font-extrabold text-[#17182B] sm:hidden">Profile Customization</h1>
+          <div className="mt-8 h-2 w-full overflow-hidden rounded-full bg-[#EAE5FF]">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-500 shadow-[0_2px_10px_rgba(124,58,237,0.45)]"
+              className="h-full rounded-full bg-[#5B45E7] shadow-[0_2px_10px_rgba(91,69,231,0.35)]"
               animate={{ width: step === 1 ? '42%' : '100%' }}
               transition={{ duration: 0.35, ease: 'easeInOut' }}
             />
@@ -180,11 +180,11 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               className="flex flex-1 flex-col"
             >
               <section className="mb-7">
-                <h2 className="text-[27px] font-black leading-tight tracking-[-0.01em] text-slate-950 sm:text-[34px]">
+                <h2 className="text-[27px] font-black leading-tight tracking-[-0.01em] text-[#17182B] sm:text-[34px]">
                   Let's Define Your Style Signature <span aria-hidden="true">👋</span>
                 </h2>
-                <p className="mt-3 max-w-[520px] text-[17px] font-medium leading-8 text-slate-500 sm:text-[20px]">
-                  Hey <span className="font-black text-indigo-600">{displayName}</span>! Help NOVA customize style matchmaking coordinates just for you.
+                <p className="mt-3 max-w-[520px] text-[17px] font-medium leading-8 text-[#697386] sm:text-[20px]">
+                  Hey <span className="font-black text-[#5B45E7]">{displayName}</span>! Help NOVA customize style matchmaking coordinates just for you.
                 </p>
               </section>
 
@@ -200,17 +200,17 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                         onClick={() => setSelectedStyle(option.name)}
                         className={`relative flex min-h-[118px] items-center gap-5 rounded-[16px] border p-5 text-left transition-all sm:col-span-2 ${index > 2 ? 'sm:col-span-3' : ''} ${
                           selected
-                            ? 'border-transparent bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-[0_16px_30px_rgba(99,65,238,0.24)]'
-                            : 'border-slate-200 bg-white text-slate-950 shadow-sm hover:border-violet-200 hover:shadow-md'
+                            ? 'border-transparent bg-[#5B45E7] text-white shadow-[0_16px_30px_rgba(91,69,231,0.22)]'
+                            : 'border-[#E8E5F0] bg-white text-[#17182B] shadow-sm hover:border-[#5B45E7]/35 hover:shadow-md'
                         }`}
                       >
                         <OptionIcon name={option.icon} selected={selected} />
                         <span className="min-w-0">
-                          <span className={`block text-lg font-black ${selected ? 'text-white' : 'text-slate-950'}`}>{option.name}</span>
-                          <span className={`mt-2 block text-[13px] font-semibold leading-5 ${selected ? 'text-violet-100' : 'text-slate-500'}`}>{option.desc}</span>
+                          <span className={`block text-lg font-black ${selected ? 'text-white' : 'text-[#17182B]'}`}>{option.name}</span>
+                          <span className={`mt-2 block text-[13px] font-semibold leading-5 ${selected ? 'text-[#EAE5FF]' : 'text-[#697386]'}`}>{option.desc}</span>
                         </span>
                         {selected && (
-                          <span className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white text-violet-600">
+                          <span className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white text-[#5B45E7]">
                             <Check className="h-5 w-5 stroke-[3]" />
                           </span>
                         )}
@@ -219,7 +219,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                   })}
                 </div>
                 <Notice>
-                  <Sparkles className="h-5 w-5 shrink-0 text-violet-600" />
+                  <Sparkles className="h-5 w-5 shrink-0 text-[#5B45E7]" />
                   <span><b>Suggestion for you:</b> Based on {selectedStyle}, we recommend a <b>Regular</b> fit for the best look.</span>
                 </Notice>
               </section>
@@ -238,7 +238,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Notice className="min-h-[108px]">
-                    <ShieldCheck className="h-8 w-8 shrink-0 text-violet-400" />
+                    <ShieldCheck className="h-8 w-8 shrink-0 text-[#5B45E7]" />
                     <span><b>Oversized isn't ideal for {selectedStyle} styles. Regular fit</b> gives you the best balance of comfort and a polished look.</span>
                   </Notice>
                   <FitCard
@@ -261,8 +261,8 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                         onClick={() => setSelectedColors(option.value)}
                         className={`relative flex min-h-[88px] items-center justify-between gap-4 rounded-[14px] border p-5 text-left transition-all ${
                           selected
-                            ? 'border-violet-600 bg-violet-50/40 shadow-[0_10px_24px_rgba(109,40,217,0.10)]'
-                            : 'border-slate-200 bg-white shadow-sm hover:border-violet-200'
+                            ? 'border-[#5B45E7] bg-[#F0EDFF]/60 shadow-[0_10px_24px_rgba(91,69,231,0.10)]'
+                            : 'border-[#E8E5F0] bg-white shadow-sm hover:border-[#5B45E7]/35'
                         }`}
                       >
                         <span className="min-w-0">
@@ -271,11 +271,11 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                               <span key={color} className="h-6 w-6 rounded-full border border-white shadow-sm" style={{ backgroundColor: color }} />
                             ))}
                           </span>
-                          <span className="block text-sm font-black text-slate-950">{option.name}</span>
-                          <span className="mt-2 block text-[13px] font-semibold text-slate-500">{option.desc}</span>
+                          <span className="block text-sm font-black text-[#17182B]">{option.name}</span>
+                          <span className="mt-2 block text-[13px] font-semibold text-[#697386]">{option.desc}</span>
                         </span>
                         {selected && (
-                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-violet-600 text-white">
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#5B45E7] text-white">
                             <Check className="h-5 w-5 stroke-[3]" />
                           </span>
                         )}
@@ -290,7 +290,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                   <button
                     type="button"
                     onClick={() => setStep(2)}
-                    className="flex h-14 w-full items-center justify-center gap-4 rounded-[12px] bg-gradient-to-r from-indigo-600 to-violet-700 text-base font-black text-white shadow-[0_18px_30px_rgba(99,65,238,0.24)] transition-transform active:scale-[0.99]"
+                    className="flex h-14 w-full items-center justify-center gap-4 rounded-[12px] bg-[#5B45E7] hover:bg-[#4935CC] text-base font-black text-white shadow-[0_18px_30px_rgba(91,69,231,0.22)] transition-transform active:scale-[0.99]"
                   >
                     Continue to Body Measurements
                     <ArrowRight className="h-7 w-7" />
@@ -298,13 +298,13 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                   <button
                     type="button"
                     onClick={handleFinish}
-                    className="flex h-14 w-full items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-slate-100 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-200"
+                    className="flex h-14 w-full items-center justify-center gap-2 rounded-[12px] border border-[#E8E5F0] bg-[#F4F1FF] text-sm font-black text-[#697386] shadow-sm hover:bg-[#EAE5FF] hover:text-[#17182B]"
                   >
                     Skip measurements and enter NOVA
                   </button>
                 </div>
-                <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
-                  <ShieldCheck className="h-5 w-5" />
+                <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-[#697386]">
+                  <ShieldCheck className="h-5 w-5 text-[#5B45E7]" />
                   Your data is private and secure. Only used to personalize your experience.
                 </p>
               </footer>
@@ -318,16 +318,16 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
               className="flex flex-1 flex-col"
             >
               <section className="mb-8">
-                <h2 className="text-[28px] font-black leading-tight text-slate-950 sm:text-[34px]">Set Your Smart Fit Metrics</h2>
-                <p className="mt-3 max-w-[560px] text-[17px] font-medium leading-8 text-slate-500">
+                <h2 className="text-[28px] font-black leading-tight text-[#17182B] sm:text-[34px]">Set Your Smart Fit Metrics</h2>
+                <p className="mt-3 max-w-[560px] text-[17px] font-medium leading-8 text-[#697386]">
                   Choose your usual size and NOVA will estimate height, waist, and inseam from Indian clothing size charts.
                 </p>
               </section>
 
-              <div className="mb-5 rounded-[18px] border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-5 rounded-[18px] border border-[#E8E5F0] bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <SectionTitle number="2" title="Select your usual size" subtitle="Auto-fill measurements from the chart, then adjust below." info />
-                  <div className="grid grid-cols-2 gap-2 rounded-[14px] bg-slate-100 p-1">
+                  <div className="grid grid-cols-2 gap-2 rounded-[14px] bg-[#F4F1FF] border border-[#E8E5F0] p-1">
                     {(['Women', 'Men'] as Gender[]).map((gender) => {
                       const selected = selectedGender === gender;
                       return (
@@ -336,7 +336,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                           type="button"
                           onClick={() => handleGenderChange(gender)}
                           className={`flex h-11 items-center justify-center gap-2 rounded-[10px] px-4 text-sm font-black transition-all ${
-                            selected ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                            selected ? 'bg-white text-[#5B45E7] shadow-sm' : 'text-[#697386] hover:text-[#17182B]'
                           }`}
                         >
                           {gender === 'Women' ? <Venus className="h-4 w-4" /> : <Mars className="h-4 w-4" />}
@@ -359,10 +359,10 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                         onClick={() => entry && applySizeEntry(entry)}
                         className={`relative h-16 rounded-[12px] border text-base font-black transition-all ${
                           selected
-                            ? 'border-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-[0_12px_24px_rgba(109,40,217,0.25)]'
+                            ? 'border-transparent bg-[#5B45E7] text-white shadow-[0_12px_24px_rgba(91,69,231,0.25)]'
                             : entry
-                              ? 'border-slate-200 bg-white text-slate-950 shadow-sm hover:border-violet-300'
-                              : 'border-slate-100 bg-slate-50 text-slate-300'
+                              ? 'border-[#E8E5F0] bg-white text-[#17182B] shadow-sm hover:border-[#5B45E7]/40'
+                              : 'border-[#E8E5F0] bg-[#F4F1FF] text-[#9AA3B5]'
                         }`}
                       >
                         {size}
@@ -377,14 +377,14 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                 </div>
 
                 <Notice className="mt-5">
-                  <Sparkles className="h-5 w-5 shrink-0 text-violet-600" />
+                  <Sparkles className="h-5 w-5 shrink-0 text-[#5B45E7]" />
                   <span>
                     <b>Auto-filled for {selectedGender} size {selectedSize}.</b> Height {selectedEntry.heightCm[0]}-{selectedEntry.heightCm[1]} cm, waist {selectedEntry.waistIn[0]}-{selectedEntry.waistIn[1]} inches, inseam {selectedEntry.inseamIn} inches.
                   </span>
                   <button
                     type="button"
                     onClick={() => applySizeEntry(selectedEntry)}
-                    className="ml-auto hidden shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-violet-700 shadow-sm sm:flex"
+                    className="ml-auto hidden shrink-0 items-center gap-2 rounded-full bg-white border border-[#E8E5F0] px-4 py-2 text-xs font-black text-[#5B45E7] shadow-sm sm:flex"
                   >
                     <RefreshCw className="h-4 w-4" />
                     Reset
@@ -409,7 +409,7 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="flex h-14 w-full sm:w-auto flex-1 items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white text-sm font-black text-slate-600 shadow-sm"
+                    className="flex h-14 w-full sm:w-auto flex-1 items-center justify-center gap-2 rounded-[12px] border border-[#E8E5F0] bg-white text-sm font-black text-[#697386] shadow-sm hover:text-[#17182B]"
                   >
                     <ArrowLeft className="h-5 w-5" />
                     Back
@@ -418,22 +418,22 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
                     <button
                       type="button"
                       onClick={handleFinish}
-                      className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-slate-200 bg-slate-100 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-200"
+                      className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-[#E8E5F0] bg-[#F4F1FF] text-sm font-black text-[#697386] shadow-sm hover:bg-[#EAE5FF] hover:text-[#17182B]"
                     >
                       Skip & Enter NOVA
                     </button>
                     <button
                       type="button"
                       onClick={handleFinish}
-                      className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] bg-gradient-to-r from-indigo-600 to-violet-700 text-sm font-black text-white shadow-[0_18px_30px_rgba(99,65,238,0.24)]"
+                      className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] bg-[#5B45E7] hover:bg-[#4935CC] text-sm font-black text-white shadow-[0_18px_30px_rgba(91,69,231,0.22)]"
                     >
                       Save & Enter NOVA
                       <ArrowRight className="h-6 w-6" />
                     </button>
                   </div>
                 </div>
-                <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
-                  <ShieldCheck className="h-5 w-5" />
+                <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-[#697386]">
+                  <ShieldCheck className="h-5 w-5 text-[#5B45E7]" />
                   Your data is private and secure. Only used to personalize your experience.
                 </p>
               </footer>
@@ -447,12 +447,12 @@ export const SetupPreferencesView: React.FC<SetupPreferencesViewProps> = ({ user
 
 const SectionTitle = ({ number, title, subtitle, info }: { number: string; title: string; subtitle: string; info?: boolean }) => (
   <div className="flex items-start gap-4">
-    <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-700 text-sm font-black text-white shadow-[0_8px_16px_rgba(99,65,238,0.24)]">
+    <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#5B45E7] text-sm font-black text-white shadow-[0_8px_16px_rgba(91,69,231,0.22)]">
       {number}
     </span>
     <span>
-      <span className="block text-base font-black uppercase tracking-[0.02em] text-slate-950">{title}</span>
-      <span className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-500">
+      <span className="block text-base font-black uppercase tracking-[0.02em] text-[#17182B]">{title}</span>
+      <span className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#697386]">
         {subtitle}
         {info && <Info className="h-4 w-4" />}
       </span>
@@ -461,7 +461,7 @@ const SectionTitle = ({ number, title, subtitle, info }: { number: string; title
 );
 
 const Notice = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`flex items-center gap-4 rounded-[14px] border border-violet-100 bg-violet-50/70 px-5 py-4 text-sm font-semibold leading-6 text-slate-500 ${className}`}>
+  <div className={`flex items-center gap-4 rounded-[14px] border border-[#E8E5F0] bg-[#F0EDFF]/80 px-5 py-4 text-sm font-semibold leading-6 text-[#697386] ${className}`}>
     {children}
   </div>
 );
@@ -483,25 +483,25 @@ const FitCard = ({
       disabled={option.locked}
       className={`relative flex min-h-[136px] items-center gap-5 rounded-[14px] border p-5 text-left transition-all ${
         selected
-          ? 'border-violet-600 bg-white shadow-[0_10px_24px_rgba(109,40,217,0.12)]'
+          ? 'border-[#5B45E7] bg-white shadow-[0_10px_24px_rgba(91,69,231,0.12)]'
           : muted
-            ? 'border-slate-200 bg-white opacity-60'
-            : 'border-slate-200 bg-white shadow-sm hover:border-violet-200'
+            ? 'border-[#E8E5F0] bg-white opacity-60'
+            : 'border-[#E8E5F0] bg-white shadow-sm hover:border-[#5B45E7]/35'
       }`}
     >
       <OptionIcon name={option.icon} selected={selected} muted={muted} />
       <span className="min-w-0">
-        {option.recommended && <span className="mb-1 inline-flex rounded-full border border-violet-200 px-2 py-0.5 text-[10px] font-black text-violet-600">Recommended</span>}
-        <span className={`block text-lg font-black ${muted ? 'text-slate-400' : selected ? 'text-violet-700' : 'text-slate-950'}`}>{option.name}</span>
-        <span className={`mt-2 block text-sm font-semibold leading-6 ${muted ? 'text-slate-400' : 'text-slate-500'}`}>{option.desc}</span>
+        {option.recommended && <span className="mb-1 inline-flex rounded-full border border-[#E8E5F0] bg-[#F0EDFF] px-2 py-0.5 text-[10px] font-black text-[#5B45E7]">Recommended</span>}
+        <span className={`block text-lg font-black ${muted ? 'text-[#9AA3B5]' : selected ? 'text-[#5B45E7]' : 'text-[#17182B]'}`}>{option.name}</span>
+        <span className={`mt-2 block text-sm font-semibold leading-6 ${muted ? 'text-[#9AA3B5]' : 'text-[#697386]'}`}>{option.desc}</span>
       </span>
       {selected && (
-        <span className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-violet-600 text-white">
+        <span className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-[#5B45E7] text-white">
           <Check className="h-5 w-5 stroke-[3]" />
         </span>
       )}
       {option.locked && (
-        <span className="absolute right-5 top-5 text-slate-500">
+        <span className="absolute right-5 top-5 text-[#9AA3B5]">
           <Lock className="h-5 w-5" />
         </span>
       )}
@@ -518,22 +518,22 @@ const SizeChartPreview = ({
   entries: SizeChartEntry[];
   selectedSize: SizeKey;
 }) => (
-  <div className="mt-5 overflow-hidden rounded-[16px] border border-slate-200 bg-slate-950 text-white shadow-[0_18px_34px_rgba(15,23,42,0.14)]">
-    <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+  <div className="mt-5 overflow-hidden rounded-[16px] border border-[#E8E5F0] bg-white text-[#17182B] shadow-sm">
+    <div className="flex items-center justify-between gap-3 border-b border-[#E8E5F0] bg-[#F4F1FF] px-4 py-4 sm:px-5">
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-violet-500/20 text-violet-200">
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F0EDFF] text-[#5B45E7]">
           <Ruler className="h-5 w-5" />
         </span>
         <span>
-          <span className="block text-sm font-black">{gender} Size Chart</span>
-          <span className="mt-1 block text-xs font-semibold text-slate-400">Height, waist, and inseam reference</span>
+          <span className="block text-sm font-black text-[#17182B]">{gender} Size Chart</span>
+          <span className="mt-1 block text-xs font-semibold text-[#697386]">Height, waist, and inseam reference</span>
         </span>
       </div>
-      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-violet-700">Size {selectedSize}</span>
+      <span className="rounded-full bg-[#5B45E7] px-3 py-1.5 text-xs font-black text-white">Size {selectedSize}</span>
     </div>
     <div className="overflow-x-auto">
       <table className="w-full min-w-[620px] text-left text-sm">
-        <thead className="text-xs uppercase text-slate-400">
+        <thead className="text-xs uppercase text-[#697386] bg-[#F4F1FF]/50">
           <tr>
             <th className="px-4 py-3 font-black sm:px-5">Size</th>
             <th className="px-4 py-3 font-black">Height</th>
@@ -542,11 +542,11 @@ const SizeChartPreview = ({
             <th className="px-4 py-3 font-black">Inseam</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/10">
+        <tbody className="divide-y divide-[#E8E5F0]">
           {entries.map((entry) => {
             const selected = entry.size === selectedSize;
             return (
-              <tr key={entry.size} className={selected ? 'bg-violet-500/18 text-white' : 'text-slate-300'}>
+              <tr key={entry.size} className={selected ? 'bg-[#EAE5FF] text-[#5B45E7]' : 'text-[#697386]'}>
                 <td className="px-4 py-3 font-black sm:px-5">{entry.size}</td>
                 <td className="px-4 py-3 font-semibold">{entry.heightFt}</td>
                 <td className="px-4 py-3 font-semibold">{entry.heightCm[0]} - {entry.heightCm[1]}</td>
@@ -578,25 +578,25 @@ const RangeControl = ({
   unit: string;
   onChange: (value: number) => void;
 }) => (
-  <div className="rounded-[16px] border border-slate-200 bg-white p-5 shadow-sm">
+  <div className="rounded-[16px] border border-[#E8E5F0] bg-white p-5 shadow-sm">
     <div className="mb-4 flex items-center justify-between">
-      <span className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.06em] text-slate-500">
-        <span className="material-symbols-outlined text-violet-600">{icon}</span>
+      <span className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.06em] text-[#697386]">
+        <span className="material-symbols-outlined text-[#5B45E7]">{icon}</span>
         {label}
       </span>
-      <span className="rounded-full bg-violet-50 px-4 py-2 text-sm font-black text-violet-700">{value} {unit}</span>
+      <span className="rounded-full bg-[#F0EDFF] px-4 py-2 text-sm font-black text-[#5B45E7]">{value} {unit}</span>
     </div>
     <div className="flex items-center gap-4">
-      <span className="text-xs font-black text-slate-400">{min}</span>
+      <span className="text-xs font-black text-[#697386]">{min}</span>
       <input
         type="range"
         min={min}
         max={max}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="h-2 flex-1 accent-violet-600"
+        className="h-2 flex-1 accent-[#5B45E7]"
       />
-      <span className="text-xs font-black text-slate-400">{max}</span>
+      <span className="text-xs font-black text-[#697386]">{max}</span>
     </div>
   </div>
 );
@@ -616,21 +616,21 @@ const Stepper = ({
   unit: string;
   onChange: (value: number) => void;
 }) => (
-  <div className="rounded-[16px] border border-slate-200 bg-white p-5 text-center shadow-sm">
-    <span className="block text-xs font-black uppercase tracking-[0.08em] text-slate-400">{label}</span>
-    <span className="mt-2 block text-2xl font-black text-slate-950">{value} <span className="text-sm text-slate-400">{unit}</span></span>
+  <div className="rounded-[16px] border border-[#E8E5F0] bg-white p-5 text-center shadow-sm">
+    <span className="block text-xs font-black uppercase tracking-[0.08em] text-[#697386]">{label}</span>
+    <span className="mt-2 block text-2xl font-black text-[#17182B]">{value} <span className="text-sm text-[#697386]">{unit}</span></span>
     <div className="mt-4 flex justify-center gap-3">
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
-        className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-slate-50 text-lg font-black text-slate-600"
+        className="grid h-10 w-10 place-items-center rounded-full border border-[#E8E5F0] bg-[#F4F1FF] text-lg font-black text-[#697386]"
       >
         -
       </button>
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
-        className="grid h-10 w-10 place-items-center rounded-full bg-violet-600 text-lg font-black text-white"
+        className="grid h-10 w-10 place-items-center rounded-full bg-[#5B45E7] text-lg font-black text-white"
       >
         +
       </button>

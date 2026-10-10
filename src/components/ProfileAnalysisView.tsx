@@ -230,21 +230,21 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_18%_14%,rgba(196,181,253,0.45),transparent_28%),radial-gradient(circle_at_84%_20%,rgba(216,180,254,0.32),transparent_30%),linear-gradient(180deg,#ffffff_0%,#f8f5ff_48%,#efe9ff_100%)] px-4 py-5 text-slate-950 [font-family:Poppins,ui-sans-serif,system-ui,sans-serif]">
+    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_18%_14%,rgba(234,229,255,0.65),transparent_28%),radial-gradient(circle_at_84%_20%,rgba(234,229,255,0.5),transparent_30%),linear-gradient(180deg,#F4F1FF_0%,#F4F1FF_48%,#EAE5FF_100%)] px-4 py-5 text-[#17182B] [font-family:Poppins,ui-sans-serif,system-ui,sans-serif]">
       <NeuralField particles={particles} />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[880px] flex-col">
         <header className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 text-lg font-black text-white shadow-[0_14px_34px_rgba(124,58,237,0.28)]">
+            <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[#5B45E7] text-lg font-black text-white shadow-[0_14px_34px_rgba(91,69,231,0.25)]">
               N
             </div>
             <div>
-              <p className="text-lg font-black leading-none tracking-[0.08em] text-violet-700">NOVA</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Optical Vision Assistant</p>
+              <p className="text-lg font-black leading-none tracking-[0.08em] text-[#5B45E7]">NOVA</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#697386]">Optical Vision Assistant</p>
             </div>
           </div>
-          <div className="rounded-full border border-white/70 bg-white/55 px-4 py-2 text-xs font-bold text-violet-700 shadow-[0_12px_32px_rgba(109,40,217,0.12)] backdrop-blur-2xl">
+          <div className="rounded-full border border-[#E8E5F0] bg-white px-4 py-2 text-xs font-bold text-[#5B45E7] shadow-sm">
             AI Profile Lab
           </div>
         </header>
@@ -259,12 +259,12 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               className="flex flex-1 flex-col items-center justify-center text-center"
             >
               <div className="mb-8 max-w-[560px]">
-                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-100 bg-white/55 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 shadow-sm backdrop-blur-2xl">
-                  <Sparkles className="h-4 w-4 fill-violet-500 text-violet-500" />
+                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#E8E5F0] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#5B45E7] shadow-sm">
+                  <Sparkles className="h-4 w-4 fill-[#5B45E7] text-[#5B45E7]" />
                   Personalized AI Analysis
                 </p>
-                <h1 className="text-[34px] font-black leading-tight text-slate-950 sm:text-[48px]">Upload a Selfie for AI Analysis</h1>
-                <p className="mx-auto mt-4 max-w-[500px] text-base font-medium leading-7 text-slate-500">
+                <h1 className="text-[34px] font-black leading-tight text-[#17182B] sm:text-[48px]">Upload a Selfie for AI Analysis</h1>
+                <p className="mx-auto mt-4 max-w-[500px] text-base font-medium leading-7 text-[#697386]">
                   {displayName}, let NOVA understand your features and personalize your experience.
                 </p>
               </div>
@@ -272,12 +272,12 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="group relative grid h-[232px] w-[232px] place-items-center rounded-full border border-white/75 bg-white/50 shadow-[0_30px_90px_rgba(124,58,237,0.22)] backdrop-blur-3xl transition-transform active:scale-[0.98] sm:h-[280px] sm:w-[280px]"
+                className="group relative grid h-[232px] w-[232px] place-items-center rounded-full border border-[#E8E5F0] bg-white shadow-[0_24px_70px_rgba(91,69,231,0.14)] transition-transform active:scale-[0.98] sm:h-[280px] sm:w-[280px]"
                 aria-label="Upload selfie"
               >
-                <span className="absolute inset-[-13px] rounded-full border border-violet-200/50 bg-[conic-gradient(from_120deg,rgba(124,58,237,0.0),rgba(167,139,250,0.85),rgba(236,72,153,0.36),rgba(124,58,237,0.0))] opacity-70 blur-[1px] transition-opacity group-hover:opacity-100" />
-                <span className="absolute inset-4 rounded-full bg-white/80 shadow-inner" />
-                <span className="relative grid h-28 w-28 place-items-center rounded-full bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 text-white shadow-[0_18px_42px_rgba(124,58,237,0.35)]">
+                <span className="absolute inset-[-13px] rounded-full border border-[#E8E5F0] bg-[conic-gradient(from_120deg,rgba(91,69,231,0.0),rgba(91,69,231,0.45),rgba(234,229,255,0.6),rgba(91,69,231,0.0))] opacity-70 blur-[1px] transition-opacity group-hover:opacity-100" />
+                <span className="absolute inset-4 rounded-full bg-[#F4F1FF] shadow-inner" />
+                <span className="relative grid h-28 w-28 place-items-center rounded-full bg-[#5B45E7] text-white shadow-[0_18px_42px_rgba(91,69,231,0.32)]">
                   <Upload className="h-12 w-12" />
                 </span>
               </button>
@@ -286,15 +286,15 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                 <button
                   type="button"
                   onClick={() => cameraInputRef.current?.click()}
-                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-violet-100 bg-white/70 text-sm font-black text-slate-800 shadow-[0_12px_34px_rgba(109,40,217,0.11)] backdrop-blur-2xl"
+                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-[#E8E5F0] bg-white text-sm font-black text-[#17182B] shadow-sm hover:border-[#5B45E7]/35"
                 >
-                  <Camera className="h-5 w-5 text-violet-600" />
+                  <Camera className="h-5 w-5 text-[#5B45E7]" />
                   Camera
                 </button>
                 <button
                   type="button"
                   onClick={() => galleryInputRef.current?.click()}
-                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-indigo-600 to-violet-700 text-sm font-black text-white shadow-[0_16px_36px_rgba(99,65,238,0.25)]"
+                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] bg-[#5B45E7] hover:bg-[#4935CC] text-sm font-black text-white shadow-[0_16px_36px_rgba(91,69,231,0.25)]"
                 >
                   <Images className="h-5 w-5" />
                   Gallery
@@ -313,39 +313,39 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               exit={{ opacity: 0, scale: 0.98 }}
               className="flex flex-1 flex-col items-center justify-center text-center"
             >
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-violet-100 bg-white/70 px-5 py-3 text-sm font-black text-violet-700 shadow-[0_16px_42px_rgba(109,40,217,0.14)] backdrop-blur-2xl">
-                <WandSparkles className="h-5 w-5 fill-violet-500 text-violet-600" />
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#E8E5F0] bg-white px-5 py-3 text-sm font-black text-[#5B45E7] shadow-sm">
+                <WandSparkles className="h-5 w-5 fill-[#5B45E7] text-[#5B45E7]" />
                 Analyzing Your Features
               </div>
 
               <div className="relative mb-8 h-[252px] w-[252px] sm:h-[300px] sm:w-[300px]">
                 <motion.div
-                  className="absolute inset-[-12px] rounded-full bg-[conic-gradient(from_0deg,rgba(99,102,241,0),rgba(124,58,237,0.95),rgba(236,72,153,0.55),rgba(99,102,241,0))]"
+                  className="absolute inset-[-12px] rounded-full bg-[conic-gradient(from_0deg,rgba(91,69,231,0),rgba(91,69,231,0.9),rgba(234,229,255,0.6),rgba(91,69,231,0))]"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
                 />
-                <div className="absolute inset-0 overflow-hidden rounded-full border border-white/80 bg-white/65 p-3 shadow-[0_30px_70px_rgba(109,40,217,0.22)] backdrop-blur-3xl">
+                <div className="absolute inset-0 overflow-hidden rounded-full border border-[#E8E5F0] bg-white p-3 shadow-[0_30px_70px_rgba(91,69,231,0.18)]">
                   <img src={imagePreview || fallbackSelfie} alt="Selfie being analyzed" className="h-full w-full rounded-full object-cover" />
                   <motion.span
-                    className="absolute left-7 right-7 h-[3px] rounded-full bg-white shadow-[0_0_26px_rgba(124,58,237,0.95)]"
+                    className="absolute left-7 right-7 h-[3px] rounded-full bg-white shadow-[0_0_26px_rgba(91,69,231,0.95)]"
                     animate={{ top: ['18%', '82%', '18%'] }}
                     transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                   />
                 </div>
               </div>
 
-              <div className="w-full max-w-[560px] rounded-[18px] border border-white/75 bg-white/58 p-5 text-left shadow-[0_24px_70px_rgba(109,40,217,0.14)] backdrop-blur-3xl">
+              <div className="w-full max-w-[560px] rounded-[18px] border border-[#E8E5F0] bg-white p-5 text-left shadow-sm">
                 <div className="mb-4 flex items-center justify-between gap-4">
-                  <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Estimated time: 5-10 seconds</span>
-                  <span className="text-sm font-black text-violet-700">{progress}%</span>
+                  <span className="text-xs font-black uppercase tracking-[0.16em] text-[#697386]">Estimated time: 5-10 seconds</span>
+                  <span className="text-sm font-black text-[#5B45E7]">{progress}%</span>
                 </div>
-                <div className="mb-5 h-2 overflow-hidden rounded-full bg-violet-100">
-                  <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-500" animate={{ width: `${progress}%` }} />
+                <div className="mb-5 h-2 overflow-hidden rounded-full bg-[#EAE5FF]">
+                  <motion.div className="h-full rounded-full bg-[#5B45E7]" animate={{ width: `${progress}%` }} />
                 </div>
                 <div className="grid gap-2">
                   {scanItems.map((item, index) => (
-                    <div key={item} className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-sm font-bold transition-colors ${index <= activeScanIndex ? 'bg-violet-50 text-violet-800' : 'text-slate-400'}`}>
-                      <span className={`grid h-6 w-6 place-items-center rounded-full ${index <= activeScanIndex ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-300'}`}>
+                    <div key={item} className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-sm font-bold transition-colors ${index <= activeScanIndex ? 'bg-[#F0EDFF] text-[#17182B]' : 'text-[#697386]'}`}>
+                      <span className={`grid h-6 w-6 place-items-center rounded-full ${index <= activeScanIndex ? 'bg-[#5B45E7] text-white' : 'bg-[#F4F1FF] text-[#9AA3B5]'}`}>
                         {index < activeScanIndex ? '✓' : index === activeScanIndex ? '•' : ''}
                       </span>
                       {item}
@@ -365,15 +365,15 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               className="pb-6"
             >
               <div className="mb-7 text-center">
-                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-100 bg-white/62 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-violet-700 shadow-sm backdrop-blur-2xl">
-                  <Sparkles className="h-4 w-4 fill-violet-500 text-violet-500" />
+                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#E8E5F0] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#5B45E7] shadow-sm">
+                  <Sparkles className="h-4 w-4 fill-[#5B45E7] text-[#5B45E7]" />
                   NOVA Analysis Complete
                 </p>
-                <h1 className="text-[30px] font-black leading-tight text-slate-950 sm:text-[44px]">Here is what NOVA got from your selfie</h1>
+                <h1 className="text-[30px] font-black leading-tight text-[#17182B] sm:text-[44px]">Here is what NOVA got from your selfie</h1>
               </div>
 
               <div className="relative mx-auto mb-7 min-h-[410px] max-w-[720px]">
-                <div className="absolute left-1/2 top-1/2 h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/80 bg-white/55 p-3 shadow-[0_30px_80px_rgba(109,40,217,0.2)] backdrop-blur-3xl sm:h-[290px] sm:w-[290px]">
+                <div className="absolute left-1/2 top-1/2 h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#E8E5F0] bg-white p-3 shadow-[0_30px_80px_rgba(91,69,231,0.16)] sm:h-[290px] sm:w-[290px]">
                   <img src={resultProfile.selfieUrl || fallbackSelfie} alt="Analyzed profile" className="h-full w-full rounded-full object-cover" />
                 </div>
                 {floatingTags.map((tag, index) => (
@@ -382,17 +382,17 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.04 * index }}
-                    className={`absolute rounded-full border border-white/70 bg-white/68 px-4 py-3 text-xs font-black text-violet-800 shadow-[0_14px_36px_rgba(109,40,217,0.15)] backdrop-blur-2xl ${tagPosition(index)}`}
+                    className={`absolute rounded-full border border-[#E8E5F0] bg-white px-4 py-3 text-xs font-black text-[#17182B] shadow-sm ${tagPosition(index)}`}
                   >
-                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-violet-600 shadow-[0_0_12px_rgba(124,58,237,0.8)]" />
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#5B45E7]" />
                     {tag}
                   </motion.div>
                 ))}
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-[18px] border border-white/75 bg-white/62 p-5 shadow-[0_22px_60px_rgba(109,40,217,0.12)] backdrop-blur-3xl">
-                  <h2 className="mb-4 text-lg font-black text-slate-950">AI Confidence Score</h2>
+                <div className="rounded-[18px] border border-[#E8E5F0] bg-white p-5 shadow-sm">
+                  <h2 className="mb-4 text-lg font-black text-[#17182B]">AI Confidence Score</h2>
                   {analysisError && (
                     <div className="mb-4 rounded-[14px] border border-rose-100 bg-rose-50/80 p-3 text-xs font-bold leading-5 text-rose-700">
                       {analysisError}
@@ -406,10 +406,10 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {recommendationCards.map((card) => (
-                    <div key={card.title} className="rounded-[16px] border border-white/75 bg-white/60 p-4 shadow-[0_16px_44px_rgba(109,40,217,0.1)] backdrop-blur-3xl">
-                      <span className="material-symbols-outlined mb-3 text-[28px] text-violet-600">{card.icon}</span>
-                      <h3 className="text-sm font-black text-slate-950">{card.title}</h3>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{card.text}</p>
+                    <div key={card.title} className="rounded-[16px] border border-[#E8E5F0] bg-white p-4 shadow-sm">
+                      <span className="material-symbols-outlined mb-3 text-[28px] text-[#5B45E7]">{card.icon}</span>
+                      <h3 className="text-sm font-black text-[#17182B]">{card.title}</h3>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-[#697386]">{card.text}</p>
                     </div>
                   ))}
                 </div>
@@ -419,7 +419,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                 <button
                   type="button"
                   onClick={() => onComplete(resultProfile)}
-                  className="flex h-14 items-center justify-center gap-3 rounded-[14px] bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-sm font-black text-white shadow-[0_18px_42px_rgba(99,65,238,0.25)]"
+                  className="flex h-14 items-center justify-center gap-3 rounded-[14px] bg-[#5B45E7] hover:bg-[#4935CC] text-sm font-black text-white shadow-[0_18px_42px_rgba(91,69,231,0.25)]"
                 >
                   <Sparkles className="h-5 w-5" />
                   Continue to NOVA Profile
@@ -428,7 +428,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                 <button
                   type="button"
                   onClick={handleRetake}
-                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-violet-100 bg-white/70 px-6 text-sm font-black text-violet-700 shadow-sm backdrop-blur-2xl"
+                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-[#E8E5F0] bg-white px-6 text-sm font-black text-[#5B45E7] shadow-sm hover:bg-[#F0EDFF]"
                 >
                   <RefreshCw className="h-5 w-5" />
                   Retake Analysis
@@ -472,17 +472,17 @@ const HiddenInputs = ({
 
 const NeuralField = ({ particles }: { particles: Array<{ id: number; left: string; top: string; size: number; delay: number; duration: number }> }) => (
   <div className="pointer-events-none absolute inset-0 overflow-hidden">
-    <svg className="absolute inset-0 h-full w-full opacity-[0.24]" viewBox="0 0 900 900" preserveAspectRatio="none">
-      <path d="M62 178 C160 88 278 318 376 236 S610 62 780 210" fill="none" stroke="#a78bfa" strokeWidth="1" />
-      <path d="M126 610 C256 454 338 772 502 596 S692 390 838 618" fill="none" stroke="#c084fc" strokeWidth="1" />
-      <path d="M72 420 C218 370 310 472 438 420 S648 260 820 338" fill="none" stroke="#818cf8" strokeWidth="1" />
+    <svg className="absolute inset-0 h-full w-full opacity-[0.22]" viewBox="0 0 900 900" preserveAspectRatio="none">
+      <path d="M62 178 C160 88 278 318 376 236 S610 62 780 210" fill="none" stroke="#5B45E7" strokeWidth="1" />
+      <path d="M126 610 C256 454 338 772 502 596 S692 390 838 618" fill="none" stroke="#5B45E7" strokeWidth="1" />
+      <path d="M72 420 C218 370 310 472 438 420 S648 260 820 338" fill="none" stroke="#5B45E7" strokeWidth="1" />
     </svg>
     {particles.map((particle) => (
       <motion.span
         key={particle.id}
-        className="absolute rounded-full bg-violet-400/70 shadow-[0_0_18px_rgba(167,139,250,0.85)]"
+        className="absolute rounded-full bg-[#5B45E7]/45 shadow-[0_0_12px_rgba(91,69,231,0.45)]"
         style={{ left: particle.left, top: particle.top, width: particle.size, height: particle.size }}
-        animate={{ y: [-8, 12, -8], opacity: [0.25, 0.85, 0.25], scale: [1, 1.5, 1] }}
+        animate={{ y: [-8, 12, -8], opacity: [0.25, 0.75, 0.25], scale: [1, 1.4, 1] }}
         transition={{ duration: particle.duration, delay: particle.delay, repeat: Infinity, ease: 'easeInOut' }}
       />
     ))}
@@ -492,12 +492,12 @@ const NeuralField = ({ particles }: { particles: Array<{ id: number; left: strin
 const ConfidenceRow = ({ label, value }: { label: string; value: number }) => (
   <div className="mb-4 last:mb-0">
     <div className="mb-2 flex items-center justify-between text-sm font-bold">
-      <span className="text-slate-600">{label}</span>
-      <span className="text-violet-700">{value}%</span>
+      <span className="text-[#697386]">{label}</span>
+      <span className="text-[#5B45E7]">{value}%</span>
     </div>
-    <div className="h-2 overflow-hidden rounded-full bg-violet-100">
+    <div className="h-2 overflow-hidden rounded-full bg-[#EAE5FF]">
       <motion.div
-        className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-violet-600"
+        className="h-full rounded-full bg-[#5B45E7]"
         initial={{ width: 0 }}
         animate={{ width: `${value}%` }}
         transition={{ duration: 0.7, ease: 'easeOut' }}

@@ -52,8 +52,8 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
   return (
     <div className="space-y-6 relative">
       {shareStatus && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white px-4.5 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 border border-slate-700/40 backdrop-blur-md animate-bounce max-w-[280px] text-center leading-none">
-          <span className="material-symbols-outlined text-[14px] text-indigo-400">share</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#17182B]/95 text-white px-4.5 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 border border-[#5B45E7]/30 backdrop-blur-md animate-bounce max-w-[280px] text-center leading-none">
+          <span className="material-symbols-outlined text-[14px] text-[#5B45E7]">share</span>
           <span>{shareStatus}</span>
         </div>
       )}
@@ -61,38 +61,38 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
       {/* Upper branding and scan statistics */}
       <section className="flex justify-between items-start pt-2">
         <div className="max-w-[70%]">
-          <h1 className="text-2xl font-bold text-slate-900 leading-tight flex items-center gap-1.5">
-            Scan Your Outfit <span className="material-symbols-outlined text-indigo-600 text-2xl">center_focus_strong</span>
+          <h1 className="text-2xl font-bold text-[#17182B] leading-tight flex items-center gap-1.5">
+            Scan Your Outfit <span className="material-symbols-outlined text-[#5B45E7] text-2xl">center_focus_strong</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#697386] mt-1">
             Scan any full body outfit to analyze color palettes, isolate layers, and find direct purchase links or alternatives.
           </p>
         </div>
         
         {/* Statistics panel */}
-        <div className="bg-white/70 border border-slate-200/60 rounded-xl p-2.5 px-3 flex flex-col items-center justify-center text-center shadow-sm shrink-0 min-w-[75px]">
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-0.5 mb-1">
+        <div className="bg-white border border-[#E8E5F0] rounded-xl p-2.5 px-3 flex flex-col items-center justify-center text-center shadow-sm shrink-0 min-w-[75px]">
+          <span className="text-[8px] font-bold text-[#697386] uppercase tracking-wider flex items-center gap-0.5 mb-1">
             <span className="material-symbols-outlined text-[10px]">history</span> History
           </span>
-          <span className="text-2xl font-extrabold text-indigo-600 leading-none">{scanCount ?? recentScans?.length ?? staticRecentScans.length}</span>
-          <span className="text-[9px] font-bold text-slate-500 mt-0.5">Scans total</span>
+          <span className="text-2xl font-extrabold text-[#5B45E7] leading-none">{scanCount ?? recentScans?.length ?? staticRecentScans.length}</span>
+          <span className="text-[9px] font-bold text-[#697386] mt-0.5">Scans total</span>
         </div>
       </section>
 
       {/* Mode selectors */}
-      <section className="bg-slate-200/50 p-1 rounded-full flex relative">
-        <button className="flex-1 py-2 text-xs font-bold rounded-full bg-indigo-600 text-white shadow-sm flex items-center justify-center gap-1.5 z-10">
+      <section className="bg-[#EAE5FF] p-1 rounded-full flex relative border border-[#E8E5F0]">
+        <button className="flex-1 py-2 text-xs font-bold rounded-full bg-[#5B45E7] text-white shadow-sm flex items-center justify-center gap-1.5 z-10">
           <span className="material-symbols-outlined text-[14px]">camera_alt</span> Live Scan
         </button>
         <button 
           onClick={() => alert('Simulating gallery picture selections.')}
-          className="flex-1 py-2 text-xs font-semibold rounded-full text-slate-600 hover:text-slate-800 flex items-center justify-center gap-1.5"
+          className="flex-1 py-2 text-xs font-semibold rounded-full text-[#697386] hover:text-[#17182B] flex items-center justify-center gap-1.5"
         >
           <span className="material-symbols-outlined text-[14px]">photo_library</span> Photo Scan
         </button>
         <button 
           onClick={() => onNavigate('wardrobe')}
-          className="flex-1 py-2 text-xs font-semibold rounded-full text-slate-600 hover:text-slate-800 flex items-center justify-center gap-1.5"
+          className="flex-1 py-2 text-xs font-semibold rounded-full text-[#697386] hover:text-[#17182B] flex items-center justify-center gap-1.5"
         >
           <span className="material-symbols-outlined text-[14px]">checkroom</span> Wardrobe
         </button>
@@ -101,7 +101,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
       {/* Viewfinder block and Right column advice panel */}
       <section className="flex gap-4">
         {/* Big live scanning camera viewfinder */}
-        <div className="flex-1 relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-950 border border-white/10 shadow-lg">
+        <div className="flex-1 relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-950 border border-[#E8E5F0] shadow-lg">
           <img 
             alt="Live view finder showing model modeling purple hoodie" 
             className="w-full h-full object-cover opacity-90"
@@ -116,7 +116,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
             <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white rounded-br"></div>
           </div>
 
-          <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-400 to-transparent top-1/2 scan-line-animation" />
+          <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#5B45E7] to-transparent top-1/2 scan-line-animation" />
 
           {/* Quick Capture control dials inside the viewfinder */}
           <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-md text-[10px] font-bold text-white px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5 leading-none shadow">
@@ -127,7 +127,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
             onClick={handleShare}
             className="absolute top-3 right-3 bg-black/40 hover:bg-black/60 backdrop-blur-md text-[10px] font-bold text-white px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-1.5 leading-none shadow transition-all hover:scale-105 active:scale-95 cursor-pointer z-20"
           >
-            <span className="material-symbols-outlined text-[13.5px] text-indigo-300 leading-none">share</span> Share
+            <span className="material-symbols-outlined text-[13.5px] text-[#EAE5FF] leading-none">share</span> Share
           </button>
 
           <div className="absolute bottom-4 inset-x-0 w-full flex justify-center items-center gap-5 z-20 px-3">
@@ -151,23 +151,23 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
           
           {/* Scan Tips */}
           <div className="glass-panel rounded-xl p-2.5">
-            <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+            <h3 className="text-[10px] font-bold text-[#5B45E7] uppercase tracking-widest mb-1.5 flex items-center gap-1">
               <span className="material-symbols-outlined text-sm">lightbulb</span> Tips
             </h3>
-            <ul className="text-[9px] text-slate-500 space-y-1.5 font-sans leading-tight">
-              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-slate-400">check_circle</span> Good lighting</li>
-              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-slate-400">check_circle</span> Full face/body</li>
-              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-slate-400">check_circle</span> Clean setting</li>
+            <ul className="text-[9px] text-[#697386] space-y-1.5 font-sans leading-tight">
+              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-[#5B45E7]">check_circle</span> Good lighting</li>
+              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-[#5B45E7]">check_circle</span> Full face/body</li>
+              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-[#5B45E7]">check_circle</span> Clean setting</li>
             </ul>
           </div>
 
           {/* Analysis outcomes */}
           <div className="glass-panel rounded-xl p-2.5 flex-1">
-            <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2 leading-none">Outputs</h3>
-            <ul className="text-[10px] text-slate-500 space-y-3 font-sans font-semibold leading-none">
-              <li className="flex items-center gap-1.5"><div className="bg-indigo-50 p-1 rounded text-indigo-600"><span className="material-symbols-outlined text-xs">analytics</span></div> Insights</li>
-              <li className="flex items-center gap-1.5"><div className="bg-indigo-50 p-1 rounded text-indigo-600"><span className="material-symbols-outlined text-xs">interests</span></div> Similar</li>
-              <li className="flex items-center gap-1.5"><div className="bg-indigo-50 p-1 rounded text-indigo-600"><span className="material-symbols-outlined text-xs">shopping_bag</span></div> Shop</li>
+            <h3 className="text-[10px] font-bold text-[#17182B] uppercase tracking-widest mb-2 leading-none">Outputs</h3>
+            <ul className="text-[10px] text-[#697386] space-y-3 font-sans font-semibold leading-none">
+              <li className="flex items-center gap-1.5"><div className="bg-[#F0EDFF] p-1 rounded text-[#5B45E7]"><span className="material-symbols-outlined text-xs">analytics</span></div> Insights</li>
+              <li className="flex items-center gap-1.5"><div className="bg-[#F0EDFF] p-1 rounded text-[#5B45E7]"><span className="material-symbols-outlined text-xs">interests</span></div> Similar</li>
+              <li className="flex items-center gap-1.5"><div className="bg-[#F0EDFF] p-1 rounded text-[#5B45E7]"><span className="material-symbols-outlined text-xs">shopping_bag</span></div> Shop</li>
             </ul>
           </div>
         </div>
@@ -176,10 +176,10 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
       {/* Recent Scans slide */}
       <section>
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-base font-bold text-slate-800">Recent Scans</h2>
+          <h2 className="text-base font-bold text-[#17182B]">Recent Scans</h2>
           <button 
             onClick={() => onNavigate('camera-scan')}
-            className="text-xs font-semibold text-indigo-600 flex items-center"
+            className="text-xs font-semibold text-[#5B45E7] flex items-center"
           >
             View All <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
           </button>
@@ -192,20 +192,20 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ onNavigate, scan
               onClick={() => onNavigate('tryon-result')}
               className="min-w-[120px] glass-panel rounded-xl p-2 flex flex-col gap-2 cursor-pointer hover:shadow"
             >
-              <div className="relative rounded-lg overflow-hidden h-32 bg-slate-100 border border-slate-200">
+              <div className="relative rounded-lg overflow-hidden h-32 bg-[#F0EDFF] border border-[#E8E5F0]">
                 <img 
                   alt={sc.name} 
                   className="w-full h-full object-cover" 
                   referrerPolicy="no-referrer"
                   src={sc.imageUrl}
                 />
-                <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm text-indigo-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm border border-slate-200 leading-none">
+                <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-[#5B45E7] text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm border border-[#E8E5F0] leading-none">
                   {sc.score}
                 </div>
               </div>
               <div className="leading-tight px-1">
-                <p className="text-xs font-bold text-slate-700 truncate">{sc.name}</p>
-                <p className="text-[9px] text-slate-400 mt-0.5 font-sans">{sc.time}</p>
+                <p className="text-xs font-bold text-[#17182B] truncate">{sc.name}</p>
+                <p className="text-[9px] text-[#697386] mt-0.5 font-sans">{sc.time}</p>
               </div>
             </div>
           ))}

@@ -279,7 +279,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F4F1FF] nova-page-wash flex flex-col items-center justify-center p-4">
       <AnimatePresence mode="wait">
         {success ? (
           <motion.div
@@ -287,13 +287,13 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center"
+            className="flex flex-col items-center justify-center bg-white rounded-[28px] border border-[#E8E5F0] p-8 shadow-xl shadow-[#5B45E7]/5 w-full max-w-md"
           >
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="w-20 h-20 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-6 shadow-lg"
+              className="w-20 h-20 bg-[#5B45E7] rounded-full flex items-center justify-center mb-6 shadow-lg shadow-[#5B45E7]/25"
             >
               <Check className="w-10 h-10 text-white" strokeWidth={3} />
             </motion.div>
@@ -302,7 +302,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-2xl font-bold text-slate-900 text-center mb-2"
+              className="text-2xl font-bold text-[#17182B] text-center mb-2"
             >
               Email Verified
             </motion.h2>
@@ -311,7 +311,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="text-slate-600 text-center"
+              className="text-[#697386] text-center"
             >
               Redirecting to profile setup...
             </motion.p>
@@ -321,24 +321,24 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
             key="form"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md"
+            className="w-full max-w-md bg-white rounded-[28px] border border-[#E8E5F0] p-7 shadow-xl shadow-[#5B45E7]/5"
           >
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">
+              <h1 className="text-3xl font-bold text-[#17182B] mb-2">
                 Verify Your Email
               </h1>
-              <p className="text-slate-600">
+              <p className="text-[#697386]">
                 We've sent a 6-digit verification code to
               </p>
-              <p className="text-slate-900 font-semibold mt-1">{currentEmail}</p>
+              <p className="text-[#17182B] font-semibold mt-1">{currentEmail}</p>
             </div>
 
             {/* Change Email Button - Shows unless editing */}
             {!isEditingEmail && (
               <button
                 onClick={() => setIsEditingEmail(true)}
-                className="w-full px-4 py-2.5 mb-8 text-sm font-semibold text-indigo-600 bg-indigo-50 border-2 border-indigo-200 rounded-lg hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200 active:scale-95"
+                className="w-full px-4 py-2.5 mb-8 text-sm font-semibold text-[#5B45E7] bg-[#F0EDFF] border border-[#E8E5F0] rounded-lg hover:bg-[#EAE5FF] transition-all duration-200 active:scale-95"
               >
                 Use Different Email
               </button>
@@ -350,23 +350,23 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="mb-8 p-4 bg-indigo-50 border-2 border-indigo-200 rounded-lg"
+                className="mb-8 p-4 bg-[#F0EDFF] border border-[#E8E5F0] rounded-lg"
               >
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">Change Email Address</label>
+                <label className="text-xs font-black text-[#697386] uppercase tracking-widest block mb-2">Change Email Address</label>
                 <div className="flex gap-2 mb-3">
                   <input
                     type="email"
                     value={editedEmail}
                     onChange={(e) => setEditedEmail(e.target.value)}
                     placeholder="new@email.com"
-                    className="flex-1 px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-2 text-sm bg-white text-[#17182B] border border-[#E8E5F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5B45E7]"
                   />
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleChangeEmail}
                     disabled={resendLoading}
-                    className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all"
+                    className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-[#5B45E7] rounded-lg hover:bg-[#4935CC] disabled:opacity-50 transition-all"
                   >
                     {resendLoading ? 'Sending...' : 'Send OTP'}
                   </button>
@@ -375,7 +375,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                       setIsEditingEmail(false);
                       setEditedEmail(currentEmail);
                     }}
-                    className="flex-1 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-all"
+                    className="flex-1 px-3 py-2 text-sm font-semibold text-[#697386] bg-white border border-[#E8E5F0] rounded-lg hover:bg-[#F4F1FF] transition-all"
                   >
                     Cancel
                   </button>
@@ -403,7 +403,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: index * 0.05 }}
-                    className="w-12 h-14 text-center text-2xl font-bold border-2 border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none disabled:bg-slate-50 transition-all duration-200"
+                    className="w-12 h-14 text-center text-2xl font-bold text-[#17182B] bg-[#F4F1FF]/60 border-2 border-[#E8E5F0] rounded-lg focus:border-[#5B45E7] focus:bg-white focus:outline-none disabled:bg-[#F4F1FF] transition-all duration-200"
                   />
                 ))}
               </div>
@@ -425,7 +425,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
 
               {/* Resend Section */}
               <div className="text-center mb-6">
-                <p className="text-sm text-slate-600 mb-3">
+                <p className="text-sm text-[#697386] mb-3">
                   Didn't receive the code?
                 </p>
 
@@ -433,11 +433,11 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                   <div className="flex flex-col items-center gap-2">
                     <button
                       disabled
-                      className="text-sm font-medium text-slate-400 cursor-not-allowed"
+                      className="text-sm font-medium text-[#9AA3B5] cursor-not-allowed"
                     >
                       Resend OTP
                     </button>
-                    <p className="text-xl font-mono font-bold text-slate-900">
+                    <p className="text-xl font-mono font-bold text-[#17182B]">
                       {formatCountdown(resendCountdown)}
                     </p>
                   </div>
@@ -445,7 +445,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                   <button
                     onClick={handleResendOTP}
                     disabled={resendLoading}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors disabled:text-slate-400 flex items-center justify-center gap-2 mx-auto"
+                    className="text-sm font-medium text-[#5B45E7] hover:text-[#4935CC] transition-colors disabled:text-[#9AA3B5] flex items-center justify-center gap-2 mx-auto"
                   >
                     {resendLoading ? (
                       <>
@@ -468,8 +468,8 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
               whileTap={!loading && isOTPComplete ? { scale: 0.98 } : undefined}
               className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                 isOTPComplete && !loading
-                  ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-lg'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  ? 'bg-[#5B45E7] hover:bg-[#4935CC] text-white shadow-lg shadow-[#5B45E7]/25'
+                  : 'bg-[#EAE5FF] text-[#9AA3B5] cursor-not-allowed'
               }`}
             >
               {loading ? (
@@ -483,7 +483,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
             </motion.button>
 
             {/* Footer Text */}
-            <p className="text-xs text-slate-500 text-center mt-6">
+            <p className="text-xs text-[#697386] text-center mt-6">
               This code expires in 5 minutes
             </p>
           </motion.div>
