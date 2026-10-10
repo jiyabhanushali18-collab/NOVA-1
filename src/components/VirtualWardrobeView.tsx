@@ -500,24 +500,24 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
   const darkPanel = isDarkMode
     ? 'border border-white/10 bg-[#121322]/92 text-white shadow-[0_18px_48px_rgba(0,0,0,0.32)]'
-    : 'border border-[#E8E5F0] bg-white text-[#17182B] shadow-[0_6px_20px_rgba(23,24,43,0.05)]';
+    : 'border border-[#E4DFF5] bg-white text-[#131426] shadow-[0_6px_20px_rgba(23,24,43,0.05)]';
   const purpleButton = isDarkMode
     ? 'bg-gradient-to-r from-[#8b4cf6] to-[#b45cf7] text-white shadow-lg shadow-purple-950/35'
-    : 'bg-[#5B45E7] hover:bg-[#4935CC] text-white shadow-md shadow-[#5B45E7]/25';
-  const muted = isDarkMode ? 'text-slate-400' : 'text-[#697386]';
-  const subCard = isDarkMode ? 'border-[#25253a] bg-[#171827] text-white' : 'border-[#E8E5F0] bg-[#F4F1FF]/65 text-[#17182B]';
-  const innerSurface = isDarkMode ? 'bg-[#0d0f1a]' : 'bg-[#F4F1FF]';
-  const accentText = isDarkMode ? 'text-[#c084fc]' : 'text-[#5B45E7]';
-  const badgeSurface = isDarkMode ? 'bg-[#251a3b] text-[#d8b4fe]' : 'bg-[#F0EDFF] text-[#5B45E7]';
+    : 'bg-[#553BE2] hover:bg-[#462CC9] text-white shadow-md shadow-[#553BE2]/25';
+  const muted = isDarkMode ? 'text-slate-400' : 'text-[#5E667A]';
+  const subCard = isDarkMode ? 'border-[#25253a] bg-[#171827] text-white' : 'border-[#E4DFF5] bg-[#F2EEFF]/65 text-[#131426]';
+  const innerSurface = isDarkMode ? 'bg-[#0d0f1a]' : 'bg-[#F2EEFF]';
+  const accentText = isDarkMode ? 'text-[#c084fc]' : 'text-[#553BE2]';
+  const badgeSurface = isDarkMode ? 'bg-[#251a3b] text-[#d8b4fe]' : 'bg-[#F2EEFF] text-[#553BE2]';
   const modalSurface = isDarkMode
     ? 'border-white/10 bg-[#080913] text-white'
-    : 'border-[#E8E5F0] bg-white text-[#17182B]';
+    : 'border-[#E4DFF5] bg-white text-[#131426]';
   const colorCounts = items.flatMap((item) => item.colors).reduce<Record<string, number>>((counts, color) => {
     counts[color] = (counts[color] || 0) + 1; return counts;
   }, {});
   const mostCommonColor = Object.entries(colorCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
   const colorStats = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]).slice(0, 4)
-    .map(([label, count]) => [label, Math.round((count / Math.max(1, items.length)) * 100), resolveColorHex(label) || '#5B45E7']);
+    .map(([label, count]) => [label, Math.round((count / Math.max(1, items.length)) * 100), resolveColorHex(label) || '#553BE2']);
   const tops = items.filter((item) => topCategories.includes(item.category));
   const bottoms = items.filter((item) => bottomCategories.includes(item.category));
   const onePieces = items.filter((item) => ['Dress', 'Saree', 'Co-ord Set', 'Ethnic Wear'].includes(item.category));
@@ -529,10 +529,10 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const totalOutfits = savedOutfitCount;
 
   return (
-    <div className={`min-h-full -mx-4 -my-3 space-y-5 px-4 py-4 ${isDarkMode ? 'bg-[#080913] text-white' : 'bg-[#F4F1FF] text-[#17182B]'}`}>
+    <div className={`min-h-full -mx-4 -my-3 space-y-5 px-4 py-4 ${isDarkMode ? 'bg-[#080913] text-white' : 'bg-[#F2EEFF] text-[#131426]'}`}>
       {saveStatus && (
         <div className={`fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs font-bold shadow-xl backdrop-blur ${
-          isDarkMode ? 'bg-[#151426]/95 text-white' : 'bg-[#17182B] text-white'
+          isDarkMode ? 'bg-[#151426]/95 text-white' : 'bg-[#131426] text-white'
         }`}>
           {saveStatus}
         </div>
@@ -557,9 +557,9 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
             ['auto_awesome', 'Outfit & Styling Assistant'],
             ['donut_large', 'Closet Insights']
           ].map(([icon, label]) => (
-            <div key={label} className={`flex items-center gap-3 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#17182B]'}`}>
+            <div key={label} className={`flex items-center gap-3 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
               <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
-                isDarkMode ? 'border-[#7c3aed]/45 bg-[#6d28d9]/15 text-[#c084fc]' : 'border-[#E8E5F0] bg-[#F0EDFF] text-[#5B45E7]'
+                isDarkMode ? 'border-[#7c3aed]/45 bg-[#6d28d9]/15 text-[#c084fc]' : 'border-[#E4DFF5] bg-[#F2EEFF] text-[#553BE2]'
               }`}>
                 <span className="material-symbols-outlined text-lg">{icon}</span>
               </span>
@@ -577,10 +577,10 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
           <div className="mt-5 grid gap-3">
             {(['Male', 'Female'] as WardrobeGender[]).map((gender) => (
               <button key={gender} onClick={() => setProfile({ gender })} className={`flex min-h-24 items-center gap-4 rounded-xl border p-3 text-left transition ${
-                isDarkMode ? 'border-[#3b3158] bg-[#171827] hover:border-[#a855f7]' : 'border-[#E8E5F0] bg-[#F4F1FF]/65 hover:border-[#5B45E7]'
+                isDarkMode ? 'border-[#3b3158] bg-[#171827] hover:border-[#a855f7]' : 'border-[#E4DFF5] bg-[#F2EEFF]/65 hover:border-[#553BE2]'
               }`}>
                 <div className={`flex h-16 w-20 items-center justify-center rounded-lg ${
-                  isDarkMode ? 'bg-gradient-to-br from-[#2b2145] to-[#090a13] text-[#d8b4fe]' : 'bg-[#F0EDFF] text-[#5B45E7]'
+                  isDarkMode ? 'bg-gradient-to-br from-[#2b2145] to-[#090a13] text-[#d8b4fe]' : 'bg-[#F2EEFF] text-[#553BE2]'
                 }`}>
                   <span className="material-symbols-outlined text-4xl">{gender === 'Male' ? 'man_2' : 'woman_2'}</span>
                 </div>
@@ -592,10 +592,10 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               </button>
             ))}
             <button onClick={() => setProfile({ gender: 'Female' })} className={`flex min-h-24 items-center gap-4 rounded-xl border p-3 text-left transition ${
-              isDarkMode ? 'border-[#3b3158] bg-[#171827] hover:border-[#a855f7]' : 'border-[#E8E5F0] bg-[#F4F1FF]/65 hover:border-[#5B45E7]'
+              isDarkMode ? 'border-[#3b3158] bg-[#171827] hover:border-[#a855f7]' : 'border-[#E4DFF5] bg-[#F2EEFF]/65 hover:border-[#553BE2]'
             }`}>
               <div className={`flex h-16 w-20 items-center justify-center rounded-lg ${
-                isDarkMode ? 'bg-gradient-to-br from-[#312047] to-[#090a13] text-[#d8b4fe]' : 'bg-[#F0EDFF] text-[#5B45E7]'
+                isDarkMode ? 'bg-gradient-to-br from-[#312047] to-[#090a13] text-[#d8b4fe]' : 'bg-[#F2EEFF] text-[#553BE2]'
               }`}>
                 <span className="material-symbols-outlined text-4xl">diversity_3</span>
               </div>
@@ -619,7 +619,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   ? purpleButton
                   : isDarkMode
                     ? 'border-[#292940] bg-[#171827] text-white hover:border-[#a855f7]'
-                    : 'border-[#E8E5F0] bg-[#F4F1FF]/65 text-[#17182B] hover:border-[#5B45E7]'
+                    : 'border-[#E4DFF5] bg-[#F2EEFF]/65 text-[#131426] hover:border-[#553BE2]'
               }`}>
                 {size}
               </button>
@@ -639,16 +639,16 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               <button onClick={() => setProfile({})} className={`text-xs font-bold ${accentText}`}>Reset</button>
             </div>
             <div className={`mb-3 grid grid-cols-3 rounded-xl border p-1 text-[11px] font-bold ${
-              isDarkMode ? 'border-[#27233d] bg-[#090a13]' : 'border-[#E8E5F0] bg-[#F4F1FF]'
+              isDarkMode ? 'border-[#27233d] bg-[#090a13]' : 'border-[#E4DFF5] bg-[#F2EEFF]'
             }`}>
               <button onClick={() => setProfile((prev) => ({ ...prev, gender: 'Male' }))} className={`rounded-lg py-2 ${
                 profile.gender === 'Male'
-                  ? isDarkMode ? 'bg-[#251a3b] text-[#d8b4fe]' : 'bg-white text-[#5B45E7] shadow-sm'
+                  ? isDarkMode ? 'bg-[#251a3b] text-[#d8b4fe]' : 'bg-white text-[#553BE2] shadow-sm'
                   : muted
               }`}>Menswear</button>
               <button onClick={() => setProfile((prev) => ({ ...prev, gender: 'Female' }))} className={`rounded-lg py-2 ${
                 profile.gender === 'Female'
-                  ? isDarkMode ? 'bg-[#251a3b] text-[#d8b4fe]' : 'bg-white text-[#5B45E7] shadow-sm'
+                  ? isDarkMode ? 'bg-[#251a3b] text-[#d8b4fe]' : 'bg-white text-[#553BE2] shadow-sm'
                   : muted
               }`}>Womenswear</button>
               <button className={`rounded-lg py-2 ${muted}`}>Both</button>
@@ -672,7 +672,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   className={`min-h-24 rounded-xl border p-2 text-center shadow-sm transition-transform active:scale-[0.98] ${subCard}`}
                 >
                   <div className={`mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg ${
-                    isDarkMode ? 'bg-[#0d0f1a] text-[#c084fc]' : 'bg-[#F0EDFF] text-[#5B45E7]'
+                    isDarkMode ? 'bg-[#0d0f1a] text-[#c084fc]' : 'bg-[#F2EEFF] text-[#553BE2]'
                   }`}>
                     <span className="material-symbols-outlined text-3xl">{categoryIcons[category] || 'checkroom'}</span>
                   </div>
@@ -691,11 +691,11 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${badgeSurface}`}>{profile.size}</span>
             </div>
             <div className={`mb-3 flex items-center gap-2 rounded-xl border px-3 py-2 ${
-              isDarkMode ? 'border-[#25253a] bg-[#0d0f1a]' : 'border-[#E8E5F0] bg-[#F4F1FF]'
+              isDarkMode ? 'border-[#25253a] bg-[#0d0f1a]' : 'border-[#E4DFF5] bg-[#F2EEFF]'
             }`}>
               <span className={`material-symbols-outlined text-base ${accentText}`}>search</span>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your wardrobe" className={`w-full bg-transparent text-xs font-semibold outline-none ${
-                isDarkMode ? 'text-white placeholder:text-slate-500' : 'text-[#17182B] placeholder:text-[#9AA3B5]'
+                isDarkMode ? 'text-white placeholder:text-slate-500' : 'text-[#131426] placeholder:text-[#8E96AA]'
               }`} />
             </div>
             <div className="mb-4 flex gap-2 overflow-x-auto hide-scrollbar">
@@ -705,10 +705,10 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 { value: patternFilter, set: setPatternFilter, options: patternOptions, icon: 'texture' }
               ].map((filter) => (
                 <label key={filter.icon} className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold ${
-                  isDarkMode ? 'border-[#30264c] bg-[#201733] text-[#d8b4fe]' : 'border-[#E8E5F0] bg-[#F0EDFF] text-[#5B45E7]'
+                  isDarkMode ? 'border-[#30264c] bg-[#201733] text-[#d8b4fe]' : 'border-[#E4DFF5] bg-[#F2EEFF] text-[#553BE2]'
                 }`}>
                   <span className={`material-symbols-outlined text-sm ${accentText}`}>{filter.icon}</span>
-                  <select value={filter.value} onChange={(e) => filter.set(e.target.value)} className={`${isDarkMode ? 'bg-[#201733]' : 'bg-[#F0EDFF]'} outline-none`}>
+                  <select value={filter.value} onChange={(e) => filter.set(e.target.value)} className={`${isDarkMode ? 'bg-[#201733]' : 'bg-[#F2EEFF]'} outline-none`}>
                     {filter.options.map((option) => <option key={option}>{option}</option>)}
                   </select>
                 </label>
@@ -717,14 +717,14 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
             {isLoading ? (
               <div className="grid grid-cols-2 gap-3">
-                {[1, 2, 3, 4].map((item) => <div key={item} className={`h-48 animate-pulse rounded-xl ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F4F1FF]'}`} />)}
+                {[1, 2, 3, 4].map((item) => <div key={item} className={`h-48 animate-pulse rounded-xl ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF]'}`} />)}
               </div>
             ) : filteredItems.length === 0 ? (
               <div className={`rounded-xl border border-dashed p-6 text-center ${
-                isDarkMode ? 'border-[#453066] bg-[#141020]' : 'border-[#E8E5F0] bg-[#F4F1FF]/65'
+                isDarkMode ? 'border-[#453066] bg-[#141020]' : 'border-[#E4DFF5] bg-[#F2EEFF]/65'
               }`}>
                 <div className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full shadow-sm ${
-                  isDarkMode ? 'bg-[#201733] text-[#c084fc]' : 'bg-[#F0EDFF] text-[#5B45E7]'
+                  isDarkMode ? 'bg-[#201733] text-[#c084fc]' : 'bg-[#F2EEFF] text-[#553BE2]'
                 }`}>
                   <span className="material-symbols-outlined text-3xl">checkroom</span>
                 </div>
@@ -774,14 +774,14 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   <span className="flex-1">{text}</span>
                 </div>
               ))}
-              <div className={`h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-[#0d0f1a]' : 'bg-[#EAE5FF]'}`}>
-                <div className={`h-full w-[68%] rounded-full ${isDarkMode ? 'bg-gradient-to-r from-[#8b4cf6] to-[#e879f9]' : 'bg-[#5B45E7]'}`} />
+              <div className={`h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-[#0d0f1a]' : 'bg-[#ECE7FF]'}`}>
+                <div className={`h-full w-[68%] rounded-full ${isDarkMode ? 'bg-gradient-to-r from-[#8b4cf6] to-[#e879f9]' : 'bg-[#553BE2]'}`} />
               </div>
             </div>
             <div className={`mt-3 rounded-xl border p-3 ${subCard}`}>
               <div className="mb-3 text-xs font-black">Color Distribution</div>
               <div className="flex items-center gap-4">
-                <div className="h-20 w-20 rounded-full bg-[conic-gradient(#5B45E7_0_35%,#EAE5FF_35%_62%,#F0EDFF_62%_78%,#17182B_78%_100%)] p-4">
+                <div className="h-20 w-20 rounded-full bg-[conic-gradient(#553BE2_0_35%,#ECE7FF_35%_62%,#F2EEFF_62%_78%,#131426_78%_100%)] p-4">
                   <div className={`h-full w-full rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-white'}`} />
                 </div>
                 <div className="flex-1 space-y-1">
@@ -808,7 +808,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 <p className="mt-3 text-sm font-black">{currentOutfit.title}</p><p className={`mt-1 text-xs ${muted}`}>{currentOutfit.note}</p>
                 <button onClick={() => markOutfitWorn(currentOutfit.items)} className={`mt-3 w-full rounded-xl py-2.5 text-xs font-black ${purpleButton}`}>I wore this fit</button>
               </div>
-            ) : <div className={`mt-3 rounded-2xl border border-dashed p-4 text-center text-xs ${isDarkMode ? 'border-[#453066] text-slate-400' : 'border-[#E8E5F0] text-[#697386]'}`}>Add a top and a bottom to unlock outfit ideas.</div>}
+            ) : <div className={`mt-3 rounded-2xl border border-dashed p-4 text-center text-xs ${isDarkMode ? 'border-[#453066] text-slate-400' : 'border-[#E4DFF5] text-[#5E667A]'}`}>Add a top and a bottom to unlock outfit ideas.</div>}
           </section>
         </>
       )}
@@ -819,9 +819,9 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
             <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className={`max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border p-4 shadow-2xl ${modalSurface}`}>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black">Add {selectedCategory}</h2>
-                <button onClick={() => setSelectedCategory(null)} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F4F1FF] text-[#697386]'}`}><span className="material-symbols-outlined text-base">close</span></button>
+                <button onClick={() => setSelectedCategory(null)} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF] text-[#5E667A]'}`}><span className="material-symbols-outlined text-base">close</span></button>
               </div>
-              <div className={`mb-4 grid grid-cols-2 gap-2 rounded-xl p-1 ${isDarkMode ? 'bg-[#111220]' : 'bg-[#F4F1FF] border border-[#E8E5F0]'}`}>
+              <div className={`mb-4 grid grid-cols-2 gap-2 rounded-xl p-1 ${isDarkMode ? 'bg-[#111220]' : 'bg-[#F2EEFF] border border-[#E4DFF5]'}`}>
                 {(['Live Scan', 'Upload Photo'] as WardrobeScanMethod[]).map((method) => (
                   <button key={method} onClick={() => setScanMethod(method)} className={`rounded-lg py-2 text-xs font-black ${scanMethod === method ? purpleButton : muted}`}>
                     <span className="material-symbols-outlined mr-1 align-middle text-sm">{method === 'Live Scan' ? 'camera_alt' : 'photo_library'}</span>{method}
@@ -829,52 +829,52 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 ))}
               </div>
               <label className={`mb-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-xs font-black ${
-                isDarkMode ? 'border-[#7041a8] bg-[#201733] text-[#d8b4fe]' : 'border-[#5B45E7]/40 bg-[#F0EDFF] text-[#5B45E7]'
+                isDarkMode ? 'border-[#7041a8] bg-[#201733] text-[#d8b4fe]' : 'border-[#553BE2]/40 bg-[#F2EEFF] text-[#553BE2]'
               }`}>
                 <span className="material-symbols-outlined">{scanMethod === 'Live Scan' ? 'photo_camera' : 'upload'}</span>
                 {scanMethod === 'Live Scan' ? 'Take a photo of your garment' : 'Upload a garment photo'}
                 <input type="file" accept="image/*" capture={scanMethod === 'Live Scan' ? 'environment' : undefined} onChange={handleFile} className="hidden" />
               </label>
               <div className={`rounded-[24px] border p-3 ${
-                isDarkMode ? 'border-white/10 bg-white/[0.04] shadow-2xl shadow-purple-950/20 backdrop-blur-2xl' : 'border-[#E8E5F0] bg-[#F4F1FF]/60 shadow-sm'
+                isDarkMode ? 'border-white/10 bg-white/[0.04] shadow-2xl shadow-purple-950/20 backdrop-blur-2xl' : 'border-[#E4DFF5] bg-[#F2EEFF]/60 shadow-sm'
               }`}>
                 <div className={`relative overflow-hidden rounded-[20px] border p-3 ${
-                  isDarkMode ? 'border-white/10 bg-[#10111f]/85' : 'border-[#E8E5F0] bg-white'
+                  isDarkMode ? 'border-white/10 bg-[#10111f]/85' : 'border-[#E4DFF5] bg-white'
                 }`}>
                   {isDarkMode && <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,.28),transparent_32%),radial-gradient(circle_at_100%_80%,rgba(59,130,246,.18),transparent_35%)]" />}
                   <p className={`relative z-10 mb-2 text-[10px] font-black uppercase tracking-[0.2em] ${muted}`}>Scanned Garment Detail</p>
-                  <div className={`relative z-10 aspect-[4/3] overflow-hidden rounded-2xl border ${isDarkMode ? 'border-white/10 bg-[#070812]' : 'border-[#E8E5F0] bg-[#F4F1FF]'}`}>
+                  <div className={`relative z-10 aspect-[4/3] overflow-hidden rounded-2xl border ${isDarkMode ? 'border-white/10 bg-[#070812]' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
                     <img src={scanImage} alt="Scanned garment detail" className="h-full w-full object-contain bg-[#f8fafc]"/>
-                    <motion.div animate={{ y: ['-20%', '110%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }} className="absolute left-0 right-0 top-0 h-16 bg-gradient-to-b from-transparent via-[#5B45E7]/30 to-transparent" />
+                    <motion.div animate={{ y: ['-20%', '110%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }} className="absolute left-0 right-0 top-0 h-16 bg-gradient-to-b from-transparent via-[#553BE2]/30 to-transparent" />
                     {[
                       'left-3 top-3 border-l-2 border-t-2',
                       'right-3 top-3 border-r-2 border-t-2',
                       'bottom-3 left-3 border-b-2 border-l-2',
                       'bottom-3 right-3 border-b-2 border-r-2'
                     ].map((corner) => (
-                      <span key={corner} className={`absolute h-10 w-10 rounded-sm border-[#5B45E7] ${corner}`} />
+                      <span key={corner} className={`absolute h-10 w-10 rounded-sm border-[#553BE2] ${corner}`} />
                     ))}
                     <div className="absolute left-4 top-5 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-[9px] font-black text-emerald-600">PATTERN LOCK</div>
-                    <div className="absolute bottom-4 right-4 rounded-full border border-[#E8E5F0] bg-[#F0EDFF] px-2 py-1 text-[9px] font-black text-[#5B45E7]">AI 98%</div>
+                    <div className="absolute bottom-4 right-4 rounded-full border border-[#E4DFF5] bg-[#F2EEFF] px-2 py-1 text-[9px] font-black text-[#553BE2]">AI 98%</div>
                   </div>
                 </div>
 
                 <div className="relative my-4 flex items-center justify-center">
-                  <div className="absolute h-px w-full bg-gradient-to-r from-transparent via-[#5B45E7]/40 to-transparent" />
-                  <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#EAE5FF] bg-[#5B45E7] text-white shadow-md shadow-[#5B45E7]/25">
+                  <div className="absolute h-px w-full bg-gradient-to-r from-transparent via-[#553BE2]/40 to-transparent" />
+                  <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ECE7FF] bg-[#553BE2] text-white shadow-md shadow-[#553BE2]/25">
                     <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
                   </motion.div>
                 </div>
 
                 <div className={`grid gap-2 rounded-2xl border p-3 ${
-                  isDarkMode ? 'border-[#30264c] bg-[#111220]/80' : 'border-[#E8E5F0] bg-white'
+                  isDarkMode ? 'border-[#30264c] bg-[#111220]/80' : 'border-[#E4DFF5] bg-white'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${accentText}`}>AI Analysis</p>
                       <p className={`mt-1 text-xs font-semibold ${muted}`}>Fabric Detail to Garment Generation</p>
                     </div>
-                    {isProcessing ? <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#5B45E7] border-t-transparent" /> : <span className={`material-symbols-outlined ${accentText}`}>auto_awesome</span>}
+                    {isProcessing ? <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#553BE2] border-t-transparent" /> : <span className={`material-symbols-outlined ${accentText}`}>auto_awesome</span>}
                   </div>
                   <div className="space-y-2">
                     {processingSteps.map((step, index) => {
@@ -886,13 +886,13 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                             isDone
                               ? 'border-emerald-300 bg-emerald-400/20 text-emerald-600'
                               : isActive
-                                ? 'border-[#5B45E7] bg-[#F0EDFF] text-[#5B45E7]'
-                                : isDarkMode ? 'border-slate-700 text-slate-600' : 'border-[#E8E5F0] text-[#9AA3B5]'
+                                ? 'border-[#553BE2] bg-[#F2EEFF] text-[#553BE2]'
+                                : isDarkMode ? 'border-slate-700 text-slate-600' : 'border-[#E4DFF5] text-[#8E96AA]'
                           }`}>
                             {isDone ? <span className="material-symbols-outlined text-[13px]">check</span> : index + 1}
                           </span>
-                          <span className={isDone || isActive ? (isDarkMode ? 'text-slate-100' : 'text-[#17182B]') : muted}>{step}</span>
-                          {isActive && isProcessing && <motion.span animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 1.1, repeat: Infinity }} className="ml-auto h-1.5 w-1.5 rounded-full bg-[#5B45E7]" />}
+                          <span className={isDone || isActive ? (isDarkMode ? 'text-slate-100' : 'text-[#131426]') : muted}>{step}</span>
+                          {isActive && isProcessing && <motion.span animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 1.1, repeat: Infinity }} className="ml-auto h-1.5 w-1.5 rounded-full bg-[#553BE2]" />}
                         </div>
                       );
                     })}
@@ -900,7 +900,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 </div>
 
                 <div className={`mt-4 overflow-hidden rounded-[20px] border p-3 ${
-                  isDarkMode ? 'border-white/10 bg-[#090a13]' : 'border-[#E8E5F0] bg-white'
+                  isDarkMode ? 'border-white/10 bg-[#090a13]' : 'border-[#E4DFF5] bg-white'
                 }`}>
                   <div className="mb-2 flex items-center justify-between">
                     <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${muted}`}>Generated Garment</p>
@@ -909,11 +909,11 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   <div className={`relative flex aspect-[4/5] items-center justify-center rounded-2xl ${
                     isDarkMode
                       ? 'bg-[radial-gradient(circle_at_50%_18%,rgba(168,85,247,.2),transparent_35%),linear-gradient(180deg,#141629,#090a13)]'
-                      : 'bg-[#F4F1FF]'
+                      : 'bg-[#F2EEFF]'
                   }`}>
                     {isProcessing ? (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-                        <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-2 border-[#5B45E7] border-t-transparent" />
+                        <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-2 border-[#553BE2] border-t-transparent" />
                         <p className={`text-xs font-black ${accentText}`}>{processingSteps[processingStep]}</p>
                       </motion.div>
                     ) : processedImage ? (
@@ -943,7 +943,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                     {matchedProducts[0].matchType === 'Exact Match' ? 'Exact Match Found' : 'Similar Matches'}
                   </p>
                   
-                  <div className={`flex items-center gap-3 rounded-xl p-2 text-xs ${isDarkMode ? 'bg-white/[0.05]' : 'bg-white border border-[#E8E5F0]'}`}>
+                  <div className={`flex items-center gap-3 rounded-xl p-2 text-xs ${isDarkMode ? 'bg-white/[0.05]' : 'bg-white border border-[#E4DFF5]'}`}>
                     {scannedMatch?.imageUrl && (
                       <img src={scannedMatch.imageUrl} alt={scannedMatch.name || 'Matched Product'} className="h-14 w-14 rounded-lg object-cover" />
                     )}
@@ -959,7 +959,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   {pairedProduct && (
                     <div 
                       className={`mt-3 flex cursor-pointer items-center justify-between rounded-xl border p-2 ${
-                        isDarkMode ? 'border-purple-500/30 bg-[#201733]' : 'border-[#E8E5F0] bg-[#F0EDFF]'
+                        isDarkMode ? 'border-purple-500/30 bg-[#201733]' : 'border-[#E4DFF5] bg-[#F2EEFF]'
                       }`}
                       onClick={() => {
                         setSelectedItem({
@@ -1031,7 +1031,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
               <div className="mt-4 flex gap-3">
                 <button onClick={handleAnalyze} disabled={isProcessing} className={`flex-1 rounded-xl border py-3 text-xs font-black shadow-sm disabled:opacity-60 ${
-                  isDarkMode ? 'border-[#30264c] bg-[#171827] text-white' : 'border-[#E8E5F0] bg-white text-[#17182B]'
+                  isDarkMode ? 'border-[#30264c] bg-[#171827] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
                 }`}>AI Smart Scan</button>
                 <button onClick={saveItem} disabled={!generatedItem} className={`flex-1 rounded-xl py-3 text-xs font-black disabled:opacity-40 ${purpleButton}`}>Save Item</button>
               </div>
@@ -1046,7 +1046,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
             <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className={`max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border p-4 shadow-2xl ${modalSurface}`}>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black">{selectedItem.category}</h2>
-                <button onClick={() => { setEditDraft(null); setSelectedItem(null); }} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F4F1FF] text-[#697386]'}`}><span className="material-symbols-outlined text-base">close</span></button>
+                <button onClick={() => { setEditDraft(null); setSelectedItem(null); }} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF] text-[#5E667A]'}`}><span className="material-symbols-outlined text-base">close</span></button>
               </div>
               <div className={`rounded-[24px] p-4 ${innerSurface}`}>
                 <img src={selectedItem.generatedImage} alt={selectedItem.category} className="mx-auto h-72 w-full object-contain" />
@@ -1063,12 +1063,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                     return <label key={field} className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>{label}
                       <input value={value || ''} onChange={(event) => setEditDraft((draft) => !draft ? draft : attributeFields.includes(field)
                         ? { ...draft, attributes: { ...draft.attributes, [field]: event.target.value }, ...(field === 'primaryColor' ? { colors: [event.target.value, ...draft.colors.slice(1)] } : {}) }
-                        : { ...draft, [field]: event.target.value })} className={`mt-1 w-full rounded-lg border px-3 py-2 text-xs font-semibold normal-case outline-none focus:border-[#5B45E7] ${
-                          isDarkMode ? 'border-[#37304d] bg-[#0d0f1a] text-white' : 'border-[#E8E5F0] bg-white text-[#17182B]'
+                        : { ...draft, [field]: event.target.value })} className={`mt-1 w-full rounded-lg border px-3 py-2 text-xs font-semibold normal-case outline-none focus:border-[#553BE2] ${
+                          isDarkMode ? 'border-[#37304d] bg-[#0d0f1a] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
                         }`} />
                     </label>;
                   })}
-                  <div className="grid grid-cols-2 gap-2 pt-1"><button onClick={() => setEditDraft(null)} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155]' : 'border-[#E8E5F0] bg-white text-[#697386]'}`}>Cancel</button><button onClick={() => { if (editDraft) { updateItem({ ...editDraft, colors: [editDraft.attributes.primaryColor, ...(editDraft.attributes.secondaryColor !== '—' ? [editDraft.attributes.secondaryColor] : [])], pattern: editDraft.pattern, fabric: editDraft.fabric }); setEditDraft(null); setSaveStatus('Garment details updated.'); } }} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Save changes</button></div>
+                  <div className="grid grid-cols-2 gap-2 pt-1"><button onClick={() => setEditDraft(null)} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155]' : 'border-[#E4DFF5] bg-white text-[#5E667A]'}`}>Cancel</button><button onClick={() => { if (editDraft) { updateItem({ ...editDraft, colors: [editDraft.attributes.primaryColor, ...(editDraft.attributes.secondaryColor !== '—' ? [editDraft.attributes.secondaryColor] : [])], pattern: editDraft.pattern, fabric: editDraft.fabric }); setEditDraft(null); setSaveStatus('Garment details updated.'); } }} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Save changes</button></div>
                 </div>
               ) : <>
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -1091,8 +1091,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button onClick={() => onNavigate('ar-tryon')} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Wear Virtually</button>
-                <button onClick={() => openOutfitBuilder(selectedItem)} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#7041a8] text-white' : 'border-[#E8E5F0] bg-[#F0EDFF] text-[#5B45E7]'}`}>Create Outfit</button>
-                <button onClick={() => setEditDraft({ ...selectedItem, attributes: { ...selectedItem.attributes }, colors: [...selectedItem.colors], tags: [...selectedItem.tags] })} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155] text-slate-200' : 'border-[#E8E5F0] bg-white text-[#17182B]'}`}>Edit</button>
+                <button onClick={() => openOutfitBuilder(selectedItem)} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#7041a8] text-white' : 'border-[#E4DFF5] bg-[#F2EEFF] text-[#553BE2]'}`}>Create Outfit</button>
+                <button onClick={() => setEditDraft({ ...selectedItem, attributes: { ...selectedItem.attributes }, colors: [...selectedItem.colors], tags: [...selectedItem.tags] })} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155] text-slate-200' : 'border-[#E4DFF5] bg-white text-[#131426]'}`}>Edit</button>
                 <button onClick={() => deleteItem(selectedItem)} className="rounded-xl border border-rose-500/35 bg-rose-500/10 py-3 text-xs font-black text-rose-500">Delete</button>
               </div>
               </>}
@@ -1108,9 +1108,9 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
           const partners = items.filter((item) => item.id !== outfitSeed.id && (needsBottom ? bottomCategories.includes(item.category) : needsTop ? topCategories.includes(item.category) : true));
           return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/70 p-3">
             <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className={`max-h-[82vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border p-4 shadow-2xl ${modalSurface}`}>
-              <div className="flex items-center justify-between"><div><p className={`text-[10px] font-black uppercase tracking-[.2em] ${accentText}`}>Outfit builder</p><h2 className="mt-1 text-xl font-black">Complete this look</h2></div><button onClick={() => setOutfitSeed(null)} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F4F1FF] text-[#697386]'}`}><span className="material-symbols-outlined">close</span></button></div>
+              <div className="flex items-center justify-between"><div><p className={`text-[10px] font-black uppercase tracking-[.2em] ${accentText}`}>Outfit builder</p><h2 className="mt-1 text-xl font-black">Complete this look</h2></div><button onClick={() => setOutfitSeed(null)} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF] text-[#5E667A]'}`}><span className="material-symbols-outlined">close</span></button></div>
               <div className={`mt-4 flex items-center gap-3 rounded-2xl border p-3 ${subCard}`}><img src={outfitSeed.generatedImage} alt={outfitSeed.category} className={`h-20 w-16 rounded-xl object-contain ${innerSurface}`}/><div><p className="font-black">{outfitSeed.colors[0]} {outfitSeed.category}</p><p className={`mt-1 text-xs ${muted}`}>Pick {needsBottom ? 'a bottom' : needsTop ? 'a top' : 'another piece'} from your wardrobe.</p></div></div>
-              {partners.length ? <div className="mt-4 grid grid-cols-2 gap-3">{partners.map((item) => <button key={item.id} onClick={() => setOutfitPartnerId(item.id)} className={`overflow-hidden rounded-xl border p-2 text-left ${outfitPartnerId === item.id ? (isDarkMode ? 'border-[#c084fc] bg-[#251a3b]' : 'border-[#5B45E7] bg-[#F0EDFF]') : subCard}`}><img src={item.generatedImage} alt={item.category} className={`h-28 w-full rounded-lg object-contain ${innerSurface}`}/><p className="mt-2 text-xs font-black">{item.colors[0]} {item.category}</p></button>)}</div> : <div className={`mt-4 rounded-2xl border border-dashed p-5 text-center text-sm ${isDarkMode ? 'border-[#7041a8] text-slate-400' : 'border-[#E8E5F0] text-[#697386]'}`}>You need to add {needsBottom ? 'a bottom' : needsTop ? 'a top' : 'another item'} before creating this outfit.</div>}
+              {partners.length ? <div className="mt-4 grid grid-cols-2 gap-3">{partners.map((item) => <button key={item.id} onClick={() => setOutfitPartnerId(item.id)} className={`overflow-hidden rounded-xl border p-2 text-left ${outfitPartnerId === item.id ? (isDarkMode ? 'border-[#c084fc] bg-[#251a3b]' : 'border-[#553BE2] bg-[#F2EEFF]') : subCard}`}><img src={item.generatedImage} alt={item.category} className={`h-28 w-full rounded-lg object-contain ${innerSurface}`}/><p className="mt-2 text-xs font-black">{item.colors[0]} {item.category}</p></button>)}</div> : <div className={`mt-4 rounded-2xl border border-dashed p-5 text-center text-sm ${isDarkMode ? 'border-[#7041a8] text-slate-400' : 'border-[#E4DFF5] text-[#5E667A]'}`}>You need to add {needsBottom ? 'a bottom' : needsTop ? 'a top' : 'another item'} before creating this outfit.</div>}
               <button disabled={!outfitPartnerId && partners.length > 0} onClick={partners.length ? saveCreatedOutfit : () => setOutfitSeed(null)} className={`mt-4 w-full rounded-xl py-3 text-sm font-black disabled:opacity-40 ${purpleButton}`}>{partners.length ? 'Save this outfit' : 'Close'}</button>
             </motion.section>
           </motion.div>;

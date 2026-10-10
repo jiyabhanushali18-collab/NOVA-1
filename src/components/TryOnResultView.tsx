@@ -72,8 +72,8 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   return (
     <div className="space-y-6 relative">
       {shareStatus && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#17182B]/95 text-white px-4.5 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 border border-[#5B45E7]/30 backdrop-blur-md animate-bounce max-w-[280px] text-center leading-none">
-          <span className="material-symbols-outlined text-[14px] text-[#5B45E7]">share</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#131426]/95 text-white px-4.5 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 border border-[#553BE2]/30 backdrop-blur-md animate-bounce max-w-[280px] text-center leading-none">
+          <span className="material-symbols-outlined text-[14px] text-[#553BE2]">share</span>
           <span>{shareStatus}</span>
         </div>
       )}
@@ -81,28 +81,28 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
       {/* Header & Match Score details */}
       <section className="flex justify-between items-start pt-2">
         <div className="max-w-[65%]">
-          <h1 className="text-2xl font-bold text-[#17182B] leading-tight">Try-On Result</h1>
-          <p className="text-xs text-[#697386] mt-1">
+          <h1 className="text-2xl font-bold text-[#131426] leading-tight">Try-On Result</h1>
+          <p className="text-xs text-[#5E667A] mt-1">
             Here's how you look! You can change color swatches below, inspect material details, or save your curated outfit.
           </p>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-[9px] font-bold text-[#697386] uppercase tracking-widest mb-1 shadow-sm px-1 bg-white border border-[#E8E5F0] rounded">Score</span>
-          <div className="relative w-14 h-14 rounded-full bg-conic flex items-center justify-center shadow-md border border-[#E8E5F0]" style={{
-            background: 'conic-gradient(#5B45E7 92%, #EAE5FF 0)'
+          <span className="text-[9px] font-bold text-[#5E667A] uppercase tracking-widest mb-1 shadow-sm px-1 bg-white border border-[#E4DFF5] rounded">Score</span>
+          <div className="relative w-14 h-14 rounded-full bg-conic flex items-center justify-center shadow-md border border-[#E4DFF5]" style={{
+            background: 'conic-gradient(#553BE2 92%, #ECE7FF 0)'
           }}>
             <div className="absolute inset-[3px] bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
-              <span className="text-base font-bold text-[#5B45E7] leading-none">92%</span>
+              <span className="text-base font-bold text-[#553BE2] leading-none">92%</span>
             </div>
           </div>
-          <span className="text-[10px] font-bold text-[#5B45E7] mt-1.5 flex items-center gap-0.5 leading-none">
+          <span className="text-[10px] font-bold text-[#553BE2] mt-1.5 flex items-center gap-0.5 leading-none">
             Ideal Fit! <span className="material-symbols-outlined text-[13px] leading-none">auto_awesome</span>
           </span>
         </div>
       </section>
 
       {/* Main Preview Model Frame Card */}
-      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E8E5F0] bg-[#EAE5FF]">
+      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-[#ECE7FF]">
         <img 
           alt="Lavender Hoodie tryon comparison preview" 
           className="w-full h-full object-cover transition-opacity duration-300"
@@ -117,23 +117,23 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br"></div>
 
         {/* Side Floating Camera Tools */}
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-3 bg-white/85 backdrop-blur-xl p-1.5 rounded-2xl border border-[#E8E5F0] shadow-md">
-          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#17182B] hover:text-[#5B45E7] transition-colors">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-3 bg-white/85 backdrop-blur-xl p-1.5 rounded-2xl border border-[#E4DFF5] shadow-md">
+          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#131426] hover:text-[#553BE2] transition-colors">
             <span className="material-symbols-outlined text-base">rotate_right</span>
             <span className="text-[7px] font-bold mt-0.5">Rotate</span>
           </button>
-          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#17182B] hover:text-[#5B45E7] transition-colors">
+          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#131426] hover:text-[#553BE2] transition-colors">
             <span className="material-symbols-outlined text-base">zoom_in</span>
             <span className="text-[7px] font-bold mt-0.5">Zoom</span>
           </button>
-          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#17182B] hover:text-[#5B45E7] transition-colors">
+          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#131426] hover:text-[#553BE2] transition-colors">
             <span className="material-symbols-outlined text-base">refresh</span>
             <span className="text-[7px] font-bold mt-0.5">Reset</span>
           </button>
         </div>
 
         {/* Background Toggle Banner */}
-        <button className="absolute bottom-4 right-4 bg-white/85 backdrop-blur-xl px-3 py-1.5 rounded-full border border-[#E8E5F0] flex items-center gap-1 hover:bg-white transition-colors shadow-sm text-[10px] font-semibold text-[#17182B]">
+        <button className="absolute bottom-4 right-4 bg-white/85 backdrop-blur-xl px-3 py-1.5 rounded-full border border-[#E4DFF5] flex items-center gap-1 hover:bg-white transition-colors shadow-sm text-[10px] font-semibold text-[#131426]">
           <span className="material-symbols-outlined text-sm leading-none">image</span>
           Background
         </button>
@@ -142,13 +142,13 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
       {/* Change Color Palette selection swatches row */}
       <section className="glass-card rounded-2xl p-4">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-sm font-bold text-[#17182B] flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[#5B45E7] text-base leading-none">palette</span>
+          <h3 className="text-sm font-bold text-[#131426] flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[#553BE2] text-base leading-none">palette</span>
             Change Color
           </h3>
           <button 
             onClick={() => onNavigate('product-details')}
-            className="text-xs font-semibold text-[#5B45E7] hover:underline"
+            className="text-xs font-semibold text-[#553BE2] hover:underline"
           >
             Details
           </button>
@@ -163,7 +163,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
                 <button 
                   onClick={() => setSelectedColor(s.name)}
                   className={`w-14 h-14 rounded-2xl border-2 p-0.5 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                    isActive ? 'border-[#5B45E7] scale-105 shadow-md shadow-[#5B45E7]/20' : 'border-[#E8E5F0] opacity-80'
+                    isActive ? 'border-[#553BE2] scale-105 shadow-md shadow-[#553BE2]/20' : 'border-[#E4DFF5] opacity-80'
                   }`}
                 >
                   <img 
@@ -174,11 +174,11 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
                   />
                   {isActive && (
                     <div className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow-sm">
-                      <span className="material-symbols-outlined text-[10px] text-[#5B45E7] font-bold leading-none">check</span>
+                      <span className="material-symbols-outlined text-[10px] text-[#553BE2] font-bold leading-none">check</span>
                     </div>
                   )}
                 </button>
-                <span className={`text-[10px] font-medium ${isActive ? 'text-[#5B45E7] font-bold' : 'text-[#697386]'}`}>{s.text}</span>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-[#553BE2] font-bold' : 'text-[#5E667A]'}`}>{s.text}</span>
               </div>
             );
           })}
@@ -187,7 +187,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
 
       {/* Mini Product Card details banner */}
       <section className="glass-card rounded-3xl p-4 flex gap-4 items-center">
-        <div className="w-16 h-20 rounded-xl bg-[#F0EDFF] overflow-hidden shrink-0 border border-[#E8E5F0] p-0.5">
+        <div className="w-16 h-20 rounded-xl bg-[#F2EEFF] overflow-hidden shrink-0 border border-[#E4DFF5] p-0.5">
           <img 
             alt="Lavender hoodie organic fleece thumbnail" 
             className="w-full h-full object-cover rounded-lg"
@@ -196,11 +196,11 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-bold text-[#17182B] truncate">Lavender Hoodie</h4>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F0EDFF] text-[#5B45E7] inline-block mt-0.5">Streetwear Classic</span>
+          <h4 className="text-sm font-bold text-[#131426] truncate">Lavender Hoodie</h4>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F2EEFF] text-[#553BE2] inline-block mt-0.5">Streetwear Classic</span>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-sm font-extrabold text-[#5B45E7]">₹1,499</span>
-            <span className="text-[10px] text-[#697386] flex items-center font-semibold">
+            <span className="text-sm font-extrabold text-[#553BE2]">₹1,499</span>
+            <span className="text-[10px] text-[#5E667A] flex items-center font-semibold">
               <span className="material-symbols-outlined text-[11px] text-amber-500 mr-0.5 leading-none">star</span>
               4.6 (128)
             </span>
@@ -208,20 +208,20 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         </div>
         <button 
           onClick={handleBuyNow}
-          className="py-2.5 px-3 rounded-xl border border-[#5B45E7] text-[#5B45E7] text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#F0EDFF] transition-colors"
+          className="py-2.5 px-3 rounded-xl border border-[#553BE2] text-[#553BE2] text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#F2EEFF] transition-colors"
         >
           <span className="material-symbols-outlined text-sm leading-none">local_mall</span>
           Details
         </button>
       </section>
 
-      <section className="rounded-3xl bg-white p-4 shadow-sm border border-[#E8E5F0]">
+      <section className="rounded-3xl bg-white p-4 shadow-sm border border-[#E4DFF5]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-bold text-[#17182B]">Rate your try-on</h3>
-            <p className="text-[11px] text-[#697386]">Add a star rating and quick review from your AR experience.</p>
+            <h3 className="text-sm font-bold text-[#131426]">Rate your try-on</h3>
+            <p className="text-[11px] text-[#5E667A]">Add a star rating and quick review from your AR experience.</p>
           </div>
-          <span className="text-xs font-semibold text-[#697386]">{selectedColor}</span>
+          <span className="text-xs font-semibold text-[#5E667A]">{selectedColor}</span>
         </div>
 
         <div className="flex gap-2 mb-3">
@@ -231,7 +231,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
               type="button"
               onClick={() => setReviewRating(star)}
               className={`rounded-full w-10 h-10 border flex items-center justify-center transition ${
-                reviewRating >= star ? 'bg-amber-500 text-white border-amber-500' : 'bg-[#F4F1FF] text-[#697386] border-[#E8E5F0]'
+                reviewRating >= star ? 'bg-amber-500 text-white border-amber-500' : 'bg-[#F2EEFF] text-[#5E667A] border-[#E4DFF5]'
               }`}
             >
               <span className="material-symbols-outlined">star</span>
@@ -242,7 +242,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         <textarea
           value={reviewText}
           onChange={(e) => setReviewText(e.target.value)}
-          className="w-full rounded-3xl border border-[#E8E5F0] bg-[#F4F1FF] px-4 py-3 text-sm text-[#17182B] placeholder:text-[#697386] min-h-[110px] focus:outline-none focus:border-[#5B45E7]"
+          className="w-full rounded-3xl border border-[#E4DFF5] bg-[#F2EEFF] px-4 py-3 text-sm text-[#131426] placeholder:text-[#5E667A] min-h-[110px] focus:outline-none focus:border-[#553BE2]"
           placeholder="Write a quick note about fit, color, or comfort..."
         />
 
@@ -261,7 +261,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
             setToastMessage('Thanks! Your try-on review has been submitted.');
             setTimeout(() => setToastMessage(null), 2500);
           }}
-          className="mt-4 w-full rounded-2xl bg-[#5B45E7] text-white py-3 text-sm font-semibold hover:opacity-95 transition-opacity"
+          className="mt-4 w-full rounded-2xl bg-[#553BE2] text-white py-3 text-sm font-semibold hover:opacity-95 transition-opacity"
         >
           Submit Try-On Review
         </button>
@@ -271,18 +271,18 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
       <section className="flex gap-2.5 pt-2">
         <button 
           onClick={handleShare}
-          className="flex-1 py-3 bg-[#F0EDFF] hover:bg-[#EAE5FF] text-[#5B45E7] border border-[#E8E5F0] rounded-2xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+          className="flex-1 py-3 bg-[#F2EEFF] hover:bg-[#ECE7FF] text-[#553BE2] border border-[#E4DFF5] rounded-2xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
         >
           <span className="material-symbols-outlined text-base">share</span>
           Share
         </button>
-        <button className="flex-1 py-3 rounded-2xl border border-[#E8E5F0] text-[#17182B] bg-white hover:bg-[#F0EDFF] hover:shadow transition-all font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95">
+        <button className="flex-1 py-3 rounded-2xl border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] hover:shadow transition-all font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95">
           <span className="material-symbols-outlined text-base">bookmark_border</span>
           Save
         </button>
         <button 
           onClick={() => onNavigate('ar-tryon')}
-          className="flex-[1.4] py-3 rounded-2xl bg-[#5B45E7] text-white font-bold flex items-center justify-center gap-1.5 text-xs shadow-lg shadow-[#5B45E7]/25 hover:opacity-95 transition-opacity active:scale-95 cursor-pointer"
+          className="flex-[1.4] py-3 rounded-2xl bg-[#553BE2] text-white font-bold flex items-center justify-center gap-1.5 text-xs shadow-lg shadow-[#553BE2]/25 hover:opacity-95 transition-opacity active:scale-95 cursor-pointer"
         >
           <span className="material-symbols-outlined text-base">sync</span>
           Another

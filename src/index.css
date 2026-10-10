@@ -3,34 +3,48 @@
 
 @theme {
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --color-nova-bg: #F4F1FF;
+  --color-nova-bg: #F2EEFF;
   --color-nova-surface: #FFFFFF;
-  --color-nova-primary: #5B45E7;
-  --color-nova-secondary: #EAE5FF;
-  --color-nova-icon-bg: #F0EDFF;
-  --color-nova-text: #17182B;
-  --color-nova-text-secondary: #697386;
-  --color-nova-border: #E8E5F0;
-  --color-nova-nav-inactive: #9AA3B5;
+  --color-nova-primary: #553BE2;
+  --color-nova-primary-hover: #462CC9;
+  --color-nova-secondary: #ECE7FF;
+  --color-nova-utility: #EDE7FF;
+  --color-nova-icon-bg: #F2EEFF;
+  --color-nova-icon-border: #E2DBF8;
+  --color-nova-text: #131426;
+  --color-nova-text-secondary: #5E667A;
+  --color-nova-border: #E4DFF5;
+  --color-nova-hero-border: #D5CBF7;
+  --color-nova-nav-inactive: #8E96AA;
 }
 
 :root {
-  --nova-bg: #F4F1FF;
+  --nova-bg: #F2EEFF;
   --nova-surface: #FFFFFF;
-  --nova-primary: #5B45E7;
-  --nova-secondary: #EAE5FF;
-  --nova-icon-bg: #F0EDFF;
-  --nova-text: #17182B;
-  --nova-text-secondary: #697386;
-  --nova-border: #E8E5F0;
-  --nova-nav-inactive: #9AA3B5;
+  --nova-primary: #553BE2;
+  --nova-primary-hover: #462CC9;
+  --nova-secondary: #ECE7FF;
+  --nova-utility: #EDE7FF;
+  --nova-icon-bg: #F2EEFF;
+  --nova-icon-border: #E2DBF8;
+  --nova-text: #131426;
+  --nova-text-secondary: #5E667A;
+  --nova-border: #E4DFF5;
+  --nova-hero-border: #D5CBF7;
+  --nova-nav-inactive: #8E96AA;
 }
 
 @layer utilities {
   .nova-surface {
     background: var(--nova-surface);
     border: 1px solid var(--nova-border);
-    box-shadow: 0 10px 28px rgba(91, 69, 231, 0.06), 0 2px 8px rgba(23, 24, 43, 0.02);
+    box-shadow: 0 12px 28px -6px rgba(85, 59, 226, 0.08), 0 2px 6px -1px rgba(19, 20, 38, 0.04);
+  }
+
+  .nova-hero-surface {
+    background: linear-gradient(135deg, #FFFFFF 0%, #FAF8FF 52%, #EFEAFF 100%);
+    border: 1px solid var(--nova-hero-border);
+    box-shadow: 0 16px 36px -8px rgba(85, 59, 226, 0.14), 0 4px 10px -2px rgba(19, 20, 38, 0.05);
   }
 
   .nova-interactive {
@@ -39,7 +53,7 @@
 
   .nova-interactive:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 34px rgba(91, 69, 231, 0.10), 0 4px 12px rgba(23, 24, 43, 0.03);
+    box-shadow: 0 16px 34px -6px rgba(85, 59, 226, 0.12), 0 4px 10px -2px rgba(19, 20, 38, 0.05);
   }
 
   .nova-interactive:active {
@@ -49,15 +63,15 @@
   .nova-page-wash {
     background-color: var(--nova-bg);
     background-image:
-      radial-gradient(circle at 8% 0%, rgba(234, 229, 255, 0.85), transparent 36%),
-      radial-gradient(circle at 100% 20%, rgba(240, 237, 255, 0.9), transparent 38%),
-      linear-gradient(180deg, #F4F1FF 0%, #F4F1FF 100%);
+      radial-gradient(circle at 8% 0%, rgba(236, 231, 255, 0.9), transparent 38%),
+      radial-gradient(circle at 100% 22%, rgba(242, 238, 255, 0.92), transparent 42%),
+      linear-gradient(180deg, #F0EBFF 0%, #F6F4FF 48%, #F2EEFF 100%);
   }
 
   .glass-panel {
     background: var(--nova-surface);
     border: 1px solid var(--nova-border);
-    box-shadow: 0 8px 24px 0 rgba(91, 69, 231, 0.05);
+    box-shadow: 0 12px 28px -6px rgba(85, 59, 226, 0.08), 0 2px 6px -1px rgba(19, 20, 38, 0.04);
   }
 
   .glass-panel-dark {
@@ -73,7 +87,7 @@
   .glass-card {
     background: var(--nova-surface);
     border: 1px solid var(--nova-border);
-    box-shadow: 0 8px 24px 0 rgba(91, 69, 231, 0.06);
+    box-shadow: 0 12px 28px -6px rgba(85, 59, 226, 0.08), 0 2px 6px -1px rgba(19, 20, 38, 0.04);
   }
 
   .hide-scrollbar::-webkit-scrollbar {
@@ -86,8 +100,8 @@
 }
 
 @keyframes pulse-glow {
-  0% { box-shadow: 0 0 20px rgba(91, 69, 231, 0.35); }
-  100% { box-shadow: 0 0 40px rgba(91, 69, 231, 0.65), 0 0 80px rgba(91, 69, 231, 0.2); }
+  0% { box-shadow: 0 0 20px rgba(85, 59, 226, 0.35); }
+  100% { box-shadow: 0 0 40px rgba(85, 59, 226, 0.65), 0 0 80px rgba(85, 59, 226, 0.2); }
 }
 
 .glowing-orb {
@@ -107,10 +121,10 @@
 
 body {
   font-family: "Poppins", sans-serif;
-  background-image: radial-gradient(circle at 10% 10%, rgba(234, 229, 255, 0.7) 0%, transparent 45%),
-                    radial-gradient(circle at 90% 90%, rgba(240, 237, 255, 0.7) 0%, transparent 50%),
-                    radial-gradient(circle at 50% 30%, rgba(234, 229, 255, 0.55) 0%, transparent 60%);
-  background-color: #F4F1FF;
-  color: #17182B;
+  background-image: radial-gradient(circle at 10% 10%, rgba(236, 231, 255, 0.75) 0%, transparent 45%),
+                    radial-gradient(circle at 90% 90%, rgba(242, 238, 255, 0.75) 0%, transparent 50%),
+                    linear-gradient(180deg, #F0EBFF 0%, #F6F4FF 48%, #F2EEFF 100%);
+  background-color: #F2EEFF;
+  color: #131426;
   background-attachment: fixed;
 }

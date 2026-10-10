@@ -177,14 +177,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     <div className="-mx-4 space-y-6">
       {/* Toast Alert floating block */}
       {toastMessage && (
-        <div className="fixed top-20 inset-x-4 z-50 bg-[#17182B]/95 backdrop-blur-md text-white text-xs font-bold text-center px-4 py-3 rounded-xl shadow-lg border border-[#5B45E7]/30 animate-scale-up">
+        <div className="fixed top-20 inset-x-4 z-50 bg-[#131426]/95 backdrop-blur-md text-white text-xs font-bold text-center px-4 py-3 rounded-xl shadow-lg border border-[#553BE2]/30 animate-scale-up">
           {toastMessage}
         </div>
       )}
 
       {/* Large Product Hero Image display card */}
       <section className={`relative w-full h-[380px] flex items-center justify-center overflow-hidden rounded-b-3xl border-b ${
-        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-[#EAE5FF] border-[#E8E5F0]'
+        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-[#ECE7FF] border-[#E4DFF5]'
       }`}>
         <img 
           key={`${selectedColor}-${galleryIndex}`}
@@ -199,14 +199,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         />
         {/* badges inside hero */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-extrabold text-[#5B45E7] flex items-center gap-1 shadow-sm uppercase tracking-wider border border-[#E8E5F0]">
+          <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-extrabold text-[#553BE2] flex items-center gap-1 shadow-sm uppercase tracking-wider border border-[#E4DFF5]">
             <span className="material-symbols-outlined text-xs leading-none text-red-500">local_fire_department</span> Top Pick
           </span>
         </div>
 
         {/* 360 view indicator */}
         <div className="absolute top-4 right-4 flex flex-col gap-3">
-          <button className="bg-white/90 backdrop-blur-md p-2 rounded-full text-[#5B45E7] hover:bg-white shadow-sm flex items-center justify-center border border-[#E8E5F0]">
+          <button className="bg-white/90 backdrop-blur-md p-2 rounded-full text-[#553BE2] hover:bg-white shadow-sm flex items-center justify-center border border-[#E4DFF5]">
             <span className="material-symbols-outlined text-base leading-none">360</span>
           </button>
         </div>
@@ -218,7 +218,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               <button
                 key={i}
                 onClick={() => setGalleryIndex(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-all ${galleryIndex === i ? 'bg-[#5B45E7] scale-110' : 'bg-white/50'}`}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${galleryIndex === i ? 'bg-[#553BE2] scale-110' : 'bg-white/50'}`}
                 aria-label={`Image ${i + 1}`}
               />
             ))
@@ -237,10 +237,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           <div className="flex justify-between items-start gap-2 mb-2">
             <div>
               {/* Taxonomy Label */}
-              <span className="inline-block text-[#5B45E7] px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider mb-2 bg-[#F0EDFF]">
+              <span className="inline-block text-[#553BE2] px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider mb-2 bg-[#F2EEFF]">
                 {mainProduct.category}
               </span>
-              <h1 className={`text-2xl font-bold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{mainProduct.name}</h1>
+              <h1 className={`text-2xl font-bold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{mainProduct.name}</h1>
             </div>
             
             <button 
@@ -254,8 +254,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               }}
               className={`p-2.5 rounded-2xl border transition-all active:scale-95 cursor-pointer ${
                 wishlist.includes(mainProduct.id)
-                  ? 'border-[#5B45E7]/30 bg-[#F0EDFF] text-[#5B45E7] shadow-sm'
-                  : 'border-[#E8E5F0] bg-white text-[#9AA3B5] hover:text-[#697386] hover:border-[#5B45E7]/40'
+                  ? 'border-[#553BE2]/30 bg-[#F2EEFF] text-[#553BE2] shadow-sm'
+                  : 'border-[#E4DFF5] bg-white text-[#8E96AA] hover:text-[#5E667A] hover:border-[#553BE2]/40'
               }`}
             >
               <span className="material-symbols-outlined leading-none text-lg" style={{ fontVariationSettings: wishlist.includes(mainProduct.id) ? "'FILL' 1" : undefined }}>
@@ -266,17 +266,17 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           
           {/* Star review ratings */}
           <div className={`flex items-center gap-1 mt-2 mb-4 text-xs font-semibold ${
-            isDarkMode ? 'text-slate-300' : 'text-[#697386]'
+            isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'
           }`}>
             <span className="material-symbols-outlined text-amber-500 text-sm leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
             <span>{reviewStars}</span>
-            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>({reviewCountLabel} Reviews)</span>
+            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>({reviewCountLabel} Reviews)</span>
           </div>
 
           {/* Pricing tag */}
           <div className="mb-5 leading-none">
-            <div className="text-2xl font-extrabold text-[#5B45E7]">₹{mainProduct.price}</div>
-            <div className={`text-[10px] mt-1 uppercase tracking-wider font-semibold ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>Inclusive of all taxes</div>
+            <div className="text-2xl font-extrabold text-[#553BE2]">₹{mainProduct.price}</div>
+            <div className={`text-[10px] mt-1 uppercase tracking-wider font-semibold ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Inclusive of all taxes</div>
           </div>
 
           {/* Holistic Virtual try-on direct CTA banner */}
@@ -285,23 +285,23 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             className={`rounded-xl p-3 flex items-center justify-between mb-5 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 border ${
               isDarkMode
                 ? 'bg-indigo-950/30 border-indigo-800/30'
-                : 'bg-[#F0EDFF] border-[#E8E5F0]'
+                : 'bg-[#F2EEFF] border-[#E4DFF5]'
             }`}
           >
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-xl flex items-center justify-center ${
                 isDarkMode
                   ? 'bg-indigo-950/50 text-indigo-300'
-                  : 'bg-[#EAE5FF] text-[#5B45E7]'
+                  : 'bg-[#ECE7FF] text-[#553BE2]'
               }`}>
                 <span className="material-symbols-outlined text-lg leading-none">face</span>
               </div>
               <div className="leading-tight">
-                <div className={`text-xs font-extrabold ${isDarkMode ? 'text-indigo-300' : 'text-[#5B45E7]'}`}>Try it on virtually</div>
-                <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>Use AR Try-On to see how it fits you in real-time.</div>
+                <div className={`text-xs font-extrabold ${isDarkMode ? 'text-indigo-300' : 'text-[#553BE2]'}`}>Try it on virtually</div>
+                <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Use AR Try-On to see how it fits you in real-time.</div>
               </div>
             </div>
-            <span className={`material-symbols-outlined text-base ${isDarkMode ? 'text-indigo-400' : 'text-[#5B45E7]'}`}>chevron_right</span>
+            <span className={`material-symbols-outlined text-base ${isDarkMode ? 'text-indigo-400' : 'text-[#553BE2]'}`}>chevron_right</span>
           </div>
 
           {/* Color swatches selector */}
@@ -309,9 +309,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             <div className={`text-xs font-bold uppercase tracking-widest mb-1.5 ${
               isDarkMode
                 ? 'text-slate-400 color-current'
-                : 'text-[#697386]'
+                : 'text-[#5E667A]'
             }`}>Color: <span className={`font-semibold ${
-              isDarkMode ? 'text-slate-100' : 'text-[#17182B]'
+              isDarkMode ? 'text-slate-100' : 'text-[#131426]'
             }`}>{getVariantLabel(selectedVariant) || selectedColor}</span></div>
             <div className="flex gap-2.5">
               {(mainProduct.variants && mainProduct.variants.length > 0 ? mainProduct.variants : variantColors.map((colorName, index) => ({
@@ -333,8 +333,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     onClick={() => setSelectedColor(colorName)}
                     title={colorName}
                     className={`h-8 w-8 rounded-full border transition-all ${
-                      isActive ? 'ring-2 ring-[#5B45E7] ring-offset-2 ring-offset-white shadow-[0_0_14px_rgba(91,69,231,0.35)]' : 'opacity-70 hover:opacity-100'
-                    } ${isLightColor(colorHex) ? 'border-[#E8E5F0]' : 'border-white/40'} ${isDarkColor(colorHex) ? 'shadow-md shadow-slate-950/25' : ''}`}
+                      isActive ? 'ring-2 ring-[#553BE2] ring-offset-2 ring-offset-white shadow-[0_0_14px_rgba(85, 59, 226,0.35)]' : 'opacity-70 hover:opacity-100'
+                    } ${isLightColor(colorHex) ? 'border-[#E4DFF5]' : 'border-white/40'} ${isDarkColor(colorHex) ? 'shadow-md shadow-slate-950/25' : ''}`}
                     style={{ backgroundColor: colorHex }}
                   />
                 );
@@ -345,12 +345,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           {/* Size choices lists */}
           <div className="mb-5">
             <div className={`flex justify-between items-center mb-1.5 text-xs font-bold ${
-              isDarkMode ? 'text-slate-400' : 'text-[#697386]'
+              isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'
             }`}>
               <span className="uppercase tracking-widest">Size</span>
               <button 
                 onClick={() => alert('Refer to M chest specs: 98cm, sleeve: 62cm.')}
-                className="text-[#5B45E7] font-semibold flex items-center gap-1 hover:underline"
+                className="text-[#553BE2] font-semibold flex items-center gap-1 hover:underline"
               >
                 <span className="material-symbols-outlined text-xs leading-none">straighten</span> Size Guide
               </button>
@@ -366,10 +366,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                       isActive 
                         ? isDarkMode
                           ? 'border-indigo-400 bg-indigo-950/50 text-indigo-300 font-extrabold'
-                          : 'border-[#5B45E7] bg-[#F0EDFF] text-[#5B45E7] font-extrabold'
+                          : 'border-[#553BE2] bg-[#F2EEFF] text-[#553BE2] font-extrabold'
                         : isDarkMode
                           ? 'border-slate-700 text-slate-300 hover:border-indigo-700'
-                          : 'border-[#E8E5F0] text-[#697386] hover:border-[#5B45E7]/50'
+                          : 'border-[#E4DFF5] text-[#5E667A] hover:border-[#553BE2]/50'
                     }`}
                   >
                     {sz}
@@ -386,7 +386,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               )}
             </div>
             {currentSku && (
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#697386]">SKU: {currentSku}</div>
+              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#5E667A]">SKU: {currentSku}</div>
             )}
           </div>
 
@@ -394,13 +394,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           <div className="flex gap-2.5 pt-1">
             <button 
               onClick={() => onNavigate('ar-tryon')}
-              className="flex-1 py-3 rounded-xl border border-[#5B45E7] text-[#5B45E7] font-bold flex items-center justify-center gap-1.5 text-xs bg-white hover:bg-[#F0EDFF] transition-colors"
+              className="flex-1 py-3 rounded-xl border border-[#553BE2] text-[#553BE2] font-bold flex items-center justify-center gap-1.5 text-xs bg-white hover:bg-[#F2EEFF] transition-colors"
             >
               <span className="material-symbols-outlined text-base">view_in_ar</span> Try Now (AR)
             </button>
             <button 
               onClick={() => handleAddToCart(mainProduct.id, selectedColor, selectedSize)}
-              className="flex-1 py-3 rounded-xl bg-[#5B45E7] text-white font-bold flex items-center justify-center gap-1.5 text-xs shadow-md shadow-[#5B45E7]/20 hover:opacity-95 transition-opacity"
+              className="flex-1 py-3 rounded-xl bg-[#553BE2] text-white font-bold flex items-center justify-center gap-1.5 text-xs shadow-md shadow-[#553BE2]/20 hover:opacity-95 transition-opacity"
             >
               <span className="material-symbols-outlined text-base">shopping_bag</span> Add to Cart
             </button>
@@ -411,7 +411,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       {/* Tab components descriptions */}
       <section className="px-4">
         <div className={`rounded-2xl p-1.5 ${isDarkMode ? 'bg-slate-900/90 border border-slate-800' : 'glass-card'}`}>
-          <div className={`flex overflow-x-auto hide-scrollbar border-b ${isDarkMode ? 'border-slate-800' : 'border-[#E8E5F0]'}`}>
+          <div className={`flex overflow-x-auto hide-scrollbar border-b ${isDarkMode ? 'border-slate-800' : 'border-[#E4DFF5]'}`}>
             {[
               { id: 'details', label: 'Details' },
               { id: 'material', label: 'Material & Care' },
@@ -423,8 +423,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex-1 min-w-[80px] py-2 text-center text-xs font-bold border-b-2 leading-loose transition-all whitespace-nowrap px-2 ${
                   activeTab === tab.id 
-                    ? 'border-[#5B45E7] text-[#5B45E7] font-extrabold' 
-                    : 'border-transparent text-[#697386] hover:text-[#17182B]'
+                    ? 'border-[#553BE2] text-[#553BE2] font-extrabold' 
+                    : 'border-transparent text-[#5E667A] hover:text-[#131426]'
                 }`}
               >
                 {tab.label}
@@ -433,15 +433,15 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           </div>
 
           {/* Tab contents block switcher */}
-          <div className={`p-3 text-xs leading-relaxed min-h-[140px] ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>
+          <div className={`p-3 text-xs leading-relaxed min-h-[140px] ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
             {activeTab === 'details' && (
               <div className="space-y-3 animate-fade-in">
                 <p>Stay modern, stylish and extremely snug with NOVA's trademark heavy cotton fleece hoodie. Engineered specifically for casual coordinate wear.</p>
-                <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#17182B]'}`}>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#5B45E7] text-sm">check_circle</span> Cotton Fleece blend</li>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#5B45E7] text-sm">check_circle</span> Relaxed smart silhouette</li>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#5B45E7] text-sm">check_circle</span> Braided drawstring hood</li>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#5B45E7] text-sm">check_circle</span> Kangaroo storage pocket</li>
+                <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
+                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Cotton Fleece blend</li>
+                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Relaxed smart silhouette</li>
+                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Braided drawstring hood</li>
+                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Kangaroo storage pocket</li>
                 </ul>
               </div>
             )}
@@ -458,16 +458,16 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     {reviewListenerError}
                   </div>
                 )}
-                <div className={`rounded-3xl border p-4 ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E8E5F0] bg-[#F4F1FF]'}`}>
+                <div className={`rounded-3xl border p-4 ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Your review</div>
-                        <div className="text-[11px] text-[#697386]">
+                        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Your review</div>
+                        <div className="text-[11px] text-[#5E667A]">
                           {currentUserName ? `Signed in as ${currentUserName}` : 'Write a review for this product.'}
                         </div>
                       </div>
-                      <div className="text-xs font-semibold text-[#697386]">{reviewCountLabel} reviews · {reviewStars} ★</div>
+                      <div className="text-xs font-semibold text-[#5E667A]">{reviewCountLabel} reviews · {reviewStars} ★</div>
                     </div>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: 5 }).map((_, index) => {
@@ -477,7 +477,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                             key={starValue}
                             type="button"
                             onClick={() => setReviewRating(starValue)}
-                            className={`material-symbols-outlined text-lg ${reviewRating >= starValue ? 'text-amber-500' : 'text-[#9AA3B5]'}`}
+                            className={`material-symbols-outlined text-lg ${reviewRating >= starValue ? 'text-amber-500' : 'text-[#8E96AA]'}`}
                           >
                             star
                           </button>
@@ -488,14 +488,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                       value={reviewComment}
                       onChange={(event) => setReviewComment(event.target.value)}
                       placeholder="Share your experience..."
-                      className={`w-full min-h-[100px] rounded-2xl border p-3 text-xs focus:border-[#5B45E7] focus:outline-none focus:ring-2 focus:ring-[#F0EDFF] ${
-                        isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-200' : 'border-[#E8E5F0] bg-white text-[#17182B]'
+                      className={`w-full min-h-[100px] rounded-2xl border p-3 text-xs focus:border-[#553BE2] focus:outline-none focus:ring-2 focus:ring-[#F2EEFF] ${
+                        isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-200' : 'border-[#E4DFF5] bg-white text-[#131426]'
                       }`}
                     />
                     <button
                       type="button"
                       onClick={handleReviewSubmit}
-                      className="w-full rounded-2xl bg-[#5B45E7] py-3 text-xs font-bold text-white hover:opacity-95 transition-opacity"
+                      className="w-full rounded-2xl bg-[#553BE2] py-3 text-xs font-bold text-white hover:opacity-95 transition-opacity"
                     >
                       Submit Review
                     </button>
@@ -505,21 +505,21 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 <div className="space-y-3">
                   {reviews && reviews.length > 0 ? (
                     reviews.map((review) => (
-                      <div key={review.id} className={`rounded-3xl border p-4 shadow-sm ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E8E5F0] bg-white'}`}>
+                      <div key={review.id} className={`rounded-3xl border p-4 shadow-sm ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-white'}`}>
                         <div className="flex items-center justify-between gap-2">
-                          <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{review.userName}</div>
+                          <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{review.userName}</div>
                           <div className="text-amber-500 text-sm">
                             {Array.from({ length: 5 }).map((_, index) => (
                               <span key={index}>{index < review.rating ? '★' : '☆'}</span>
                             ))}
                           </div>
                         </div>
-                        <div className="text-[11px] text-[#697386] mb-2">{formatReviewDate(review.createdAt)}</div>
-                        <p className={`text-[12px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#17182B]'}`}>{review.comment}</p>
+                        <div className="text-[11px] text-[#5E667A] mb-2">{formatReviewDate(review.createdAt)}</div>
+                        <p className={`text-[12px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#131426]'}`}>{review.comment}</p>
                       </div>
                     ))
                   ) : (
-                    <div className={`rounded-3xl border p-4 text-sm text-[#697386] ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E8E5F0] bg-[#F4F1FF]'}`}>
+                    <div className={`rounded-3xl border p-4 text-sm text-[#5E667A] ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
                       No reviews yet. Be the first to share your opinion.
                     </div>
                   )}
@@ -540,10 +540,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       {completeLookItems.length > 0 && (
         <section className="px-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Complete the Look</h2>
+            <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Complete the Look</h2>
             <button 
               onClick={() => onNavigate('home')}
-              className="text-xs font-semibold text-[#5B45E7] flex items-center hover:underline"
+              className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
             >
               Explore All <span className="material-symbols-outlined text-sm ml-0.5">chevron_right</span>
             </button>
@@ -554,7 +554,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               <div 
                 key={item.id}
                 onClick={() => handleAddToCart(item.id, 'Default', 'One Size')}
-                className="min-w-[130px] glass-card rounded-2xl p-2.5 relative cursor-pointer border border-transparent hover:border-[#E8E5F0] transition-colors"
+                className="min-w-[130px] glass-card rounded-2xl p-2.5 relative cursor-pointer border border-transparent hover:border-[#E4DFF5] transition-colors"
               >
                 <button 
                   onClick={(e) => { 
@@ -569,14 +569,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   className={`absolute top-3.5 right-3.5 z-10 rounded-full p-1.5 shadow-md flex items-center justify-center transition-all cursor-pointer ${
                     wishlist.includes(item.id)
                       ? 'bg-red-50 text-red-600 border border-red-100'
-                      : 'text-[#697386] bg-white/90 hover:bg-white hover:text-red-500'
+                      : 'text-[#5E667A] bg-white/90 hover:bg-white hover:text-red-500'
                   }`}
                 >
                   <span className="material-symbols-outlined text-xs leading-none" style={{ fontVariationSettings: wishlist.includes(item.id) ? "'FILL' 1" : undefined }}>
                     {wishlist.includes(item.id) ? 'favorite' : 'favorite_border'}
                   </span>
                 </button>
-                <div className="h-32 rounded-xl bg-[#F0EDFF] mb-2 overflow-hidden flex items-center justify-center">
+                <div className="h-32 rounded-xl bg-[#F2EEFF] mb-2 overflow-hidden flex items-center justify-center">
                   <img 
                     alt={item.name} 
                     className="w-full h-full object-cover mix-blend-multiply" 
@@ -584,10 +584,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     src={products[item.id]?.imageUrl}
                   />
                 </div>
-                <div className="text-[11px] font-bold text-[#17182B] truncate">{item.name}</div>
+                <div className="text-[11px] font-bold text-[#131426] truncate">{item.name}</div>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-xs font-extrabold text-[#5B45E7]">{item.price}</span>
-                  <span className="text-[9px] font-bold text-[#697386] flex items-center">
+                  <span className="text-xs font-extrabold text-[#553BE2]">{item.price}</span>
+                  <span className="text-[9px] font-bold text-[#5E667A] flex items-center">
                     <span className="material-symbols-outlined text-[10px] text-amber-500 mr-0.5">star</span>
                     {item.rating}
                   </span>

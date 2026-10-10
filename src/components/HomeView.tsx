@@ -29,13 +29,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section className={`relative mt-4 overflow-hidden rounded-[28px] p-5 animate-fade-in border ${
         isDarkMode
           ? 'bg-slate-900/70 border-slate-800'
-          : 'bg-gradient-to-br from-[#F4F1FF] via-[#F0EDFF] to-[#EAE5FF]/70 border-[#E8E5F0] shadow-[0_8px_24px_rgba(91,69,231,0.05)]'
+          : 'bg-[linear-gradient(135deg,#FFFFFF_0%,#F6F3FF_58%,#EBE4FF_100%)] border-[#DFD8F7] shadow-[0_12px_28px_-6px_rgba(85,59,226,0.08),0_2px_6px_-1px_rgba(19,20,38,0.04)]'
       }`}>
-        <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#EAE5FF]/80 blur-3xl" />
-        <h1 className={`relative text-[27px] font-extrabold tracking-[-0.03em] flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>
-          Hello, {userName}! <span className="text-[#5B45E7]">✨</span>
+        <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#ECE7FF]/85 blur-3xl" />
+        <h1 className={`relative text-[27px] font-extrabold tracking-[-0.03em] flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
+          Hello, {userName}! <span className="text-[#553BE2]">✨</span>
         </h1>
-        <p className={`relative mt-2 text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>
+        <p className={`relative mt-2 text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
           Your AI + AR Fashion Assistant<br />is ready to help you.
         </p>
       </section>
@@ -44,31 +44,31 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className={`nova-interactive rounded-[22px] p-4 flex items-center justify-between gap-2.5 border ${
         isDarkMode
           ? 'bg-indigo-950/40 border-indigo-800/30'
-          : 'bg-[#EAE5FF]/75 border-[#E8E5F0] shadow-[0_6px_20px_rgba(91,69,231,0.05)]'
+          : 'bg-[linear-gradient(135deg,#EDE7FF_0%,#F5F2FF_100%)] border-[#DDD4FA] shadow-[0_10px_24px_-6px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)]'
       }`}>
         <div className="flex items-center gap-2.5">
           <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center shadow-xs ${
-            isDarkMode ? 'bg-indigo-900/60 text-indigo-300' : 'bg-[#F0EDFF] text-[#5B45E7] border border-[#E8E5F0]'
+            isDarkMode ? 'bg-indigo-900/60 text-indigo-300' : 'bg-[#F2EEFF] text-[#553BE2] border border-[#E2DBF8]'
           }`}>
             <span className="material-symbols-outlined text-xl">info</span>
           </div>
           <div className="leading-tight text-left">
-            <h4 className={`text-xs font-black uppercase tracking-wide leading-none ${isDarkMode ? 'text-indigo-200' : 'text-[#5B45E7]'}`}>NOVA Tour Guide</h4>
-            <span className={`text-[10px] mt-1.5 block font-medium ${isDarkMode ? 'text-indigo-300' : 'text-[#697386]'}`}>Replay Splash demo or Onboarding tour at any time!</span>
+            <h4 className={`text-xs font-black uppercase tracking-wide leading-none ${isDarkMode ? 'text-indigo-200' : 'text-[#553BE2]'}`}>NOVA Tour Guide</h4>
+            <span className={`text-[10px] mt-1.5 block font-medium ${isDarkMode ? 'text-indigo-300' : 'text-[#5E667A]'}`}>Replay Splash demo or Onboarding tour at any time!</span>
           </div>
         </div>
         <div className="flex gap-1.5 shrink-0">
           <button 
             onClick={() => onNavigate('splash')}
             className={`nova-interactive text-[9px] py-2 px-3 rounded-xl font-black uppercase whitespace-nowrap cursor-pointer border ${
-              isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' : 'bg-white hover:bg-[#F0EDFF] text-[#5B45E7] border-[#E8E5F0] shadow-xs'
+              isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' : 'bg-white hover:bg-[#F2EEFF] text-[#553BE2] border-[#E4DFF5] shadow-xs'
             }`}
           >
             Splash
           </button>
           <button 
             onClick={() => onNavigate('onboarding')}
-            className="nova-interactive bg-[#5B45E7] hover:bg-[#4c37d1] text-[9px] text-white py-2 px-3 rounded-xl font-black uppercase shadow-sm shadow-[#5B45E7]/25 whitespace-nowrap cursor-pointer"
+            className="nova-interactive bg-[#553BE2] hover:bg-[#462CC9] text-[9px] text-white py-2 px-3 rounded-xl font-black uppercase shadow-sm shadow-[#553BE2]/25 whitespace-nowrap cursor-pointer"
           >
             Tour
           </button>
@@ -80,23 +80,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <button
           onClick={() => onNavigate('showroom')}
           className={`nova-interactive w-full rounded-[26px] p-6 relative overflow-hidden group cursor-pointer border ${
-            isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
+            isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-hero-surface'
           }`}
         >
-          <div className="absolute -right-10 -top-10 w-48 h-48 bg-gradient-to-br from-[#EAE5FF]/90 via-[#F0EDFF]/70 to-[#EAE5FF]/90 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-500"></div>
+          <div className="absolute -right-10 -top-10 w-48 h-48 bg-gradient-to-br from-[#E4DCFF]/95 via-[#F2EEFF]/80 to-[#ECE7FF]/95 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-500"></div>
           <div className="flex justify-between items-center relative z-10">
             <div className="max-w-[70%] text-left">
               <div className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full mb-3 border shadow-xs ${
-                isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F0EDFF] border-[#E8E5F0]'
+                isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
               }`}>
-                <span className="material-symbols-outlined text-[#5B45E7] text-base leading-none">local_mall</span>
-                <span className="text-xs font-bold text-[#5B45E7] tracking-wide uppercase">Explore</span>
+                <span className="material-symbols-outlined text-[#553BE2] text-base leading-none">local_mall</span>
+                <span className="text-xs font-bold text-[#553BE2] tracking-wide uppercase">Explore</span>
               </div>
-              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>NOVA Showroom</h2>
-              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Browse all products and drops →</p>
+              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>NOVA Showroom</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Browse all products and drops →</p>
             </div>
-            <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center border shadow-sm text-[#5B45E7] group-hover:scale-105 transition-transform ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-[#E8E5F0]'
+            <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center border shadow-sm text-[#553BE2] group-hover:scale-105 transition-transform ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-[#D5CBF7] shadow-[0_6px_16px_rgba(85,59,226,0.08)]'
             }`}>
               <span className="material-symbols-outlined text-3xl leading-none">inventory_2</span>
             </div>
@@ -107,13 +107,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Explore NOVA Grid */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className={`text-base font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>
-            <span className="material-symbols-outlined text-[#5B45E7] mr-2 text-xl leading-none">explore</span>
+          <h2 className={`text-base font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
+            <span className="material-symbols-outlined text-[#553BE2] mr-2 text-xl leading-none">explore</span>
             Explore NOVA
           </h2>
           <button 
             onClick={() => onNavigate('profile')}
-            className="text-xs font-semibold text-[#5B45E7] flex items-center hover:underline"
+            className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
           >
             Shortcuts <span className="material-symbols-outlined text-sm ml-1 leading-none">edit</span>
           </button>
@@ -126,36 +126,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
             }`}
           >
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#5B45E7] border shadow-xs ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F0EDFF] border-[#E8E5F0]'
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
             }`}>
               <span className="material-symbols-outlined leading-none">psychology</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>AI Assistant</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Get intelligent answers and style guidance.</p>
-            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#5B45E7] self-end group-hover:bg-[#5B45E7] group-hover:text-white transition-colors duration-200 ${
-              isDarkMode ? 'bg-slate-800' : 'bg-[#F0EDFF]'
-            }`}>
-              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
-            </div>
-          </div>
-
-          {/* Item 2: Smart Vision */}
-          <div 
-            onClick={() => onNavigate('scan-outfit')}
-            className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
-              isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
-            }`}
-          >
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#5B45E7] border shadow-xs ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F0EDFF] border-[#E8E5F0]'
-            }`}>
-              <span className="material-symbols-outlined leading-none">visibility</span>
-            </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Smart Vision</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Analyze, detect and understand with AI.</p>
-            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#5B45E7] self-end group-hover:bg-[#5B45E7] group-hover:text-white transition-colors duration-200 ${
-              isDarkMode ? 'bg-slate-800' : 'bg-[#F0EDFF]'
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AI Assistant</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Get intelligent answers and style guidance.</p>
+            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
+              isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -168,15 +147,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
             }`}
           >
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#5B45E7] border shadow-xs ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F0EDFF] border-[#E8E5F0]'
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
             }`}>
               <span className="material-symbols-outlined leading-none">photo_camera</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Camera Scan</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Scan outfits or items in real-time.</p>
-            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#5B45E7] self-end group-hover:bg-[#5B45E7] group-hover:text-white transition-colors duration-200 ${
-              isDarkMode ? 'bg-slate-800' : 'bg-[#F0EDFF]'
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Camera Scan</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Scan outfits or items in real-time.</p>
+            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
+              isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -189,15 +168,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
             }`}
           >
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#5B45E7] border shadow-xs ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F0EDFF] border-[#E8E5F0]'
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
             }`}>
               <span className="material-symbols-outlined leading-none">checkroom</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Virtual Wardrobe</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Build AI garments from scans, prints, and textures.</p>
-            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#5B45E7] self-end group-hover:bg-[#5B45E7] group-hover:text-white transition-colors duration-200 ${
-              isDarkMode ? 'bg-slate-800' : 'bg-[#F0EDFF]'
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Virtual Wardrobe</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Build AI garments from scans, prints, and textures.</p>
+            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
+              isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -210,15 +189,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
             }`}
           >
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#5B45E7] border shadow-xs ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F0EDFF] border-[#E8E5F0]'
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
             }`}>
               <span className="material-symbols-outlined leading-none">checkroom</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>AR Try-On</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Try outfits virtually with AR.</p>
-            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#5B45E7] self-end group-hover:bg-[#5B45E7] group-hover:text-white transition-colors duration-200 ${
-              isDarkMode ? 'bg-slate-800' : 'bg-[#F0EDFF]'
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AR Try-On</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Try outfits virtually with AR.</p>
+            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
+              isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
               <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
             </div>
@@ -232,23 +211,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
           onClick={() => onNavigate('chat')}
           className="w-full glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300"
         >
-          <div className="absolute -right-10 -top-10 w-48 h-48 bg-[#EAE5FF]/50 rounded-full blur-3xl group-hover:bg-[#EAE5FF]/70 transition-colors duration-500"></div>
+          <div className="absolute -right-10 -top-10 w-48 h-48 bg-[#ECE7FF]/50 rounded-full blur-3xl group-hover:bg-[#ECE7FF]/70 transition-colors duration-500"></div>
           <div className="flex justify-between items-center relative z-10">
             <div className="max-w-[70%] text-left">
-              <div className="inline-flex items-center space-x-1.5 bg-[#F0EDFF] px-3 py-1 rounded-full mb-3 border border-[#E8E5F0] shadow-xs">
-                <span className="material-symbols-outlined text-[#5B45E7] text-base leading-none">smart_toy</span>
-                <span className="text-xs font-semibold text-[#5B45E7] tracking-wide uppercase">AI Assistant Active</span>
+              <div className="inline-flex items-center space-x-1.5 bg-[#F2EEFF] px-3 py-1 rounded-full mb-3 border border-[#E2DBF8] shadow-xs">
+                <span className="material-symbols-outlined text-[#553BE2] text-base leading-none">smart_toy</span>
+                <span className="text-xs font-semibold text-[#553BE2] tracking-wide uppercase">AI Assistant Active</span>
               </div>
-              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Ask Nova Anything</h2>
-              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Get instant answers and style guidance →</p>
+              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Ask Nova Anything</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Get instant answers and style guidance →</p>
             </div>
             <div className="w-20 h-20 relative shrink-0">
-              <div className="absolute inset-0 bg-[#5B45E7]/20 rounded-full glowing-orb blur-xl"></div>
+              <div className="absolute inset-0 bg-[#553BE2]/20 rounded-full glowing-orb blur-xl"></div>
               <img
                 alt="AI Orb Graphic"
-                className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white shadow-inner"
+                className="w-full h-full object-contain bg-white p-2 rounded-full relative z-10 border-2 border-white shadow-inner"
                 referrerPolicy="no-referrer"
-                src={`/logoone.jpeg?t=${Date.now()}`}
+                src="/nova-logo.png"
               />
             </div>
           </div>
@@ -258,10 +237,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Recent Activity Section */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Recent Activity</h2>
+          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Recent Activity</h2>
           <button 
             onClick={() => onNavigate('scan-outfit')}
-            className="text-xs font-semibold text-[#5B45E7] flex items-center hover:underline"
+            className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
           >
             View All <span className="material-symbols-outlined text-sm ml-1 leading-none">chevron_right</span>
           </button>
@@ -281,7 +260,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 }}
                 className="flex-none w-36 group cursor-pointer"
               >
-                <div className="h-48 rounded-2xl overflow-hidden relative shadow-xs border border-[#E8E5F0] bg-white mb-2">
+                <div className="h-48 rounded-2xl overflow-hidden relative shadow-[0_8px_20px_-4px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)] border border-[#E4DFF5] bg-white mb-2">
                   <img 
                     alt={activity.name} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
@@ -302,7 +281,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         }
                       }}
                       title={isSaved ? 'Remove from Wishlist' : 'Save to Wishlist'}
-                      className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${isSaved ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-white/90 text-[#697386] hover:text-rose-500 hover:bg-white'}`}
+                      className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm select-none transition-all cursor-pointer ${isSaved ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-white/90 text-[#5E667A] hover:text-rose-500 hover:bg-white'}`}
                     >
                       <span className="material-symbols-outlined text-sm leading-none" style={{ fontVariationSettings: isSaved ? "'FILL' 1" : undefined }}>
                         {isSaved ? 'favorite' : 'favorite_border'}
@@ -310,8 +289,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     </button>
                   )}
                 </div>
-                <h4 className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{activity.name}</h4>
-                <p className={`text-[11px] truncate ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>{activity.time}</p>
+                <h4 className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{activity.name}</h4>
+                <p className={`text-[11px] truncate ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>{activity.time}</p>
               </div>
             );
           })}

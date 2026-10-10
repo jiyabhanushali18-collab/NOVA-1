@@ -1533,7 +1533,7 @@ export default function App() {
   // Email Verification Screen Guard
   if (screen === 'email-verification' && pendingEmailVerification) {
     return (
-      <div className="min-h-screen bg-[#F4F1FF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E8E5F0] text-[#17182B]">
+      <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E4DFF5] text-[#131426]">
         <main className="flex-grow relative px-4 py-3 flex flex-col justify-center">
           <EmailVerificationView
             email={pendingEmailVerification.email}
@@ -1549,7 +1549,7 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[#F4F1FF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E8E5F0] text-[#17182B]">
+      <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E4DFF5] text-[#131426]">
         <main className="flex-grow relative px-4 py-3 flex flex-col justify-center">
           <AuthView 
             onLoginSuccess={handleLoginSuccess} 
@@ -1568,7 +1568,7 @@ export default function App() {
     <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
-        : 'bg-[#F4F1FF] nova-page-wash border-x border-[#E8E5F0] text-[#17182B]'
+        : 'bg-[#F2EEFF] nova-page-wash border-x border-[#E4DFF5] text-[#131426]'
     }`}>
       
       {/* 1. Header Toolbar (Hidden when immersive AR camera is loaded to mimic device viewport) */}
@@ -1576,19 +1576,25 @@ export default function App() {
         <header className={`sticky top-0 z-40 backdrop-blur-xl px-6 py-4 flex items-center justify-between transition-colors duration-300 ${
           isDarkMode
             ? 'bg-slate-900/85 border-b border-slate-800/40'
-            : 'bg-white/95 border-b border-[#E8E5F0] shadow-[0_4px_18px_rgba(91,69,231,0.05)]'
+            : 'bg-white/95 border-b border-[#E4DFF5] shadow-[0_6px_20px_-4px_rgba(85,59,226,0.06),0_2px_6px_-1px_rgba(19,20,38,0.03)]'
         }`}>
           <div 
-                    onClick={() => navigate('home')}
+            onClick={() => navigate('home')}
             className="flex items-center space-x-2 cursor-pointer select-none group"
           >
             <span
               aria-hidden="true"
-              className="h-8 w-8 shrink-0 rounded-xl bg-white border border-[#E8E5F0] bg-[url('/novalogo_withoutbg.png')] bg-[length:78px_auto] bg-[center_top] bg-no-repeat shadow-sm transition-transform group-hover:scale-105"
-            />
-            <div className="leading-none">
-              <span className={`text-base font-black tracking-tight group-hover:text-[#5B45E7] transition-colors ${
-                isDarkMode ? 'text-white' : 'text-[#17182B]'
+              className="h-8 w-8 shrink-0 rounded-xl bg-white border border-[#E4DFF5] p-1 flex items-center justify-center shadow-[0_2px_6px_rgba(19,20,38,0.04)] transition-transform group-hover:scale-105"
+            >
+              <img
+                src="/nova-logo.png"
+                alt="NOVA"
+                className="w-full h-full object-contain block"
+              />
+            </span>
+            <div className="leading-none flex items-center">
+              <span className={`text-base font-black tracking-tight group-hover:text-[#553BE2] transition-colors ${
+                isDarkMode ? 'text-white' : 'text-[#131426]'
               }`}>NOVA</span>
               {/* subtitle intentionally removed to show only brand name */}
             </div>
@@ -1598,7 +1604,7 @@ export default function App() {
             {/* Quick Wishlist widget (opens modal) */}
             <button 
               onClick={() => setIsWishlistOpen(true)}
-              className="nova-interactive w-10 h-10 rounded-full bg-white hover:bg-[#F0EDFF] flex items-center justify-center relative border border-[#E8E5F0] shadow-xs"
+              className="nova-interactive w-10 h-10 rounded-full bg-white hover:bg-[#F2EEFF] flex items-center justify-center relative border border-[#E4DFF5] shadow-[0_2px_6px_rgba(19,20,38,0.04)]"
               title="View Wishlist"
             >
               <span className="material-symbols-outlined text-rose-500 text-[20px]" style={{ fontVariationSettings: wishlist.length > 0 ? "'FILL' 1" : undefined }}>favorite</span>
@@ -1612,12 +1618,12 @@ export default function App() {
             {/* Quick Shopping Cart widget */}
             <button 
               onClick={() => navigate('cart')}
-              className="nova-interactive w-10 h-10 rounded-full bg-[#F0EDFF] flex items-center justify-center relative hover:bg-[#EAE5FF] border border-[#E8E5F0] shadow-xs"
+              className="nova-interactive w-10 h-10 rounded-full bg-[#F2EEFF] flex items-center justify-center relative hover:bg-[#ECE7FF] border border-[#E2DBF8] shadow-[0_2px_6px_rgba(19,20,38,0.03)]"
               title="View Cart"
             >
-              <span className="material-symbols-outlined text-[#5B45E7] text-[20px]">local_mall</span>
+              <span className="material-symbols-outlined text-[#553BE2] text-[20px]">local_mall</span>
               {countCartTotalItems() > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#5B45E7] text-white text-[10px] font-black flex items-center justify-center shadow border border-white animate-pulse">
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#553BE2] text-white text-[10px] font-black flex items-center justify-center shadow border border-white animate-pulse">
                   {countCartTotalItems()}
                 </span>
               )}
@@ -1626,13 +1632,13 @@ export default function App() {
             {/* Quick profile thumbnail widget */}
             <button 
               onClick={() => navigate('profile')}
-              className="nova-interactive w-9 h-9 rounded-full overflow-hidden border-2 border-white ring-2 ring-[#EAE5FF] hover:ring-[#5B45E7]/40 shadow-[0_4px_12px_rgba(91,69,231,0.14)]"
+              className="nova-interactive w-9 h-9 rounded-full overflow-hidden border-2 border-white ring-2 ring-[#ECE7FF] hover:ring-[#553BE2]/40 shadow-[0_4px_12px_rgba(85,59,226,0.14)]"
             >
               <img 
                 alt="Account profile" 
                 className="w-full h-full object-cover" 
                 referrerPolicy="no-referrer"
-                src={userProfilePhoto || activeAccount?.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'NOVA User')}&background=F0EDFF&color=5B45E7&bold=true`}
+                src={userProfilePhoto || activeAccount?.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'NOVA User')}&background=F2EEFF&color=553BE2&bold=true`}
               />
             </button>
           </div>
@@ -1649,14 +1655,14 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsWishlistOpen(false)} />
           <div className={`relative w-full max-w-md rounded-3xl shadow-xl p-4 overflow-y-auto max-h-[70vh] transition-colors duration-300 border ${
-            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#E8E5F0]'
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#E4DFF5]'
           }`}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{t('profile.settings.wishlist')} ({wishlist.length})</h3>
-              <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-[#697386] hover:text-[#17182B]'}`}>{t('common.close')}</button>
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('profile.settings.wishlist')} ({wishlist.length})</h3>
+              <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-[#5E667A] hover:text-[#131426]'}`}>{t('common.close')}</button>
             </div>
             {wishlist.length === 0 ? (
-              <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>
+              <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
                 No saved items yet — tap the heart on products to save them.
               </div>
             ) : (
@@ -1667,20 +1673,20 @@ export default function App() {
                   const defaultColor = getDefaultProductColor(prod);
                   const defaultSize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : 'One Size';
                   return (
-                    <div key={productId} className={`flex items-center gap-3 p-2 rounded-xl border ${isDarkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-[#E8E5F0] hover:bg-[#F4F1FF]'}`}>
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#F0EDFF] border border-[#E8E5F0]">
+                    <div key={productId} className={`flex items-center gap-3 p-2 rounded-xl border ${isDarkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-[#E4DFF5] hover:bg-[#F2EEFF]'}`}>
+                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#F2EEFF] border border-[#E2DBF8]">
                         <img alt={prod.name} src={prod.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{prod.name}</div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>₹{prod.price}</div>
+                        <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{prod.name}</div>
+                        <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>₹{prod.price}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
                             handleAddToCart(productId, defaultColor, defaultSize);
                           }}
-                          className="py-2 px-3 bg-[#5B45E7] hover:bg-[#4c37d1] text-white rounded-xl text-xs font-bold"
+                          className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold"
                         >Add</button>
                         <button
                           onClick={() => {
@@ -1702,45 +1708,45 @@ export default function App() {
         <nav className={`fixed bottom-0 inset-x-0 max-w-md mx-auto backdrop-blur-2xl px-5 py-2 pb-5 flex items-center justify-between z-40 shadow-2xl transition-colors duration-300 ${
           isDarkMode
             ? 'bg-slate-900/85 border-t border-slate-800/50 shadow-slate-950/50'
-            : 'bg-white/95 border-t border-[#E8E5F0] shadow-[0_-8px_24px_rgba(91,69,231,0.06)]'
+            : 'bg-white/95 border-t border-[#E4DFF5] shadow-[0_-8px_24px_-4px_rgba(85,59,226,0.07),0_-2px_6px_-1px_rgba(19,20,38,0.03)]'
         }`}>
           <button 
             onClick={() => navigate('home')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('home') ? 'text-[#5B45E7]' : 'text-[#9AA3B5] hover:text-[#5B45E7]'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('home') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
           >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('home') ? 'bg-[#F0EDFF]' : ''}`} style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('home') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
             <span className="text-[10px] font-bold">{t('nav.home')}</span>
           </button>
 
           <button 
             onClick={() => navigate('scan-outfit')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('scan') ? 'text-[#5B45E7]' : 'text-[#9AA3B5] hover:text-[#5B45E7]'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('scan') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
           >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('scan') ? 'bg-[#F0EDFF]' : ''}`} style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('scan') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
             <span className="text-[10px] font-bold">{t('nav.scan')}</span>
           </button>
 
           <button 
             onClick={() => navigate('wardrobe')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('wardrobe') ? 'text-[#5B45E7]' : 'text-[#9AA3B5] hover:text-[#5B45E7]'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('wardrobe') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
           >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('wardrobe') ? 'bg-[#F0EDFF]' : ''}`} style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('wardrobe') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
             <span className="text-[10px] font-bold">{t('nav.wardrobe')}</span>
           </button>
 
           <button 
             onClick={() => navigate('chat')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('chat') ? 'text-[#5B45E7]' : 'text-[#9AA3B5] hover:text-[#5B45E7]'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('chat') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
           >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('chat') ? 'bg-[#F0EDFF]' : ''}`} style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('chat') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
             <span className="text-[10px] font-bold">{t('nav.stylist')}</span>
           </button>
 
           <button 
             onClick={() => navigate('profile')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('profile') ? 'text-[#5B45E7]' : 'text-[#9AA3B5] hover:text-[#5B45E7]'}`}
+            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('profile') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
           >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('profile') ? 'bg-[#F0EDFF]' : ''}`} style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>
+            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('profile') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>
             <span className="text-[10px] font-bold">{t('nav.profile')}</span>
           </button>
         </nav>

@@ -182,29 +182,29 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       <section className="relative pt-2">
         <div className="flex justify-between items-start">
           <div className="max-w-[70%]">
-            <h1 className="text-2xl font-bold text-[#17182B] leading-tight">Camera Scan</h1>
-            <p className="text-xs text-[#697386] mt-1">
+            <h1 className="text-2xl font-bold text-[#131426] leading-tight">Camera Scan</h1>
+            <p className="text-xs text-[#5E667A] mt-1">
               Point your camera at any outfit or fabric to get instant material specifications and pairings.
             </p>
           </div>
           
           {/* AI Floating Robot Head Sphere */}
           <div className="relative w-14 h-14 shrink-0 shadow-inner">
-            <div className="absolute inset-0 bg-[#EAE5FF] rounded-full blur-md animate-pulse"></div>
-            <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#17182B] via-[#2B245A] to-[#5B45E7] border-2 border-[#5B45E7]/40 flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-[#ECE7FF] rounded-full blur-md animate-pulse"></div>
+            <div className="relative w-full h-full rounded-full bg-gradient-to-br from-[#131426] via-[#2B245A] to-[#553BE2] border-2 border-[#553BE2]/40 flex items-center justify-center overflow-hidden">
               <div className="flex gap-1.5 z-10">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#EAE5FF] shadow-[0_0_6px_#EAE5FF]"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-[#EAE5FF] shadow-[0_0_6px_#EAE5FF]"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#ECE7FF] shadow-[0_0_6px_#ECE7FF]"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#ECE7FF] shadow-[0_0_6px_#ECE7FF]"></div>
               </div>
-              <div className="absolute inset-0 border border-[#EAE5FF]/20 rounded-full scale-110 -rotate-12"></div>
-              <div className="absolute inset-0 border border-[#EAE5FF]/10 rounded-full scale-125 rotate-45"></div>
+              <div className="absolute inset-0 border border-[#ECE7FF]/20 rounded-full scale-110 -rotate-12"></div>
+              <div className="absolute inset-0 border border-[#ECE7FF]/10 rounded-full scale-125 rotate-45"></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Point instruction text */}
-      <div className="text-center text-xs text-[#697386] leading-none">
+      <div className="text-center text-xs text-[#5E667A] leading-none">
         {scanResult && scanResult.results.length > 1 ? `${scanResult.results.length} Items Found` : 'Point your camera at any clothing item'}
       </div>
 
@@ -223,8 +223,8 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
               onClick={() => setActiveChip(chip.id as any)}
               className={`px-4 py-2 rounded-full flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive 
-                  ? 'bg-[#5B45E7] text-white shadow-md shadow-[#5B45E7]/20 border border-[#5B45E7]' 
-                  : 'bg-white text-[#697386] border border-[#E8E5F0] hover:text-[#17182B]'
+                  ? 'bg-[#553BE2] text-white shadow-md shadow-[#553BE2]/20 border border-[#553BE2]' 
+                  : 'bg-white text-[#5E667A] border border-[#E4DFF5] hover:text-[#131426]'
               }`}
             >
               <span className="material-symbols-outlined text-[15px] leading-none">{chip.icon}</span> 
@@ -235,7 +235,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       </div>
 
       {/* Camera scan framing viewfinder card */}
-      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E8E5F0] bg-black">
+      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-black">
         {/* Underlay canvas image: Lavender Hoodie on organic hanger */}
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -244,7 +244,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
           }}
         />
         {!hasSelectedImage && (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#17182B] via-[#2B245A] to-[#5B45E7]/70 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#131426] via-[#2B245A] to-[#553BE2]/70 flex items-center justify-center">
             <button
               onClick={() => setShowSourceSheet(true)}
               className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-lg"
@@ -279,7 +279,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
 
           {/* Scanning line animation laser with pulse glow */}
           {scanning && (
-            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#5B45E7] to-transparent top-1/2 shadow-[0_0_12px_#EAE5FF] scan-line-animation" />
+            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#553BE2] to-transparent top-1/2 shadow-[0_0_12px_#ECE7FF] scan-line-animation" />
           )}
 
           {scanResult && scanResult.results.length > 1 && (
@@ -319,19 +319,19 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       <section className="glass-panel rounded-3xl p-4">
         {scanning ? (
           <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
-            <div className="w-10 h-10 rounded-full border-2 border-[#5B45E7] border-t-transparent animate-spin"></div>
-            <p className="text-xs font-bold text-[#5B45E7] tracking-wide">{scanMessage}</p>
-            <p className="text-[10px] text-[#697386]">Checking texture matrix and matching database</p>
+            <div className="w-10 h-10 rounded-full border-2 border-[#553BE2] border-t-transparent animate-spin"></div>
+            <p className="text-xs font-bold text-[#553BE2] tracking-wide">{scanMessage}</p>
+            <p className="text-[10px] text-[#5E667A]">Checking texture matrix and matching database</p>
           </div>
         ) : errorMessage ? (
           <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
             <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100">
               <span className="material-symbols-outlined text-xl">error</span>
             </div>
-            <p className="text-xs font-bold text-[#17182B] tracking-wide">{errorMessage}</p>
+            <p className="text-xs font-bold text-[#131426] tracking-wide">{errorMessage}</p>
             <button
               onClick={() => setShowSourceSheet(true)}
-              className="mt-1 py-2.5 px-5 rounded-full bg-[#5B45E7] text-white font-bold text-xs shadow-md shadow-[#5B45E7]/20"
+              className="mt-1 py-2.5 px-5 rounded-full bg-[#553BE2] text-white font-bold text-xs shadow-md shadow-[#553BE2]/20"
             >
               Try Again
             </button>
@@ -340,7 +340,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
           <div className="animate-fade-in">
             <div className="flex gap-4">
               {/* Product Thumbnail */}
-              <div className="w-20 h-20 rounded-2xl bg-white border border-[#E8E5F0] p-1 shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-white border border-[#E4DFF5] p-1 shrink-0">
                 <div 
                   className="w-full h-full rounded-xl bg-cover bg-center"
                   style={{
@@ -352,47 +352,47 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
               {/* Data specifications */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                  <h3 className="text-base font-bold text-[#17182B] leading-none">{clothingTypeLabel}</h3>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#F0EDFF] text-[#5B45E7] uppercase tracking-wider">{categoryLabel}</span>
+                  <h3 className="text-base font-bold text-[#131426] leading-none">{clothingTypeLabel}</h3>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#F2EEFF] text-[#553BE2] uppercase tracking-wider">{categoryLabel}</span>
                 </div>
-                <p className="text-[10px] font-bold text-[#5B45E7] mb-1.5 leading-none">{currentResult.title}</p>
-                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-[#697386]">
-                  <span className="text-[#697386] font-medium">Primary Color</span>
-                  <span className="text-[#17182B] flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full border border-[#E8E5F0] inline-block" style={{ backgroundColor: currentResult.item.features.colorHex }}></span>
+                <p className="text-[10px] font-bold text-[#553BE2] mb-1.5 leading-none">{currentResult.title}</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-[#5E667A]">
+                  <span className="text-[#5E667A] font-medium">Primary Color</span>
+                  <span className="text-[#131426] flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full border border-[#E4DFF5] inline-block" style={{ backgroundColor: currentResult.item.features.colorHex }}></span>
                     {displayColor || 'Detected'}
                   </span>
                   
-                  <span className="text-[#697386] font-medium">Secondary Color</span>
-                  <span className="text-[#17182B]">{secondaryColor || 'Not detected'}</span>
+                  <span className="text-[#5E667A] font-medium">Secondary Color</span>
+                  <span className="text-[#131426]">{secondaryColor || 'Not detected'}</span>
 
-                  <span className="text-[#697386] font-medium">Category</span>
-                  <span className="text-[#17182B]">{categoryLabel || 'Apparel'}</span>
+                  <span className="text-[#5E667A] font-medium">Category</span>
+                  <span className="text-[#131426]">{categoryLabel || 'Apparel'}</span>
 
-                  <span className="text-[#697386] font-medium">Pattern</span>
-                  <span className="text-[#17182B]">{patternLabel}</span>
+                  <span className="text-[#5E667A] font-medium">Pattern</span>
+                  <span className="text-[#131426]">{patternLabel}</span>
 
-                  <span className="text-[#697386] font-medium">Material</span>
-                  <span className="text-[#17182B]">{materialLabel || 'Detected fabric'}</span>
+                  <span className="text-[#5E667A] font-medium">Material</span>
+                  <span className="text-[#131426]">{materialLabel || 'Detected fabric'}</span>
 
-                  <span className="text-[#697386] font-medium font-bold">Similarity</span>
-                  <span className="text-[#5B45E7] font-bold">{currentResult.score}%</span>
+                  <span className="text-[#5E667A] font-medium font-bold">Similarity</span>
+                  <span className="text-[#553BE2] font-bold">{currentResult.score}%</span>
 
-                  <span className="text-[#697386] font-medium">Matched Product</span>
-                  <span className="text-[#17182B]">{displayProduct?.name || 'No exact match found'}</span>
+                  <span className="text-[#5E667A] font-medium">Matched Product</span>
+                  <span className="text-[#131426]">{displayProduct?.name || 'No exact match found'}</span>
 
-                  <span className="text-[#697386] font-medium">Vendor</span>
-                  <span className="text-[#17182B]">{displayProduct?.vendorName || 'NOVA Partner'}</span>
+                  <span className="text-[#5E667A] font-medium">Vendor</span>
+                  <span className="text-[#131426]">{displayProduct?.vendorName || 'NOVA Partner'}</span>
 
-                  <span className="text-[#697386] font-medium font-bold">Why it matched</span>
-                  <span className="text-[#5B45E7] font-bold">{matchReasons.map((reason) => `✓ ${reason}`).join('  ')}</span>
+                  <span className="text-[#5E667A] font-medium font-bold">Why it matched</span>
+                  <span className="text-[#553BE2] font-bold">{matchReasons.map((reason) => `✓ ${reason}`).join('  ')}</span>
                 </div>
               </div>
 
               {/* Pairing list recommendation (micro-visual) */}
-              <div className="w-20 pl-3 border-l border-[#E8E5F0] shrink-0 text-center flex flex-col items-center justify-center">
-                <p className="text-[9px] text-[#697386] font-bold leading-none mb-1">Paired With</p>
-                <div className="w-9 h-9 rounded-lg bg-[#F0EDFF] overflow-hidden border border-[#E8E5F0] shadow-sm mb-1">
+              <div className="w-20 pl-3 border-l border-[#E4DFF5] shrink-0 text-center flex flex-col items-center justify-center">
+                <p className="text-[9px] text-[#5E667A] font-bold leading-none mb-1">Paired With</p>
+                <div className="w-9 h-9 rounded-lg bg-[#F2EEFF] overflow-hidden border border-[#E4DFF5] shadow-sm mb-1">
                   <div 
                     className="w-full h-full bg-cover bg-center"
                     style={{
@@ -400,7 +400,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
                     }}
                   />
                 </div>
-                <span className="text-[8px] font-bold text-[#5B45E7] bg-[#F0EDFF] px-1 rounded-full">
+                <span className="text-[8px] font-bold text-[#553BE2] bg-[#F2EEFF] px-1 rounded-full">
                   {pairingProduct ? `${pairingProduct.name.split(' ').slice(0, 2).join(' ')}` : '+ 4 more'}
                 </span>
               </div>
@@ -410,7 +410,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
             <div className="flex gap-3 mt-4">
               <button 
                 onClick={handleScanAgain}
-                className="flex-1 py-2.5 rounded-full border border-[#E8E5F0] text-[#17182B] bg-white hover:bg-[#F0EDFF] transition-colors font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm"
+                className="flex-1 py-2.5 rounded-full border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] transition-colors font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm"
               >
                 <span className="material-symbols-outlined text-base">refresh</span>
                 Scan Again
@@ -418,7 +418,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
               
               <button 
                 onClick={handleViewDetails}
-                className="flex-1 py-2.5 rounded-full bg-[#5B45E7] text-white font-bold flex items-center justify-center gap-1 hover:opacity-95 transition-opacity text-xs shadow-md shadow-[#5B45E7]/20"
+                className="flex-1 py-2.5 rounded-full bg-[#553BE2] text-white font-bold flex items-center justify-center gap-1 hover:opacity-95 transition-opacity text-xs shadow-md shadow-[#553BE2]/20"
               >
                 View Details
                 <span className="material-symbols-outlined text-base leading-none">chevron_right</span>
@@ -429,12 +429,12 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
           <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
             <button
               onClick={() => setShowSourceSheet(true)}
-              className="w-12 h-12 rounded-full bg-[#5B45E7] text-white flex items-center justify-center shadow-md shadow-[#5B45E7]/20"
+              className="w-12 h-12 rounded-full bg-[#553BE2] text-white flex items-center justify-center shadow-md shadow-[#553BE2]/20"
             >
               <span className="material-symbols-outlined text-2xl">photo_camera</span>
             </button>
-            <p className="text-xs font-bold text-[#5B45E7] tracking-wide">Choose an image to start scanning</p>
-            <p className="text-[10px] text-[#697386]">Camera and gallery use the same matching pipeline</p>
+            <p className="text-xs font-bold text-[#553BE2] tracking-wide">Choose an image to start scanning</p>
+            <p className="text-[10px] text-[#5E667A]">Camera and gallery use the same matching pipeline</p>
           </div>
         )}
       </section>
@@ -443,22 +443,22 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" onClick={() => setShowSourceSheet(false)} />
           <div className="relative w-full max-w-md glass-panel rounded-t-3xl p-5 pb-8 shadow-2xl animate-fade-in">
-            <div className="w-10 h-1 rounded-full bg-[#E8E5F0] mx-auto mb-4"></div>
-            <h2 className="text-lg font-bold text-[#17182B] leading-none">Scan Outfit</h2>
-            <p className="text-xs text-[#697386] mt-1 mb-4">Choose Image Source</p>
+            <div className="w-10 h-1 rounded-full bg-[#E4DFF5] mx-auto mb-4"></div>
+            <h2 className="text-lg font-bold text-[#131426] leading-none">Scan Outfit</h2>
+            <p className="text-xs text-[#5E667A] mt-1 mb-4">Choose Image Source</p>
             <div className="grid gap-3">
               <button
                 onClick={() => openSource('camera')}
-                className="w-full py-3 rounded-2xl bg-[#F4F1FF] border border-[#E8E5F0] hover:border-[#5B45E7]/40 text-[#17182B] font-bold flex items-center justify-center gap-2 text-sm shadow-sm transition-colors"
+                className="w-full py-3 rounded-2xl bg-[#F2EEFF] border border-[#E4DFF5] hover:border-[#553BE2]/40 text-[#131426] font-bold flex items-center justify-center gap-2 text-sm shadow-sm transition-colors"
               >
-                <span className="material-symbols-outlined text-[#5B45E7]">photo_camera</span>
+                <span className="material-symbols-outlined text-[#553BE2]">photo_camera</span>
                 Open Camera
               </button>
               <button
                 onClick={() => openSource('gallery')}
-                className="w-full py-3 rounded-2xl bg-[#F4F1FF] border border-[#E8E5F0] hover:border-[#5B45E7]/40 text-[#17182B] font-bold flex items-center justify-center gap-2 text-sm shadow-sm transition-colors"
+                className="w-full py-3 rounded-2xl bg-[#F2EEFF] border border-[#E4DFF5] hover:border-[#553BE2]/40 text-[#131426] font-bold flex items-center justify-center gap-2 text-sm shadow-sm transition-colors"
               >
-                <span className="material-symbols-outlined text-[#5B45E7]">image</span>
+                <span className="material-symbols-outlined text-[#553BE2]">image</span>
                 Upload From Gallery
               </button>
             </div>

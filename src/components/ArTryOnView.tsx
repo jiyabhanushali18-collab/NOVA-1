@@ -80,10 +80,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
       {/* Floating Match score circle */}
       <div className="absolute top-24 right-5 z-20">
-        <div className="bg-slate-950/40 backdrop-blur-md rounded-full w-16 h-16 flex flex-col items-center justify-center shadow-lg border border-[#EAE5FF]/30 relative">
+        <div className="bg-slate-950/40 backdrop-blur-md rounded-full w-16 h-16 flex flex-col items-center justify-center shadow-lg border border-[#ECE7FF]/30 relative">
           <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" fill="none" r="43" stroke="rgba(255,255,255,0.2)" strokeWidth="4"></circle>
-            <circle cx="50" cy="50" fill="none" r="43" stroke="#5B45E7" strokeDasharray="270" strokeDashoffset="21" strokeLinecap="round" strokeWidth="4"></circle>
+            <circle cx="50" cy="50" fill="none" r="43" stroke="#553BE2" strokeDasharray="270" strokeDashoffset="21" strokeLinecap="round" strokeWidth="4"></circle>
           </svg>
           <span className="text-white font-bold text-base relative z-10 leading-none">92%</span>
           <span className="text-slate-300 font-medium text-[9px] uppercase tracking-wider relative z-10 mt-0.5">Match</span>
@@ -95,9 +95,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         <div className="bg-slate-950/40 backdrop-blur-lg rounded-full py-4 px-2 flex flex-col space-y-5 shadow-xl border border-white/10 text-slate-300">
           <button 
             onClick={() => setActiveCategory('outfit')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'outfit' ? 'text-[#EAE5FF]' : 'hover:text-white'}`}
+            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'outfit' ? 'text-[#ECE7FF]' : 'hover:text-white'}`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'outfit' ? 'bg-[#5B45E7] text-white shadow-md' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'outfit' ? 'bg-[#553BE2] text-white shadow-md' : ''}`}>
               <span className="material-symbols-outlined text-[18px]">checkroom</span>
             </div>
             <span className="text-[9px] font-medium font-sans">Outfits</span>
@@ -105,9 +105,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           
           <button 
             onClick={() => setActiveCategory('tops')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'tops' ? 'text-[#EAE5FF]' : 'hover:text-white'}`}
+            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'tops' ? 'text-[#ECE7FF]' : 'hover:text-white'}`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'tops' ? 'bg-[#5B45E7] text-white shadow-md' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'tops' ? 'bg-[#553BE2] text-white shadow-md' : ''}`}>
               <span className="material-symbols-outlined text-[18px]">apparel</span>
             </div>
             <span className="text-[9px] font-medium font-sans">Tops</span>
@@ -115,9 +115,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
           <button 
             onClick={() => setActiveCategory('bottoms')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'bottoms' ? 'text-[#EAE5FF]' : 'hover:text-white'}`}
+            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'bottoms' ? 'text-[#ECE7FF]' : 'hover:text-white'}`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'bottoms' ? 'bg-[#5B45E7] text-white shadow-md' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'bottoms' ? 'bg-[#553BE2] text-white shadow-md' : ''}`}>
               <span className="material-symbols-outlined text-[18px]">styler</span>
             </div>
             <span className="text-[9px] font-medium font-sans">Bottoms</span>
@@ -125,9 +125,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
           <button 
             onClick={() => setActiveCategory('shoes')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'shoes' ? 'text-[#EAE5FF]' : 'hover:text-white'}`}
+            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${activeCategory === 'shoes' ? 'text-[#ECE7FF]' : 'hover:text-white'}`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'shoes' ? 'bg-[#5B45E7] text-white shadow-md' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === 'shoes' ? 'bg-[#553BE2] text-white shadow-md' : ''}`}>
               <span className="material-symbols-outlined text-[18px]">directions_walk</span>
             </div>
             <span className="text-[9px] font-medium font-sans">Shoes</span>
@@ -164,7 +164,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
               onClick={() => setSelectedGarment(g.id)}
               className={`snap-center shrink-0 w-24 rounded-2xl p-2 flex flex-col items-center border transition-all duration-300 cursor-pointer ${
                 selectedGarment === g.id 
-                  ? 'bg-white/30 backdrop-blur-md border-[#5B45E7] font-bold scale-105 shadow-md shadow-[#5B45E7]/20' 
+                  ? 'bg-white/30 backdrop-blur-md border-[#553BE2] font-bold scale-105 shadow-md shadow-[#553BE2]/20' 
                   : 'bg-slate-950/30 backdrop-blur-sm border-white/10 opacity-70'
               }`}
             >
@@ -176,7 +176,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                   src={g.img}
                 />
                 {selectedGarment === g.id && (
-                  <div className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-[#5B45E7] text-white flex items-center justify-center border border-white">
+                  <div className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-[#553BE2] text-white flex items-center justify-center border border-white">
                     <span className="material-symbols-outlined text-[10px] font-bold leading-none">check</span>
                   </div>
                 )}
@@ -199,7 +199,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           {/* Shutter center button */}
           <button 
             onClick={handleCapture}
-            className="w-14 h-14 rounded-full bg-[#5B45E7] flex items-center justify-center shadow-[0_0_20px_rgba(91,69,231,0.5)] border-2 border-white -mt-6 hover:scale-105 transition-transform duration-300"
+            className="w-14 h-14 rounded-full bg-[#553BE2] flex items-center justify-center shadow-[0_0_20px_rgba(85, 59, 226,0.5)] border-2 border-white -mt-6 hover:scale-105 transition-transform duration-300"
           >
             <span className="material-symbols-outlined text-white text-2xl leading-none">photo_camera</span>
           </button>

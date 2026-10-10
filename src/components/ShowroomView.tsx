@@ -195,10 +195,10 @@ const VendorLogo: React.FC<{ vendor?: Pick<VendorItem, 'vendorName' | 'logoUrl' 
       vendor?.isVerified
         ? isDarkMode
           ? 'border-violet-300 shadow-[0_0_22px_rgba(167,139,250,0.55)]'
-          : 'border-[#5B45E7] shadow-sm'
+          : 'border-[#553BE2] shadow-sm'
         : isDarkMode
           ? 'border-white/25'
-          : 'border-[#E8E5F0]'
+          : 'border-[#E4DFF5]'
     }`}>
       {showImage ? (
         <img
@@ -210,7 +210,7 @@ const VendorLogo: React.FC<{ vendor?: Pick<VendorItem, 'vendorName' | 'logoUrl' 
           onError={() => setHasImageError(true)}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center rounded-full bg-[#F0EDFF] text-sm font-black text-[#5B45E7]">
+        <div className="flex h-full w-full items-center justify-center rounded-full bg-[#F2EEFF] text-sm font-black text-[#553BE2]">
           {getInitials(name)}
         </div>
       )}
@@ -252,7 +252,7 @@ const ProductCard = memo(({
       className={`group relative shrink-0 cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 ${
         isDarkMode
           ? 'border-white/12 bg-white/[0.07] shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-2xl hover:border-violet-300/50 hover:shadow-[0_18px_55px_rgba(139,92,246,0.22)]'
-          : 'border-[#E8E5F0] bg-white shadow-[0_6px_20px_rgba(23,24,43,0.05)] hover:border-[#5B45E7]/40 hover:shadow-[0_14px_32px_rgba(91,69,231,0.12)]'
+          : 'border-[#E4DFF5] bg-white shadow-[0_6px_20px_rgba(23,24,43,0.05)] hover:border-[#553BE2]/40 hover:shadow-[0_14px_32px_rgba(85, 59, 226,0.12)]'
       } ${compact ? 'w-44 p-2.5' : 'p-3'}`}
     >
       <motion.button
@@ -265,7 +265,7 @@ const ProductCard = memo(({
         className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm backdrop-blur-md transition-colors ${
           isDarkMode
             ? 'border-white/15 bg-slate-950/55 text-white hover:text-rose-300'
-            : 'border-[#E8E5F0] bg-white/90 text-[#17182B] hover:text-rose-500'
+            : 'border-[#E4DFF5] bg-white/90 text-[#131426] hover:text-rose-500'
         }`}
         title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
@@ -275,7 +275,7 @@ const ProductCard = memo(({
       </motion.button>
 
       <div className={`relative overflow-hidden rounded-xl border ${
-        isDarkMode ? 'border-white/10 bg-slate-800/70' : 'border-[#E8E5F0] bg-[#F4F1FF]'
+        isDarkMode ? 'border-white/10 bg-slate-800/70' : 'border-[#E4DFF5] bg-[#F2EEFF]'
       } ${compact ? 'h-40' : 'aspect-[4/5]'}`}>
         <img
           src={product.imageUrl || fallbackImage}
@@ -285,7 +285,7 @@ const ProductCard = memo(({
           referrerPolicy="no-referrer"
         />
         {product.badge && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-[#5B45E7] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white shadow-sm">
+          <span className="absolute bottom-2 left-2 rounded-full bg-[#553BE2] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white shadow-sm">
             {product.badge}
           </span>
         )}
@@ -294,24 +294,24 @@ const ProductCard = memo(({
       <div className="mt-3 space-y-2">
         <div className="flex items-center gap-2">
           <VendorLogo vendor={{ vendorName, logoUrl: vendorLogo, isVerified: vendor?.isVerified }} size="sm" isDarkMode={isDarkMode} />
-          <span className={`min-w-0 truncate text-[10px] font-semibold ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>{vendorName}</span>
+          <span className={`min-w-0 truncate text-[10px] font-semibold ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{vendorName}</span>
         </div>
         <div>
-          <p className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>{product.category}</p>
+          <p className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>{product.category}</p>
           <h3 className={`${compact ? 'text-sm' : 'text-[15px]'} line-clamp-1 font-bold transition-colors ${
-            isDarkMode ? 'text-white group-hover:text-violet-200' : 'text-[#17182B] group-hover:text-[#5B45E7]'
+            isDarkMode ? 'text-white group-hover:text-violet-200' : 'text-[#131426] group-hover:text-[#553BE2]'
           }`}>
             {product.name}
           </h3>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={`text-sm font-black ${isDarkMode ? 'text-violet-300' : 'text-[#5B45E7]'}`}>{formatPrice(product.price)}</span>
+          <span className={`text-sm font-black ${isDarkMode ? 'text-violet-300' : 'text-[#553BE2]'}`}>{formatPrice(product.price)}</span>
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold ${
-            isDarkMode ? 'bg-white/10 text-slate-100' : 'bg-[#F0EDFF] text-[#17182B]'
+            isDarkMode ? 'bg-white/10 text-slate-100' : 'bg-[#F2EEFF] text-[#131426]'
           }`}>
             <span className="text-amber-400">★</span>
             {Number(product.rating || 0).toFixed(1)}
-            {!compact && product.reviewsCount > 0 ? <span className={isDarkMode ? 'text-slate-400' : 'text-[#697386]'}>({product.reviewsCount})</span> : null}
+            {!compact && product.reviewsCount > 0 ? <span className={isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}>({product.reviewsCount})</span> : null}
           </span>
         </div>
       </div>
@@ -321,13 +321,13 @@ const ProductCard = memo(({
 
 const ShimmerCard = ({ compact = false, isDarkMode = false }: { compact?: boolean; isDarkMode?: boolean }) => (
   <div className={`overflow-hidden rounded-2xl border p-3 ${
-    isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-[#E8E5F0] bg-white shadow-sm'
+    isDarkMode ? 'border-white/10 bg-white/[0.06]' : 'border-[#E4DFF5] bg-white shadow-sm'
   } ${compact ? 'h-64 w-44 shrink-0' : 'h-72'}`}>
     <div className="h-full animate-pulse space-y-3">
-      <div className={`h-40 rounded-xl ${isDarkMode ? 'bg-white/10' : 'bg-[#F4F1FF]'}`} />
-      <div className={`h-3 w-2/3 rounded ${isDarkMode ? 'bg-white/10' : 'bg-[#F4F1FF]'}`} />
-      <div className={`h-4 w-full rounded ${isDarkMode ? 'bg-white/10' : 'bg-[#F4F1FF]'}`} />
-      <div className={`h-4 w-1/2 rounded ${isDarkMode ? 'bg-white/10' : 'bg-[#F4F1FF]'}`} />
+      <div className={`h-40 rounded-xl ${isDarkMode ? 'bg-white/10' : 'bg-[#F2EEFF]'}`} />
+      <div className={`h-3 w-2/3 rounded ${isDarkMode ? 'bg-white/10' : 'bg-[#F2EEFF]'}`} />
+      <div className={`h-4 w-full rounded ${isDarkMode ? 'bg-white/10' : 'bg-[#F2EEFF]'}`} />
+      <div className={`h-4 w-1/2 rounded ${isDarkMode ? 'bg-white/10' : 'bg-[#F2EEFF]'}`} />
     </div>
   </div>
 );
@@ -587,27 +587,27 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   };
 
   return (
-    <div className={`space-y-7 pb-6 ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>
+    <div className={`space-y-7 pb-6 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
       <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className={`flex items-center gap-2 text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>
+            <h1 className={`flex items-center gap-2 text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
               NOVA Showroom <span className="text-amber-400">✨</span>
             </h1>
-            <p className={`mt-1 ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Discover brands, vendor drops and curated collections</p>
+            <p className={`mt-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Discover brands, vendor drops and curated collections</p>
           </div>
           <div className="flex items-center gap-3">
             <button className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border ${
-              isDarkMode ? 'border-white/10 bg-white/[0.06] text-white backdrop-blur-xl' : 'border-[#E8E5F0] bg-white text-[#17182B] shadow-sm'
+              isDarkMode ? 'border-white/10 bg-white/[0.06] text-white backdrop-blur-xl' : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm'
             }`} title="Notifications">
               <span className="material-symbols-outlined">notifications</span>
             </button>
             <button onClick={() => onNavigate('cart')} className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border ${
-              isDarkMode ? 'border-white/10 bg-white/[0.06] text-white backdrop-blur-xl' : 'border-[#E8E5F0] bg-white text-[#17182B] shadow-sm'
+              isDarkMode ? 'border-white/10 bg-white/[0.06] text-white backdrop-blur-xl' : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm'
             }`} title="Cart">
               <span className="material-symbols-outlined">shopping_cart</span>
               {cartItemsCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#5B45E7] px-1 text-[10px] font-black text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#553BE2] px-1 text-[10px] font-black text-white">
                   {cartItemsCount}
                 </span>
               )}
@@ -620,20 +620,20 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
         <label className={`flex h-16 min-w-0 flex-1 items-center gap-3 rounded-2xl border px-5 ${
           isDarkMode
             ? 'border-white/12 bg-white/[0.07] shadow-[0_0_30px_rgba(139,92,246,0.09)] backdrop-blur-2xl'
-            : 'border-[#E8E5F0] bg-white shadow-sm'
+            : 'border-[#E4DFF5] bg-white shadow-sm'
         }`}>
-          <span className={`material-symbols-outlined text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>search</span>
+          <span className={`material-symbols-outlined text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>search</span>
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search products, vendors..."
             className={`h-full min-w-0 flex-1 bg-transparent text-sm font-medium outline-none sm:text-base ${
-              isDarkMode ? 'text-white placeholder:text-slate-400' : 'text-[#17182B] placeholder:text-[#9AA3B5]'
+              isDarkMode ? 'text-white placeholder:text-slate-400' : 'text-[#131426] placeholder:text-[#8E96AA]'
             }`}
           />
         </label>
         <button className={`flex h-16 w-16 items-center justify-center rounded-2xl border ${
-          isDarkMode ? 'border-white/12 bg-white/[0.07] text-white backdrop-blur-2xl' : 'border-[#E8E5F0] bg-white text-[#17182B] shadow-sm'
+          isDarkMode ? 'border-white/12 bg-white/[0.07] text-white backdrop-blur-2xl' : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm'
         }`} title="Filters">
           <span className="material-symbols-outlined">tune</span>
         </button>
@@ -641,7 +641,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
 
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>Our Vendors</h2>
+          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Our Vendors</h2>
           {vendorsError && <span className="text-xs font-semibold text-rose-500">{vendorsError}</span>}
         </div>
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
@@ -654,8 +654,8 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           {vendorsLoading ? (
             Array.from({ length: 5 }).map((_, index) => (
               <div key={index} className="flex w-24 shrink-0 flex-col items-center gap-3">
-                <div className={`h-20 w-20 animate-pulse rounded-full ${isDarkMode ? 'bg-white/10' : 'bg-white border border-[#E8E5F0]'}`} />
-                <div className={`h-3 w-20 animate-pulse rounded ${isDarkMode ? 'bg-white/10' : 'bg-white border border-[#E8E5F0]'}`} />
+                <div className={`h-20 w-20 animate-pulse rounded-full ${isDarkMode ? 'bg-white/10' : 'bg-white border border-[#E4DFF5]'}`} />
+                <div className={`h-3 w-20 animate-pulse rounded ${isDarkMode ? 'bg-white/10' : 'bg-white border border-[#E4DFF5]'}`} />
               </div>
             ))
           ) : (
@@ -676,8 +676,8 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
 
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>⭐ Top Rated Products</h2>
-          <span className={`text-sm font-semibold ${isDarkMode ? 'text-violet-300' : 'text-[#5B45E7]'}`}>View all</span>
+          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>⭐ Top Rated Products</h2>
+          <span className={`text-sm font-semibold ${isDarkMode ? 'text-violet-300' : 'text-[#553BE2]'}`}>View all</span>
         </div>
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
           {topRatedLoading && visibleTopRated.length === 0 ? (
@@ -698,7 +698,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
             ))
           ) : (
             <div className={`w-full rounded-2xl border p-5 text-sm ${
-              isDarkMode ? 'border-white/10 bg-white/[0.06] text-slate-300' : 'border-[#E8E5F0] bg-white text-[#697386] shadow-sm'
+              isDarkMode ? 'border-white/10 bg-white/[0.06] text-slate-300' : 'border-[#E4DFF5] bg-white text-[#5E667A] shadow-sm'
             }`}>
               No top rated products available yet.
             </div>
@@ -709,11 +709,11 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       <section>
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{collectionTitle}</h2>
-            <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-violet-300' : 'text-[#5B45E7]'}`}>{selectedCount} Products</p>
+            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{collectionTitle}</h2>
+            <p className={`mt-1 text-sm font-semibold ${isDarkMode ? 'text-violet-300' : 'text-[#553BE2]'}`}>{selectedCount} Products</p>
           </div>
           <span className={`rounded-full border px-3 py-1 text-xs font-black ${
-            isDarkMode ? 'border-violet-400/20 bg-violet-500/15 text-violet-200' : 'border-[#E8E5F0] bg-[#F0EDFF] text-[#5B45E7]'
+            isDarkMode ? 'border-violet-400/20 bg-violet-500/15 text-violet-200' : 'border-[#E4DFF5] bg-[#F2EEFF] text-[#553BE2]'
           }`}>
             {selectedVendorItem ? selectedVendorItem.vendorName : 'All Vendors'}
           </span>
@@ -731,10 +731,10 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`rounded-2xl border p-8 text-center ${
             isDarkMode
               ? 'border-white/10 bg-white/[0.06] shadow-[0_18px_50px_rgba(0,0,0,0.25)] backdrop-blur-2xl'
-              : 'border-[#E8E5F0] bg-white shadow-sm'
+              : 'border-[#E4DFF5] bg-white shadow-sm'
           }`}>
-            <p className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>No products available from this vendor yet.</p>
-            <p className={`mt-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#697386]'}`}>Explore another vendor.</p>
+            <p className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>No products available from this vendor yet.</p>
+            <p className={`mt-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Explore another vendor.</p>
           </motion.div>
         ) : (
           <AnimatePresence mode="popLayout">
@@ -757,7 +757,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       </section>
 
       <section className={`grid grid-cols-3 gap-3 rounded-2xl border p-4 text-center ${
-        isDarkMode ? 'border-white/10 bg-white/[0.06] backdrop-blur-2xl' : 'border-[#E8E5F0] bg-white shadow-sm'
+        isDarkMode ? 'border-white/10 bg-white/[0.06] backdrop-blur-2xl' : 'border-[#E4DFF5] bg-white shadow-sm'
       }`}>
         {[
           ['redeem', 'Curated Collections', 'Handpicked quality'],
@@ -765,9 +765,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           ['verified_user', 'Trusted Vendors', 'Verified brands']
         ].map(([icon, title, subtitle]) => (
           <div key={title} className="space-y-2">
-            <span className={`material-symbols-outlined text-3xl ${isDarkMode ? 'text-violet-300' : 'text-[#5B45E7]'}`}>{icon}</span>
-            <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{title}</p>
-            <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-[#697386]'}`}>{subtitle}</p>
+            <span className={`material-symbols-outlined text-3xl ${isDarkMode ? 'text-violet-300' : 'text-[#553BE2]'}`}>{icon}</span>
+            <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{title}</p>
+            <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>{subtitle}</p>
           </div>
         ))}
       </section>
@@ -800,7 +800,7 @@ const VendorButton = ({
       selected
         ? isDarkMode
           ? 'border border-violet-400 bg-violet-500/15 shadow-[0_0_26px_rgba(139,92,246,0.5)]'
-          : 'border border-[#5B45E7] bg-white shadow-sm'
+          : 'border border-[#553BE2] bg-white shadow-sm'
         : isDarkMode
           ? 'border border-transparent bg-transparent hover:bg-white/[0.04]'
           : 'border border-transparent bg-transparent hover:bg-white/60'
@@ -814,18 +814,18 @@ const VendorButton = ({
           selected
             ? isDarkMode
               ? 'border-violet-300 bg-violet-500/20 text-violet-100'
-              : 'border-[#5B45E7] bg-[#F0EDFF] text-[#5B45E7]'
+              : 'border-[#553BE2] bg-[#F2EEFF] text-[#553BE2]'
             : isDarkMode
               ? 'border-white/15 bg-white/[0.06] text-white'
-              : 'border-[#E8E5F0] bg-white text-[#17182B]'
+              : 'border-[#E4DFF5] bg-white text-[#131426]'
         }`}>
           <span className="material-symbols-outlined text-4xl">grid_view</span>
         </div>
       )}
-      <span className={`line-clamp-2 min-h-9 text-xs font-bold uppercase leading-tight ${isDarkMode ? 'text-white' : 'text-[#17182B]'}`}>{label}</span>
+      <span className={`line-clamp-2 min-h-9 text-xs font-bold uppercase leading-tight ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{label}</span>
       {productCount !== undefined && (
         <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${
-          isDarkMode ? 'bg-white/10 text-violet-200' : 'bg-[#F0EDFF] text-[#5B45E7]'
+          isDarkMode ? 'bg-white/10 text-violet-200' : 'bg-[#F2EEFF] text-[#553BE2]'
         }`}>{productCount} Products</span>
       )}
     </div>
