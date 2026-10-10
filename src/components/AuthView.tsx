@@ -4,11 +4,30 @@ import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, Ch
 import { apiUrl } from '../services/apiClient';
 import { COUNTRIES, Country } from '../utils/countries';
 import { useI18n } from '../i18n';
+import { LegalConsentRecord, LegalDocumentType } from '../types';
+import { createConsentSnapshot } from '../legal/legalDocuments';
+import { LegalDocumentView } from './LegalDocumentView';
 
 interface AuthViewProps {
-  onLoginSuccess: (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string, uid?: string) => void;
+  onLoginSuccess: (
+    name: string,
+    email: string,
+    phone: string,
+    isSignUp?: boolean,
+    address?: string,
+    pinCode?: string,
+    uid?: string,
+    legalConsent?: LegalConsentRecord
+  ) => void;
   onGuestContinue: () => void;
-  onProceedToEmailVerification?: (email: string, name: string, address?: string, pinCode?: string, phone?: string) => void;
+  onProceedToEmailVerification?: (
+    email: string,
+    name: string,
+    address?: string,
+    pinCode?: string,
+    phone?: string,
+    legalConsent?: LegalConsentRecord
+  ) => void;
   initialMode?: 'login' | 'signup';
   prefilledName?: string;
   prefilledAddress?: string;
@@ -80,6 +99,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
   const [pinCode, setPinCode] = useState(prefilledPinCode);
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]); // Default to India
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+
+  // Required legal consent state (unchecked by default)
+  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocumentType | null>(null);
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -134,6 +158,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
   const resetAlerts = () => {
     setError(null);
     setSuccess(null);
+    setConsentError(null);
   };
 
   const goToChoice = () => {
@@ -142,18 +167,21 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setPhoneNumber('');
     setMatchingAccounts([]);
     setSelectedAccountUid(null);
+    setActiveLegalDoc(null);
     resetAlerts();
   };
 
   const goToSignIn = () => {
     setEntryPath('signin');
     setMode('login');
+    setActiveLegalDoc(null);
     resetAlerts();
   };
 
   const goToSignup = () => {
     setEntryPath('signup');
     setMode('signup');
+    setActiveLegalDoc(null);
     resetAlerts();
   };
 
@@ -166,17 +194,41 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     ));
   };
 
-  const loginWithAccount = (account: RegisterUser, phone: string, isSignUp = false, signupAddress?: string, signupPinCode?: string) => {
+  const loginWithAccount = (
+    account: RegisterUser,
+    phone: string,
+    isSignUp = false,
+    signupAddress?: string,
+    signupPinCode?: string,
+    legalConsent?: LegalConsentRecord
+  ) => {
     setSuccess('Login successful! Redirecting you to Home.');
     setTimeout(() => {
       setIsSubmitting(false);
-      onLoginSuccess(account.name, account.email, phone, isSignUp, signupAddress?.trim() || account.address, signupPinCode?.trim() || account.pinCode, account.uid);
+      onLoginSuccess(
+        account.name,
+        account.email,
+        phone,
+        isSignUp,
+        signupAddress?.trim() || account.address,
+        signupPinCode?.trim() || account.pinCode,
+        account.uid,
+        legalConsent
+      );
     }, 500);
   };
 
   const loginWithPhone = async (phone: string, country: Country, signupEmail?: string, signupAddress?: string, signupPinCode?: string) => {
+    if (isSubmitting) return;
     setError(null);
     setSuccess(null);
+    setConsentError(null);
+
+    if (mode === 'signup' && !hasAcceptedLegal) {
+      setConsentError("Please read and agree to NOVA's Terms & Conditions and Privacy Policy before creating an account.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const fullPhone = getFullPhoneNumber(phone, country);
@@ -202,6 +254,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     const finalPhone = normalizedPhone;
     const finalName = matched?.name || name.trim() || 'NOVA User';
     const finalEmail = matched?.email || signupEmail?.trim().toLowerCase() || `${finalName.toLowerCase().replace(/\s+/g, '') || 'novauser'}@nova.ai`;
+    const consentRecord = mode === 'signup' && hasAcceptedLegal
+      ? createConsentSnapshot({ email: finalEmail, source: 'signup' })
+      : undefined;
 
     if (mode === 'signup' && !matched) {
       const newUser: RegisterUser = {
@@ -220,7 +275,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       const updatedUsers = [newUser, ...registeredUsers.filter((u) => u.uid !== newUser.uid)];
       localStorage.setItem('nova_registered_users', JSON.stringify(updatedUsers));
       setRegisteredUsers(updatedUsers);
-      loginWithAccount(newUser, finalPhone, true, signupAddress, signupPinCode);
+      loginWithAccount(newUser, finalPhone, true, signupAddress, signupPinCode, consentRecord);
       return;
     }
 
@@ -236,7 +291,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       avatar: matched?.avatar,
       createdAt: matched?.createdAt,
       lastActive: matched?.lastActive
-    }, finalPhone, mode === 'signup', signupAddress, signupPinCode);
+    }, finalPhone, mode === 'signup', signupAddress, signupPinCode, consentRecord);
   };
 
   const handleSelectAccount = (account: RegisterUser) => {
@@ -248,8 +303,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
 
   const handleSignupWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError(null);
     setSuccess(null);
+    setConsentError(null);
 
     // Validate inputs
     if (!name.trim()) {
@@ -267,15 +324,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       return;
     }
 
-    let normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Validate email format
-    if (!normalizedEmail.includes('@')) {
-      setError('Please provide a valid email address.');
-      return;
-    }
-
-if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    if (!normalizedEmail.includes('@') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setError('Please provide a valid email address.');
       return;
     }
@@ -291,10 +343,30 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return;
     }
 
+    // Prevent duplicate account registration for an already-registered email address
+    const existingEmailUser = registeredUsers.find(
+      (u) => u.accountType !== 'Guest' && u.email.trim().toLowerCase() === normalizedEmail
+    );
+    if (existingEmailUser) {
+      setError('An account with this email address is already registered. Please sign in instead.');
+      return;
+    }
+
+    // Enforce explicit legal consent before submitting registration
+    if (!hasAcceptedLegal) {
+      setConsentError("Please read and agree to NOVA's Terms & Conditions and Privacy Policy before creating an account.");
+      return;
+    }
+
+    const consentSnapshot = createConsentSnapshot({
+      email: normalizedEmail,
+      source: 'signup',
+    });
+
     setIsSubmitting(true);
 
     try {
-      // Request OTP from backend
+      // Request OTP from backend with signup legalConsent metadata
       console.debug('OTP send request started.', { email: normalizedEmail, endpoint: apiUrl('/api/auth/send-otp') });
       const response = await fetch(apiUrl('/api/auth/send-otp'), {
         method: 'POST',
@@ -302,7 +374,11 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email: normalizedEmail })
+        body: JSON.stringify({
+          email: normalizedEmail,
+          isSignup: true,
+          legalConsent: consentSnapshot
+        })
       });
 
       const data = await response.json();
@@ -316,11 +392,18 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
 
       setSuccess('Verification code sent to your email!');
       
-      // Proceed to email verification screen
+      // Proceed to email verification screen carrying the consent snapshot
       setTimeout(() => {
         setIsSubmitting(false);
         if (onProceedToEmailVerification) {
-          onProceedToEmailVerification(normalizedEmail, name.trim(), address.trim() || undefined, pinCode.trim() || undefined, fullPhone);
+          onProceedToEmailVerification(
+            normalizedEmail,
+            name.trim(),
+            address.trim() || undefined,
+            pinCode.trim() || undefined,
+            fullPhone,
+            consentSnapshot
+          );
         }
       }, 500);
     } catch (err) {
@@ -357,6 +440,20 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
 
     await loginWithPhone(cleanPhone, selectedCountry);
   };
+
+  if (activeLegalDoc) {
+    return (
+      <div className="min-h-[85vh] py-4 px-1">
+        <LegalDocumentView
+          documentType={activeLegalDoc}
+          onSelectDocument={(docType) => setActiveLegalDoc(docType)}
+          onBack={() => setActiveLegalDoc(null)}
+          backLabel={mode === 'signup' ? 'Back to Create Account' : 'Back'}
+          isDarkMode={false}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[85vh] flex flex-col justify-center items-center px-4 py-8 relative">
@@ -720,8 +817,78 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                   </span>
                 </div>
 
+                {mode === 'signup' && (
+                  <div className="space-y-1.5 text-left pt-1">
+                    <label
+                      htmlFor="nova-signup-legal-consent"
+                      className={`flex items-start gap-2.5 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                        consentError
+                          ? 'bg-rose-50/70 border-rose-200'
+                          : hasAcceptedLegal
+                          ? 'bg-[#F2EEFF] border-[#553BE2]/40'
+                          : 'bg-[#F2EEFF]/60 border-[#E4DFF5] hover:border-[#553BE2]/30'
+                      }`}
+                    >
+                      <input
+                        id="nova-signup-legal-consent"
+                        type="checkbox"
+                        checked={hasAcceptedLegal}
+                        onChange={(e) => {
+                          setHasAcceptedLegal(e.target.checked);
+                          if (e.target.checked) {
+                            setConsentError(null);
+                          }
+                        }}
+                        aria-required="true"
+                        aria-invalid={Boolean(consentError)}
+                        aria-describedby={consentError ? 'signup-legal-consent-error' : undefined}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#D5CBF7] text-[#553BE2] focus:ring-[#553BE2] accent-[#553BE2] cursor-pointer"
+                      />
+                      <span className="text-[11px] font-medium text-[#131426] leading-relaxed">
+                        I have read and agree to NOVA&apos;s{' '}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setActiveLegalDoc('terms');
+                          }}
+                          className="font-bold text-[#553BE2] hover:text-[#462CC9] underline underline-offset-2 focus:outline-none focus:ring-1 focus:ring-[#553BE2] rounded px-0.5 cursor-pointer"
+                        >
+                          Terms &amp; Conditions
+                        </button>{' '}
+                        and{' '}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setActiveLegalDoc('privacy');
+                          }}
+                          className="font-bold text-[#553BE2] hover:text-[#462CC9] underline underline-offset-2 focus:outline-none focus:ring-1 focus:ring-[#553BE2] rounded px-0.5 cursor-pointer"
+                        >
+                          Privacy Policy
+                        </button>
+                        .
+                      </span>
+                    </label>
+
+                    {consentError && (
+                      <div
+                        id="signup-legal-consent-error"
+                        role="alert"
+                        aria-live="assertive"
+                        className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2 text-rose-600 text-left"
+                      >
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="text-[11px] font-semibold leading-snug">{consentError}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-100 flex gap-2.5 text-rose-600 items-start text-left">
+              <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-100 flex gap-2.5 text-rose-600 items-start text-left">
                 <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <span className="text-[11px] font-semibold leading-relaxed">{error}</span>
@@ -751,7 +918,12 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 px-4 rounded-2xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-xs font-bold shadow-lg shadow-[#553BE2]/25 flex items-center justify-center gap-1.5 transition-all outline-none focus:ring-2 focus:ring-[#553BE2]/40 cursor-pointer disabled:opacity-70 active:scale-[0.98]"
+                  aria-disabled={mode === 'signup' && !hasAcceptedLegal}
+                  className={`w-full py-3 px-4 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all outline-none focus:ring-2 focus:ring-[#553BE2]/40 cursor-pointer disabled:opacity-70 active:scale-[0.98] ${
+                    mode === 'signup' && !hasAcceptedLegal
+                      ? 'bg-[#553BE2]/80 hover:bg-[#553BE2] text-white/95 shadow-sm'
+                      : 'bg-[#553BE2] hover:bg-[#462CC9] text-white shadow-lg shadow-[#553BE2]/25'
+                  }`}
                 >
                   {isSubmitting ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />

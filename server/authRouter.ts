@@ -27,6 +27,17 @@ const getSmtpConfig = () => ({
   fromName: process.env.SMTP_FROM_NAME || 'NOVA Vision Labs'
 });
 
+interface LegalConsentPayload {
+  accepted: boolean;
+  termsVersion: string;
+  privacyVersion: string;
+  consentedAt: string;
+  serverRecordedAt?: string;
+  source?: 'signup' | 'renewal';
+  userId?: string;
+  email?: string;
+}
+
 interface OTPRecord {
   email: string;
   otpHash: string;
@@ -35,9 +46,14 @@ interface OTPRecord {
   attempts: number;
   lastSentAt: number;
   lastAttemptAt?: number;
+  legalConsent?: LegalConsentPayload;
 }
 
+const CURRENT_TERMS_VERSION = '2026.10.1';
+const CURRENT_PRIVACY_VERSION = '2026.10.1';
+
 const localOtpStore = new Map<string, OTPRecord>();
+const localConsentStore = new Map<string, LegalConsentPayload>();
 let firestore: any = null;
 let auth: any = null;
 let firebaseEnabled = false;
@@ -61,6 +77,38 @@ initializeFirebaseServices();
 
 const OTP_COLLECTION = 'email_otps';
 const USERS_COLLECTION = 'users';
+const LEGAL_CONSENTS_COLLECTION = 'legal_consents';
+
+const normalizeConsentPayload = (
+  raw: any,
+  fallbackSource: 'signup' | 'renewal' = 'signup'
+): LegalConsentPayload | null => {
+  if (!raw || typeof raw !== 'object' || raw.accepted !== true) return null;
+  const serverRecordedAt = new Date().toISOString();
+  const termsVersion =
+    typeof raw.termsVersion === 'string' && raw.termsVersion.trim()
+      ? raw.termsVersion.trim()
+      : CURRENT_TERMS_VERSION;
+  const privacyVersion =
+    typeof raw.privacyVersion === 'string' && raw.privacyVersion.trim()
+      ? raw.privacyVersion.trim()
+      : CURRENT_PRIVACY_VERSION;
+  const consentedAt =
+    typeof raw.consentedAt === 'string' && raw.consentedAt.trim()
+      ? raw.consentedAt.trim()
+      : serverRecordedAt;
+  const source: 'signup' | 'renewal' =
+    raw.source === 'renewal' ? 'renewal' : fallbackSource;
+
+  return {
+    accepted: true,
+    termsVersion,
+    privacyVersion,
+    consentedAt,
+    serverRecordedAt,
+    source,
+  };
+};
 
 const maskEmail = (email: string) => email.replace(/^(.).+(@.+)$/, '$1***$2');
 
@@ -206,8 +254,16 @@ const updateStoredOtp = async (email: string, data: Partial<OTPRecord>) => {
 // POST /api/auth/send-otp
 router.post('/auth/send-otp', async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    const { email, isSignup, legalConsent } = req.body;
     if (!isValidEmail(email)) return res.status(400).json({ success: false, error: 'Invalid email' });
+
+    const normalizedConsent = normalizeConsentPayload(legalConsent, 'signup');
+    if (isSignup === true && !normalizedConsent) {
+      return res.status(400).json({
+        success: false,
+        error: "Please read and agree to NOVA's Terms & Conditions and Privacy Policy to create an account."
+      });
+    }
 
     const normalizedEmail = email.trim().toLowerCase();
     const existingRecord = await getStoredOtp(normalizedEmail);
@@ -215,15 +271,12 @@ router.post('/auth/send-otp', async (req: Request, res: Response) => {
 
     if (existingRecord) {
       const lastSent = existingRecord.lastSentAt || 0;
-      const expiresAt = existingRecord.expiresAt || 0;
 
       // if last sent too recently
       if (now - lastSent < OTP_RESEND_COOLDOWN_MS) {
         const wait = Math.ceil((OTP_RESEND_COOLDOWN_MS - (now - lastSent)) / 1000);
         return res.status(429).json({ success: false, error: `Please wait ${wait} seconds before requesting a new code`, retryAfter: wait });
       }
-
-      // if existing OTP still valid, allow resend (generate new OTP)
     }
 
     const otp = generateOTP();
@@ -241,18 +294,24 @@ router.post('/auth/send-otp', async (req: Request, res: Response) => {
     const sent = await sendOTPEmail(normalizedEmail, otp);
     if (!sent.ok) return res.status(sent.status && sent.status >= 400 && sent.status < 500 ? sent.status : 502).json({ success: false, error: sent.error || 'Failed to send verification email' });
 
-    await saveStoredOtp(normalizedEmail, {
+    const otpRecord: OTPRecord = {
       email: normalizedEmail,
       otpHash,
       createdAt,
       expiresAt,
       attempts: 0,
       lastSentAt: now
-    });
+    };
+    if (normalizedConsent) {
+      otpRecord.legalConsent = normalizedConsent;
+    }
+
+    await saveStoredOtp(normalizedEmail, otpRecord);
 
     console.log('[OTP] Stored verification record.', {
       email: maskEmail(normalizedEmail),
       expiresAt,
+      hasConsent: Boolean(normalizedConsent),
       storage: firebaseEnabled ? 'firestore' : 'memory'
     });
 
@@ -284,7 +343,7 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
       return res.status(429).json({ success: false, error: `Please wait ${wait} seconds before resending`, retryAfter: wait });
     }
 
-    // generate and replace OTP
+    // generate and replace OTP while preserving any pending legalConsent
     const otp = generateOTP();
     const otpHash = hashOTP(otp);
     const createdAt = now;
@@ -293,14 +352,19 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
     const sent = await sendOTPEmail(normalizedEmail, otp);
     if (!sent.ok) return res.status(sent.status && sent.status >= 400 && sent.status < 500 ? sent.status : 502).json({ success: false, error: sent.error || 'Failed to send verification email' });
 
-    await saveStoredOtp(normalizedEmail, {
+    const updatedRecord: OTPRecord = {
       email: normalizedEmail,
       otpHash,
       createdAt,
       expiresAt,
       attempts: 0,
       lastSentAt: now
-    });
+    };
+    if (data.legalConsent) {
+      updatedRecord.legalConsent = data.legalConsent;
+    }
+
+    await saveStoredOtp(normalizedEmail, updatedRecord);
 
     return res.json({ success: true, message: 'OTP resent', expiresIn: 300 });
   } catch (err) {
@@ -312,7 +376,7 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
 // POST /api/auth/verify-otp
 router.post('/auth/verify-otp', async (req: Request, res: Response) => {
   try {
-    const { email, otp, name, address, pinCode } = req.body;
+    const { email, otp, name, address, pinCode, legalConsent } = req.body;
     if (!isValidEmail(email) || !otp || typeof otp !== 'string') return res.status(400).json({ success: false, error: 'Invalid parameters' });
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -351,6 +415,10 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       await updateStoredOtp(normalizedEmail, { attempts, lastAttemptAt: now });
       return res.status(400).json({ success: false, error: `Invalid OTP. ${MAX_OTP_ATTEMPTS - attempts} attempts remaining.`, attemptsRemaining: Math.max(0, MAX_OTP_ATTEMPTS - attempts) });
     }
+
+    const verifiedConsent =
+      normalizeConsentPayload(legalConsent, 'signup') ||
+      normalizeConsentPayload(data.legalConsent, 'signup');
 
     // Valid OTP - delete record
     await deleteStoredOtp(normalizedEmail);
@@ -400,11 +468,33 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
         if (typeof address === 'string' && address.trim()) userData.address = address.trim();
         if (typeof pinCode === 'string' && /^\d{6}$/.test(pinCode.trim())) userData.pinCode = pinCode.trim();
 
+        if (verifiedConsent) {
+          const consentWithUser: LegalConsentPayload = {
+            ...verifiedConsent,
+            userId: uid,
+            email: normalizedEmail
+          };
+          userData.legalConsent = consentWithUser;
+          localConsentStore.set(uid, consentWithUser);
+          localConsentStore.set(normalizedEmail, consentWithUser);
+
+          await userDocRef.collection('legalConsent').doc('current').set({
+            ...consentWithUser,
+            recordedAt: nowTs
+          }, { merge: true });
+
+          await firestore.collection(LEGAL_CONSENTS_COLLECTION).add({
+            ...consentWithUser,
+            recordedAt: nowTs
+          });
+        }
+
         await userDocRef.set(userData, { merge: true });
         await userDocRef.collection('profile').doc('meta').set(userData, { merge: true });
         console.log('[Firebase] User Auth and Firestore profile ready.', {
           uid,
           email: maskEmail(normalizedEmail),
+          hasLegalConsent: Boolean(verifiedConsent),
           firestoreDoc: `${USERS_COLLECTION}/${uid}`
         });
       } catch (err) {
@@ -413,14 +503,163 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       }
 
       const customToken = await auth.createCustomToken(uid);
-      return res.json({ success: true, message: 'Email verified', uid, email: normalizedEmail, customToken });
+      return res.json({
+        success: true,
+        message: 'Email verified',
+        uid,
+        email: normalizedEmail,
+        customToken,
+        legalConsent: verifiedConsent ? { ...verifiedConsent, userId: uid, email: normalizedEmail } : undefined
+      });
+    }
+
+    if (verifiedConsent) {
+      const fallbackConsent: LegalConsentPayload = {
+        ...verifiedConsent,
+        userId: normalizedEmail,
+        email: normalizedEmail
+      };
+      localConsentStore.set(normalizedEmail, fallbackConsent);
     }
 
     console.warn('[OTP] Firebase Admin not configured. Completing verification locally.', { email: maskEmail(normalizedEmail) });
-    return res.json({ success: true, message: 'Email verified locally', uid: normalizedEmail, email: normalizedEmail });
+    return res.json({
+      success: true,
+      message: 'Email verified locally',
+      uid: normalizedEmail,
+      email: normalizedEmail,
+      legalConsent: verifiedConsent ? { ...verifiedConsent, userId: normalizedEmail, email: normalizedEmail } : undefined
+    });
   } catch (err) {
     console.error('verify-otp error:', err);
     return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/consent - Record signup or material-update renewal consent on the backend
+router.post('/auth/consent', async (req: Request, res: Response) => {
+  try {
+    const { userId, email, legalConsent } = req.body || {};
+    const targetUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : '';
+    const targetEmail = typeof email === 'string' && isValidEmail(email.trim()) ? email.trim().toLowerCase() : '';
+    const effectiveId = targetUserId || targetEmail;
+
+    if (!effectiveId) {
+      return res.status(400).json({ success: false, error: 'A valid userId or email is required to record consent.' });
+    }
+
+    const normalizedConsent = normalizeConsentPayload(legalConsent, 'signup');
+    if (!normalizedConsent) {
+      return res.status(400).json({
+        success: false,
+        error: "Explicit acceptance of NOVA's Terms & Conditions and Privacy Policy is required."
+      });
+    }
+
+    const authoritativeRecord: LegalConsentPayload = {
+      ...normalizedConsent,
+      userId: effectiveId,
+      email: targetEmail || undefined
+    };
+
+    localConsentStore.set(effectiveId, authoritativeRecord);
+    if (targetEmail) {
+      localConsentStore.set(targetEmail, authoritativeRecord);
+    }
+
+    if (firebaseEnabled && firestore) {
+      try {
+        const nowTs = FieldValue.serverTimestamp();
+        const userDocRef = firestore.collection(USERS_COLLECTION).doc(effectiveId);
+
+        await userDocRef.set({
+          legalConsent: authoritativeRecord,
+          updatedAt: nowTs
+        }, { merge: true });
+
+        await userDocRef.collection('profile').doc('meta').set({
+          legalConsent: authoritativeRecord,
+          updatedAt: nowTs
+        }, { merge: true });
+
+        await userDocRef.collection('legalConsent').doc('current').set({
+          ...authoritativeRecord,
+          recordedAt: nowTs
+        }, { merge: true });
+
+        await firestore.collection(LEGAL_CONSENTS_COLLECTION).add({
+          ...authoritativeRecord,
+          recordedAt: nowTs
+        });
+      } catch (err) {
+        console.warn('[Consent] Firestore write warning (saved to backend memory fallback):', err);
+      }
+    }
+
+    return res.json({
+      success: true,
+      consent: authoritativeRecord,
+      storage: firebaseEnabled && firestore ? 'firestore' : 'server-memory'
+    });
+  } catch (err) {
+    console.error('record-consent error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to record legal consent' });
+  }
+});
+
+// GET /api/auth/consent/:userId - Retrieve stored legal consent record & check version currency
+router.get('/auth/consent/:userId', async (req: Request, res: Response) => {
+  try {
+    const rawUserId = decodeURIComponent(String(req.params.userId || '')).trim();
+    if (!rawUserId) {
+      return res.status(400).json({ success: false, error: 'Missing userId parameter' });
+    }
+
+    let consent: LegalConsentPayload | null = null;
+
+    if (firebaseEnabled && firestore) {
+      try {
+        const userDoc = await firestore.collection(USERS_COLLECTION).doc(rawUserId).get();
+        if (userDoc.exists && userDoc.data()?.legalConsent) {
+          consent = userDoc.data().legalConsent as LegalConsentPayload;
+        } else {
+          const currentConsentDoc = await firestore
+            .collection(USERS_COLLECTION)
+            .doc(rawUserId)
+            .collection('legalConsent')
+            .doc('current')
+            .get();
+          if (currentConsentDoc.exists) {
+            consent = currentConsentDoc.data() as LegalConsentPayload;
+          }
+        }
+      } catch (err) {
+        console.warn('[Consent] Firestore lookup warning:', err);
+      }
+    }
+
+    if (!consent) {
+      consent = localConsentStore.get(rawUserId) || localConsentStore.get(rawUserId.toLowerCase()) || null;
+    }
+
+    const isCurrent = Boolean(
+      consent &&
+      consent.accepted === true &&
+      consent.termsVersion === CURRENT_TERMS_VERSION &&
+      consent.privacyVersion === CURRENT_PRIVACY_VERSION
+    );
+
+    return res.json({
+      success: true,
+      consent,
+      currentTermsVersion: CURRENT_TERMS_VERSION,
+      currentPrivacyVersion: CURRENT_PRIVACY_VERSION,
+      isCurrent,
+      requiresRenewal: Boolean(consent && !isCurrent)
+    });
+  } catch (err) {
+    console.error('get-consent error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to check legal consent status' });
   }
 });
 
@@ -439,6 +678,10 @@ router.get('/auth/otp-config', async (_req: Request, res: Response) => {
       maxAttempts: MAX_OTP_ATTEMPTS,
       resendCooldownSeconds: OTP_RESEND_COOLDOWN_MS / 1000,
       storage: firebaseEnabled ? 'firestore' : 'memory'
+    },
+    legalVersions: {
+      termsVersion: CURRENT_TERMS_VERSION,
+      privacyVersion: CURRENT_PRIVACY_VERSION
     }
   });
 });

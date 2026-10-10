@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem } from '../types';
+import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord } from '../types';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
 import { languages, LocaleCode, useI18n } from '../i18n';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../legal/legalDocuments';
 
 interface ProfileViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -33,6 +34,7 @@ interface ProfileViewProps {
   onAddAccount?: (acc: NovaAccount) => void;
   onRemoveAccount?: (uid: string) => void;
   onSwitchAccount?: (uid?: string) => void;
+  legalConsent?: LegalConsentRecord | null;
 }
 
 const getDefaultProductColor = (product?: ProductItem) => (
@@ -66,7 +68,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   activeUid,
   onAddAccount,
   onRemoveAccount,
-  onSwitchAccount
+  onSwitchAccount,
+  legalConsent
 }) => {
   const { locale, language, setLocale, t } = useI18n();
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -751,6 +754,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             { label: t('profile.settings.addresses'), icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
             { label: t('profile.settings.darkMode'), icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
             { label: t('profile.settings.privacy'), icon: 'lock', action: () => setIsPrivacyModalOpen(true) },
+            { label: 'Terms & Conditions', icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
+            { label: 'Privacy Policy', icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
             { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
             { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
@@ -1328,6 +1333,40 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 >
                   <span className={`w-4.5 h-4.5 bg-white rounded-full shadow-md transform transition-transform ${privacySettings.shareFittings ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
+              </div>
+
+              {/* Legal Documents & Read-Only Consent Record */}
+              <div className="pt-3.5 space-y-2.5">
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-black text-[#131426]">Legal Documents &amp; Consent</h4>
+                  <p className="text-[10px] text-[#5E667A] leading-normal">
+                    {legalConsent && legalConsent.accepted
+                      ? `Accepted Terms v${legalConsent.termsVersion} & Privacy v${legalConsent.privacyVersion} on ${new Date(legalConsent.consentedAt).toLocaleDateString()} (read-only record).`
+                      : `Review NOVA's current Terms & Conditions (v${TERMS_VERSION}) and Privacy Policy (v${PRIVACY_VERSION}).`}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPrivacyModalOpen(false);
+                      onNavigate('terms');
+                    }}
+                    className="py-2 px-3 rounded-xl bg-[#F2EEFF] hover:bg-[#ECE7FF] border border-[#E4DFF5] text-[11px] font-bold text-[#553BE2] transition-colors cursor-pointer"
+                  >
+                    Terms &amp; Conditions
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPrivacyModalOpen(false);
+                      onNavigate('privacy');
+                    }}
+                    className="py-2 px-3 rounded-xl bg-[#F2EEFF] hover:bg-[#ECE7FF] border border-[#E4DFF5] text-[11px] font-bold text-[#553BE2] transition-colors cursor-pointer"
+                  >
+                    Privacy Policy
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { apiUrl } from '../services/apiClient';
+import { LegalConsentRecord } from '../types';
 
 interface EmailVerificationViewProps {
   email: string;
   name: string;
   address?: string;
   pinCode?: string;
-  onVerificationSuccess: (result: { uid?: string; email: string; customToken?: string }) => void;
+  legalConsent?: LegalConsentRecord;
+  onVerificationSuccess: (result: { uid?: string; email: string; customToken?: string; legalConsent?: LegalConsentRecord }) => void;
   onChangeEmail?: (newEmail: string) => void;
 }
 
@@ -17,6 +19,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   name,
   address,
   pinCode,
+  legalConsent,
   onVerificationSuccess,
   onChangeEmail
 }) => {
@@ -156,7 +159,8 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           otp: otpString,
           name,
           address,
-          pinCode
+          pinCode,
+          legalConsent
         })
       });
 
@@ -178,7 +182,12 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
 
       // Navigate after brief delay to show success animation
       setTimeout(() => {
-        onVerificationSuccess({ uid: data.uid, email: data.email || currentEmail, customToken: data.customToken });
+        onVerificationSuccess({
+          uid: data.uid,
+          email: data.email || currentEmail,
+          customToken: data.customToken,
+          legalConsent: data.legalConsent || legalConsent
+        });
       }, 1500);
     } catch (err) {
       console.error('Verification error:', err);
@@ -209,7 +218,11 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email: editedEmail.trim() })
+        body: JSON.stringify({
+          email: editedEmail.trim(),
+          isSignup: Boolean(legalConsent),
+          legalConsent
+        })
       });
 
       const data = await response.json();

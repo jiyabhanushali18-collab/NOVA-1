@@ -33,5 +33,15 @@ service cloud.firestore {
         allow read, write: if request.auth != null;
       }
     }
+
+    match /legal_consents/{consentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.accepted == true
+        && request.resource.data.termsVersion is string
+        && request.resource.data.privacyVersion is string
+        && request.resource.data.consentedAt is string;
+      allow update, delete: if false;
+    }
   }
 }

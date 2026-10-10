@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithCustomToken, type User } from 'firebase/auth';
-import { doc, getFirestore, setDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getFirestore, setDoc } from 'firebase/firestore';
+import type { LegalConsentRecord } from './types';
 
 const getEnvVar = (key: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env?.[key]) return process.env[key];
@@ -54,9 +55,24 @@ export const saveUserToFirestore = async (
   isSignUp = false,
   address?: string,
   pinCode?: string,
-  uid?: string
+  uid?: string,
+  legalConsent?: LegalConsentRecord
 ) => {
   const userId = uid || email || 'guestuser';
+  const normalizedConsent =
+    legalConsent && legalConsent.accepted
+      ? {
+          accepted: true,
+          termsVersion: legalConsent.termsVersion,
+          privacyVersion: legalConsent.privacyVersion,
+          consentedAt: legalConsent.consentedAt,
+          serverRecordedAt: legalConsent.serverRecordedAt || new Date().toISOString(),
+          source: legalConsent.source || 'signup',
+          userId,
+          email
+        }
+      : undefined;
+
   const userData = Object.fromEntries(Object.entries({
     uid: userId,
     name,
@@ -65,9 +81,24 @@ export const saveUserToFirestore = async (
     address,
     pinCode,
     isSignUp,
+    legalConsent: normalizedConsent,
     updatedAt: new Date().toISOString()
   }).filter(([, value]) => value !== undefined));
 
   await setDoc(doc(db, 'users', userId), userData, { merge: true });
+
+  if (normalizedConsent) {
+    try {
+      await setDoc(
+        doc(db, 'users', userId, 'legalConsent', 'current'),
+        normalizedConsent,
+        { merge: true }
+      );
+      await addDoc(collection(db, 'legal_consents'), normalizedConsent);
+    } catch {
+      // Primary user document write already succeeded or backend recorded it
+    }
+  }
+
   return userData;
 };

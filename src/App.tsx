@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
-import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview } from './types';
+import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord } from './types';
 import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, signInWithServerCustomToken, waitForFirebaseAuthReady } from './firebase';
 
@@ -22,9 +22,12 @@ import { OnboardingView } from './components/OnboardingView';
 import { SetupPreferencesView } from './components/SetupPreferencesView';
 import { VirtualWardrobeView } from './components/VirtualWardrobeView';
 import { ProfileAnalysisView } from './components/ProfileAnalysisView';
+import { LegalDocumentView } from './components/LegalDocumentView';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
+import { recordUserConsent, verifyUserConsentStatus } from './services/consentService';
+import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { normalizeProductVariants } from './utils/productVariants';
 import { useI18n } from './i18n';
 
@@ -413,7 +416,18 @@ export default function App() {
   }, []);
 
   // Email verification state
-  const [pendingEmailVerification, setPendingEmailVerification] = useState<{ email: string; name: string; address?: string; pinCode?: string; phone?: string } | null>(null);
+  const [pendingEmailVerification, setPendingEmailVerification] = useState<{
+    email: string;
+    name: string;
+    address?: string;
+    pinCode?: string;
+    phone?: string;
+    legalConsent?: LegalConsentRecord;
+  } | null>(null);
+
+  const [userLegalConsent, setUserLegalConsent] = useState<LegalConsentRecord | null>(null);
+  const [requiresConsentRenewal, setRequiresConsentRenewal] = useState<boolean>(false);
+  const [isRenewingConsent, setIsRenewingConsent] = useState<boolean>(false);
 
   const replaceScreen = (to: ScreenId) => {
     const historyStack = screenHistoryRef.current;
@@ -440,6 +454,21 @@ export default function App() {
     setScreen(to);
   };
 
+  const navigateBackFromLegal = () => {
+    const historyStack = [...screenHistoryRef.current];
+    while (
+      historyStack.length > 0 &&
+      (historyStack[historyStack.length - 1] === 'terms' ||
+        historyStack[historyStack.length - 1] === 'privacy')
+    ) {
+      historyStack.pop();
+    }
+    const previousScreen = historyStack[historyStack.length - 1] || 'profile';
+    screenHistoryRef.current = historyStack.length > 0 ? historyStack : [previousScreen];
+    screenRef.current = previousScreen;
+    setScreen(previousScreen);
+  };
+
   // Account management
   const { accounts, addAccount, removeAccount, replaceAccounts } = useAccounts();
   const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
@@ -452,6 +481,39 @@ export default function App() {
       }
     }
   });
+
+  // Verify stored legal consent status for registered accounts (checks if a material terms update requires renewal)
+  useEffect(() => {
+    let cancelled = false;
+    const isGuestSession =
+      !isLoggedIn ||
+      activeAccount?.isGuest ||
+      localStorage.getItem('novaSessionType') === 'guest' ||
+      (activeUid && activeUid.startsWith('guest_'));
+
+    if (isGuestSession) {
+      setUserLegalConsent(null);
+      setRequiresConsentRenewal(false);
+      return;
+    }
+
+    const targetUid = activeUid || userEmail;
+    verifyUserConsentStatus(targetUid, userEmail)
+      .then((status) => {
+        if (cancelled) return;
+        setUserLegalConsent(status.consent);
+        setRequiresConsentRenewal(status.requiresRenewal);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRequiresConsentRenewal(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, activeUid, userEmail, activeAccount?.isGuest]);
 
   // Persistent measurements state
   const [measurements, setMeasurements] = useState<Measurement[]>(() => {
@@ -1237,6 +1299,19 @@ export default function App() {
             onAddAccount={(acc) => addAccount(acc)}
             onRemoveAccount={(uid) => removeAccount(uid)}
             onSwitchAccount={(uid) => setActiveAccountUid(uid)}
+            legalConsent={userLegalConsent}
+          />
+        );
+      case 'terms':
+      case 'privacy':
+        return (
+          <LegalDocumentView
+            documentType={screen}
+            onSelectDocument={(docType) => navigate(docType)}
+            onBack={navigateBackFromLegal}
+            backLabel="Back"
+            isDarkMode={isDarkMode}
+            consentRecord={userLegalConsent}
           />
         );
       case 'setup-preferences':
@@ -1332,21 +1407,33 @@ export default function App() {
     }
   };
 
-  const handleProceedToEmailVerification = (email: string, name: string, address?: string, pinCode?: string, phone?: string) => {
-    // Store pending verification data
-    setPendingEmailVerification({ email, name, address, pinCode, phone });
+  const handleProceedToEmailVerification = (
+    email: string,
+    name: string,
+    address?: string,
+    pinCode?: string,
+    phone?: string,
+    legalConsent?: LegalConsentRecord
+  ) => {
+    // Store pending verification data including explicit legal consent
+    setPendingEmailVerification({ email, name, address, pinCode, phone, legalConsent });
     // Navigate to email verification screen
     resetScreenHistory('email-verification');
   };
 
-  const handleEmailVerificationSuccess = async (verificationResult: { uid?: string; email: string; customToken?: string }) => {
+  const handleEmailVerificationSuccess = async (verificationResult: {
+    uid?: string;
+    email: string;
+    customToken?: string;
+    legalConsent?: LegalConsentRecord;
+  }) => {
     if (!pendingEmailVerification) {
       // Fallback to home if no pending verification data
       resetScreenHistory('home');
       return;
     }
 
-    const { email, name, address, pinCode, phone } = pendingEmailVerification;
+    const { email, name, address, pinCode, phone, legalConsent } = pendingEmailVerification;
     let firebaseUid = verificationResult.uid || email;
 
     if (verificationResult.customToken) {
@@ -1361,8 +1448,12 @@ export default function App() {
       console.warn('OTP verification did not return a Firebase custom token; continuing with local login state.');
     }
 
+    const effectiveConsent = verificationResult.legalConsent || legalConsent;
+
     // Complete the signup with email verified
     localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('novaSessionType', 'registered');
+    localStorage.setItem('novaSelectedAccountUid', firebaseUid);
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
     if (phone) localStorage.setItem('userPhone', phone);
@@ -1376,12 +1467,56 @@ export default function App() {
     setIsLoggedIn(true);
     setPendingEmailVerification(null);
 
+    // Record authoritative legal consent against the verified user account
+    if (effectiveConsent && effectiveConsent.accepted) {
+      recordUserConsent(firebaseUid, email, effectiveConsent)
+        .then((recorded) => {
+          setUserLegalConsent(recorded);
+          setRequiresConsentRenewal(false);
+        })
+        .catch((err) => {
+          console.error('Failed to record legal consent:', err);
+        });
+    }
+
     // Save user details to Firestore (isSignUp=true for email-based signup)
-    saveUserToFirestore(name, email, phone || '', true, address, pinCode, firebaseUid).then(() => {
+    saveUserToFirestore(name, email, phone || '', true, address, pinCode, firebaseUid, effectiveConsent).then(() => {
       console.debug('Firestore write success after OTP verification.', { uid: firebaseUid, email, phone });
     }).catch(err => {
       console.error('Failed to save user data:', err);
     });
+
+    // Also register the verified account in nova_registered_users so subsequent phone sign-in works without duplicate accounts
+    try {
+      const existingRaw = localStorage.getItem('nova_registered_users');
+      const existingUsers = existingRaw ? JSON.parse(existingRaw) : [];
+      if (Array.isArray(existingUsers)) {
+        const normalizedPhone = (phone || '').replace(/\s+/g, '');
+        const newEntry = {
+          uid: firebaseUid,
+          name,
+          email,
+          phone: normalizedPhone,
+          address,
+          pinCode,
+          username: email.split('@')[0] || name,
+          accountType: 'Registered',
+          createdAt: 'Today',
+          lastActive: 'Today',
+          linkedPhone: Boolean(normalizedPhone)
+        };
+        const deduplicated = [
+          newEntry,
+          ...existingUsers.filter(
+            (u: any) =>
+              u &&
+              u.uid !== firebaseUid &&
+              String(u.email || '').toLowerCase() !== email.toLowerCase()
+          )
+        ];
+        localStorage.setItem('nova_registered_users', JSON.stringify(deduplicated));
+      }
+    } catch {}
 
     // Persist account to device list and set active
     try {
@@ -1389,9 +1524,12 @@ export default function App() {
       const acc = {
         uid,
         username: email.split('@')[0] || name,
+        name,
         email,
+        phone: phone || '',
         profilePhoto: undefined,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        legalConsent: effectiveConsent
       };
       addAccount(acc as any);
       try { localStorage.removeItem(`recent_activity_${uid}`); } catch {}
@@ -1405,7 +1543,16 @@ export default function App() {
     resetScreenHistory('setup-preferences');
   };
 
-  const handleLoginSuccess = (name: string, email: string, phone: string, isSignUp?: boolean, address?: string, pinCode?: string, uid?: string) => {
+  const handleLoginSuccess = (
+    name: string,
+    email: string,
+    phone: string,
+    isSignUp?: boolean,
+    address?: string,
+    pinCode?: string,
+    uid?: string,
+    legalConsent?: LegalConsentRecord
+  ) => {
     const selectedUid = uid || email;
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('novaSessionType', 'registered');
@@ -1420,9 +1567,20 @@ export default function App() {
     setUserPhone(phone);
     setUserAddress(address || '');
     setIsLoggedIn(true);
+
+    if (isSignUp && legalConsent && legalConsent.accepted) {
+      recordUserConsent(selectedUid, email, legalConsent)
+        .then((recorded) => {
+          setUserLegalConsent(recorded);
+          setRequiresConsentRenewal(false);
+        })
+        .catch((err) => {
+          console.error('Failed to record signup consent:', err);
+        });
+    }
     
     // Save user details to Firestore
-    saveUserToFirestore(name, email, phone, isSignUp, address, pinCode, selectedUid).catch(err => {
+    saveUserToFirestore(name, email, phone, isSignUp, address, pinCode, selectedUid, legalConsent).catch(err => {
       console.error('Failed to save user data:', err);
     });
     
@@ -1435,7 +1593,8 @@ export default function App() {
         email,
         phone,
         profilePhoto: undefined,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        legalConsent
       };
       addAccount(acc as any);
       // if this is a newly signed-up account, clear any prior recent activity and then set active
@@ -1446,6 +1605,27 @@ export default function App() {
       setActiveAccountUid(selectedUid);
     } catch {}
     resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+  };
+
+  const handleAcceptUpdatedTerms = async () => {
+    if (isRenewingConsent) return;
+    setIsRenewingConsent(true);
+    try {
+      const targetUid = activeUid || userEmail;
+      const updated = await recordUserConsent(targetUid, userEmail, {
+        accepted: true,
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
+        consentedAt: new Date().toISOString(),
+        source: 'renewal'
+      });
+      setUserLegalConsent(updated);
+      setRequiresConsentRenewal(false);
+    } catch (err) {
+      console.error('Failed to renew legal consent:', err);
+    } finally {
+      setIsRenewingConsent(false);
+    }
   };
 
   const handleGuestContinue = () => {
@@ -1502,6 +1682,8 @@ export default function App() {
     setIsLoggedIn(false);
     setUserProfilePhoto('');
     setAnalysisProfile(null);
+    setUserLegalConsent(null);
+    setRequiresConsentRenewal(false);
     resetScreenHistory('home');
   };
 
@@ -1512,7 +1694,7 @@ export default function App() {
     if (tab === 'wardrobe' && screen === 'wardrobe') return true;
     if (tab === 'ar' && (screen === 'ar-tryon' || screen === 'tryon-result')) return true;
     if (tab === 'chat' && screen === 'chat') return true;
-    if (tab === 'profile' && screen === 'profile') return true;
+    if (tab === 'profile' && (screen === 'profile' || screen === 'terms' || screen === 'privacy')) return true;
     if (tab === 'showroom' && (screen === 'showroom' || screen === 'cart')) return true;
     return false;
   };
@@ -1540,6 +1722,7 @@ export default function App() {
             name={pendingEmailVerification.name}
             address={pendingEmailVerification.address}
             pinCode={pendingEmailVerification.pinCode}
+            legalConsent={pendingEmailVerification.legalConsent}
             onVerificationSuccess={handleEmailVerificationSuccess}
           />
         </main>
@@ -1647,6 +1830,48 @@ export default function App() {
 
       {/* 2. Primary Page Contents Body (with comfortable padding, except AR which covers background fully) */}
       <main className={`flex-grow relative transition-colors duration-300 ${isImmersiveAR ? '' : `px-4 py-3 pb-24 ${isDarkMode ? 'bg-slate-950/10' : 'bg-transparent'}`}`}>
+        {requiresConsentRenewal && !isImmersiveAR && (
+          <div
+            role="region"
+            aria-label="Updated Legal Terms Notice"
+            className={`mb-4 rounded-2xl p-4 border space-y-2.5 ${
+              isDarkMode
+                ? 'bg-slate-900 border-indigo-800/60 text-slate-100'
+                : 'bg-white border-[#D5CBF7] text-[#131426] shadow-[0_8px_20px_-4px_rgba(85,59,226,0.1)]'
+            }`}
+          >
+            <div className="text-xs font-extrabold text-[#553BE2]">
+              Updated Terms &amp; Privacy Policy (v{TERMS_VERSION})
+            </div>
+            <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+              NOVA&apos;s{' '}
+              <button
+                type="button"
+                onClick={() => navigate('terms')}
+                className="font-bold text-[#553BE2] underline underline-offset-2 cursor-pointer"
+              >
+                Terms &amp; Conditions
+              </button>{' '}
+              and{' '}
+              <button
+                type="button"
+                onClick={() => navigate('privacy')}
+                className="font-bold text-[#553BE2] underline underline-offset-2 cursor-pointer"
+              >
+                Privacy Policy
+              </button>{' '}
+              have been materially updated since your previous acceptance. Please review and accept the updated terms to continue using account features.
+            </p>
+            <button
+              type="button"
+              disabled={isRenewingConsent}
+              onClick={handleAcceptUpdatedTerms}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-60"
+            >
+              {isRenewingConsent ? 'Recording Acceptance...' : 'I Agree to Updated Terms & Privacy Policy'}
+            </button>
+          </div>
+        )}
         {renderActiveScreen()}
       </main>
 
