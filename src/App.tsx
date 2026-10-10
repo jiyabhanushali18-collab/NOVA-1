@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
-import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord } from './types';
+import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress } from './types';
 import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, signInWithServerCustomToken, waitForFirebaseAuthReady } from './firebase';
 
@@ -27,6 +27,14 @@ import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
 import { recordUserConsent, verifyUserConsentStatus } from './services/consentService';
+import {
+  ensureUserSessionToken,
+  fetchUserDeliveryAddress,
+  formatDeliveryAddress,
+  parseAddressToDeliveryAddress,
+  saveSessionToken,
+  writeCachedUserAddress,
+} from './services/addressService';
 import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { normalizeProductVariants } from './utils/productVariants';
 import { useI18n } from './i18n';
@@ -397,6 +405,9 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
   const [userAddress, setUserAddress] = useState<string>(() => localStorage.getItem('userAddress') || '');
+  const [userPinCode, setUserPinCode] = useState<string>(() => localStorage.getItem('userPinCode') || '');
+  const [userDeliveryAddress, setUserDeliveryAddress] = useState<DeliveryAddress | null>(null);
+  const [userSavedAddresses, setUserSavedAddresses] = useState<DeliveryAddress[]>([]);
   const [isMobile, setIsMobile] = useState<boolean>(() => {
     try {
       return /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth < 768);
@@ -474,23 +485,137 @@ export default function App() {
   const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
     onAccountSwitched: (acc) => {
       if (acc) {
-        setUserName(acc.name || acc.username || '');
-        setUserEmail(acc.email || '');
+        const nextName = acc.name || acc.username || '';
+        const nextEmail = acc.email || '';
+        const nextPhone = acc.phone || '';
+        const nextAddr = acc.address || (acc.deliveryAddress ? formatDeliveryAddress(acc.deliveryAddress) : '');
+        const nextPin = acc.pinCode || acc.deliveryAddress?.pinCode || '';
+        setUserName(nextName);
+        setUserEmail(nextEmail);
+        setUserPhone(nextPhone);
+        setUserAddress(nextAddr);
+        setUserPinCode(nextPin);
+        setUserDeliveryAddress(acc.deliveryAddress || null);
+        setUserSavedAddresses(acc.savedAddresses || (acc.deliveryAddress ? [acc.deliveryAddress] : []));
         setIsLoggedIn(true);
-        // TODO: trigger reloads for wardrobe/outfits/recommendations
+        try {
+          localStorage.setItem('userName', nextName);
+          localStorage.setItem('userEmail', nextEmail);
+          localStorage.setItem('userPhone', nextPhone);
+          localStorage.setItem('userAddress', nextAddr);
+          localStorage.setItem('userPinCode', nextPin);
+        } catch {}
       }
     }
   });
 
+  const isGuestSession = Boolean(
+    !isLoggedIn ||
+      activeAccount?.isGuest ||
+      localStorage.getItem('novaSessionType') === 'guest' ||
+      (activeUid && activeUid.startsWith('guest_'))
+  );
+
+  // Sync the authenticated user's saved delivery address whenever active user changes
+  useEffect(() => {
+    let cancelled = false;
+    if (isGuestSession) {
+      setUserDeliveryAddress(null);
+      setUserSavedAddresses([]);
+      return;
+    }
+
+    const targetUid = activeUid || userEmail;
+    if (!targetUid) return;
+
+    fetchUserDeliveryAddress({
+      uid: targetUid,
+      email: userEmail,
+      name: userName,
+      phone: userPhone,
+      isGuest: isGuestSession,
+      fallbackAddress: userAddress || activeAccount?.address,
+      fallbackPinCode: userPinCode || activeAccount?.pinCode,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setUserDeliveryAddress(res.primaryAddress);
+        setUserSavedAddresses(res.savedAddresses);
+        if (res.primaryAddress) {
+          const formatted = formatDeliveryAddress(res.primaryAddress);
+          if (formatted && !userAddress) {
+            setUserAddress(formatted);
+          }
+          if (res.primaryAddress.pinCode && !userPinCode) {
+            setUserPinCode(res.primaryAddress.pinCode);
+          }
+        }
+      })
+      .catch(() => {
+        // Keep current in-memory state on transient error
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, activeUid, userEmail, isGuestSession]);
+
+  const handleAddressSaved = (updatedAddress: DeliveryAddress, allAddresses?: DeliveryAddress[]) => {
+    const hasValidAddress = Boolean(
+      updatedAddress && (updatedAddress.flatNo || updatedAddress.city || updatedAddress.pinCode)
+    );
+    const nextDeliveryAddress = hasValidAddress ? updatedAddress : null;
+    const nextSavedList = Array.isArray(allAddresses)
+      ? allAddresses
+      : nextDeliveryAddress
+      ? [nextDeliveryAddress]
+      : [];
+    const formatted = nextDeliveryAddress ? formatDeliveryAddress(nextDeliveryAddress) : '';
+    const nextPin = nextDeliveryAddress?.pinCode || '';
+    const nextPhone = updatedAddress?.phone || userPhone;
+    const nextName = updatedAddress?.fullName || userName;
+
+    setUserDeliveryAddress(nextDeliveryAddress);
+    setUserSavedAddresses(nextSavedList);
+    setUserAddress(formatted);
+    setUserPinCode(nextPin);
+    if (nextPhone) setUserPhone(nextPhone);
+    if (nextName) setUserName(nextName);
+
+    if (!isGuestSession) {
+      try {
+        localStorage.setItem('userAddress', formatted);
+        localStorage.setItem('userPinCode', nextPin);
+        if (nextPhone) localStorage.setItem('userPhone', nextPhone);
+        if (nextName) localStorage.setItem('userName', nextName);
+      } catch {}
+
+      const currentUid = activeUid || userEmail;
+      if (currentUid) {
+        const updatedAccount = {
+          ...activeAccount,
+          uid: currentUid,
+          username: activeAccount?.username || userEmail.split('@')[0] || nextName,
+          name: nextName,
+          email: userEmail,
+          phone: nextPhone,
+          address: formatted,
+          pinCode: nextPin,
+          deliveryAddress: nextDeliveryAddress || undefined,
+          savedAddresses: nextSavedList,
+          createdAt: activeAccount?.createdAt || Date.now(),
+        };
+        replaceAccounts([
+          updatedAccount,
+          ...accounts.filter((a) => a.uid !== currentUid),
+        ]);
+      }
+    }
+  };
+
   // Verify stored legal consent status for registered accounts (checks if a material terms update requires renewal)
   useEffect(() => {
     let cancelled = false;
-    const isGuestSession =
-      !isLoggedIn ||
-      activeAccount?.isGuest ||
-      localStorage.getItem('novaSessionType') === 'guest' ||
-      (activeUid && activeUid.startsWith('guest_'));
-
     if (isGuestSession) {
       setUserLegalConsent(null);
       setRequiresConsentRenewal(false);
@@ -513,7 +638,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, activeUid, userEmail, activeAccount?.isGuest]);
+  }, [isLoggedIn, activeUid, userEmail, isGuestSession]);
 
   // Persistent measurements state
   const [measurements, setMeasurements] = useState<Measurement[]>(() => {
@@ -1273,11 +1398,17 @@ export default function App() {
         return (
           <ProfileView 
             onNavigate={navigate} 
+            userId={activeUid || userEmail}
             userName={userName} 
             setUserName={setUserName} 
             userEmail={userEmail}
             userPhone={userPhone}
             userAddress={userAddress}
+            userPinCode={userPinCode}
+            savedDeliveryAddress={userDeliveryAddress}
+            savedAddresses={userSavedAddresses}
+            isGuest={isGuestSession}
+            onSaveAddress={handleAddressSaved}
             profilePhoto={userProfilePhoto || activeAccount?.profilePhoto}
             analysisProfile={analysisProfile}
             onLogout={handleLogout}
@@ -1387,6 +1518,16 @@ export default function App() {
             onRemoveItem={handleRemoveItem}
             onClearCart={handleClearCart}
             isDarkMode={isDarkMode}
+            userId={activeUid || userEmail}
+            userName={userName}
+            userEmail={userEmail}
+            userPhone={userPhone}
+            userAddress={userAddress}
+            userPinCode={userPinCode}
+            savedDeliveryAddress={userDeliveryAddress}
+            savedAddresses={userSavedAddresses}
+            isGuest={isGuestSession}
+            onSaveAddress={handleAddressSaved}
           />
         );
       default:
@@ -1425,7 +1566,9 @@ export default function App() {
     uid?: string;
     email: string;
     customToken?: string;
+    sessionToken?: string;
     legalConsent?: LegalConsentRecord;
+    deliveryAddress?: DeliveryAddress;
   }) => {
     if (!pendingEmailVerification) {
       // Fallback to home if no pending verification data
@@ -1448,7 +1591,24 @@ export default function App() {
       console.warn('OTP verification did not return a Firebase custom token; continuing with local login state.');
     }
 
+    if (verificationResult.sessionToken) {
+      saveSessionToken(firebaseUid, verificationResult.sessionToken);
+      if (email && email !== firebaseUid) {
+        saveSessionToken(email, verificationResult.sessionToken);
+      }
+    }
+
     const effectiveConsent = verificationResult.legalConsent || legalConsent;
+    const structuredAddress =
+      verificationResult.deliveryAddress ||
+      parseAddressToDeliveryAddress({
+        rawAddress: address,
+        pinCode,
+        fullName: name,
+        phone: phone || '',
+      });
+    const initialSavedAddresses = structuredAddress ? [structuredAddress] : [];
+    writeCachedUserAddress(firebaseUid, structuredAddress, initialSavedAddresses);
 
     // Complete the signup with email verified
     localStorage.setItem('isLoggedIn', 'true');
@@ -1456,14 +1616,17 @@ export default function App() {
     localStorage.setItem('novaSelectedAccountUid', firebaseUid);
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
-    if (phone) localStorage.setItem('userPhone', phone);
-    if (address) localStorage.setItem('userAddress', address);
-    if (pinCode) localStorage.setItem('userPinCode', pinCode);
+    localStorage.setItem('userPhone', phone || '');
+    localStorage.setItem('userAddress', address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
+    localStorage.setItem('userPinCode', pinCode || structuredAddress?.pinCode || '');
 
     setUserName(name);
     setUserEmail(email);
     setUserPhone(phone || '');
-    setUserAddress(address || '');
+    setUserAddress(address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
+    setUserPinCode(pinCode || structuredAddress?.pinCode || '');
+    setUserDeliveryAddress(structuredAddress);
+    setUserSavedAddresses(initialSavedAddresses);
     setIsLoggedIn(true);
     setPendingEmailVerification(null);
 
@@ -1480,7 +1643,17 @@ export default function App() {
     }
 
     // Save user details to Firestore (isSignUp=true for email-based signup)
-    saveUserToFirestore(name, email, phone || '', true, address, pinCode, firebaseUid, effectiveConsent).then(() => {
+    saveUserToFirestore(
+      name,
+      email,
+      phone || '',
+      true,
+      address,
+      pinCode,
+      firebaseUid,
+      effectiveConsent,
+      structuredAddress || undefined
+    ).then(() => {
       console.debug('Firestore write success after OTP verification.', { uid: firebaseUid, email, phone });
     }).catch(err => {
       console.error('Failed to save user data:', err);
@@ -1497,8 +1670,10 @@ export default function App() {
           name,
           email,
           phone: normalizedPhone,
-          address,
-          pinCode,
+          address: address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''),
+          pinCode: pinCode || structuredAddress?.pinCode || '',
+          deliveryAddress: structuredAddress || undefined,
+          savedAddresses: initialSavedAddresses,
           username: email.split('@')[0] || name,
           accountType: 'Registered',
           createdAt: 'Today',
@@ -1527,6 +1702,10 @@ export default function App() {
         name,
         email,
         phone: phone || '',
+        address: address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''),
+        pinCode: pinCode || structuredAddress?.pinCode || '',
+        deliveryAddress: structuredAddress || undefined,
+        savedAddresses: initialSavedAddresses,
         profilePhoto: undefined,
         createdAt: Date.now(),
         legalConsent: effectiveConsent
@@ -1554,18 +1733,49 @@ export default function App() {
     legalConsent?: LegalConsentRecord
   ) => {
     const selectedUid = uid || email;
+    const structuredAddress = parseAddressToDeliveryAddress({
+      rawAddress: address,
+      pinCode,
+      fullName: name,
+      phone,
+    });
+
+    if (structuredAddress) {
+      writeCachedUserAddress(selectedUid, structuredAddress, [structuredAddress]);
+    } else if (isSignUp) {
+      writeCachedUserAddress(selectedUid, null, []);
+    }
+
+    // Issue or refresh session token for the authenticated user
+    ensureUserSessionToken({
+      uid: selectedUid,
+      email,
+      name,
+      phone,
+      fallbackAddress: address,
+      fallbackPinCode: pinCode,
+    }).catch(() => undefined);
+
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('novaSessionType', 'registered');
     localStorage.setItem('novaSelectedAccountUid', selectedUid);
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
     localStorage.setItem('userPhone', phone);
-    if (address) localStorage.setItem('userAddress', address);
-    if (pinCode) localStorage.setItem('userPinCode', pinCode);
+    localStorage.setItem('userAddress', address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
+    localStorage.setItem('userPinCode', pinCode || structuredAddress?.pinCode || '');
     setUserName(name);
     setUserEmail(email);
     setUserPhone(phone);
-    setUserAddress(address || '');
+    setUserAddress(address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
+    setUserPinCode(pinCode || structuredAddress?.pinCode || '');
+    if (structuredAddress) {
+      setUserDeliveryAddress(structuredAddress);
+      setUserSavedAddresses([structuredAddress]);
+    } else if (isSignUp) {
+      setUserDeliveryAddress(null);
+      setUserSavedAddresses([]);
+    }
     setIsLoggedIn(true);
 
     if (isSignUp && legalConsent && legalConsent.accepted) {
@@ -1580,7 +1790,17 @@ export default function App() {
     }
     
     // Save user details to Firestore
-    saveUserToFirestore(name, email, phone, isSignUp, address, pinCode, selectedUid, legalConsent).catch(err => {
+    saveUserToFirestore(
+      name,
+      email,
+      phone,
+      isSignUp,
+      address,
+      pinCode,
+      selectedUid,
+      legalConsent,
+      structuredAddress || undefined
+    ).catch(err => {
       console.error('Failed to save user data:', err);
     });
     
@@ -1592,6 +1812,10 @@ export default function App() {
         name,
         email,
         phone,
+        address: address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : undefined),
+        pinCode: pinCode || structuredAddress?.pinCode || undefined,
+        deliveryAddress: structuredAddress || undefined,
+        savedAddresses: structuredAddress ? [structuredAddress] : undefined,
         profilePhoto: undefined,
         createdAt: Date.now(),
         legalConsent
@@ -1639,6 +1863,8 @@ export default function App() {
     localStorage.setItem('userName', guestName);
     localStorage.setItem('userEmail', guestEmail);
     localStorage.setItem('userPhone', '');
+    localStorage.removeItem('userAddress');
+    localStorage.removeItem('userPinCode');
     localStorage.setItem('novaGuestProfile', JSON.stringify({
       guestId,
       profileType: 'anonymous',
@@ -1651,6 +1877,9 @@ export default function App() {
     setUserEmail(guestEmail);
     setUserPhone('');
     setUserAddress('');
+    setUserPinCode('');
+    setUserDeliveryAddress(null);
+    setUserSavedAddresses([]);
     setIsLoggedIn(true);
 
     try {
@@ -1675,11 +1904,17 @@ export default function App() {
     localStorage.removeItem('novaSessionType');
     localStorage.removeItem('novaGuestId');
     localStorage.removeItem('novaGuestProfile');
+    localStorage.removeItem('userAddress');
+    localStorage.removeItem('userPinCode');
     accountService.setActiveLocalAccount(undefined);
     setActiveAccountUid(undefined);
     localStorage.removeItem('userProfilePhoto');
     localStorage.removeItem('nova_analysis_profile');
     setIsLoggedIn(false);
+    setUserAddress('');
+    setUserPinCode('');
+    setUserDeliveryAddress(null);
+    setUserSavedAddresses([]);
     setUserProfilePhoto('');
     setAnalysisProfile(null);
     setUserLegalConsent(null);
@@ -1722,6 +1957,7 @@ export default function App() {
             name={pendingEmailVerification.name}
             address={pendingEmailVerification.address}
             pinCode={pendingEmailVerification.pinCode}
+            phone={pendingEmailVerification.phone}
             legalConsent={pendingEmailVerification.legalConsent}
             onVerificationSuccess={handleEmailVerificationSuccess}
           />

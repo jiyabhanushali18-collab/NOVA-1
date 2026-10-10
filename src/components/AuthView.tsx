@@ -51,11 +51,11 @@ interface RegisterUser {
 
 // Initial seed accounts for outstanding out-of-the-box convenience!
 const SEED_USERS: RegisterUser[] = [
-  { uid: 'user_arjun_001', name: 'Arjun Mehta', username: 'arjun.style', email: 'arjun.mehta@email.com', phone: '+91 98765 43210', accountType: 'Registered', createdAt: '12 Feb 2026', lastActive: 'Today', linkedPhone: true },
-  { uid: 'user_pratham_001', name: 'Pratham', username: 'pratham.nova', email: 'pratham@nova.ai', phone: '+91 98765 43210', accountType: 'Premium', createdAt: '12 Feb 2026', lastActive: 'Today', linkedPhone: true },
+  { uid: 'user_arjun_001', name: 'Arjun Mehta', username: 'arjun.style', email: 'arjun.mehta@email.com', phone: '+91 98765 43210', address: 'Flat 402, Elite Arcade, Near Metro Station, Indiranagar, Bangalore', pinCode: '560038', accountType: 'Registered', createdAt: '12 Feb 2026', lastActive: 'Today', linkedPhone: true },
+  { uid: 'user_pratham_001', name: 'Pratham', username: 'pratham.nova', email: 'pratham@nova.ai', phone: '+91 98765 43210', address: 'Bldg 4A, Flat 502, Raheja Palms, Bandra West, Mumbai', pinCode: '400050', accountType: 'Premium', createdAt: '12 Feb 2026', lastActive: 'Today', linkedPhone: true },
   { uid: 'user_dad_001', name: 'Dad', username: 'shopping.profile', email: 'dad@nova.ai', phone: '+91 98765 43210', accountType: 'Registered', createdAt: '4 Jan 2026', lastActive: 'Yesterday', linkedPhone: true },
   { uid: 'user_mom_001', name: 'Mom', username: 'premium.profile', email: 'mom@nova.ai', phone: '+91 98765 43210', accountType: 'Premium', createdAt: '18 Dec 2025', lastActive: '3 days ago', linkedPhone: true },
-  { uid: 'user_viju_001', name: 'Viju Saiya', username: 'vijusaiya', email: 'vijusaiya123@gmail.com', phone: '+91 91234 56789', accountType: 'Registered', createdAt: '22 May 2026', lastActive: 'Today', linkedPhone: true },
+  { uid: 'user_viju_001', name: 'Viju Saiya', username: 'vijusaiya', email: 'vijusaiya123@gmail.com', phone: '+91 91234 56789', address: 'Plot 18, Sector 44, Near HUDA City Centre, Gurugram', pinCode: '122003', accountType: 'Registered', createdAt: '22 May 2026', lastActive: 'Today', linkedPhone: true },
   { uid: 'guest_tester_001', name: 'Guest Tester', email: 'guest@nova.ai', phone: '+91 99999 88888', accountType: 'Guest', createdAt: '8 Jun 2026', lastActive: 'Last week', linkedPhone: false }
 ];
 
@@ -77,8 +77,15 @@ const normalizeStoredUser = (user: Partial<RegisterUser>, index: number): Regist
 const mergeSeedUsers = (users: RegisterUser[]) => {
   const byUid = new Map(users.map((user) => [user.uid, user]));
   SEED_USERS.forEach((seedUser) => {
-    if (!byUid.has(seedUser.uid)) {
+    const existing = byUid.get(seedUser.uid);
+    if (!existing) {
       byUid.set(seedUser.uid, seedUser);
+    } else if (!existing.address && seedUser.address) {
+      byUid.set(seedUser.uid, {
+        ...existing,
+        address: seedUser.address,
+        pinCode: existing.pinCode || seedUser.pinCode
+      });
     }
   });
   return Array.from(byUid.values());

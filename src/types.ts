@@ -224,12 +224,48 @@ export interface NovaStyleAnalysisResult {
   analyzedAt?: string;
 }
 
+export interface DeliveryAddress {
+  id?: string;
+  label?: string;
+  fullName: string;
+  phone: string;
+  flatNo: string;
+  landmark?: string;
+  city: string;
+  state?: string;
+  pinCode: string;
+  country?: string;
+  formattedAddress?: string;
+  isDefault?: boolean;
+  updatedAt?: string;
+}
+
+export interface OrderRecord {
+  orderId: string;
+  userId: string;
+  isGuest?: boolean;
+  items: CartItem[];
+  subtotal: number;
+  taxes: number;
+  discount: number;
+  shipping: number;
+  grandTotal: number;
+  paymentMethod: 'upi' | 'card' | 'cod';
+  deliveryAddress: DeliveryAddress;
+  createdAt: string;
+}
+
 export interface NovaAccount {
   uid: string;
   name?: string;
   username: string;
   email: string;
   phone?: string;
+  address?: string;
+  pinCode?: string;
+  deliveryAddress?: DeliveryAddress;
+  savedAddresses?: DeliveryAddress[];
+  sessionToken?: string;
   accountType?: 'Guest' | 'Registered' | 'Premium';
   isGuest?: boolean;
   profilePhoto?: string;

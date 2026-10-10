@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithCustomToken, type User } from 'firebase/auth';
 import { addDoc, collection, doc, getFirestore, setDoc } from 'firebase/firestore';
-import type { LegalConsentRecord } from './types';
+import type { DeliveryAddress, LegalConsentRecord } from './types';
 
 const getEnvVar = (key: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env?.[key]) return process.env[key];
@@ -56,7 +56,8 @@ export const saveUserToFirestore = async (
   address?: string,
   pinCode?: string,
   uid?: string,
-  legalConsent?: LegalConsentRecord
+  legalConsent?: LegalConsentRecord,
+  deliveryAddress?: DeliveryAddress
 ) => {
   const userId = uid || email || 'guestuser';
   const normalizedConsent =
@@ -80,12 +81,14 @@ export const saveUserToFirestore = async (
     phone,
     address,
     pinCode,
+    deliveryAddress,
     isSignUp,
     legalConsent: normalizedConsent,
     updatedAt: new Date().toISOString()
   }).filter(([, value]) => value !== undefined));
 
   await setDoc(doc(db, 'users', userId), userData, { merge: true });
+  await setDoc(doc(db, 'users', userId, 'profile', 'meta'), userData, { merge: true });
 
   if (normalizedConsent) {
     try {

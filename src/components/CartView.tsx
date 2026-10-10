@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { ScreenId, CartItem } from '../types';
+import React, { useEffect, useState } from 'react';
+import { ScreenId, CartItem, DeliveryAddress, OrderRecord } from '../types';
+import {
+  createOrderSnapshot,
+  fetchUserDeliveryAddress,
+  formatDeliveryAddress,
+  isGuestIdentity,
+  saveUserDeliveryAddress,
+  validateDeliveryAddress
+} from '../services/addressService';
 
 interface CartViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -8,6 +16,17 @@ interface CartViewProps {
   onRemoveItem: (idx: number) => void;
   onClearCart: () => void;
   isDarkMode?: boolean;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+  userAddress?: string;
+  userPinCode?: string;
+  savedDeliveryAddress?: DeliveryAddress | null;
+  savedAddresses?: DeliveryAddress[];
+  isGuest?: boolean;
+  onSaveAddress?: (address: DeliveryAddress, allAddresses: DeliveryAddress[]) => Promise<void> | void;
+  onOrderPlaced?: (order: OrderRecord) => void;
 }
 
 export const CartView: React.FC<CartViewProps> = ({
@@ -16,19 +35,156 @@ export const CartView: React.FC<CartViewProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
-  isDarkMode = false
+  isDarkMode = false,
+  userId = 'guest',
+  userName = '',
+  userEmail = '',
+  userPhone = '',
+  userAddress = '',
+  userPinCode = '',
+  savedDeliveryAddress = null,
+  savedAddresses = [],
+  isGuest = false,
+  onSaveAddress,
+  onOrderPlaced
 }) => {
+  const effectiveIsGuest = isGuestIdentity(userId, isGuest);
   const [step, setStep] = useState<'cart' | 'address' | 'payment' | 'completed'>('cart');
   const [couponCode, setCouponCode] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
   const [addressChoice, setAddressChoice] = useState<'home' | 'work'>('home');
   const [paymentChoice, setPaymentChoice] = useState<'upi' | 'card' | 'cod'>('upi');
 
-  // Address form fields
-  const [flatNo, setFlatNo] = useState('Flat 402, Elite Arcade');
-  const [landmark, setLandmark] = useState('Near Metro Station, Indiranagar');
-  const [city, setCity] = useState('Bangalore');
-  const [pinCode, setPinCode] = useState('560038');
+  // Delivery address form fields (linked to authenticated user's saved address or empty when none exists)
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [flatNo, setFlatNo] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [city, setCity] = useState('');
+  const [pinCode, setPinCode] = useState('');
+
+  const [resolvedPrimaryAddress, setResolvedPrimaryAddress] = useState<DeliveryAddress | null>(
+    effectiveIsGuest ? null : savedDeliveryAddress
+  );
+  const [userAddressList, setUserAddressList] = useState<DeliveryAddress[]>(
+    effectiveIsGuest ? [] : savedAddresses
+  );
+  const [saveAddressToProfile, setSaveAddressToProfile] = useState<boolean>(false);
+  const [addressLoading, setAddressLoading] = useState<boolean>(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressSavedMessage, setAddressSavedMessage] = useState<string | null>(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<OrderRecord | null>(null);
+
+  const applyAddressToForm = (addr: DeliveryAddress | null, defaultName = '', defaultPhone = '') => {
+    if (addr && (addr.flatNo || addr.pinCode || addr.city)) {
+      setFullName(addr.fullName || defaultName || '');
+      setPhone(addr.phone || defaultPhone || '');
+      setFlatNo(addr.flatNo || '');
+      setLandmark(addr.landmark || '');
+      setCity(addr.city || '');
+      setPinCode(addr.pinCode || '');
+    } else {
+      setFullName(defaultName || '');
+      setPhone(defaultPhone || '');
+      setFlatNo('');
+      setLandmark('');
+      setCity('');
+      setPinCode('');
+    }
+  };
+
+  // Load the authenticated user's saved address when opening checkout or switching users
+  useEffect(() => {
+    let cancelled = false;
+    setAddressError(null);
+    setAddressSavedMessage(null);
+
+    if (effectiveIsGuest) {
+      setResolvedPrimaryAddress(null);
+      setUserAddressList([]);
+      setSaveAddressToProfile(false);
+      applyAddressToForm(null, '', '');
+      return;
+    }
+
+    setAddressLoading(true);
+    fetchUserDeliveryAddress({
+      uid: userId,
+      email: userEmail,
+      name: userName,
+      phone: userPhone,
+      isGuest: false,
+      fallbackAddress: savedDeliveryAddress?.formattedAddress || userAddress,
+      fallbackPinCode: savedDeliveryAddress?.pinCode || userPinCode
+    })
+      .then(({ primaryAddress, savedAddresses: fetchedList }) => {
+        if (cancelled) return;
+        const effectivePrimary = primaryAddress || savedDeliveryAddress || null;
+        const effectiveList =
+          fetchedList.length > 0
+            ? fetchedList
+            : savedAddresses.length > 0
+            ? savedAddresses
+            : effectivePrimary
+            ? [effectivePrimary]
+            : [];
+
+        setResolvedPrimaryAddress(effectivePrimary);
+        setUserAddressList(effectiveList);
+
+        if (effectivePrimary && (effectivePrimary.flatNo || effectivePrimary.pinCode)) {
+          applyAddressToForm(effectivePrimary, userName, userPhone);
+          setSaveAddressToProfile(false);
+        } else {
+          // Registered user with no saved address: prefill name & phone, show empty address fields
+          applyAddressToForm(null, userName, userPhone);
+          setSaveAddressToProfile(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (savedDeliveryAddress && (savedDeliveryAddress.flatNo || savedDeliveryAddress.pinCode)) {
+          setResolvedPrimaryAddress(savedDeliveryAddress);
+          applyAddressToForm(savedDeliveryAddress, userName, userPhone);
+          setSaveAddressToProfile(false);
+        } else {
+          applyAddressToForm(null, userName, userPhone);
+          setSaveAddressToProfile(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAddressLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, userEmail, userName, userPhone, userAddress, userPinCode, effectiveIsGuest]);
+
+  const homePreset = !effectiveIsGuest
+    ? userAddressList.find((a) => (a.label || 'home').toLowerCase().includes('home')) || resolvedPrimaryAddress
+    : null;
+  const workPreset = !effectiveIsGuest
+    ? userAddressList.find(
+        (a) =>
+          (a.label || '').toLowerCase().includes('work') ||
+          (a.label || '').toLowerCase().includes('office')
+      ) || null
+    : null;
+
+  const handleSelectAddressPreset = (choice: 'home' | 'work') => {
+    setAddressChoice(choice);
+    setAddressError(null);
+    if (effectiveIsGuest) return;
+    if (choice === 'home' && homePreset) {
+      applyAddressToForm(homePreset, userName, userPhone);
+    } else if (choice === 'work' && workPreset) {
+      applyAddressToForm(workPreset, userName, userPhone);
+    }
+  };
 
   // Cart financial summaries
   const subtotal = cartItems.reduce((acc, curr) => acc + curr.product.price * curr.quantity, 0);
@@ -46,12 +202,125 @@ export const CartView: React.FC<CartViewProps> = ({
     }
   };
 
-  const handlePlaceOrder = () => {
-    setStep('completed');
-    onClearCart();
+  const buildCurrentCheckoutAddress = (): DeliveryAddress => {
+    const label = addressChoice === 'work' ? 'Office' : 'Home';
+    const current: DeliveryAddress = {
+      id: `addr_${addressChoice}_default`,
+      label,
+      fullName: fullName.trim() || (!effectiveIsGuest ? userName.trim() : ''),
+      phone: phone.trim() || (!effectiveIsGuest ? userPhone.trim() : ''),
+      flatNo: flatNo.trim(),
+      landmark: landmark.trim(),
+      city: city.trim(),
+      pinCode: pinCode.trim(),
+      country: 'India',
+      isDefault: addressChoice === 'home',
+      updatedAt: new Date().toISOString()
+    };
+    current.formattedAddress = formatDeliveryAddress(current);
+    return current;
+  };
+
+  const handleProceedToPayment = async () => {
+    setAddressError(null);
+    setAddressSavedMessage(null);
+    const currentAddress = buildCurrentCheckoutAddress();
+    const validation = validateDeliveryAddress(currentAddress);
+
+    if (!validation.valid) {
+      setAddressError(validation.error || 'Please complete all required delivery address fields.');
+      return;
+    }
+
+    if (!effectiveIsGuest && saveAddressToProfile) {
+      try {
+        const { primaryAddress, savedAddresses: updatedList } = await saveUserDeliveryAddress(
+          {
+            uid: userId,
+            email: userEmail,
+            name: currentAddress.fullName || userName,
+            phone: currentAddress.phone || userPhone,
+            isGuest: false
+          },
+          currentAddress,
+          userAddressList
+        );
+        setResolvedPrimaryAddress(primaryAddress);
+        setUserAddressList(updatedList);
+        await onSaveAddress?.(primaryAddress, updatedList);
+        setAddressSavedMessage('Saved to your profile for future checkouts.');
+      } catch (err: any) {
+        setAddressError(err?.message || 'Unable to save address to profile.');
+        return;
+      }
+    }
+
+    setStep('payment');
+  };
+
+  const handlePlaceOrder = async () => {
+    if (isPlacingOrder) return;
+    setAddressError(null);
+    const currentAddress = buildCurrentCheckoutAddress();
+    const validation = validateDeliveryAddress(currentAddress);
+
+    if (!validation.valid) {
+      setAddressError(validation.error || 'Please complete all required delivery address fields before placing your order.');
+      setStep('address');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      if (!effectiveIsGuest && saveAddressToProfile) {
+        const { primaryAddress, savedAddresses: updatedList } = await saveUserDeliveryAddress(
+          {
+            uid: userId,
+            email: userEmail,
+            name: currentAddress.fullName || userName,
+            phone: currentAddress.phone || userPhone,
+            isGuest: false
+          },
+          currentAddress,
+          userAddressList
+        );
+        setResolvedPrimaryAddress(primaryAddress);
+        setUserAddressList(updatedList);
+        await onSaveAddress?.(primaryAddress, updatedList);
+      }
+
+      const order = await createOrderSnapshot({
+        user: {
+          uid: userId,
+          email: userEmail,
+          name: currentAddress.fullName || userName,
+          phone: currentAddress.phone || userPhone,
+          isGuest: effectiveIsGuest
+        },
+        items: cartItems,
+        subtotal,
+        taxes,
+        discount,
+        shipping,
+        grandTotal,
+        paymentMethod: paymentChoice,
+        deliveryAddress: currentAddress
+      });
+
+      setConfirmedOrder(order);
+      onOrderPlaced?.(order);
+      setStep('completed');
+      onClearCart();
+    } catch (err: any) {
+      setAddressError(err?.message || 'Unable to place order. Please check your delivery details.');
+      setStep('address');
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   if (step === 'completed') {
+    const orderDisplayAddr = confirmedOrder?.deliveryAddress || buildCurrentCheckoutAddress();
     return (
       <div className="py-12 px-4 text-center space-y-6 animate-scale-up">
         {/* Success celebration icon */}
@@ -79,9 +348,23 @@ export const CartView: React.FC<CartViewProps> = ({
         }`}>
           <div className="flex justify-between text-xs font-bold font-mono">
             <span className={isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}>ORDER NO.</span>
-            <span className={isDarkMode ? 'text-slate-100' : 'text-[#131426]'}>#NV-{(1000 + Math.floor(Math.random() * 9000))}</span>
+            <span className={isDarkMode ? 'text-slate-100' : 'text-[#131426]'}>{confirmedOrder?.orderId || `#NV-${1000 + Math.floor(Math.random() * 9000)}`}</span>
           </div>
-          <div className={isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}></div>
+          <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
+
+          <div className="space-y-1">
+            <p className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+              DELIVERY ADDRESS ({orderDisplayAddr.label || 'Home'})
+            </p>
+            <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>
+              {orderDisplayAddr.fullName} • {orderDisplayAddr.phone}
+            </p>
+            <p className={`text-[11px] leading-snug ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+              {orderDisplayAddr.formattedAddress || formatDeliveryAddress(orderDisplayAddr)} — {orderDisplayAddr.pinCode}
+            </p>
+          </div>
+
+          <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
           
           <ul className={`text-xs space-y-1.5 font-bold font-sans ${isDarkMode ? 'text-slate-300' : 'text-[#131426]'}`}>
             <li className="flex items-center gap-2 text-[11px]"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 10:35 AM — Order Created</li>
@@ -295,7 +578,7 @@ export const CartView: React.FC<CartViewProps> = ({
           {/* Preset address choice pills */}
           <div className="grid grid-cols-2 gap-3">
             <div 
-              onClick={() => setAddressChoice('home')}
+              onClick={() => handleSelectAddressPreset('home')}
               className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
                 addressChoice === 'home' 
                   ? 'border-[#553BE2] bg-[#F2EEFF] shadow-sm' 
@@ -303,14 +586,20 @@ export const CartView: React.FC<CartViewProps> = ({
               }`}
             >
               <span className={`material-symbols-outlined text-xl ${addressChoice === 'home' ? 'text-[#553BE2]' : 'text-[#8E96AA]'}`}>home</span>
-              <div className="leading-tight">
+              <div className="leading-tight min-w-0">
                 <p className="text-xs font-bold text-[#131426]">Deliver to Home</p>
-                <p className="text-[10px] text-[#5E667A] mt-1">Flat 402, Elite Indiranagar, Bangalore</p>
+                <p className="text-[10px] text-[#5E667A] mt-1 line-clamp-2">
+                  {homePreset && (homePreset.flatNo || homePreset.city)
+                    ? [homePreset.flatNo, homePreset.city, homePreset.pinCode].filter(Boolean).join(', ')
+                    : effectiveIsGuest
+                    ? 'Guest checkout — enter details below'
+                    : 'No saved home address — enter below'}
+                </p>
               </div>
             </div>
 
             <div 
-              onClick={() => setAddressChoice('work')}
+              onClick={() => handleSelectAddressPreset('work')}
               className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
                 addressChoice === 'work' 
                   ? 'border-[#553BE2] bg-[#F2EEFF] shadow-sm' 
@@ -318,24 +607,65 @@ export const CartView: React.FC<CartViewProps> = ({
               }`}
             >
               <span className={`material-symbols-outlined text-xl ${addressChoice === 'work' ? 'text-[#553BE2]' : 'text-[#8E96AA]'}`}>domain</span>
-              <div className="leading-tight">
+              <div className="leading-tight min-w-0">
                 <p className="text-xs font-bold text-[#131426]">Deliver to Office</p>
-                <p className="text-[10px] text-[#5E667A] mt-1">Tech Park, Phase-II Prestige, Bellandur</p>
+                <p className="text-[10px] text-[#5E667A] mt-1 line-clamp-2">
+                  {workPreset && (workPreset.flatNo || workPreset.city)
+                    ? [workPreset.flatNo, workPreset.city, workPreset.pinCode].filter(Boolean).join(', ')
+                    : 'Enter office delivery details below'}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Detailed field forms */}
           <div className="glass-card rounded-2xl p-4 space-y-3 text-left">
-            <h3 className="text-xs font-bold text-[#5E667A] uppercase tracking-widest leading-none border-b border-[#E4DFF5] pb-2">Modify Details</h3>
+            <div className="flex items-center justify-between border-b border-[#E4DFF5] pb-2">
+              <h3 className="text-xs font-bold text-[#5E667A] uppercase tracking-widest leading-none">Modify Details</h3>
+              {addressLoading ? (
+                <span className="text-[10px] font-bold text-[#553BE2]">Loading saved address...</span>
+              ) : !effectiveIsGuest && resolvedPrimaryAddress && (resolvedPrimaryAddress.flatNo || resolvedPrimaryAddress.pinCode) ? (
+                <span className="text-[10px] font-bold text-[#553BE2] bg-[#F2EEFF] px-2 py-0.5 rounded-full">
+                  Linked from Profile
+                </span>
+              ) : effectiveIsGuest ? (
+                <span className="text-[10px] font-bold text-[#5E667A] bg-[#F2EEFF] px-2 py-0.5 rounded-full">
+                  Guest Checkout
+                </span>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-[#5E667A] mb-1">FULL NAME *</label>
+                <input 
+                  type="text" 
+                  placeholder="Recipient Full Name"
+                  value={fullName} 
+                  onChange={(e) => { setFullName(e.target.value); setAddressError(null); }}
+                  className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#8E96AA] focus:outline-none focus:border-[#553BE2]"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#5E667A] mb-1">PHONE NUMBER *</label>
+                <input 
+                  type="tel" 
+                  placeholder="10-digit mobile"
+                  value={phone} 
+                  onChange={(e) => { setPhone(e.target.value); setAddressError(null); }}
+                  className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#8E96AA] focus:outline-none focus:border-[#553BE2]"
+                />
+              </div>
+            </div>
             
             <div>
-              <label className="block text-[10px] font-bold text-[#5E667A] mb-1">FLAT NO. / ROAD ADDRESS</label>
+              <label className="block text-[10px] font-bold text-[#5E667A] mb-1">FLAT NO. / ROAD ADDRESS *</label>
               <input 
                 type="text" 
+                placeholder="House/Flat No., Building, Street"
                 value={flatNo} 
-                onChange={(e) => setFlatNo(e.target.value)}
-                className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] focus:outline-none focus:border-[#553BE2]"
+                onChange={(e) => { setFlatNo(e.target.value); setAddressError(null); }}
+                className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#8E96AA] focus:outline-none focus:border-[#553BE2]"
               />
             </div>
 
@@ -343,32 +673,77 @@ export const CartView: React.FC<CartViewProps> = ({
               <label className="block text-[10px] font-bold text-[#5E667A] mb-1">LANDMARK</label>
               <input 
                 type="text" 
+                placeholder="Area, Locality, or Nearby Landmark (optional)"
                 value={landmark} 
-                onChange={(e) => setLandmark(e.target.value)}
-                className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] focus:outline-none focus:border-[#553BE2]"
+                onChange={(e) => { setLandmark(e.target.value); setAddressError(null); }}
+                className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#8E96AA] focus:outline-none focus:border-[#553BE2]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-[#5E667A] mb-1">CITY / STATE</label>
+                <label className="block text-[10px] font-bold text-[#5E667A] mb-1">CITY / STATE *</label>
                 <input 
                   type="text" 
+                  placeholder="City, State"
                   value={city} 
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] focus:outline-none focus:border-[#553BE2]"
+                  onChange={(e) => { setCity(e.target.value); setAddressError(null); }}
+                  className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#8E96AA] focus:outline-none focus:border-[#553BE2]"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#5E667A] mb-1">PINCODE</label>
+                <label className="block text-[10px] font-bold text-[#5E667A] mb-1">PINCODE *</label>
                 <input 
                   type="text" 
+                  placeholder="6-digit PIN"
+                  maxLength={6}
                   value={pinCode} 
-                  onChange={(e) => setPinCode(e.target.value)}
-                  className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] focus:outline-none focus:border-[#553BE2]"
+                  onChange={(e) => { setPinCode(e.target.value.replace(/\D/g, '')); setAddressError(null); }}
+                  className="w-full p-2.5 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#8E96AA] focus:outline-none focus:border-[#553BE2]"
                 />
               </div>
             </div>
+
+            {!effectiveIsGuest && (
+              <label
+                htmlFor="checkout-save-address"
+                className="flex items-start gap-2.5 pt-2 border-t border-[#E4DFF5] cursor-pointer select-none"
+              >
+                <input
+                  id="checkout-save-address"
+                  type="checkbox"
+                  checked={saveAddressToProfile}
+                  onChange={(e) => setSaveAddressToProfile(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-[#D5CBF7] text-[#553BE2] accent-[#553BE2] cursor-pointer"
+                />
+                <div className="leading-snug">
+                  <span className="text-xs font-bold text-[#131426] block">
+                    Save address for future checkouts
+                  </span>
+                  <span className="text-[10px] text-[#5E667A] block mt-0.5">
+                    {saveAddressToProfile
+                      ? 'This delivery address will update your saved profile address.'
+                      : 'Unchecked: any edits above will be used for this order only.'}
+                  </span>
+                </div>
+              </label>
+            )}
+
+            {addressError && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[11px] font-semibold"
+              >
+                {addressError}
+              </div>
+            )}
+
+            {addressSavedMessage && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold">
+                {addressSavedMessage}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
@@ -379,7 +754,7 @@ export const CartView: React.FC<CartViewProps> = ({
               Back
             </button>
             <button 
-              onClick={() => setStep('payment')}
+              onClick={handleProceedToPayment}
               className="flex-[2] py-3.5 rounded-xl bg-[#553BE2] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#553BE2]/15"
             >
               Proceed to Payment <span className="material-symbols-outlined text-base">arrow_forward</span>
@@ -391,6 +766,27 @@ export const CartView: React.FC<CartViewProps> = ({
       {/* STEP 3: PAYMENT METHOD */}
       {step === 'payment' && (
         <div className="space-y-5 animate-fade-in">
+          <div className="glass-card rounded-2xl p-3.5 text-left flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#5E667A] uppercase tracking-widest block">
+                DELIVERING TO ({addressChoice === 'work' ? 'OFFICE' : 'HOME'})
+              </span>
+              <p className="text-xs font-bold text-[#131426] mt-0.5 truncate">
+                {fullName} • {phone}
+              </p>
+              <p className="text-[11px] text-[#5E667A] mt-0.5 leading-snug">
+                {[flatNo, landmark, city].filter(Boolean).join(', ')} — {pinCode}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStep('address')}
+              className="text-[11px] font-bold text-[#553BE2] hover:underline shrink-0"
+            >
+              Change
+            </button>
+          </div>
+
           <div className="glass-panel rounded-2xl p-4 text-left">
             <h3 className="text-xs font-bold text-[#5E667A] uppercase tracking-widest mb-3 leading-none border-b border-[#E4DFF5] pb-2">Select Method</h3>
             
@@ -449,10 +845,12 @@ export const CartView: React.FC<CartViewProps> = ({
               Back
             </button>
             <button 
+              disabled={isPlacingOrder}
               onClick={handlePlaceOrder}
-              className="flex-[2] py-3.5 rounded-xl bg-[#553BE2] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-[#553BE2]/20"
+              className="flex-[2] py-3.5 rounded-xl bg-[#553BE2] hover:opacity-95 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-[#553BE2]/20"
             >
-              <span className="material-symbols-outlined text-base">shopping_cart_checkout</span> Securely Place Order
+              <span className="material-symbols-outlined text-base">shopping_cart_checkout</span>{' '}
+              {isPlacingOrder ? 'Placing Order...' : 'Securely Place Order'}
             </button>
           </div>
         </div>

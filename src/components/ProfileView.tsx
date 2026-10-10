@@ -1,17 +1,30 @@
 import React, { useState } from 'react';
-import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord } from '../types';
+import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord, DeliveryAddress } from '../types';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
 import { languages, LocaleCode, useI18n } from '../i18n';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../legal/legalDocuments';
+import {
+  formatDeliveryAddress,
+  isGuestIdentity,
+  parseAddressToDeliveryAddress,
+  saveUserDeliveryAddress,
+  writeCachedUserAddress
+} from '../services/addressService';
 
 interface ProfileViewProps {
   onNavigate: (screen: ScreenId) => void;
+  userId?: string;
   userName: string;
   setUserName: (name: string) => void;
   userEmail?: string;
   userPhone?: string;
   userAddress?: string;
+  userPinCode?: string;
+  savedDeliveryAddress?: DeliveryAddress | null;
+  savedAddresses?: DeliveryAddress[];
+  isGuest?: boolean;
+  onSaveAddress?: (address: DeliveryAddress, allAddresses: DeliveryAddress[]) => Promise<void> | void;
   profilePhoto?: string;
   analysisProfile?: NovaAnalysisProfile | null;
   onLogout: () => void;
@@ -43,9 +56,15 @@ const getDefaultProductColor = (product?: ProductItem) => (
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
   onNavigate, 
+  userId = '',
   userName,
   setUserName,
   userAddress,
+  userPinCode = '',
+  savedDeliveryAddress = null,
+  savedAddresses = [],
+  isGuest = false,
+  onSaveAddress,
   userEmail = 'arjun.mehta@email.com',
   userPhone = '+91 98765 43210',
   profilePhoto,
@@ -172,26 +191,52 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setTimeout(() => setProfileToast(null), 2000);
   };
 
-  // Addresses interactive state
-  const [addresses, setAddresses] = useState(() => {
-    try {
-      const saved = localStorage.getItem('addresses');
-      return saved ? JSON.parse(saved) : [
-        { id: '1', label: 'Home (Default)', name: 'Arjun Mehta', street: 'Bldg 4A, Flat 502, Raheja Palms, Bandra West', city: 'Mumbai', state: 'Maharashtra', zip: '400050', phone: '+91 98765 43210', icon: 'home' },
-        { id: '2', label: 'Office', name: 'Arjun Mehta', street: 'Nova Labs HQ, 3rd Floor, Indiranagar 100ft Road', city: 'Bangalore', state: 'Karnataka', zip: '560038', phone: '+91 98765 43210', icon: 'work' }
-      ];
-    } catch {
-      return [
-        { id: '1', label: 'Home (Default)', name: 'Arjun Mehta', street: 'Bldg 4A, Flat 502, Raheja Palms, Bandra West', city: 'Mumbai', state: 'Maharashtra', zip: '400050', phone: '+91 98765 43210', icon: 'home' },
-        { id: '2', label: 'Office', name: 'Arjun Mehta', street: 'Nova Labs HQ, 3rd Floor, Indiranagar 100ft Road', city: 'Bangalore', state: 'Karnataka', zip: '560038', phone: '+91 98765 43210', icon: 'work' }
-      ];
-    }
-  });
+  // Convert DeliveryAddress into the UI card shape used by the Saved Addresses modal
+  const toUiAddressEntry = (addr: DeliveryAddress, idx: number) => {
+    const streetParts = [addr.flatNo, addr.landmark].map((s) => (s || '').trim()).filter(Boolean);
+    const label = addr.label || (idx === 0 ? 'Home (Default)' : 'Address');
+    return {
+      id: addr.id || `addr_${idx + 1}`,
+      label,
+      name: addr.fullName || userName,
+      street: streetParts.join(', ') || addr.city || '',
+      city: addr.city || '',
+      state: addr.state || 'India',
+      zip: addr.pinCode || userPinCode || '',
+      phone: addr.phone || userPhone || '',
+      icon: label.toLowerCase().includes('office') || label.toLowerCase().includes('work') ? 'work' : 'home',
+      raw: addr,
+    };
+  };
 
-  // Saving Addresses changes
+  const effectiveUid = userId || activeUid || userEmail || '';
+  const effectiveIsGuest = isGuest || isGuestIdentity(effectiveUid, isGuest);
+
+  const buildUserAddressEntries = React.useCallback(() => {
+    if (effectiveIsGuest || !effectiveUid) return [];
+    const list: DeliveryAddress[] = [];
+    if (Array.isArray(savedAddresses) && savedAddresses.length > 0) {
+      list.push(...savedAddresses);
+    } else if (savedDeliveryAddress && (savedDeliveryAddress.flatNo || savedDeliveryAddress.city || savedDeliveryAddress.pinCode)) {
+      list.push(savedDeliveryAddress);
+    } else if (userAddress && userAddress.trim()) {
+      const parsed = parseAddressToDeliveryAddress({
+        rawAddress: userAddress,
+        pinCode: userPinCode,
+        fullName: userName,
+        phone: userPhone,
+      });
+      if (parsed) list.push(parsed);
+    }
+    return list.map((a, idx) => toUiAddressEntry(a, idx));
+  }, [effectiveIsGuest, effectiveUid, savedAddresses, savedDeliveryAddress, userAddress, userPinCode, userName, userPhone]);
+
+  // Addresses interactive state (scoped per authenticated user, never shared globally)
+  const [addresses, setAddresses] = useState<any[]>(() => buildUserAddressEntries());
+
   React.useEffect(() => {
-    localStorage.setItem('addresses', JSON.stringify(addresses));
-  }, [addresses]);
+    setAddresses(buildUserAddressEntries());
+  }, [buildUserAddressEntries]);
 
   // Temporary address inputs states
   const [isAddingAddress, setIsAddingAddress] = useState(false);
@@ -202,25 +247,47 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [addrZip, setAddrZip] = useState('');
   const [addrPhone, setAddrPhone] = useState('');
 
-  const handleAddAddress = (e: React.FormEvent) => {
+  const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addrName || !addrStreet || !addrCity || !addrZip) {
       setProfileToast('Please fill out all mandatory address fields');
       setTimeout(() => setProfileToast(null), 2500);
       return;
     }
-    const newAddr = {
-      id: Date.now().toString(),
-      label: addrLabel,
-      name: addrName,
-      street: addrStreet,
-      city: addrCity,
-      state: 'Karnataka',
-      zip: addrZip,
-      phone: addrPhone || userPhone,
-      icon: addrLabel.toLowerCase().includes('office') || addrLabel.toLowerCase().includes('work') ? 'work' : 'home'
+    const deliveryObj: DeliveryAddress = {
+      id: `addr_${Date.now()}`,
+      label: addrLabel || 'Home',
+      fullName: addrName.trim(),
+      phone: (addrPhone || userPhone || '').trim(),
+      flatNo: addrStreet.trim(),
+      landmark: '',
+      city: addrCity.trim(),
+      state: 'India',
+      pinCode: addrZip.trim(),
+      country: 'India',
+      isDefault: addresses.length === 0,
+      updatedAt: new Date().toISOString(),
     };
-    setAddresses([...addresses, newAddr]);
+
+    const newAddr = toUiAddressEntry(deliveryObj, addresses.length);
+    const nextUiAddresses = [...addresses, newAddr];
+    setAddresses(nextUiAddresses);
+
+    if (effectiveUid && !effectiveIsGuest) {
+      const savedResult = await saveUserDeliveryAddress(
+        {
+          uid: effectiveUid,
+          email: userEmail,
+          name: userName,
+          phone: userPhone,
+          isGuest: effectiveIsGuest,
+        },
+        deliveryObj,
+        savedAddresses
+      );
+      onSaveAddress?.(savedResult.primaryAddress, savedResult.savedAddresses);
+    }
+
     setIsAddingAddress(false);
     setAddrName('');
     setAddrStreet('');
@@ -231,9 +298,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setTimeout(() => setProfileToast(null), 2500);
   };
 
-  const handleDeleteAddress = (id: string) => {
+  const handleDeleteAddress = async (id: string) => {
     const matched = addresses.find(a => a.id === id);
-    setAddresses(addresses.filter(a => a.id !== id));
+    const remaining = addresses.filter(a => a.id !== id);
+    setAddresses(remaining);
+    if (effectiveUid && !effectiveIsGuest && remaining.length > 0) {
+      const primaryRaw: DeliveryAddress = remaining[0].raw;
+      const remainingRaws: DeliveryAddress[] = remaining.map((r: any) => r.raw);
+      writeCachedUserAddress(effectiveUid, primaryRaw, remainingRaws);
+      onSaveAddress?.(primaryRaw, remainingRaws);
+    } else if (effectiveUid && !effectiveIsGuest && remaining.length === 0) {
+      writeCachedUserAddress(effectiveUid, null, []);
+      onSaveAddress?.(
+        {
+          fullName: userName,
+          phone: userPhone,
+          flatNo: '',
+          landmark: '',
+          city: '',
+          pinCode: '',
+        },
+        []
+      );
+    }
     setProfileToast(`✕ Address "${matched?.label}" deleted`);
     setTimeout(() => setProfileToast(null), 2000);
   };
@@ -353,15 +440,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [profileName, setProfileName] = useState(userName);
   const [profileEmail, setProfileEmail] = useState(userEmail);
   const [profilePhone, setProfilePhone] = useState(userPhone);
-  const [profileLocation, setProfileLocation] = useState(userAddress || 'Bangalore, India');
+  const [profileLocation, setProfileLocation] = useState(
+    userAddress || (savedDeliveryAddress ? formatDeliveryAddress(savedDeliveryAddress) : '')
+  );
 
   // Sync state if user settings change or log in with another account
   React.useEffect(() => {
     setProfileName(userName);
     setProfileEmail(userEmail);
     setProfilePhone(userPhone);
-    setProfileLocation(userAddress || 'Bangalore, India');
-  }, [userName, userEmail, userPhone, userAddress]);
+    setProfileLocation(
+      userAddress || (savedDeliveryAddress ? formatDeliveryAddress(savedDeliveryAddress) : '')
+    );
+  }, [userName, userEmail, userPhone, userAddress, savedDeliveryAddress]);
 
   const handleSaveMeasurements = (e: React.FormEvent) => {
     e.preventDefault();
@@ -378,9 +469,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setIsEditModalOpen(false);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setUserName(profileName);
+    if (effectiveUid && !effectiveIsGuest && profileLocation.trim()) {
+      const parsed = parseAddressToDeliveryAddress({
+        rawAddress: profileLocation.trim(),
+        pinCode: savedDeliveryAddress?.pinCode || userPinCode || '',
+        fullName: profileName.trim(),
+        phone: profilePhone.trim(),
+        existing: savedDeliveryAddress || null,
+      });
+      if (parsed) {
+        const savedResult = await saveUserDeliveryAddress(
+          {
+            uid: effectiveUid,
+            email: profileEmail || userEmail,
+            name: profileName,
+            phone: profilePhone,
+            isGuest: effectiveIsGuest,
+          },
+          parsed,
+          savedAddresses
+        );
+        onSaveAddress?.(savedResult.primaryAddress, savedResult.savedAddresses);
+      }
+    }
     setIsProfileModalOpen(false);
   };
 

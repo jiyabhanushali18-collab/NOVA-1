@@ -38,6 +38,37 @@ interface LegalConsentPayload {
   email?: string;
 }
 
+interface DeliveryAddressPayload {
+  id?: string;
+  label?: string;
+  fullName: string;
+  phone: string;
+  flatNo: string;
+  landmark?: string;
+  city: string;
+  state?: string;
+  pinCode: string;
+  country?: string;
+  formattedAddress?: string;
+  isDefault?: boolean;
+  updatedAt?: string;
+}
+
+interface OrderPayload {
+  orderId: string;
+  userId: string;
+  isGuest?: boolean;
+  items: unknown[];
+  subtotal: number;
+  taxes: number;
+  discount: number;
+  shipping: number;
+  grandTotal: number;
+  paymentMethod: 'upi' | 'card' | 'cod';
+  deliveryAddress: DeliveryAddressPayload;
+  createdAt: string;
+}
+
 interface OTPRecord {
   email: string;
   otpHash: string;
@@ -51,9 +82,12 @@ interface OTPRecord {
 
 const CURRENT_TERMS_VERSION = '2026.10.1';
 const CURRENT_PRIVACY_VERSION = '2026.10.1';
+const SESSION_SECRET = process.env.NOVA_SESSION_SECRET || 'nova-vision-labs-session-secret-2026';
 
 const localOtpStore = new Map<string, OTPRecord>();
 const localConsentStore = new Map<string, LegalConsentPayload>();
+const localAddressStore = new Map<string, { primaryAddress: DeliveryAddressPayload | null; savedAddresses: DeliveryAddressPayload[] }>();
+const localOrdersStore = new Map<string, OrderPayload[]>();
 let firestore: any = null;
 let auth: any = null;
 let firebaseEnabled = false;
@@ -78,6 +112,206 @@ initializeFirebaseServices();
 const OTP_COLLECTION = 'email_otps';
 const USERS_COLLECTION = 'users';
 const LEGAL_CONSENTS_COLLECTION = 'legal_consents';
+const ORDERS_COLLECTION = 'orders';
+
+const signSessionToken = (uid: string, email?: string): string => {
+  const payload = {
+    uid: uid.trim(),
+    email: email ? email.trim().toLowerCase() : '',
+    iat: Date.now()
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(encoded).digest('base64url');
+  return `nova_sess.${encoded}.${sig}`;
+};
+
+const verifySessionToken = (token: string): { uid: string; email: string } | null => {
+  if (!token || !token.startsWith('nova_sess.')) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [, encoded, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(encoded).digest('base64url');
+  if (sig.length !== expectedSig.length) return null;
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!parsed || typeof parsed.uid !== 'string' || !parsed.uid.trim()) return null;
+    return {
+      uid: parsed.uid.trim(),
+      email: typeof parsed.email === 'string' ? parsed.email.trim().toLowerCase() : ''
+    };
+  } catch {
+    return null;
+  }
+};
+
+const verifyAuthenticatedUser = async (
+  req: Request,
+  requestedUserId?: string
+): Promise<{ ok: true; uid: string; email: string } | { ok: false; status: number; error: string }> => {
+  const authHeader = String(req.headers.authorization || '').trim();
+  const bearerToken = authHeader.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : '';
+
+  if (!bearerToken) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'Authentication required. Missing Authorization Bearer token.'
+    };
+  }
+
+  let verifiedUser = verifySessionToken(bearerToken);
+
+  if (!verifiedUser && firebaseEnabled && auth) {
+    try {
+      const decoded = await auth.verifyIdToken(bearerToken);
+      if (decoded?.uid) {
+        verifiedUser = {
+          uid: decoded.uid,
+          email: typeof decoded.email === 'string' ? decoded.email.toLowerCase() : ''
+        };
+      }
+    } catch {
+      // Invalid Firebase ID token
+    }
+  }
+
+  if (!verifiedUser) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'Invalid or expired authentication token.'
+    };
+  }
+
+  if (verifiedUser.uid.startsWith('guest_')) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Guest sessions cannot access or modify registered account addresses.'
+    };
+  }
+
+  if (requestedUserId && requestedUserId.trim()) {
+    const cleanRequested = requestedUserId.trim();
+    const matchesUid = cleanRequested === verifiedUser.uid;
+    const matchesEmail = Boolean(verifiedUser.email && cleanRequested.toLowerCase() === verifiedUser.email.toLowerCase());
+    if (!matchesUid && !matchesEmail) {
+      return {
+        ok: false,
+        status: 403,
+        error: "Forbidden: You are not authorized to access or modify another user's address or orders."
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    uid: verifiedUser.uid,
+    email: verifiedUser.email
+  };
+};
+
+const formatBackendDeliveryAddress = (addr: Partial<DeliveryAddressPayload>): string => {
+  return [addr.flatNo, addr.landmark, addr.city, addr.state]
+    .map((part) => (typeof part === 'string' ? part.trim() : ''))
+    .filter(Boolean)
+    .join(', ');
+};
+
+const buildBackendDeliveryAddress = (params: {
+  rawAddress?: string;
+  pinCode?: string;
+  fullName?: string;
+  phone?: string;
+  existing?: Partial<DeliveryAddressPayload> | null;
+}): DeliveryAddressPayload | null => {
+  const rawAddress = typeof params.rawAddress === 'string' ? params.rawAddress.trim() : '';
+  const pinCode = typeof params.pinCode === 'string' ? params.pinCode.trim() : (params.existing?.pinCode || '');
+  const fullName = typeof params.fullName === 'string' && params.fullName.trim()
+    ? params.fullName.trim()
+    : (params.existing?.fullName || '');
+  const phone = typeof params.phone === 'string' && params.phone.trim()
+    ? params.phone.trim()
+    : (params.existing?.phone || '');
+
+  if (!rawAddress && !pinCode && !params.existing?.flatNo) {
+    return null;
+  }
+
+  let flatNo = params.existing?.flatNo || '';
+  let landmark = params.existing?.landmark || '';
+  let city = params.existing?.city || '';
+  const state = params.existing?.state || '';
+
+  if (rawAddress) {
+    const parts = rawAddress.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 4) {
+      flatNo = parts.slice(0, -2).join(', ');
+      landmark = parts[parts.length - 2];
+      city = parts[parts.length - 1];
+    } else if (parts.length === 3) {
+      flatNo = parts[0];
+      landmark = parts[1];
+      city = parts[2];
+    } else if (parts.length === 2) {
+      flatNo = parts[0];
+      landmark = '';
+      city = parts[1];
+    } else if (parts.length === 1) {
+      flatNo = parts[0];
+    }
+  }
+
+  const normalized: DeliveryAddressPayload = {
+    id: params.existing?.id || 'addr_home_default',
+    label: params.existing?.label || 'Home',
+    fullName,
+    phone,
+    flatNo,
+    landmark,
+    city,
+    state,
+    pinCode,
+    country: params.existing?.country || 'India',
+    isDefault: true,
+    updatedAt: new Date().toISOString()
+  };
+  normalized.formattedAddress = formatBackendDeliveryAddress(normalized);
+  return normalized;
+};
+
+const deduplicateSavedAddresses = (
+  list: DeliveryAddressPayload[],
+  incoming: DeliveryAddressPayload
+): DeliveryAddressPayload[] => {
+  const targetLabel = (incoming.label || 'Home').toLowerCase().trim();
+  const targetId = incoming.id || `addr_${targetLabel}_default`;
+  const normalizedIncoming: DeliveryAddressPayload = {
+    ...incoming,
+    id: targetId,
+    label: incoming.label || 'Home',
+    formattedAddress: incoming.formattedAddress || formatBackendDeliveryAddress(incoming),
+    updatedAt: new Date().toISOString()
+  };
+
+  const filtered = list.filter((item) => {
+    if (!item) return false;
+    if (item.id && item.id === targetId) return false;
+    if ((item.label || '').toLowerCase().trim() === targetLabel) return false;
+    if (
+      item.flatNo.trim().toLowerCase() === normalizedIncoming.flatNo.trim().toLowerCase() &&
+      item.pinCode.trim() === normalizedIncoming.pinCode.trim()
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  return [normalizedIncoming, ...filtered];
+};
 
 const normalizeConsentPayload = (
   raw: any,
@@ -376,7 +610,7 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
 // POST /api/auth/verify-otp
 router.post('/auth/verify-otp', async (req: Request, res: Response) => {
   try {
-    const { email, otp, name, address, pinCode, legalConsent } = req.body;
+    const { email, otp, name, address, pinCode, phone, legalConsent } = req.body;
     if (!isValidEmail(email) || !otp || typeof otp !== 'string') return res.status(400).json({ success: false, error: 'Invalid parameters' });
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -424,6 +658,9 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
     await deleteStoredOtp(normalizedEmail);
     console.log('[OTP] Verification succeeded.', { email: maskEmail(normalizedEmail), storage: firebaseEnabled ? 'firestore' : 'memory' });
 
+    const cleanPhone = typeof phone === 'string' && phone.trim() ? phone.trim() : '';
+    const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalizedEmail.split('@')[0];
+
     if (firebaseEnabled && auth && firestore) {
       let userRecord;
       try {
@@ -441,10 +678,25 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       }
 
       const uid = userRecord.uid;
-      const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalizedEmail.split('@')[0];
       const username = normalizedEmail.split('@')[0] || displayName;
+      let resolvedDeliveryAddress: DeliveryAddressPayload | null = null;
       try {
         const userDocRef = firestore.collection(USERS_COLLECTION).doc(uid);
+        const existingUserSnap = await userDocRef.get();
+        const existingUserData = existingUserSnap?.exists ? existingUserSnap.data() : null;
+        const existingDeliveryAddress = existingUserData?.deliveryAddress || null;
+        const existingSavedAddresses: DeliveryAddressPayload[] = Array.isArray(existingUserData?.savedAddresses)
+          ? existingUserData.savedAddresses
+          : [];
+
+        resolvedDeliveryAddress = buildBackendDeliveryAddress({
+          rawAddress: typeof address === 'string' ? address : undefined,
+          pinCode: typeof pinCode === 'string' ? pinCode : undefined,
+          fullName: displayName,
+          phone: cleanPhone || existingUserData?.phoneNumber || existingUserData?.phone || '',
+          existing: existingDeliveryAddress
+        });
+
         const nowTs = FieldValue.serverTimestamp();
         const userData: Record<string, unknown> = {
           uid,
@@ -453,20 +705,43 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
           name: displayName,
           emailVerified: true,
           displayName,
-          photoURL: '',
-          phoneNumber: '',
-          gender: '',
-          dob: '',
-          createdAt: nowTs,
+          photoURL: existingUserData?.photoURL || '',
+          phoneNumber: cleanPhone || existingUserData?.phoneNumber || '',
+          phone: cleanPhone || existingUserData?.phone || '',
+          gender: existingUserData?.gender || '',
+          dob: existingUserData?.dob || '',
+          createdAt: existingUserData?.createdAt || nowTs,
           updatedAt: nowTs,
-          preferences: {},
-          wardrobeCount: 0,
-          wishlistCount: 0,
-          savedLooks: 0
+          preferences: existingUserData?.preferences || {},
+          wardrobeCount: existingUserData?.wardrobeCount || 0,
+          wishlistCount: existingUserData?.wishlistCount || 0,
+          savedLooks: existingUserData?.savedLooks || 0
         };
 
-        if (typeof address === 'string' && address.trim()) userData.address = address.trim();
-        if (typeof pinCode === 'string' && /^\d{6}$/.test(pinCode.trim())) userData.pinCode = pinCode.trim();
+        if (typeof address === 'string' && address.trim()) {
+          userData.address = address.trim();
+        } else if (resolvedDeliveryAddress?.formattedAddress) {
+          userData.address = resolvedDeliveryAddress.formattedAddress;
+        }
+        if (typeof pinCode === 'string' && /^\d{6}$/.test(pinCode.trim())) {
+          userData.pinCode = pinCode.trim();
+        } else if (resolvedDeliveryAddress?.pinCode) {
+          userData.pinCode = resolvedDeliveryAddress.pinCode;
+        }
+
+        if (resolvedDeliveryAddress) {
+          const updatedSavedList = deduplicateSavedAddresses(existingSavedAddresses, resolvedDeliveryAddress);
+          userData.deliveryAddress = resolvedDeliveryAddress;
+          userData.savedAddresses = updatedSavedList;
+          localAddressStore.set(uid, {
+            primaryAddress: resolvedDeliveryAddress,
+            savedAddresses: updatedSavedList
+          });
+          localAddressStore.set(normalizedEmail, {
+            primaryAddress: resolvedDeliveryAddress,
+            savedAddresses: updatedSavedList
+          });
+        }
 
         if (verifiedConsent) {
           const consentWithUser: LegalConsentPayload = {
@@ -495,6 +770,7 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
           uid,
           email: maskEmail(normalizedEmail),
           hasLegalConsent: Boolean(verifiedConsent),
+          hasAddress: Boolean(resolvedDeliveryAddress),
           firestoreDoc: `${USERS_COLLECTION}/${uid}`
         });
       } catch (err) {
@@ -503,13 +779,33 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       }
 
       const customToken = await auth.createCustomToken(uid);
+      const sessionToken = signSessionToken(uid, normalizedEmail);
       return res.json({
         success: true,
         message: 'Email verified',
         uid,
         email: normalizedEmail,
         customToken,
+        sessionToken,
+        deliveryAddress: resolvedDeliveryAddress,
         legalConsent: verifiedConsent ? { ...verifiedConsent, userId: uid, email: normalizedEmail } : undefined
+      });
+    }
+
+    const existingLocalAddr = localAddressStore.get(normalizedEmail);
+    const localDeliveryAddress = buildBackendDeliveryAddress({
+      rawAddress: typeof address === 'string' ? address : undefined,
+      pinCode: typeof pinCode === 'string' ? pinCode : undefined,
+      fullName: displayName,
+      phone: cleanPhone,
+      existing: existingLocalAddr?.primaryAddress || null
+    });
+
+    if (localDeliveryAddress) {
+      const updatedList = deduplicateSavedAddresses(existingLocalAddr?.savedAddresses || [], localDeliveryAddress);
+      localAddressStore.set(normalizedEmail, {
+        primaryAddress: localDeliveryAddress,
+        savedAddresses: updatedList
       });
     }
 
@@ -522,17 +818,388 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       localConsentStore.set(normalizedEmail, fallbackConsent);
     }
 
+    const sessionToken = signSessionToken(normalizedEmail, normalizedEmail);
     console.warn('[OTP] Firebase Admin not configured. Completing verification locally.', { email: maskEmail(normalizedEmail) });
     return res.json({
       success: true,
       message: 'Email verified locally',
       uid: normalizedEmail,
       email: normalizedEmail,
+      sessionToken,
+      deliveryAddress: localDeliveryAddress,
       legalConsent: verifiedConsent ? { ...verifiedConsent, userId: normalizedEmail, email: normalizedEmail } : undefined
     });
   } catch (err) {
     console.error('verify-otp error:', err);
     return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/session - Issue a signed session token for a registered user and sync/retrieve their saved address
+router.post('/auth/session', async (req: Request, res: Response) => {
+  try {
+    const { uid, email, name, phone, address, pinCode } = req.body || {};
+    const targetUid = typeof uid === 'string' && uid.trim() ? uid.trim() : '';
+    const targetEmail = typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : '';
+    const effectiveUid = targetUid || targetEmail;
+
+    if (!effectiveUid || effectiveUid.startsWith('guest_')) {
+      return res.status(400).json({
+        success: false,
+        error: 'A valid registered user uid or email is required to establish an authenticated session.'
+      });
+    }
+
+    const sessionToken = signSessionToken(effectiveUid, targetEmail);
+    let primaryAddress: DeliveryAddressPayload | null = null;
+    let savedAddresses: DeliveryAddressPayload[] = [];
+
+    if (firebaseEnabled && firestore) {
+      try {
+        const userDocRef = firestore.collection(USERS_COLLECTION).doc(effectiveUid);
+        const snap = await userDocRef.get();
+        if (snap.exists) {
+          const data = snap.data() || {};
+          primaryAddress = data.deliveryAddress || null;
+          savedAddresses = Array.isArray(data.savedAddresses) ? data.savedAddresses : [];
+          if (!primaryAddress && (data.address || data.pinCode)) {
+            primaryAddress = buildBackendDeliveryAddress({
+              rawAddress: data.address,
+              pinCode: data.pinCode,
+              fullName: data.name || name || '',
+              phone: data.phone || data.phoneNumber || phone || ''
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[Session] Firestore address lookup warning:', err);
+      }
+    }
+
+    const memEntry = localAddressStore.get(effectiveUid) || (targetEmail ? localAddressStore.get(targetEmail) : undefined);
+    if (!primaryAddress && memEntry?.primaryAddress) {
+      primaryAddress = memEntry.primaryAddress;
+      savedAddresses = memEntry.savedAddresses;
+    }
+
+    // If the user has no stored address yet on the server, but provided signup/profile address on session init, save it without duplicating
+    if (!primaryAddress && (typeof address === 'string' && address.trim() || typeof pinCode === 'string' && pinCode.trim())) {
+      primaryAddress = buildBackendDeliveryAddress({
+        rawAddress: typeof address === 'string' ? address : undefined,
+        pinCode: typeof pinCode === 'string' ? pinCode : undefined,
+        fullName: typeof name === 'string' ? name : '',
+        phone: typeof phone === 'string' ? phone : ''
+      });
+      if (primaryAddress) {
+        savedAddresses = deduplicateSavedAddresses(savedAddresses, primaryAddress);
+        localAddressStore.set(effectiveUid, { primaryAddress, savedAddresses });
+        if (targetEmail) {
+          localAddressStore.set(targetEmail, { primaryAddress, savedAddresses });
+        }
+        if (firebaseEnabled && firestore) {
+          try {
+            const userDocRef = firestore.collection(USERS_COLLECTION).doc(effectiveUid);
+            await userDocRef.set({
+              uid: effectiveUid,
+              email: targetEmail || undefined,
+              name: typeof name === 'string' && name.trim() ? name.trim() : undefined,
+              phone: typeof phone === 'string' && phone.trim() ? phone.trim() : undefined,
+              address: primaryAddress.formattedAddress,
+              pinCode: primaryAddress.pinCode,
+              deliveryAddress: primaryAddress,
+              savedAddresses,
+              updatedAt: FieldValue.serverTimestamp()
+            }, { merge: true });
+          } catch {}
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      uid: effectiveUid,
+      email: targetEmail,
+      sessionToken,
+      deliveryAddress: primaryAddress,
+      savedAddresses
+    });
+  } catch (err) {
+    console.error('auth-session error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to initialize user session' });
+  }
+});
+
+// GET /api/auth/address - Fetch the authenticated user's saved delivery address(es)
+router.get('/auth/address', async (req: Request, res: Response) => {
+  try {
+    const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : undefined;
+    const authCheck = await verifyAuthenticatedUser(req, requestedUserId);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+    }
+
+    const { uid, email } = authCheck;
+    let primaryAddress: DeliveryAddressPayload | null = null;
+    let savedAddresses: DeliveryAddressPayload[] = [];
+
+    if (firebaseEnabled && firestore) {
+      try {
+        const userDoc = await firestore.collection(USERS_COLLECTION).doc(uid).get();
+        if (userDoc.exists) {
+          const data = userDoc.data() || {};
+          primaryAddress = data.deliveryAddress || null;
+          savedAddresses = Array.isArray(data.savedAddresses) ? data.savedAddresses : [];
+          if (!primaryAddress && (data.address || data.pinCode)) {
+            primaryAddress = buildBackendDeliveryAddress({
+              rawAddress: data.address,
+              pinCode: data.pinCode,
+              fullName: data.name || data.displayName || '',
+              phone: data.phone || data.phoneNumber || ''
+            });
+            if (primaryAddress && savedAddresses.length === 0) {
+              savedAddresses = [primaryAddress];
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Address] Firestore read warning:', err);
+      }
+    }
+
+    if (!primaryAddress) {
+      const mem = localAddressStore.get(uid) || (email ? localAddressStore.get(email) : undefined);
+      if (mem) {
+        primaryAddress = mem.primaryAddress;
+        savedAddresses = mem.savedAddresses;
+      }
+    }
+
+    return res.json({
+      success: true,
+      userId: uid,
+      deliveryAddress: primaryAddress,
+      savedAddresses
+    });
+  } catch (err) {
+    console.error('get-address error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to retrieve saved address' });
+  }
+});
+
+// PUT /api/auth/address - Update the authenticated user's saved delivery address
+router.put('/auth/address', async (req: Request, res: Response) => {
+  try {
+    const { userId, deliveryAddress, savedAddresses: incomingList } = req.body || {};
+    const authCheck = await verifyAuthenticatedUser(req, typeof userId === 'string' ? userId : undefined);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+    }
+
+    if (!deliveryAddress || typeof deliveryAddress !== 'object') {
+      return res.status(400).json({ success: false, error: 'deliveryAddress object is required.' });
+    }
+
+    const fullName = String(deliveryAddress.fullName || '').trim();
+    const phone = String(deliveryAddress.phone || '').trim();
+    const flatNo = String(deliveryAddress.flatNo || '').trim();
+    const landmark = String(deliveryAddress.landmark || '').trim();
+    const city = String(deliveryAddress.city || '').trim();
+    const state = String(deliveryAddress.state || '').trim();
+    const pinCode = String(deliveryAddress.pinCode || '').trim();
+    const country = String(deliveryAddress.country || 'India').trim();
+    const label = String(deliveryAddress.label || 'Home').trim();
+
+    if (!fullName) {
+      return res.status(400).json({ success: false, error: 'Recipient full name is required.' });
+    }
+    if (phone.replace(/\D/g, '').length < 10) {
+      return res.status(400).json({ success: false, error: 'A valid 10-digit phone number is required.' });
+    }
+    if (!flatNo) {
+      return res.status(400).json({ success: false, error: 'Flat No. / Road Address is required.' });
+    }
+    if (!city) {
+      return res.status(400).json({ success: false, error: 'City / State is required.' });
+    }
+    if (!/^\d{6}$/.test(pinCode)) {
+      return res.status(400).json({ success: false, error: 'A valid 6-digit PIN code is required.' });
+    }
+
+    const { uid, email } = authCheck;
+    const normalizedAddress: DeliveryAddressPayload = {
+      id: typeof deliveryAddress.id === 'string' && deliveryAddress.id.trim()
+        ? deliveryAddress.id.trim()
+        : `addr_${label.toLowerCase()}_default`,
+      label,
+      fullName,
+      phone,
+      flatNo,
+      landmark,
+      city,
+      state,
+      pinCode,
+      country,
+      isDefault: true,
+      updatedAt: new Date().toISOString()
+    };
+    normalizedAddress.formattedAddress = formatBackendDeliveryAddress(normalizedAddress);
+
+    const existingMem = localAddressStore.get(uid) || (email ? localAddressStore.get(email) : undefined);
+    const baseList: DeliveryAddressPayload[] = Array.isArray(incomingList)
+      ? incomingList
+      : (existingMem?.savedAddresses || []);
+    const deduplicatedList = deduplicateSavedAddresses(baseList, normalizedAddress);
+
+    localAddressStore.set(uid, {
+      primaryAddress: normalizedAddress,
+      savedAddresses: deduplicatedList
+    });
+    if (email) {
+      localAddressStore.set(email, {
+        primaryAddress: normalizedAddress,
+        savedAddresses: deduplicatedList
+      });
+    }
+
+    if (firebaseEnabled && firestore) {
+      try {
+        const nowTs = FieldValue.serverTimestamp();
+        const userDocRef = firestore.collection(USERS_COLLECTION).doc(uid);
+        const updatePayload = {
+          name: fullName,
+          phone,
+          phoneNumber: phone,
+          address: normalizedAddress.formattedAddress,
+          pinCode: normalizedAddress.pinCode,
+          deliveryAddress: normalizedAddress,
+          savedAddresses: deduplicatedList,
+          updatedAt: nowTs
+        };
+        await userDocRef.set(updatePayload, { merge: true });
+        await userDocRef.collection('profile').doc('meta').set(updatePayload, { merge: true });
+      } catch (err) {
+        console.warn('[Address] Firestore write warning (saved in server memory):', err);
+      }
+    }
+
+    return res.json({
+      success: true,
+      userId: uid,
+      deliveryAddress: normalizedAddress,
+      savedAddresses: deduplicatedList
+    });
+  } catch (err) {
+    console.error('put-address error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update saved address' });
+  }
+});
+
+// POST /api/auth/orders - Record an order with an immutable snapshot of its delivery address
+router.post('/auth/orders', async (req: Request, res: Response) => {
+  try {
+    const { userId, order } = req.body || {};
+    const authCheck = await verifyAuthenticatedUser(req, typeof userId === 'string' ? userId : undefined);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+    }
+
+    if (!order || typeof order !== 'object' || !order.deliveryAddress) {
+      return res.status(400).json({ success: false, error: 'Valid order payload with deliveryAddress is required.' });
+    }
+
+    const addr = order.deliveryAddress;
+    const fullName = String(addr.fullName || '').trim();
+    const phone = String(addr.phone || '').trim();
+    const flatNo = String(addr.flatNo || '').trim();
+    const landmark = String(addr.landmark || '').trim();
+    const city = String(addr.city || '').trim();
+    const state = String(addr.state || '').trim();
+    const pinCode = String(addr.pinCode || '').trim();
+
+    if (!fullName || phone.replace(/\D/g, '').length < 10 || !flatNo || !city || !/^\d{6}$/.test(pinCode)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Order cannot be placed with missing or invalid required delivery address fields.'
+      });
+    }
+
+    const { uid } = authCheck;
+    const orderAddressSnapshot: DeliveryAddressPayload = {
+      id: String(addr.id || `order_addr_${Date.now()}`),
+      label: String(addr.label || 'Home'),
+      fullName,
+      phone,
+      flatNo,
+      landmark,
+      city,
+      state,
+      pinCode,
+      country: String(addr.country || 'India'),
+      formattedAddress: formatBackendDeliveryAddress({ flatNo, landmark, city, state }),
+      updatedAt: new Date().toISOString()
+    };
+
+    const orderRecord: OrderPayload = {
+      orderId: String(order.orderId || `#NV-${1000 + Math.floor(Math.random() * 9000)}`),
+      userId: uid,
+      isGuest: false,
+      items: Array.isArray(order.items) ? JSON.parse(JSON.stringify(order.items)) : [],
+      subtotal: Number(order.subtotal || 0),
+      taxes: Number(order.taxes || 0),
+      discount: Number(order.discount || 0),
+      shipping: Number(order.shipping || 0),
+      grandTotal: Number(order.grandTotal || 0),
+      paymentMethod: order.paymentMethod === 'card' || order.paymentMethod === 'cod' ? order.paymentMethod : 'upi',
+      deliveryAddress: orderAddressSnapshot,
+      createdAt: String(order.createdAt || new Date().toISOString())
+    };
+
+    const existingOrders = localOrdersStore.get(uid) || [];
+    localOrdersStore.set(uid, [orderRecord, ...existingOrders]);
+
+    if (firebaseEnabled && firestore) {
+      try {
+        const cleanDocId = orderRecord.orderId.replace(/[^a-zA-Z0-9_-]/g, '');
+        await firestore
+          .collection(USERS_COLLECTION)
+          .doc(uid)
+          .collection(ORDERS_COLLECTION)
+          .doc(cleanDocId || `order_${Date.now()}`)
+          .set(orderRecord);
+      } catch (err) {
+        console.warn('[Orders] Firestore order write warning (saved in server memory):', err);
+      }
+    }
+
+    return res.json({
+      success: true,
+      order: orderRecord
+    });
+  } catch (err) {
+    console.error('post-orders error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to create order' });
+  }
+});
+
+// GET /api/auth/orders - Fetch orders for the authenticated user
+router.get('/auth/orders', async (req: Request, res: Response) => {
+  try {
+    const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : undefined;
+    const authCheck = await verifyAuthenticatedUser(req, requestedUserId);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+    }
+
+    const { uid } = authCheck;
+    const orders = localOrdersStore.get(uid) || [];
+    return res.json({
+      success: true,
+      userId: uid,
+      orders
+    });
+  } catch (err) {
+    console.error('get-orders error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to fetch orders' });
   }
 });
 

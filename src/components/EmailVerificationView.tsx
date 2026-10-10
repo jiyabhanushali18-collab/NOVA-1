@@ -2,15 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { apiUrl } from '../services/apiClient';
-import { LegalConsentRecord } from '../types';
+import { DeliveryAddress, LegalConsentRecord } from '../types';
 
 interface EmailVerificationViewProps {
   email: string;
   name: string;
   address?: string;
   pinCode?: string;
+  phone?: string;
   legalConsent?: LegalConsentRecord;
-  onVerificationSuccess: (result: { uid?: string; email: string; customToken?: string; legalConsent?: LegalConsentRecord }) => void;
+  onVerificationSuccess: (result: {
+    uid?: string;
+    email: string;
+    customToken?: string;
+    sessionToken?: string;
+    deliveryAddress?: DeliveryAddress | null;
+    legalConsent?: LegalConsentRecord;
+  }) => void;
   onChangeEmail?: (newEmail: string) => void;
 }
 
@@ -19,6 +27,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   name,
   address,
   pinCode,
+  phone,
   legalConsent,
   onVerificationSuccess,
   onChangeEmail
@@ -160,6 +169,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           name,
           address,
           pinCode,
+          phone,
           legalConsent
         })
       });
@@ -186,6 +196,8 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           uid: data.uid,
           email: data.email || currentEmail,
           customToken: data.customToken,
+          sessionToken: data.sessionToken,
+          deliveryAddress: data.deliveryAddress || null,
           legalConsent: data.legalConsent || legalConsent
         });
       }, 1500);
