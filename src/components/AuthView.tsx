@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, ChevronDown, LockKeyhole, UserRound, Sparkles, Plus, CalendarDays, Clock3 } from 'lucide-react';
-import { apiUrl } from '../services/apiClient';
+import { sendFirebaseEmailSignInLink } from '../services/emailLinkAuth';
 import { COUNTRIES, Country } from '../utils/countries';
 import { useI18n } from '../i18n';
 import { LegalConsentRecord, LegalDocumentType } from '../types';
@@ -373,49 +373,29 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setIsSubmitting(true);
 
     try {
-      // Request OTP from backend with signup legalConsent metadata
-      console.debug('OTP send request started.', { email: normalizedEmail, endpoint: apiUrl('/api/auth/send-otp') });
-      const response = await fetch(apiUrl('/api/auth/send-otp'), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          isSignup: true,
-          legalConsent: consentSnapshot
-        })
-      });
-
-      const data = await response.json();
-      console.debug('OTP send response received.', { status: response.status, success: data.success, expiresIn: data.expiresIn });
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to send verification code. Please try again.');
-        setIsSubmitting(false);
-        return;
+      await sendFirebaseEmailSignInLink(normalizedEmail);
+      setSuccess('A sign-in link was sent to your email. Open it in this browser to finish creating your account.');
+      setIsSubmitting(false);
+      if (onProceedToEmailVerification) {
+        onProceedToEmailVerification(
+          normalizedEmail,
+          name.trim(),
+          address.trim() || undefined,
+          pinCode.trim() || undefined,
+          fullPhone,
+          consentSnapshot
+        );
       }
-
-      setSuccess('Verification code sent to your email!');
-      
-      // Proceed to email verification screen carrying the consent snapshot
-      setTimeout(() => {
-        setIsSubmitting(false);
-        if (onProceedToEmailVerification) {
-          onProceedToEmailVerification(
-            normalizedEmail,
-            name.trim(),
-            address.trim() || undefined,
-            pinCode.trim() || undefined,
-            fullPhone,
-            consentSnapshot
-          );
-        }
-      }, 500);
     } catch (err) {
-      console.error('Error sending OTP:', err);
-      setError('Network error. Please check your connection and try again.');
+      console.error('Error sending Firebase email sign-in link:', err);
+      const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : '';
+      setError(
+        code === 'auth/unauthorized-continue-uri'
+          ? 'This website address is not authorized for Firebase email links. Add your Netlify domain in Firebase Authentication settings.'
+          : code === 'auth/operation-not-allowed'
+            ? 'Enable Email link sign-in in Firebase Authentication settings.'
+            : 'Could not send the sign-in link. Please check Firebase Authentication settings and try again.'
+      );
       setIsSubmitting(false);
     }
   };

@@ -29,7 +29,6 @@
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "node-fetch": "^2.7.0",
-    "nodemailer": "^10.0.10",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "sharp": "^0.35.2",
@@ -48,4 +47,4 @@
     "tsx": "^4.23.0",
     "typescript": "~5.8.2"
   }
- }
+}

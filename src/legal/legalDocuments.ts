@@ -77,7 +77,7 @@ export const TERMS_DOCUMENT: LegalDocumentDefinition = {
       title: 'Operator Identity & Scope of Terms',
       paragraphs: [
         'These Terms & Conditions ("Terms") govern your access to and use of the NOVA AI + AR Fashion Assistant application ("NOVA", "the App", or "the Service"), including its AI Stylist chat, Camera Scan, Virtual Wardrobe, AR Try-On, Profile Style Analysis, and Showroom catalog features.',
-        'Operator / Legal Entity Name: [Pending Confirmation — Insert Registered Legal Entity Name]. Registered Office / Postal Address: [Pending Confirmation — Insert Official Postal Address]. Designated Support & Legal Contact Email: [Pending Confirmation — Insert Verified Support Email; Note: SMTP fallback in server configuration references noreply@novavisionlabs.com for automated OTP delivery only].',
+        'Operator / Legal Entity Name: [Pending Confirmation — Insert Registered Legal Entity Name]. Registered Office / Postal Address: [Pending Confirmation — Insert Official Postal Address]. Designated Support & Legal Contact Email: [Pending Confirmation — Insert Verified Support Email].',
       ],
       reviewNote:
         'Requires operator confirmation of registered company name, corporate registration number, physical address, and monitored support email.',
@@ -88,7 +88,7 @@ export const TERMS_DOCUMENT: LegalDocumentDefinition = {
       title: 'Eligibility, Account Registration & Guest Access',
       paragraphs: [
         'You may explore limited features of NOVA using "Continue as Guest" or register an account via "Create an Account". When registering an account, you agree to provide accurate and current information, including your full name, email address, mobile phone number, and optional delivery address / PIN code.',
-        'Account creation requires explicit acceptance of these Terms & Conditions and the NOVA Privacy Policy, followed by email verification using a one-time verification code (OTP) or registered phone login. We record the document versions you accept and the timestamp of your consent against your user account.',
+        'Account creation requires explicit acceptance of these Terms & Conditions and the NOVA Privacy Policy, followed by email verification using a secure Firebase Authentication email sign-in link or registered phone login. We record the document versions you accept and the timestamp of your consent against your user account.',
       ],
       bullets: [
         'Guest sessions store temporary activity on your local device and may not persist across devices or browser clears.',
@@ -254,11 +254,11 @@ export const PRIVACY_DOCUMENT: LegalDocumentDefinition = {
         'We do NOT claim that photos or personal data never leave your device. Based on the verified application implementation, the following features transmit data to backend servers, cloud databases, or AI services:',
       ],
       bullets: [
-        'Firebase Authentication & Cloud Firestore (Google Firebase): Account profiles, email OTP hashes (email_otps), user profile metadata (users/{uid} and users/{uid}/profile/meta), legal consent records (legal_consents), product reviews (product_reviews), and synced Virtual Wardrobe items (users/{uid}/wardrobe) are stored in Google Firebase / Cloud Firestore.',
+        'Firebase Authentication & Cloud Firestore (Google Firebase): Account authentication and email sign-in links are handled by Firebase Authentication. User profile metadata (users/{uid} and users/{uid}/profile/meta), legal consent records (legal_consents), product reviews (product_reviews), and synced Virtual Wardrobe items (users/{uid}/wardrobe) are stored in Google Firebase / Cloud Firestore.',
         'Selfie Style Analysis (POST /api/analyze-selfie): When you run AI Style Analysis (ProfileAnalysisView), your base64-encoded selfie image (imageDataUrl) and user identifier are sent to the NOVA Express backend (server/analysisRouter.ts). The backend analyzes pixel regions using Sharp, caches the analysis by SHA-256 image hash in Firestore (users/{docId}/analysisCache/{imageHash}), and stores both the analysis profile and the selfie data URL (when within Firestore’s ~1 MB document limit) in your Firestore user document (users/{docId} and users/{docId}/profile/meta).',
         'Virtual Wardrobe Vision Service & Google Cloud Vision API: When you scan or upload a garment to the Virtual Wardrobe (src/services/aiService.ts -> server_ai/main.py), the garment image is uploaded to the Python FastAPI backend (port 8000), saved to server disk directories (server_ai/uploads/ and output/), and—when Google Cloud credentials are configured—transmitted to the Google Cloud Vision API for label, color, and object detection. Resulting garment images and attributes are also saved to Firestore (users/{docId}/wardrobe).',
         'AI Stylist Chat (POST /api/chat): Messages sent to the NOVA AI Stylist are processed by the Express backend (server/chatRouter.ts) and forwarded to the configured Ollama LLM runtime (default qwen2.5:7b). Up to 20 recent conversation messages are held in server memory keyed by client IP address to maintain conversation context.',
-        'Email OTP Delivery (SMTP / Nodemailer): During signup verification, your email address and a 6-digit verification code are sent through the configured SMTP mail server (server/authRouter.ts).',
+        'Email Verification (Firebase Authentication): During signup, Firebase Authentication sends an email sign-in link to the address provided. Opening the link verifies the address and signs the user in.',
       ],
     },
     {
@@ -316,7 +316,7 @@ export const PRIVACY_DOCUMENT: LegalDocumentDefinition = {
     'Data Controller legal name, registration details, postal address, and Data Protection Officer / privacy email.',
     'Exact data retention schedules for Firestore user profiles, stored selfie data URLs (profilePhoto), analysisCache, and server_ai/uploads/ garment files.',
     'Automated server-side account and Firestore data deletion workflow (current UI account removal only clears local device storage).',
-    'Executed Data Processing Agreements (DPAs) with Google Cloud / Firebase, SMTP provider, and any external LLM hosting provider if Ollama is hosted remotely.',
+    'Executed Data Processing Agreements (DPAs) with Google Cloud / Firebase and any external LLM hosting provider if Ollama is hosted remotely.',
     'Whether third-party Showroom vendors will receive customer shipping/contact data once live checkout replaces the current simulated checkout.',
   ],
 };

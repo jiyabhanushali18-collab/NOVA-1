@@ -1,403 +1,58 @@
-# NOVA Email Verification API Reference
+# NOVA Email Verification Reference
 
-## Backend Endpoints
+Signup email verification is handled directly by Firebase Authentication. The frontend does not call backend OTP endpoints, and the Render server does not send the verification email.
 
-### 1. Send OTP Email
+## Firebase setup
 
-**Endpoint:** `POST /api/auth/send-otp`
+For the Firebase project configured in `src/firebase.ts`:
 
-**Request Body:**
-```json
-{
-  "email": "user@example.com"
-}
-```
+1. In **Authentication → Sign-in method**, enable **Email/Password** and its **Email link (passwordless sign-in)** option.
+2. In **Authentication → Settings → Authorized domains**, add the deployed Netlify hostname (for example, `nova-ai-fashion.netlify.app`) and `localhost` for local development when needed.
+3. Review **Authentication → Templates → Email address sign-in**.
 
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "OTP sent to your email",
-  "email": "user@example.com",
-  "expiresIn": 300
-}
-```
+The Firebase email sender does not require the app owner to purchase a separate sending domain. Firebase plan quotas and limits apply; check the Firebase console for current usage.
 
-**Error Responses:**
-```json
-// Invalid email
-{
-  "success": false,
-  "error": "Invalid email format"
-}
+## Signup sequence
 
-// Missing email
-{
-  "success": false,
-  "error": "Email is required"
-}
+1. `AuthView` validates signup data and legal consent.
+2. `sendFirebaseEmailSignInLink` calls Firebase's `sendSignInLinkToEmail` with the current app origin as the return URL.
+3. The app stores the email and pending signup profile in browser local storage.
+4. Firebase returns the user to the app after they open the link. `EmailVerificationView` completes `signInWithEmailLink`.
+5. Firebase returns a signed-in user with a verified email. The app saves the profile to Firestore and continues to preference setup.
 
-// Rate limited (too soon after last send)
-{
-  "success": false,
-  "error": "Please wait 25 seconds before requesting a new code",
-  "retryAfter": 25
-}
+The email link must be opened in the same browser that started signup because the app associates it with locally stored signup data and email.
 
-// SMTP delivery error
-{
-  "success": false,
-  "error": "Failed to send verification email. Please try again."
-}
-```
+## Relevant implementation
 
-**Rate Limits:**
-- Minimum 30 seconds between sends to same email
-- OTP valid for 5 minutes
-- Unique OTP generated per request (old OTP invalidated)
+- `src/services/emailLinkAuth.ts`
+  - `sendFirebaseEmailSignInLink(email)` sends the passwordless sign-in email and stores the email needed to complete the link.
+  - `PENDING_EMAIL_SIGNUP_KEY` and `EMAIL_FOR_SIGN_IN_KEY` identify the browser storage entries.
+- `src/components/AuthView.tsx`
+  - Starts the flow after validating the signup form.
+- `src/components/EmailVerificationView.tsx`
+  - Completes the sign-in link, and can resend it or change the target email.
+- `src/App.tsx`
+  - Restores pending signup state on the Firebase return link, then persists profile and consent data.
 
----
+## Deployment checklist
 
-### 2. Verify OTP
+### Netlify
 
-**Endpoint:** `POST /api/auth/verify-otp`
+- No SMTP, Resend, or email API key environment variable is needed.
+- Add the site's exact hostname to Firebase Authentication's authorized domains.
+- Deploy the frontend so it uses the current Firebase project configuration.
 
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "otp": "123456"
-}
-```
+### Render
 
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Email verified successfully",
-  "email": "user@example.com",
-  "verified": true
-}
-```
-
-**Error Responses:**
-```json
-// Invalid OTP
-{
-  "success": false,
-  "error": "Invalid OTP. 2 attempts remaining.",
-  "attemptsRemaining": 2
-}
-
-// OTP expired
-{
-  "success": false,
-  "error": "OTP has expired. Please request a new code."
-}
-
-// Max attempts exceeded
-{
-  "success": false,
-  "error": "Maximum attempts exceeded. Please request a new code."
-}
-
-// OTP not found (never requested)
-{
-  "success": false,
-  "error": "OTP not found. Please request a new code."
-}
-
-// Missing parameters
-{
-  "success": false,
-  "error": "Email is required"
-}
-```
-
-**Security Features:**
-- Maximum 3 attempts per OTP
-- OTP automatically deleted after successful verification
-- OTP automatically deleted after max attempts exceeded
-- OTP automatically deleted after expiration
-- SHA-256 hashing prevents OTP comparison attacks
-
----
-
-## Frontend Integration
-
-### Component Props
-
-**EmailVerificationView**
-```typescript
-interface EmailVerificationViewProps {
-  email: string;                          // Email being verified
-  onVerificationSuccess: () => void;      // Called on success
-  onChangeEmail: () => void;              // Called when user wants to change email
-}
-```
-
-### AuthView Props
-
-```typescript
-interface AuthViewProps {
-  onLoginSuccess: (
-    name: string,
-    email: string,
-    phone: string,
-    isSignUp?: boolean,
-    address?: string,
-    pinCode?: string
-  ) => void;
-  onProceedToEmailVerification?: (
-    email: string,
-    name: string,
-    address?: string,
-    pinCode?: string
-  ) => void;
-  initialMode?: 'login' | 'signup';
-}
-```
-
----
-
-## Environment Variables
-
-### Optional (Development)
-```env
-# For testing without email delivery
-SMTP_HOST=               # Leave SMTP settings empty for dev mode
-```
-
-### Required (Production)
-```env
-SMTP_HOST=smtp.your-provider.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-smtp-username
-SMTP_PASS=your-smtp-password
-SMTP_FROM_EMAIL=noreply@yourdomain.com
-SMTP_FROM_NAME=NOVA Vision Labs
-```
-
----
-
-## Screen IDs and Navigation
-
-### Screen ID Type
-```typescript
-type ScreenId = 
-  | ... (existing screens)
-  | 'email-verification'   // NEW
-  | ...
-```
-
-### Navigation Flow
-
-**Signup Path:**
-```
-'signup' (AuthView)
-    ↓
-[User clicks Continue]
-    ↓
-/api/auth/send-otp
-    ↓
-'email-verification' (EmailVerificationView)
-    ↓
-[User enters OTP]
-    ↓
-/api/auth/verify-otp
-    ↓
-'setup-preferences' (SetupPreferencesView)
-    ↓
-'profile' (ProfileView)
-    ↓
-'home' (HomeView)
-```
-
-**Login Path (Unchanged):**
-```
-'login' (AuthView)
-    ↓
-[User enters phone]
-    ↓
-'home' (HomeView)
-```
-
----
-
-## Caching & State Management
-
-### Session Storage
-- `pendingEmailVerification` - Stores email, name, address, PIN during verification
-- Cleared after successful verification
-- Can be reset if user clicks "Change Email"
-
-### Local Storage (Existing)
-- `isLoggedIn` - Updated after verification
-- `userName` - Set during verification
-- `userEmail` - Set during verification
-- `userAddress` - Set if provided
-- `userPinCode` - Set if provided
-
----
-
-## Testing with cURL
-
-### Send OTP
-```bash
-curl -X POST http://localhost:3000/api/auth/send-otp \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com"}'
-```
-
-### Verify OTP (with 123456)
-```bash
-curl -X POST http://localhost:3000/api/auth/verify-otp \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","otp":"123456"}'
-```
-
----
-
-## Postman Collection
-
-**Send OTP Request:**
-- Method: POST
-- URL: `{{base_url}}/api/auth/send-otp`
-- Headers: `Content-Type: application/json`
-- Body:
-  ```json
-  {
-    "email": "test@example.com"
-  }
-  ```
-
-**Verify OTP Request:**
-- Method: POST
-- URL: `{{base_url}}/api/auth/verify-otp`
-- Headers: `Content-Type: application/json`
-- Body:
-  ```json
-  {
-    "email": "test@example.com",
-    "otp": "123456"
-  }
-  ```
-
----
-
-## Firebase Integration
-
-After successful OTP verification, the app automatically:
-
-1. Creates Firebase Authentication user
-   - Email: user@example.com
-   - Email verified: true
-
-2. Creates Firestore document
-   - Collection: `users`
-   - Document ID: Firebase UID
-   - Fields include: uid, email, emailVerified: true, createdAt, updatedAt, preferences, wardrobeCount, etc.
-
----
-
-## Performance Metrics
-
-| Operation | Time | Notes |
-|-----------|------|-------|
-| OTP Generation | < 1ms | Cryptographic generation |
-| OTP Hashing | < 1ms | SHA-256 hashing |
-| Email Send | 1-2s | SMTP delivery |
-| OTP Verification | < 10ms | Hash comparison + validation |
-| Firebase Create | 2-3s | Auth + Firestore |
-
----
+- No SMTP or Resend configuration is needed for signup verification.
+- The existing Express API remains in use for other app features.
 
 ## Troubleshooting
 
-### "OTP not found" error
-- User never requested OTP
-- OTP expired (> 5 minutes)
-- OTP was already verified and deleted
-- Solution: Request new OTP
-
-### "Max attempts exceeded"
-- User entered wrong OTP 3 times
-- Solution: Request new OTP
-
-### Email not received
-- Check `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` are set
-- Check the sender email is authorized by your SMTP provider
-- Check spam folder
-- In dev mode, check server console logs
-
-### Network timeout
-- Ensure backend is running (`npm run dev`)
-- Check network connectivity
-- Verify the SMTP host, port, and secure mode
-- Check your SMTP provider status
-
----
-
-## Code Examples
-
-### Frontend: Calling Send OTP
-```typescript
-const handleSendOTP = async (email: string) => {
-  try {
-    const response = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      console.log('OTP sent to:', data.email);
-      // Navigate to verification screen
-    } else {
-      console.error('Error:', data.error);
-    }
-  } catch (error) {
-    console.error('Network error:', error);
-  }
-};
-```
-
-### Frontend: Calling Verify OTP
-```typescript
-const handleVerifyOTP = async (email: string, otp: string) => {
-  try {
-    const response = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp })
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      console.log('Email verified!');
-      // Create Firebase user and proceed
-    } else {
-      console.error('Verification failed:', data.error);
-      // Show error message
-    }
-  } catch (error) {
-    console.error('Network error:', error);
-  }
-};
-```
-
----
-
-## Related Files
-
-- Backend: `/server/authRouter.ts`
-- Frontend: `/src/components/EmailVerificationView.tsx`
-- Updated Components: `/src/components/AuthView.tsx`
-- Updated App: `/src/App.tsx`
-- Types: `/src/types.ts`
-- Server Entry: `/server.ts`
-- Documentation: `/EMAIL_VERIFICATION_GUIDE.md`
+| Error or symptom | Check |
+|---|---|
+| `auth/operation-not-allowed` | Enable Email/Password and Email link sign-in in Firebase Authentication. |
+| `auth/unauthorized-domain` or `auth/unauthorized-continue-uri` | Add the exact Netlify hostname to Firebase Authentication's authorized domains. |
+| Link is invalid or expired | Request a fresh link; Firebase sign-in links are single-use. |
+| Link opens, but signup details are missing | Open the link in the browser that started signup. |
+| No email arrives | Check spam, confirm the entered address, and review Firebase Authentication templates, quotas, and usage. |

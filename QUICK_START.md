@@ -1,257 +1,38 @@
-# Quick Start Guide: Email Verification Testing
+# Quick Start: Signup Email Verification
 
-## 🚀 Get Started in 2 Minutes
+Signup uses Firebase Authentication's passwordless email-link sign-in. No SMTP credentials, Resend API key, or paid email domain are required.
 
-### Step 1: Start the Development Server
+## Firebase setup
+
+In the Firebase console for the project used by the app:
+
+1. Go to **Authentication → Sign-in method**.
+2. Enable **Email/Password**, including **Email link (passwordless sign-in)**.
+3. Go to **Authentication → Settings → Authorized domains** and add your Netlify hostname, for example `nova-ai-fashion.netlify.app`. Add `localhost` for local testing if missing.
+4. Review the **Email address sign-in** template.
+
+Firebase Authentication plan quotas and limits apply; check the Firebase console's usage and billing pages.
+
+## Run locally
+
 ```bash
-cd NOVA-1
+npm install
 npm run dev
 ```
 
-You should see:
-```
-✨ Server running at http://localhost:3000
-```
+Open `http://localhost:3000`, choose **Create an Account**, and submit the signup form. Open the email link in the same browser where you started signup. The app should verify the email and continue to profile setup.
 
-### Step 2: Open the App
-- Navigate to http://localhost:3000 in your browser
-- You'll see the NOVA splash screen
+## Deployment
 
-### Step 3: Create an Account
-1. Click **"Create Account"** tab on the login screen
-2. Fill in the form:
-   ```
-   Full Name: John Doe
-   Email: john@example.com
-   Address: (optional) 123 Main St
-   PIN Code: (optional) 560038
-   ```
-3. Click **"Continue"**
+- **Netlify:** No email-related environment variables are needed. Add the Netlify hostname to Firebase Authentication's authorized domains and deploy the frontend.
+- **Render:** No SMTP or Resend configuration is needed for signup email delivery. Render continues to serve other backend APIs.
 
-### Step 4: Watch the Magic ✨
-- You'll see a loading message "Verification code sent to your email!"
-- You'll automatically navigate to the **Email Verification** screen
+## Troubleshooting
 
-### Step 5: Get the OTP
-In the **server terminal** (where `npm run dev` is running), look for:
-```
-[DEV MODE] OTP for john@example.com: 123456
-```
+- `auth/operation-not-allowed`: Enable the Email link sign-in method in Firebase Authentication.
+- `auth/unauthorized-domain`: Add the exact site's hostname to Firebase Authentication's authorized domains.
+- Link is expired or already used: Start again and request a fresh link.
+- Link opens but signup cannot continue: Open it in the same browser used for signup.
+- Email is missing: Check spam and review Firebase Authentication templates and usage.
 
-Copy this 6-digit code.
-
-### Step 6: Enter the OTP
-1. On the verification screen, you can:
-   - **Type each digit** - automatically advances to next box
-   - **Paste all digits** - Ctrl+V pastes the full code
-   - **Use backspace** - deletes and moves to previous box
-
-2. Once all 6 digits are entered, click **"Verify Email"**
-
-### Step 7: Success! 🎉
-- You'll see a success animation
-- Automatically redirected to **Profile Setup**
-- Continue setting up your profile
-
----
-
-## 🧪 Test Different Scenarios
-
-### Scenario A: Wrong OTP
-1. Enter wrong code (e.g., "000000")
-2. Click Verify
-3. See error: "Invalid OTP. 2 attempts remaining."
-4. Try again (max 3 times)
-
-### Scenario B: Resend OTP
-1. Click "Resend OTP"
-2. See countdown: "00:30"
-3. Wait 30 seconds (or scroll up and fake-wait)
-4. New OTP appears in server logs
-
-### Scenario C: Change Email
-1. Click "Change Email" link
-2. Return to signup form
-3. Enter new email and continue
-
-### Scenario D: Paste Full OTP
-1. Copy OTP from server logs
-2. Click any box in the OTP input
-3. Paste (Ctrl+V)
-4. All 6 digits populate
-5. Click Verify
-
----
-
-## 📝 What You're Testing
-
-✅ **Backend:**
-- OTP generation
-- Email sending (logged to console)
-- OTP verification
-- Rate limiting
-- Expiration logic
-
-✅ **Frontend:**
-- Beautiful UI matching NOVA design
-- OTP input with auto-advance
-- Paste support
-- Error handling
-- Loading states
-- Success animation
-
-✅ **Integration:**
-- AuthView → Email Verification flow
-- Firebase user creation
-- Navigation to profile setup
-
----
-
-## 🔍 Debugging Tips
-
-### Check Server Logs
-```
-[DEV MODE] OTP for user@email.com: 123456
-```
-
-### Check Browser Console
-- Open DevTools (F12)
-- Check Console tab for errors
-- Network tab shows API calls to `/api/auth/send-otp` and `/api/auth/verify-otp`
-
-### Test API Directly
-```bash
-# Terminal 1: Check if backend is running
-curl http://localhost:3000/api/auth/send-otp
-
-# Terminal 2: Send OTP (will return error but confirms endpoint works)
-curl -X POST http://localhost:3000/api/auth/send-otp \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com"}'
-```
-
----
-
-## 📋 Checklist
-
-- [ ] Server running (`npm run dev`)
-- [ ] Navigate to `http://localhost:3000`
-- [ ] Click "Create Account"
-- [ ] Fill form and click "Continue"
-- [ ] Email verification screen appears
-- [ ] See OTP in server terminal
-- [ ] Enter OTP and verify
-- [ ] Success animation plays
-- [ ] Navigate to profile setup
-
----
-
-## ✅ Expected Behavior
-
-| Step | Expected | Status |
-|------|----------|--------|
-| Click Continue | Navigate to verification screen | ✓ |
-| Server logs OTP | See `[DEV MODE] OTP for ...` | ✓ |
-| Type OTP | Auto-advance between boxes | ✓ |
-| Click Verify | API call sent | ✓ |
-| Success | Animation + navigation | ✓ |
-
----
-
-## 🆘 Common Issues
-
-### Issue: Server won't start
-```
-Error: Port 3000 already in use
-```
-**Solution:** 
-```bash
-# Kill process on port 3000
-# Windows:
-netstat -ano | findstr :3000
-taskkill /PID <PID> /F
-
-# Mac/Linux:
-lsof -i :3000
-kill -9 <PID>
-```
-
-### Issue: No OTP in server logs
-**Check:**
-- Are `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` set? (leave empty for dev mode)
-- Is server running in correct terminal?
-- Look carefully at terminal output
-
-### Issue: UI looks broken
-**Check:**
-- Browser zoom is 100%
-- Clear browser cache (Ctrl+Shift+Delete)
-- Hard refresh (Ctrl+F5)
-
-### Issue: Verification says email not found
-**Cause:** OTP expired (> 5 minutes)
-**Solution:** Request new OTP via Resend button
-
----
-
-## 📱 Test on Mobile (Optional)
-
-### Android Emulator (Capacitor)
-```bash
-# Build APK
-npm run build
-
-# Run on emulator
-npx cap run android
-
-# Same testing process
-```
-
-### iOS Simulator
-```bash
-# Build and run
-npx cap run ios
-```
-
----
-
-## 🎯 Next Steps
-
-After successful test:
-1. Get SMTP credentials from your email provider.
-2. Add to `.env.local`:
-   ```env
-   SMTP_HOST=smtp.your-provider.com
-   SMTP_PORT=587
-   SMTP_SECURE=false
-   SMTP_USER=your-smtp-username
-   SMTP_PASS=your-smtp-password
-   SMTP_FROM_EMAIL=noreply@yourapp.com
-   SMTP_FROM_NAME=NOVA Vision Labs
-   ```
-3. Restart server
-4. Emails will be sent instead of logged
-
----
-
-## 📚 Learn More
-
-- Full guide: [EMAIL_VERIFICATION_GUIDE.md](./EMAIL_VERIFICATION_GUIDE.md)
-- API docs: [API_REFERENCE.md](./API_REFERENCE.md)
-- Code: Check `/server/authRouter.ts` and `/src/components/EmailVerificationView.tsx`
-
----
-
-## ❓ Questions?
-
-Check the comprehensive guides:
-- **Implementation Details**: `EMAIL_VERIFICATION_GUIDE.md`
-- **API Endpoints**: `API_REFERENCE.md`
-- **Source Code**: 
-  - Backend: `server/authRouter.ts`
-  - Frontend: `src/components/EmailVerificationView.tsx`
-  - Integration: `src/App.tsx`, `src/components/AuthView.tsx`
-
----
-
-Enjoy testing! 🚀
+See [EMAIL_VERIFICATION_GUIDE.md](./EMAIL_VERIFICATION_GUIDE.md) for details and [API_REFERENCE.md](./API_REFERENCE.md) for the implementation flow.

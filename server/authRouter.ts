@@ -1,31 +1,17 @@
 import express, { Request, Response } from "express";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 
 import { initError as firebaseInitError } from "./firebaseAdmin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import "./firebaseAdmin";
 
-console.log("=== AUTH ROUTER ENV ===");
-console.log("SMTP configured:", Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS));
-console.log("SMTP sender:", process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@novavisionlabs.com');
-console.log("=======================");
+console.log("Email delivery configured:", Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL));
 
 const router = express.Router();
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
 const MAX_OTP_ATTEMPTS = 3;
-
-const getSmtpConfig = () => ({
-  host: process.env.SMTP_HOST || '',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: process.env.SMTP_SECURE === 'true',
-  user: process.env.SMTP_USER || '',
-  pass: process.env.SMTP_PASS || '',
-  fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@novavisionlabs.com',
-  fromName: process.env.SMTP_FROM_NAME || 'NOVA Vision Labs'
-});
 
 interface LegalConsentPayload {
   accepted: boolean;
@@ -372,29 +358,9 @@ const isValidEmail = (email?: string) =>
   typeof email === 'string' &&
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-let smtpTransporter: ReturnType<typeof nodemailer.createTransport> | null = null;
-let smtpTransporterKey = '';
-
-const getSmtpTransporter = () => {
-  const config = getSmtpConfig();
-  if (!config.host || !config.user || !config.pass) return null;
-
-  const configKey = `${config.host}:${config.port}:${config.secure}:${config.user}`;
-  if (!smtpTransporter || smtpTransporterKey !== configKey) {
-    smtpTransporter = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: { user: config.user, pass: config.pass }
-    });
-    smtpTransporterKey = configKey;
-  }
-  return smtpTransporter;
-};
-
 const sendOTPEmail = async (email: string, otp: string): Promise<{ ok: boolean; status?: number; error?: string }> => {
-  const config = getSmtpConfig();
-  const transporter = getSmtpTransporter();
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.RESEND_FROM_EMAIL?.trim();
   const html = `
       <h2>NOVA - The Future of Fashion</h2>
       <p>Your verification code is:</p>
@@ -403,43 +369,61 @@ const sendOTPEmail = async (email: string, otp: string): Promise<{ ok: boolean; 
       <p>If you didn't request this email, please ignore it.</p>
     `;
 
-  if (!transporter) {
-    console.log("[OTP] SMTP is not configured; email not sent.", {
-      recipient: maskEmail(email),
-      senderEmail: config.fromEmail,
-      otpLength: otp.length
-    });
-    return { ok: true };
+  if (!apiKey || !from) {
+    console.error("[Email] Resend is not configured; missing RESEND_API_KEY or RESEND_FROM_EMAIL.");
+    return { ok: false, status: 503, error: 'Email delivery is not configured. Please contact support.' };
   }
 
   try {
-    console.log("[SMTP] Sending OTP email.", {
+    console.log("[Email] Sending OTP through Resend.", {
       recipient: maskEmail(email),
-      senderEmail: config.fromEmail,
-      host: config.host,
-      port: config.port,
-      secure: config.secure
+      senderEmail: from
     });
 
-    const response = await transporter.sendMail({
-      from: { address: config.fromEmail, name: config.fromName },
-      to: email,
-      subject: "Verify your NOVA Account",
-      text: `Your NOVA verification code is ${otp}. This code expires in 5 minutes.`,
-      html
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: 'Verify your NOVA Account',
+        text: `Your NOVA verification code is ${otp}. This code expires in 5 minutes.`,
+        html
+      }),
+      signal: AbortSignal.timeout(10_000)
     });
 
-    console.log("[SMTP] OTP email accepted.", {
-      messageId: response.messageId,
+    const result = await response.json() as { id?: string; message?: string; name?: string };
+    if (!response.ok) {
+      const error = result.message || result.name || `Resend returned HTTP ${response.status}`;
+      console.error("[Email] Resend rejected the OTP email.", {
+        status: response.status,
+        error,
+        recipient: maskEmail(email)
+      });
+      return { ok: false, status: response.status, error };
+    }
+
+    console.log("[Email] Resend accepted the OTP email.", {
+      messageId: result.id,
       recipient: maskEmail(email)
     });
     return { ok: true };
-  } catch (error: any) {
-    console.error("[SMTP] OTP email failed.", {
-      message: error.message,
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown email provider error';
+    const timedOut = error instanceof Error && error.name === 'TimeoutError';
+    console.error("[Email] Resend request failed.", {
+      message,
       recipient: maskEmail(email)
     });
-    return { ok: false, status: 502, error: error.message || 'SMTP delivery failed' };
+    return {
+      ok: false,
+      status: timedOut ? 504 : 502,
+      error: timedOut ? 'Email provider request timed out. Please try again.' : 'Email delivery failed. Please try again.'
+    };
   }
 };
 // Helper: get OTP doc ref
@@ -526,7 +510,7 @@ router.post('/auth/send-otp', async (req: Request, res: Response) => {
     });
 
     const sent = await sendOTPEmail(normalizedEmail, otp);
-    if (!sent.ok) return res.status(sent.status && sent.status >= 400 && sent.status < 500 ? sent.status : 502).json({ success: false, error: sent.error || 'Failed to send verification email' });
+    if (!sent.ok) return res.status(sent.status && sent.status >= 400 && sent.status < 600 ? sent.status : 502).json({ success: false, error: sent.error || 'Failed to send verification email' });
 
     const otpRecord: OTPRecord = {
       email: normalizedEmail,
@@ -584,7 +568,7 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
     const expiresAt = now + OTP_TTL_MS;
 
     const sent = await sendOTPEmail(normalizedEmail, otp);
-    if (!sent.ok) return res.status(sent.status && sent.status >= 400 && sent.status < 500 ? sent.status : 502).json({ success: false, error: sent.error || 'Failed to send verification email' });
+    if (!sent.ok) return res.status(sent.status && sent.status >= 400 && sent.status < 600 ? sent.status : 502).json({ success: false, error: sent.error || 'Failed to send verification email' });
 
     const updatedRecord: OTPRecord = {
       email: normalizedEmail,

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
+import { isSignInWithEmailLink } from 'firebase/auth';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress } from './types';
 import { products } from './data';
-import { auth, db, firebaseProjectId, saveUserToFirestore, signInWithServerCustomToken, waitForFirebaseAuthReady } from './firebase';
+import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
 
 // Modular View Imports
 import { HomeView } from './components/HomeView';
@@ -36,6 +37,7 @@ import {
   writeCachedUserAddress,
 } from './services/addressService';
 import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
+import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emailLinkAuth';
 import { normalizeProductVariants } from './utils/productVariants';
 import { useI18n } from './i18n';
 
@@ -434,7 +436,16 @@ export default function App() {
     pinCode?: string;
     phone?: string;
     legalConsent?: LegalConsentRecord;
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem(PENDING_EMAIL_SIGNUP_KEY);
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      return typeof parsed.email === 'string' && typeof parsed.name === 'string' ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [userLegalConsent, setUserLegalConsent] = useState<LegalConsentRecord | null>(null);
   const [requiresConsentRenewal, setRequiresConsentRenewal] = useState<boolean>(false);
@@ -479,6 +490,16 @@ export default function App() {
     screenRef.current = previousScreen;
     setScreen(previousScreen);
   };
+
+  useEffect(() => {
+    if (!isSignInWithEmailLink(auth, window.location.href)) return;
+    if (!pendingEmailVerification) {
+      console.error('Received a Firebase sign-in link without the pending signup details in this browser.');
+      resetScreenHistory('login');
+      return;
+    }
+    resetScreenHistory('email-verification');
+  }, [pendingEmailVerification]);
 
   // Account management
   const { accounts, addAccount, removeAccount, replaceAccounts } = useAccounts();
@@ -1556,10 +1577,19 @@ export default function App() {
     phone?: string,
     legalConsent?: LegalConsentRecord
   ) => {
-    // Store pending verification data including explicit legal consent
-    setPendingEmailVerification({ email, name, address, pinCode, phone, legalConsent });
-    // Navigate to email verification screen
+    const pendingSignup = { email, name, address, pinCode, phone, legalConsent };
+    localStorage.setItem(PENDING_EMAIL_SIGNUP_KEY, JSON.stringify(pendingSignup));
+    setPendingEmailVerification(pendingSignup);
     resetScreenHistory('email-verification');
+  };
+
+  const handlePendingVerificationEmailChange = (email: string) => {
+    setPendingEmailVerification((pending) => {
+      if (!pending) return pending;
+      const updated = { ...pending, email };
+      localStorage.setItem(PENDING_EMAIL_SIGNUP_KEY, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleEmailVerificationSuccess = async (verificationResult: {
@@ -1577,19 +1607,7 @@ export default function App() {
     }
 
     const { email, name, address, pinCode, phone, legalConsent } = pendingEmailVerification;
-    let firebaseUid = verificationResult.uid || email;
-
-    if (verificationResult.customToken) {
-      try {
-        const user = await signInWithServerCustomToken(verificationResult.customToken);
-        firebaseUid = user.uid;
-        console.debug('OTP verified user signed in.', { uid: user.uid, email: user.email });
-      } catch (err) {
-        console.error('Failed to sign in verified Firebase user:', err);
-      }
-    } else {
-      console.warn('OTP verification did not return a Firebase custom token; continuing with local login state.');
-    }
+    const firebaseUid = verificationResult.uid || email;
 
     if (verificationResult.sessionToken) {
       saveSessionToken(firebaseUid, verificationResult.sessionToken);
@@ -1629,6 +1647,8 @@ export default function App() {
     setUserSavedAddresses(initialSavedAddresses);
     setIsLoggedIn(true);
     setPendingEmailVerification(null);
+    localStorage.removeItem(PENDING_EMAIL_SIGNUP_KEY);
+    localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
 
     // Record authoritative legal consent against the verified user account
     if (effectiveConsent && effectiveConsent.accepted) {
@@ -1954,12 +1974,8 @@ export default function App() {
         <main className="flex-grow relative px-4 py-3 flex flex-col justify-center">
           <EmailVerificationView
             email={pendingEmailVerification.email}
-            name={pendingEmailVerification.name}
-            address={pendingEmailVerification.address}
-            pinCode={pendingEmailVerification.pinCode}
-            phone={pendingEmailVerification.phone}
-            legalConsent={pendingEmailVerification.legalConsent}
             onVerificationSuccess={handleEmailVerificationSuccess}
+            onChangeEmail={handlePendingVerificationEmailChange}
           />
         </main>
       </div>

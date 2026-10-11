@@ -1,519 +1,220 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Check, AlertCircle, Loader2 } from 'lucide-react';
-import { apiUrl } from '../services/apiClient';
-import { DeliveryAddress, LegalConsentRecord } from '../types';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
+import { AlertCircle, Check, Loader2, Mail, RefreshCw } from 'lucide-react';
+import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { auth } from '../firebase';
+import {
+  EMAIL_FOR_SIGN_IN_KEY,
+  sendFirebaseEmailSignInLink
+} from '../services/emailLinkAuth';
 
 interface EmailVerificationViewProps {
   email: string;
-  name: string;
-  address?: string;
-  pinCode?: string;
-  phone?: string;
-  legalConsent?: LegalConsentRecord;
-  onVerificationSuccess: (result: {
-    uid?: string;
-    email: string;
-    customToken?: string;
-    sessionToken?: string;
-    deliveryAddress?: DeliveryAddress | null;
-    legalConsent?: LegalConsentRecord;
-  }) => void;
-  onChangeEmail?: (newEmail: string) => void;
+  onVerificationSuccess: (result: { uid: string; email: string }) => void;
+  onChangeEmail: (email: string) => void;
 }
+
+const getFirebaseAuthErrorMessage = (error: unknown) => {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String(error.code)
+    : '';
+
+  if (code === 'auth/invalid-action-code') return 'This sign-in link is invalid or has expired. Request a new link.';
+  if (code === 'auth/expired-action-code') return 'This sign-in link has expired. Request a new link.';
+  if (code === 'auth/invalid-email') return 'The email address is invalid. Please request a new link.';
+  if (code === 'auth/unauthorized-continue-uri') return 'This website address is not authorized in Firebase Authentication settings.';
+  if (code === 'auth/unauthorized-domain') return 'Add this website domain to Firebase Authentication authorized domains.';
+  if (code === 'auth/operation-not-allowed') return 'Enable Email link sign-in in Firebase Authentication settings.';
+  return 'Could not complete email verification. Please request a new link and try again.';
+};
 
 export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   email,
-  name,
-  address,
-  pinCode,
-  phone,
-  legalConsent,
   onVerificationSuccess,
   onChangeEmail
 }) => {
-  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
+  const [currentEmail, setCurrentEmail] = useState(email);
+  const [editedEmail, setEditedEmail] = useState(email);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(0);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [attemptsRemaining, setAttemptsRemaining] = useState(3);
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [editedEmail, setEditedEmail] = useState(email);
-  const [currentEmail, setCurrentEmail] = useState(email);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const processedLink = useRef(false);
 
-  // Focus first input on mount
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
-
-  // Countdown timer for resend
   useEffect(() => {
     if (resendCountdown <= 0) return;
-
-    const timer = setTimeout(() => {
-      setResendCountdown(resendCountdown - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => setResendCountdown((remaining) => remaining - 1), 1000);
+    return () => window.clearTimeout(timer);
   }, [resendCountdown]);
 
-  const handleOTPChange = (index: number, value: string) => {
-    // Only allow digits
-    const sanitized = value.replace(/[^0-9]/g, '');
-    
-    if (sanitized.length === 0) {
-      const newOtp = [...otp];
-      newOtp[index] = '';
-      setOtp(newOtp);
-      return;
-    }
+  useEffect(() => {
+    if (processedLink.current || !isSignInWithEmailLink(auth, window.location.href)) return;
+    processedLink.current = true;
 
-    // For pasted content (multiple digits), distribute them
-    if (sanitized.length > 1) {
-      const digits = sanitized.split('');
-      const newOtp = [...otp];
-      
-      for (let i = 0; i < digits.length && index + i < 6; i++) {
-        newOtp[index + i] = digits[i];
-      }
-      
-      setOtp(newOtp);
-      
-      // Focus the last filled input or the next empty one
-      const lastFilled = Math.min(index + digits.length, 5);
-      inputRefs.current[lastFilled]?.focus();
-      return;
-    }
-
-    // Single digit input
-    const newOtp = [...otp];
-    newOtp[index] = sanitized;
-    setOtp(newOtp);
-
-    // Auto-advance to next input
-    if (sanitized && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    setError(null);
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      
-      if (otp[index]) {
-        const newOtp = [...otp];
-        newOtp[index] = '';
-        setOtp(newOtp);
-      } else if (index > 0) {
-        // Move to previous input if current is empty
-        inputRefs.current[index - 1]?.focus();
-        const newOtp = [...otp];
-        newOtp[index - 1] = '';
-        setOtp(newOtp);
-      }
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      e.preventDefault();
-      inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      e.preventDefault();
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text');
-    const digits = pastedData.replace(/[^0-9]/g, '').split('').slice(0, 6);
-    
-    if (digits.length > 0) {
-      const newOtp = [...otp];
-      digits.forEach((digit, index) => {
-        newOtp[index] = digit;
-      });
-      setOtp(newOtp);
-      
-      // Focus the last position or last filled
-      const focusIndex = Math.min(digits.length, 5);
-      inputRefs.current[focusIndex]?.focus();
-    }
-  };
-
-  const isOTPComplete = otp.every(digit => digit !== '');
-
-  const handleVerify = async () => {
-    if (!isOTPComplete) {
-      setError('Please enter all 6 digits');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const otpString = otp.join('');
-      console.debug('OTP verify request started.', { email: currentEmail, endpoint: apiUrl('/api/auth/verify-otp'), otpLength: otpString.length });
-      const response = await fetch(apiUrl('/api/auth/verify-otp'), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: currentEmail,
-          otp: otpString,
-          name,
-          address,
-          pinCode,
-          phone,
-          legalConsent
-        })
-      });
-
-      const data = await response.json();
-      console.debug('OTP verify response received.', { status: response.status, success: data.success, uid: data.uid });
-
-      if (!response.ok) {
-        setError(data.error || 'Verification failed');
-        if (data.attemptsRemaining !== undefined) {
-          setAttemptsRemaining(data.attemptsRemaining);
-        }
-        setLoading(false);
+    const completeEmailSignIn = async () => {
+      const storedEmail = localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
+      if (!storedEmail) {
+        setError('For security, open this link in the same browser where you started signup.');
         return;
       }
 
-      // Success!
-      setSuccess(true);
-      setLoading(false);
+      setLoading(true);
+      setError(null);
+      try {
+        const credential = await signInWithEmailLink(auth, storedEmail, window.location.href);
+        if (!credential.user.emailVerified) {
+          throw new Error('Firebase did not mark the email as verified.');
+        }
 
-      // Navigate after brief delay to show success animation
-      setTimeout(() => {
-        onVerificationSuccess({
-          uid: data.uid,
-          email: data.email || currentEmail,
-          customToken: data.customToken,
-          sessionToken: data.sessionToken,
-          deliveryAddress: data.deliveryAddress || null,
-          legalConsent: data.legalConsent || legalConsent
-        });
-      }, 1500);
-    } catch (err) {
-      console.error('Verification error:', err);
-      setError('Network error. Please try again.');
-      setLoading(false);
+        localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setSuccess(true);
+        window.setTimeout(() => {
+          onVerificationSuccess({
+            uid: credential.user.uid,
+            email: credential.user.email || storedEmail
+          });
+        }, 900);
+      } catch (verificationError) {
+        console.error('Firebase email link verification failed:', verificationError);
+        setError(getFirebaseAuthErrorMessage(verificationError));
+        setLoading(false);
+      }
+    };
+
+    void completeEmailSignIn();
+  }, [onVerificationSuccess]);
+
+  const sendLink = async (targetEmail: string) => {
+    const normalizedEmail = targetEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Please enter a valid email address.');
+      return false;
     }
+
+    setResendLoading(true);
+    setError(null);
+    try {
+      await sendFirebaseEmailSignInLink(normalizedEmail);
+      setCurrentEmail(normalizedEmail);
+      setEditedEmail(normalizedEmail);
+      onChangeEmail(normalizedEmail);
+      setIsEditingEmail(false);
+      setResendCountdown(30);
+      return true;
+    } catch (sendError) {
+      console.error('Failed to send Firebase email sign-in link:', sendError);
+      setError(getFirebaseAuthErrorMessage(sendError));
+      return false;
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCountdown > 0 || resendLoading) return;
+    await sendLink(currentEmail);
   };
 
   const handleChangeEmail = async () => {
-    if (!editedEmail.trim()) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedEmail.trim())) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    setResendLoading(true);
-    setError(null);
-
-    try {
-      console.debug('OTP send to new email started.', { email: editedEmail, endpoint: apiUrl('/api/auth/send-otp') });
-      const response = await fetch(apiUrl('/api/auth/send-otp'), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: editedEmail.trim(),
-          isSignup: Boolean(legalConsent),
-          legalConsent
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to send OTP to new email');
-        setResendLoading(false);
-        return;
-      }
-
-      // Update the current email and close edit mode
-      setCurrentEmail(editedEmail.trim());
+    if (editedEmail.trim().toLowerCase() === currentEmail.toLowerCase()) {
       setIsEditingEmail(false);
-      setOtp(['', '', '', '', '', '']);
-      setAttemptsRemaining(3);
-      setResendCountdown(30);
-      setResendLoading(false);
-      inputRefs.current[0]?.focus();
-    } catch (err) {
-      console.error('Email change error:', err);
-      setError('Failed to update email. Please try again.');
-      setResendLoading(false);
+      return;
     }
-  };
-
-  const handleResendOTP = async () => {
-    if (resendCountdown > 0 || resendLoading) return;
-
-    setResendLoading(true);
-    setError(null);
-
-    try {
-      console.debug('OTP resend request started.', { email: currentEmail, endpoint: apiUrl('/api/auth/send-otp') });
-      const response = await fetch(apiUrl('/api/auth/send-otp'), {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: currentEmail })
-      });
-
-      const data = await response.json();
-      console.debug('OTP resend response received.', { status: response.status, success: data.success, expiresIn: data.expiresIn });
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to resend OTP');
-        setResendLoading(false);
-        return;
-      }
-
-      // Reset OTP inputs
-      setOtp(['', '', '', '', '', '']);
-      setAttemptsRemaining(3);
-      setResendCountdown(30);
-      setResendLoading(false);
-      inputRefs.current[0]?.focus();
-    } catch (err) {
-      console.error('Resend error:', err);
-      setError('Failed to resend OTP. Please try again.');
-      setResendLoading(false);
-    }
-  };
-
-  const formatCountdown = (seconds: number) => {
-    return `00:${seconds.toString().padStart(2, '0')}`;
+    await sendLink(editedEmail);
   };
 
   return (
     <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col items-center justify-center p-4">
-      <AnimatePresence mode="wait">
-        {success ? (
-          <motion.div
-            key="success"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center bg-white rounded-[28px] border border-[#E4DFF5] p-8 shadow-xl shadow-[#553BE2]/5 w-full max-w-md"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="w-20 h-20 bg-[#553BE2] rounded-full flex items-center justify-center mb-6 shadow-lg shadow-[#553BE2]/25"
-            >
-              <Check className="w-10 h-10 text-white" strokeWidth={3} />
-            </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-white rounded-[28px] border border-[#E4DFF5] p-7 shadow-xl shadow-[#553BE2]/5"
+      >
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#F2EEFF] text-[#553BE2]">
+          {success ? <Check className="h-8 w-8" /> : <Mail className="h-8 w-8" />}
+        </div>
+        <h1 className="text-2xl font-bold text-[#131426] text-center mb-2">
+          {success ? 'Email Verified' : 'Check Your Email'}
+        </h1>
+        <p className="text-[#5E667A] text-center">
+          {success
+            ? 'Your account is ready. Continuing to profile setup...'
+            : 'We sent you a secure sign-in link. Open it in this same browser to verify your email and finish signup.'}
+        </p>
+        <p className="text-[#131426] font-semibold text-center mt-2 break-all">{currentEmail}</p>
 
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-2xl font-bold text-[#131426] text-center mb-2"
-            >
-              Email Verified
-            </motion.h2>
+        {error && (
+          <div className="mt-6 flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
 
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="text-[#5E667A] text-center"
-            >
-              Redirecting to profile setup...
-            </motion.p>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="form"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md bg-white rounded-[28px] border border-[#E4DFF5] p-7 shadow-xl shadow-[#553BE2]/5"
-          >
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-[#131426] mb-2">
-                Verify Your Email
-              </h1>
-              <p className="text-[#5E667A]">
-                We've sent a 6-digit verification code to
-              </p>
-              <p className="text-[#131426] font-semibold mt-1">{currentEmail}</p>
-            </div>
-
-            {/* Change Email Button - Shows unless editing */}
-            {!isEditingEmail && (
-              <button
-                onClick={() => setIsEditingEmail(true)}
-                className="w-full px-4 py-2.5 mb-8 text-sm font-semibold text-[#553BE2] bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg hover:bg-[#ECE7FF] transition-all duration-200 active:scale-95"
-              >
-                Use Different Email
-              </button>
-            )}
-
-            {/* Email Edit Form */}
-            {isEditingEmail && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-8 p-4 bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg"
-              >
-                <label className="text-xs font-black text-[#5E667A] uppercase tracking-widest block mb-2">Change Email Address</label>
-                <div className="flex gap-2 mb-3">
-                  <input
-                    type="email"
-                    value={editedEmail}
-                    onChange={(e) => setEditedEmail(e.target.value)}
-                    placeholder="new@email.com"
-                    className="flex-1 px-3 py-2 text-sm bg-white text-[#131426] border border-[#E4DFF5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#553BE2]"
-                  />
-                </div>
-                <div className="flex gap-2">
+        {!success && (
+          <>
+            {isEditingEmail ? (
+              <div className="mt-6 p-4 bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg">
+                <label htmlFor="verification-email" className="text-xs font-black text-[#5E667A] uppercase tracking-widest block mb-2">
+                  Change Email Address
+                </label>
+                <input
+                  id="verification-email"
+                  type="email"
+                  value={editedEmail}
+                  onChange={(event) => setEditedEmail(event.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white text-[#131426] border border-[#E4DFF5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#553BE2]"
+                  autoComplete="email"
+                />
+                <div className="flex gap-2 mt-3">
                   <button
                     onClick={handleChangeEmail}
                     disabled={resendLoading}
-                    className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-[#553BE2] rounded-lg hover:bg-[#462CC9] disabled:opacity-50 transition-all"
+                    className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-[#553BE2] rounded-lg disabled:opacity-50"
                   >
-                    {resendLoading ? 'Sending...' : 'Send OTP'}
+                    {resendLoading ? 'Sending...' : 'Send Link'}
                   </button>
                   <button
                     onClick={() => {
                       setIsEditingEmail(false);
                       setEditedEmail(currentEmail);
                     }}
-                    className="flex-1 px-3 py-2 text-sm font-semibold text-[#5E667A] bg-white border border-[#E4DFF5] rounded-lg hover:bg-[#F2EEFF] transition-all"
+                    className="flex-1 px-3 py-2 text-sm font-semibold text-[#5E667A] bg-white border border-[#E4DFF5] rounded-lg"
                   >
                     Cancel
                   </button>
                 </div>
-              </motion.div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsEditingEmail(true)}
+                className="w-full mt-6 px-4 py-2.5 text-sm font-semibold text-[#553BE2] bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg"
+              >
+                Use Different Email
+              </button>
             )}
 
-            {/* OTP Input Boxes */}
-            <div className="mb-8">
-              <div className="flex gap-3 mb-6">
-                {otp.map((digit, index) => (
-                  <motion.input
-                    key={index}
-                    ref={(el) => {
-                      inputRefs.current[index] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOTPChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={handlePaste}
-                    disabled={loading || success}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="w-12 h-14 text-center text-2xl font-bold text-[#131426] bg-[#F2EEFF]/60 border-2 border-[#E4DFF5] rounded-lg focus:border-[#553BE2] focus:bg-white focus:outline-none disabled:bg-[#F2EEFF] transition-all duration-200"
-                  />
-                ))}
-              </div>
-
-              {/* Error Message */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg mb-6"
-                  >
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700">{error}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Resend Section */}
-              <div className="text-center mb-6">
-                <p className="text-sm text-[#5E667A] mb-3">
-                  Didn't receive the code?
-                </p>
-
-                {resendCountdown > 0 ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <button
-                      disabled
-                      className="text-sm font-medium text-[#8E96AA] cursor-not-allowed"
-                    >
-                      Resend OTP
-                    </button>
-                    <p className="text-xl font-mono font-bold text-[#131426]">
-                      {formatCountdown(resendCountdown)}
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleResendOTP}
-                    disabled={resendLoading}
-                    className="text-sm font-medium text-[#553BE2] hover:text-[#462CC9] transition-colors disabled:text-[#8E96AA] flex items-center justify-center gap-2 mx-auto"
-                  >
-                    {resendLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      'Resend OTP'
-                    )}
-                  </button>
-                )}
-              </div>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-[#5E667A] mb-3">Didn't receive the email?</p>
+              <button
+                onClick={handleResend}
+                disabled={resendCountdown > 0 || resendLoading || loading}
+                className="text-sm font-medium text-[#553BE2] disabled:text-[#8E96AA] flex items-center justify-center gap-2 mx-auto"
+              >
+                {resendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {resendLoading ? 'Sending...' : resendCountdown > 0 ? `Resend link in 00:${String(resendCountdown).padStart(2, '0')}` : 'Resend sign-in link'}
+              </button>
             </div>
 
-            {/* Verify Button */}
-            <motion.button
-              onClick={handleVerify}
-              disabled={!isOTPComplete || loading}
-              whileHover={!loading && isOTPComplete ? { scale: 1.02 } : undefined}
-              whileTap={!loading && isOTPComplete ? { scale: 0.98 } : undefined}
-              className={`w-full py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                isOTPComplete && !loading
-                  ? 'bg-[#553BE2] hover:bg-[#462CC9] text-white shadow-lg shadow-[#553BE2]/25'
-                  : 'bg-[#ECE7FF] text-[#8E96AA] cursor-not-allowed'
-              }`}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                'Verify Email'
-              )}
-            </motion.button>
-
-            {/* Footer Text */}
-            <p className="text-xs text-[#5E667A] text-center mt-6">
-              This code expires in 5 minutes
-            </p>
-          </motion.div>
+          </>
         )}
-      </AnimatePresence>
+
+        <p className="text-xs text-[#5E667A] text-center mt-6">
+          Firebase securely handles the verification email. No custom email domain is needed.
+        </p>
+      </motion.div>
     </div>
   );
 };
