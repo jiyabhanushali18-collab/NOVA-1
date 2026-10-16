@@ -36,6 +36,11 @@ export const useActiveAccount = (opts?: { onAccountSwitched?: (acc?: NovaAccount
           username: (profile.username as string) || (profile.email as string) || activeUid,
           email: (profile.email as string) || '',
           name: profile.name as string | undefined,
+          phone: profile.phone as string | undefined,
+          address: profile.address as string | undefined,
+          pinCode: profile.pinCode as string | undefined,
+          deliveryAddress: profile.deliveryAddress,
+          savedAddresses: profile.savedAddresses,
           profilePhoto: profile.profilePhoto as string | undefined,
           createdAt: profile.createdAt ? Number(profile.createdAt) : Date.now()
         };

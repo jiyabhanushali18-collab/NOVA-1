@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { isSignInWithEmailLink } from 'firebase/auth';
-import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress } from './types';
+import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
 import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
 
@@ -396,6 +396,36 @@ const getDefaultProductColor = (product?: ProductItem) => (
   product?.variants?.[0]?.colorName || product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
 );
 
+const getAccountPhone = (account: NovaAccount) => {
+  const accountPhone = account.phone?.trim()
+    || account.deliveryAddress?.phone?.trim()
+    || account.savedAddresses?.find((address) => address.phone?.trim())?.phone?.trim();
+  if (accountPhone) return accountPhone;
+
+  try {
+    const registeredUsers = JSON.parse(localStorage.getItem('nova_registered_users') || '[]');
+    if (Array.isArray(registeredUsers)) {
+      const accountEmail = account.email.trim().toLowerCase();
+      const storedAccount = registeredUsers.find((user: unknown) => {
+        if (!user || typeof user !== 'object') return false;
+        const record = user as Record<string, unknown>;
+        return record.uid === account.uid
+          || (accountEmail && typeof record.email === 'string' && record.email.trim().toLowerCase() === accountEmail);
+      });
+      if (storedAccount && typeof storedAccount.phone === 'string' && storedAccount.phone.trim()) {
+        return storedAccount.phone.trim();
+      }
+    }
+  } catch (error) {
+    console.error('Could not read the saved account phone number:', error);
+  }
+
+  if (localStorage.getItem('novaSelectedAccountUid') === account.uid) {
+    return localStorage.getItem('userPhone')?.trim() || '';
+  }
+  return '';
+};
+
 export default function App() {
   const { t } = useI18n();
   // Session authorization states loaded from localStorage
@@ -508,7 +538,7 @@ export default function App() {
       if (acc) {
         const nextName = acc.name || acc.username || '';
         const nextEmail = acc.email || '';
-        const nextPhone = acc.phone || '';
+        const nextPhone = getAccountPhone(acc);
         const nextAddr = acc.address || (acc.deliveryAddress ? formatDeliveryAddress(acc.deliveryAddress) : '');
         const nextPin = acc.pinCode || acc.deliveryAddress?.pinCode || '';
         setUserName(nextName);

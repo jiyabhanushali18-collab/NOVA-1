@@ -505,7 +505,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   return (
     <div className="space-y-6">
       {/* User profile picture details card */}
-      <section className="glass-card rounded-3xl p-5 flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+      <section className={`rounded-3xl p-5 flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300 border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-transparent'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-[#ECE7FF]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="relative z-10 shrink-0">
           <button
@@ -531,30 +531,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         <div className="flex-grow min-w-0 relative z-10 leading-normal">
           <div className="flex items-center justify-between gap-1 mb-1">
-            <h2 className="text-xl font-bold text-[#131426] truncate">{userName}</h2>
-            <span className="shrink-0 bg-[#F2EEFF] text-[#553BE2] px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase">Pro</span>
+            <h2 className={`text-xl font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{userName}</h2>
+            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase ${isDarkMode ? 'bg-indigo-500/10 text-indigo-200' : 'bg-[#F2EEFF] text-[#553BE2]'}`}>Pro</span>
           </div>
           
-          <p className="text-xs text-[#5E667A] truncate flex items-center gap-1.5 mb-1 bg-[#F2EEFF] p-0.5 rounded px-1.5">
+          <p className={`text-xs truncate flex items-center gap-1.5 mb-1 p-0.5 rounded px-1.5 ${isDarkMode ? 'text-slate-200 bg-slate-700/80' : 'text-[#5E667A] bg-[#F2EEFF]'}`}>
             <span className="material-symbols-outlined text-[14px]">mail</span> {profileEmail}
           </p>
-          <p className="text-xs text-[#5E667A] truncate flex items-center gap-1.5 mb-1 bg-[#F2EEFF] p-0.5 rounded px-1.5">
+          <p className={`text-xs truncate flex items-center gap-1.5 mb-1 p-0.5 rounded px-1.5 ${isDarkMode ? 'text-slate-200 bg-slate-700/80' : 'text-[#5E667A] bg-[#F2EEFF]'}`}>
             <span className="material-symbols-outlined text-[14px]">phone</span> {profilePhone}
           </p>
-          <p className="text-xs text-[#5E667A] truncate flex items-center gap-1.5">
+          <p className={`text-xs truncate flex items-center gap-1.5 ${isDarkMode ? 'text-slate-200' : 'text-[#5E667A]'}`}>
             <span className="material-symbols-outlined text-[14px]">location_on</span> {profileLocation}
           </p>
         </div>
       </section>
 
       {analysisProfile && (
-        <section className="glass-card rounded-2xl p-4 shadow-sm space-y-3">
+        <section className={`rounded-2xl p-4 shadow-sm space-y-3 border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-transparent'}`}>
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold text-[#131426] flex items-center gap-2">
+            <h3 className={`text-base font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
               <span className="material-symbols-outlined text-[#553BE2] text-[20px]">auto_awesome</span>
               NOVA AI Profile
             </h3>
-            <span className="rounded-full bg-[#F2EEFF] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#553BE2]">
+            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${isDarkMode ? 'bg-indigo-500/10 text-indigo-200' : 'bg-[#F2EEFF] text-[#553BE2]'}`}>
               Synced
             </span>
           </div>
@@ -569,15 +569,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               ['Fit', analysisProfile.recommendedFit],
               ['Eyewear', analysisProfile.eyewearSuggestions.join(', ')]
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-[#E4DFF5] bg-[#F2EEFF] p-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-[#5E667A]">{label}</p>
-                <p className="mt-1 text-xs font-bold leading-5 text-[#131426]">{value || 'unknown'}</p>
+              <div key={label} className={`rounded-xl border p-3 ${isDarkMode ? 'border-slate-700 bg-slate-800/80' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
+                <p className={`text-[9px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{label}</p>
+                <p className={`mt-1 text-xs font-bold leading-5 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{value || 'unknown'}</p>
               </div>
             ))}
           </div>
-          <div className="rounded-xl border border-[#E4DFF5] bg-[#F2EEFF] p-3">
-            <p className="text-[9px] font-black uppercase tracking-widest text-[#553BE2]">Recommended Colors</p>
-            <p className="mt-1 text-xs font-bold text-[#131426]">
+          <div className={`rounded-xl border p-3 ${isDarkMode ? 'border-slate-700 bg-slate-800/80' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
+            <p className={`text-[9px] font-black uppercase tracking-widest ${isDarkMode ? 'text-indigo-200' : 'text-[#553BE2]'}`}>Recommended Colors</p>
+            <p className={`mt-1 text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
               {analysisProfile.recommendedColors.length > 0 ? analysisProfile.recommendedColors.join(' • ') : 'unknown'}
             </p>
           </div>
@@ -605,20 +605,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       )}
 
       {/* NOVA Reward Points card */}
-      <section className="glass-card rounded-2xl p-4 flex items-center justify-between shadow-sm">
+      <section className={`rounded-2xl p-4 flex items-center justify-between shadow-sm border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-transparent'}`}>
         <div className="space-y-0.5">
-          <p className="text-[10px] font-bold text-[#5E667A] uppercase tracking-widest flex items-center gap-1">
+          <p className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] text-[14px]">stars</span> NOVA Points
           </p>
           <h3 className="text-2xl font-extrabold text-[#553BE2]">{novaPoints.toLocaleString()}</h3>
         </div>
         
         <div className="text-right">
-          <p className="text-xs font-bold text-[#131426]">Level {novaLevel}</p>
-          <div className="w-32 h-1.5 bg-[#ECE7FF] rounded-full mt-1.5 overflow-hidden">
+          <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Level {novaLevel}</p>
+          <div className={`w-32 h-1.5 rounded-full mt-1.5 overflow-hidden ${isDarkMode ? 'bg-slate-700' : 'bg-[#ECE7FF]'}`}>
             <div className="h-full bg-[#553BE2] rounded-full" style={{ width: `${Math.max(0, Math.min(100, levelProgress))}%` }}></div>
           </div>
-          <p className="text-[10px] text-[#5E667A] mt-1">
+          <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
             {pointsToNextLevel > 0 ? `Next level in ${pointsToNextLevel} pts` : 'Max level reached'}
           </p>
         </div>
@@ -627,7 +627,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Measurements Component segment */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-[#131426]">My Measurements</h3>
+          <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>My Measurements</h3>
           <button 
             onClick={() => setIsEditModalOpen(true)}
             className="text-xs font-semibold text-[#553BE2] flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -635,13 +635,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             Edit <span className="material-symbols-outlined text-sm leading-none">edit</span>
           </button>
         </div>
-        <div className="glass-card rounded-2xl p-4">
-          <div className="grid grid-cols-5 gap-1 text-center divide-x divide-[#E4DFF5]">
+        <div className={`rounded-2xl p-4 border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-transparent'}`}>
+          <div className={`grid grid-cols-5 gap-1 text-center divide-x ${isDarkMode ? 'divide-slate-700' : 'divide-[#E4DFF5]'}`}>
             {measurements.map((m, idx) => (
               <div key={m.label} className="flex flex-col items-center px-1">
                 <span className="material-symbols-outlined text-[#553BE2] text-lg mb-1 leading-none">{m.iconName}</span>
-                <span className="text-[9px] font-medium text-[#5E667A] leading-none mb-1">{m.label}</span>
-                <span className="text-xs font-bold text-[#131426] truncate block w-full">{m.value}</span>
+                <span className={`text-[9px] font-medium leading-none mb-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{m.label}</span>
+                <span className={`text-xs font-bold truncate block w-full ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{m.value}</span>
               </div>
             ))}
           </div>
@@ -650,60 +650,60 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Preferences Component */}
       <section className="space-y-3">
-        <h3 className="text-base font-bold text-[#131426]">My Preferences</h3>
+        <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>My Preferences</h3>
         <div className="grid grid-cols-2 gap-3">
-          <div className="glass-card rounded-2xl p-3 flex flex-col items-center text-center gap-1 hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-[#E4DFF5]">
+          <div className={`rounded-2xl p-3 flex flex-col items-center text-center gap-1 transition-colors cursor-pointer border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600' : 'glass-card border-transparent hover:border-[#E4DFF5]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] text-xl leading-none">style</span>
-            <span className="text-[10px] font-bold text-[#5E667A] uppercase tracking-wider">Style</span>
-            <span className="text-xs font-bold text-[#131426]">{preferences.find(p => p.label === 'Style')?.value || 'Streetwear'}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Style</span>
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{preferences.find(p => p.label === 'Style')?.value || 'Streetwear'}</span>
           </div>
 
-          <div className="glass-card rounded-2xl p-3 flex flex-col items-center text-center gap-1 hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-[#E4DFF5]">
+          <div className={`rounded-2xl p-3 flex flex-col items-center text-center gap-1 transition-colors cursor-pointer border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600' : 'glass-card border-transparent hover:border-[#E4DFF5]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] text-xl leading-none">fit_screen</span>
-            <span className="text-[10px] font-bold text-[#5E667A] uppercase tracking-wider">Fit</span>
-            <span className="text-xs font-bold text-[#131426]">{preferences.find(p => p.label === 'Fit')?.value || 'Regular'}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Fit</span>
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{preferences.find(p => p.label === 'Fit')?.value || 'Regular'}</span>
           </div>
 
-          <div className="glass-card rounded-2xl p-3 flex flex-col items-center text-center gap-1 hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-[#E4DFF5]">
+          <div className={`rounded-2xl p-3 flex flex-col items-center text-center gap-1 transition-colors cursor-pointer border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600' : 'glass-card border-transparent hover:border-[#E4DFF5]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] text-xl leading-none">palette</span>
-            <span className="text-[10px] font-bold text-[#5E667A] uppercase tracking-wider">Colors</span>
-            <span className="text-xs font-bold text-[#131426]">{preferences.find(p => p.label === 'Colors')?.value || 'Mix'}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Colors</span>
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{preferences.find(p => p.label === 'Colors')?.value || 'Mix'}</span>
           </div>
 
-          <div className="glass-card rounded-2xl p-3 flex flex-col items-center text-center gap-1 hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-[#E4DFF5]">
+          <div className={`rounded-2xl p-3 flex flex-col items-center text-center gap-1 transition-colors cursor-pointer border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600' : 'glass-card border-transparent hover:border-[#E4DFF5]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] text-xl leading-none">event</span>
-            <span className="text-[10px] font-bold text-[#5E667A] uppercase tracking-wider">Occasion</span>
-            <span className="text-xs font-bold text-[#131426]">{preferences.find(p => p.label === 'Occasion')?.value || 'Casual'}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Occasion</span>
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{preferences.find(p => p.label === 'Occasion')?.value || 'Casual'}</span>
           </div>
         </div>
 
         {/* Athletic body fit indicator */}
         <div className="grid grid-cols-2 gap-3 mt-3">
-          <div className="glass-card rounded-2xl p-4 flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#553BE2] text-3xl opacity-75">accessibility_new</span>
+          <div className={`rounded-2xl p-4 flex items-center gap-3 border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-[#E4DFF5]'}`}>
+            <span className={`material-symbols-outlined text-3xl opacity-75 ${isDarkMode ? 'text-indigo-300' : 'text-[#553BE2]'}`}>accessibility_new</span>
             <div className="flex-1 leading-tight">
-              <p className="text-[10px] font-bold text-[#5E667A]">BODY TYPE</p>
-              <p className="text-xs font-bold text-[#131426] mt-0.5">Athletic</p>
-              <div className="w-full h-1 bg-[#ECE7FF] rounded-full mt-1.5 overflow-hidden">
+              <p className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>BODY TYPE</p>
+              <p className={`text-xs font-bold mt-0.5 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Athletic</p>
+              <div className={`w-full h-1 rounded-full mt-1.5 overflow-hidden ${isDarkMode ? 'bg-slate-700' : 'bg-[#ECE7FF]'}`}>
                 <div className="h-full bg-[#553BE2]" style={{ width: '75%' }}></div>
               </div>
-              <p className="text-[8px] text-right font-bold text-[#5E667A] mt-1">75% Match</p>
+              <p className={`text-[8px] text-right font-bold mt-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>75% Match</p>
             </div>
           </div>
 
-          <div className="glass-card rounded-2xl p-4 flex flex-col justify-center">
-            <p className="text-[9px] font-bold text-[#5E667A] flex items-center gap-1 uppercase tracking-wider">
+          <div className={`rounded-2xl p-4 flex flex-col justify-center border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-[#E4DFF5]'}`}>
+            <p className={`text-[9px] font-bold flex items-center gap-1 uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
               <span className="material-symbols-outlined text-xs">straighten</span> Size Recommend
             </p>
             <div className="flex justify-between items-end mt-2 leading-none">
               <div>
-                <span className="text-[8px] font-bold text-[#5E667A] block mb-0.5">TOPWEAR</span>
-                <span className="text-base font-extrabold text-[#131426]">M</span>
+                <span className={`text-[8px] font-bold block mb-0.5 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>TOPWEAR</span>
+                <span className={`text-base font-extrabold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>M</span>
               </div>
-              <div className="h-6 w-px bg-[#E4DFF5]"></div>
+              <div className={`h-6 w-px ${isDarkMode ? 'bg-slate-600' : 'bg-[#E4DFF5]'}`}></div>
               <div className="text-right">
-                <span className="text-[8px] font-bold text-[#5E667A] block mb-0.5">BOTTOM</span>
-                <span className="text-base font-extrabold text-[#131426]">32</span>
+                <span className={`text-[8px] font-bold block mb-0.5 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>BOTTOM</span>
+                <span className={`text-base font-extrabold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>32</span>
               </div>
             </div>
           </div>
@@ -720,25 +720,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Persistent Saved Items (Wishlist) Section */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-[#131426] flex items-center gap-1.5">
+          <h3 className={`text-base font-bold flex items-center gap-1.5 ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] text-lg leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
             Saved Items {wishlist.length > 0 && `(${wishlist.length})`}
           </h3>
           {wishlist.length > 0 && (
-            <span className="text-[10px] bg-[#F2EEFF] text-[#553BE2] px-2 py-0.5 rounded-full font-bold">
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isDarkMode ? 'bg-indigo-500/10 text-indigo-200' : 'bg-[#F2EEFF] text-[#553BE2]'}`}>
               Tap bag to add
             </span>
           )}
         </div>
 
         {wishlist.length === 0 ? (
-          <div className="glass-card rounded-2xl p-6 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#F2EEFF] flex items-center justify-center text-[#553BE2] mx-auto border border-[#E4DFF5]">
+          <div className={`rounded-2xl p-6 text-center space-y-3 border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-[#E4DFF5]'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto border ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-slate-700' : 'bg-[#F2EEFF] text-[#553BE2] border-[#E4DFF5]'}`}>
               <span className="material-symbols-outlined text-2xl font-bold">favorite_border</span>
             </div>
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-[#131426]">Wishlist is empty</h4>
-              <p className="text-[10px] text-[#5E667A] leading-normal max-w-[220px] mx-auto">
+              <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Wishlist is empty</h4>
+              <p className={`text-[10px] leading-normal max-w-[220px] mx-auto ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
                 Save your favorite styling coordinates and match pieces here!
               </p>
             </div>
@@ -837,7 +837,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Quick Actions grids */}
       <section className="space-y-3">
-        <h3 className="text-base font-bold text-[#131426]">Quick Actions</h3>
+        <h3 className={`text-base font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>Quick Actions</h3>
         <div className="grid grid-cols-4 gap-2">
           {[
             { label: 'Saved\nLooks', icon: 'favorite', target: 'ar-tryon' },
@@ -848,12 +848,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <button 
               key={act.label}
               onClick={() => onNavigate(act.target as any)}
-              className="glass-card rounded-2xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-white transition-all group border border-transparent hover:border-[#E4DFF5]"
+              className={`rounded-2xl p-3 flex flex-col items-center justify-center gap-2 transition-all group border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600' : 'glass-card border-transparent hover:border-[#E4DFF5]'}`}
             >
-              <div className="w-10 h-10 rounded-full bg-[#F2EEFF] flex items-center justify-center text-[#553BE2] group-hover:scale-105 transition-transform shadow-sm">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300' : 'bg-[#F2EEFF] text-[#553BE2]'}`}>
                 <span className="material-symbols-outlined text-lg leading-none">{act.icon}</span>
               </div>
-              <span className="text-[9px] font-bold text-[#5E667A] text-center leading-tight whitespace-pre-line">{act.label}</span>
+              <span className={`text-[9px] font-bold text-center leading-tight whitespace-pre-line ${isDarkMode ? 'text-slate-200' : 'text-[#5E667A]'}`}>{act.label}</span>
             </button>
           ))}
         </div>
