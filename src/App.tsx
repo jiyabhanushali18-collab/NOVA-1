@@ -24,6 +24,8 @@ import { SetupPreferencesView } from './components/SetupPreferencesView';
 import { VirtualWardrobeView } from './components/VirtualWardrobeView';
 import { ProfileAnalysisView } from './components/ProfileAnalysisView';
 import { LegalDocumentView } from './components/LegalDocumentView';
+import { BottomNavBar } from './components/navigation/BottomNavBar';
+import { QuickHubModal } from './components/navigation/QuickHubModal';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
@@ -1212,6 +1214,8 @@ export default function App() {
 
   // Local modal to quickly view wishlist without navigating away
   const [isWishlistOpen, setIsWishlistOpen] = useState<boolean>(false);
+  // NOVA Hub quick navigation bottom sheet
+  const [isQuickHubOpen, setIsQuickHubOpen] = useState<boolean>(false);
 
   const handleToggleWishlist = (productId: string) => {
     setWishlist((prev) => {
@@ -2111,7 +2115,7 @@ export default function App() {
       )}
 
       {/* 2. Primary Page Contents Body (with comfortable padding, except AR which covers background fully) */}
-      <main className={`flex-grow relative transition-colors duration-300 ${isImmersiveAR ? '' : `px-4 py-3 pb-24 ${isDarkMode ? 'bg-slate-950/10' : 'bg-transparent'}`}`}>
+      <main className={`flex-grow relative transition-colors duration-300 ${isImmersiveAR ? '' : `px-4 py-3 pb-28 ${isDarkMode ? 'bg-slate-950/10' : 'bg-transparent'}`}`}>
         {requiresConsentRenewal && !isImmersiveAR && (
           <div
             role="region"
@@ -2210,53 +2214,20 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* 3. Bottom persistent device Navigation Tab-Bar (Hidden during immersive Tryon filtering) */}
+      {/* 3. Bottom persistent device Navigation Tab-Bar & NOVA Hub Modal (Hidden during immersive Tryon filtering) */}
       {!isImmersiveAR && (
-        <nav className={`fixed bottom-0 inset-x-0 max-w-md mx-auto backdrop-blur-2xl px-5 py-2 pb-5 flex items-center justify-between z-40 shadow-2xl transition-colors duration-300 ${
-          isDarkMode
-            ? 'bg-slate-900/85 border-t border-slate-800/50 shadow-slate-950/50'
-            : 'bg-white/95 border-t border-[#E4DFF5] shadow-[0_-8px_24px_-4px_rgba(85,59,226,0.07),0_-2px_6px_-1px_rgba(19,20,38,0.03)]'
-        }`}>
-          <button 
-            onClick={() => navigate('home')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('home') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
-          >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('home') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('home') ? "'FILL' 1" : undefined }}>home</span>
-            <span className="text-[10px] font-bold">{t('nav.home')}</span>
-          </button>
-
-          <button 
-            onClick={() => navigate('scan-outfit')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('scan') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
-          >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('scan') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('scan') ? "'FILL' 1" : undefined }}>center_focus_strong</span>
-            <span className="text-[10px] font-bold">{t('nav.scan')}</span>
-          </button>
-
-          <button 
-            onClick={() => navigate('wardrobe')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('wardrobe') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
-          >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('wardrobe') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('wardrobe') ? "'FILL' 1" : undefined }}>checkroom</span>
-            <span className="text-[10px] font-bold">{t('nav.wardrobe')}</span>
-          </button>
-
-          <button 
-            onClick={() => navigate('chat')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('chat') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
-          >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('chat') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('chat') ? "'FILL' 1" : undefined }}>forum</span>
-            <span className="text-[10px] font-bold">{t('nav.stylist')}</span>
-          </button>
-
-          <button 
-            onClick={() => navigate('profile')}
-            className={`group flex flex-col items-center space-y-1 py-1.5 px-3 rounded-2xl transition-all active:scale-95 ${isTabActive('profile') ? 'text-[#553BE2]' : 'text-[#8E96AA] hover:text-[#553BE2]'}`}
-          >
-            <span className={`material-symbols-outlined text-[20px] rounded-xl px-2 py-0.5 transition-colors ${isTabActive('profile') ? 'bg-[#F2EEFF]' : ''}`} style={{ fontVariationSettings: isTabActive('profile') ? "'FILL' 1" : undefined }}>person</span>
-            <span className="text-[10px] font-bold">{t('nav.profile')}</span>
-          </button>
-        </nav>
+        <>
+          <BottomNavBar
+            currentScreen={screen}
+            onNavigate={navigate}
+            onOpenQuickHub={() => setIsQuickHubOpen(true)}
+          />
+          <QuickHubModal
+            isOpen={isQuickHubOpen}
+            onClose={() => setIsQuickHubOpen(false)}
+            onNavigate={navigate}
+          />
+        </>
       )}
     </div>
   );
