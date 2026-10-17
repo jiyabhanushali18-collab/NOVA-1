@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { isSignInWithEmailLink } from 'firebase/auth';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
-import { products } from './data';
+import { products, swipeModels, recentScans as staticRecentScans } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
 
 // Modular View Imports
@@ -882,7 +882,7 @@ export default function App() {
     return levelThresholds.find((threshold) => threshold > Math.max(points, 100)) ?? levelThresholds[levelThresholds.length - 1];
   };
 
-  const awardNovaPoints = (amount: number, description: string) => {
+  const awardNovaPoints = (amount: number, description: string, associatedImage?: string) => {
     if (amount <= 0) return;
     setNovaPoints((prevPoints) => {
       const nextPoints = Math.max(100, prevPoints + amount);
@@ -894,7 +894,7 @@ export default function App() {
         badge: 'NOVA Rewards',
         icon: 'stars',
         color: 'bg-amber-500/80',
-        imageUrl: ''
+        imageUrl: associatedImage || ''
       });
       return nextPoints;
     });
@@ -1290,18 +1290,28 @@ export default function App() {
     const currentScreen = screenRef.current;
     const time = new Date().toLocaleString();
     if (to === 'ar-tryon') {
-      const prod = productsData[opts?.productId || selectedProductId];
-      addRecentActivity({ id: Date.now().toString(), name: prod?.name || 'AR Try-On', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod?.imageUrl || '' });
-      awardNovaPoints(25, 'Engaged in AR Try-On');
+      const prodId = opts?.productId || selectedProductId;
+      const prod = productsData[prodId] || products[prodId];
+      const tryonImg = (prod && prod.imageUrl) ? prod.imageUrl : (swipeModels[selectedColor] || swipeModels['Lavender'] || '');
+      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} AR Try-On` : 'AR Virtual Fitting', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: tryonImg });
+      awardNovaPoints(25, 'Engaged in AR Try-On', tryonImg);
+    } else if (to === 'tryon-result') {
+      const prodId = opts?.productId || selectedProductId;
+      const prod = productsData[prodId] || products[prodId];
+      const tryonImg = swipeModels[selectedColor] || (prod ? prod.imageUrl : swipeModels['Lavender']);
+      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} Try-On` : 'AR Try-On Result', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: tryonImg });
     } else if (to === 'camera-scan') {
-      const prod = productsData[opts?.productId || selectedProductId];
-      addRecentActivity({ id: Date.now().toLocaleString(), name: prod?.name || 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: prod?.imageUrl || '' });
+      const prodId = opts?.productId || selectedProductId;
+      const prod = productsData[prodId] || products[prodId];
+      const scanImg = prod?.imageUrl || '';
+      addRecentActivity({ id: Date.now().toLocaleString(), name: prod?.name ? `${prod.name} Scan` : 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: scanImg });
     } else if (to === 'product-details') {
       const id = opts?.productId || selectedProductId;
-      const prod = productsData[id];
+      const prod = productsData[id] || products[id];
       if (prod) addRecentActivity({ id: Date.now().toString(), name: prod.name, time, badge: 'Viewed', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod.imageUrl });
     } else if (to === 'scan-outfit') {
-      addRecentActivity({ id: Date.now().toString(), name: 'Scan Outfit', time, badge: 'Scan', icon: 'center_focus_strong', color: 'bg-teal-600/80', imageUrl: '' });
+      const scanImg = staticRecentScans[0]?.imageUrl || '';
+      addRecentActivity({ id: Date.now().toString(), name: 'Scan Outfit', time, badge: 'Scan', icon: 'center_focus_strong', color: 'bg-teal-600/80', imageUrl: scanImg });
     } else if (to === 'wardrobe') {
       addRecentActivity({ id: Date.now().toString(), name: 'Virtual Wardrobe', time, badge: 'Wardrobe', icon: 'checkroom', color: 'bg-indigo-600/80', imageUrl: '' });
     }
@@ -1349,11 +1359,22 @@ export default function App() {
   const [selectedGarment, setSelectedGarment] = useState<string>('Lavender');
   const [selectedProductId, setSelectedProductId] = useState<string>('lavender-hoodie');
 
-  const handleScannedProductMatched = (product: ProductItem) => {
+  const handleScannedProductMatched = (product: ProductItem, scanImageUrl?: string) => {
     if (!product?.id) return;
     setProductsData((current) => current[product.id] ? current : { ...current, [product.id]: product });
     setSelectedProductId(product.id);
     setSelectedColor(getDefaultProductColor(product));
+
+    const actualImg = scanImageUrl || product.imageUrl || '';
+    addRecentActivity({
+      id: Date.now().toString(),
+      name: `${product.name} Scan`,
+      time: new Date().toLocaleString(),
+      badge: 'Camera Scan',
+      icon: 'photo_camera',
+      color: 'bg-secondary/80',
+      imageUrl: actualImg
+    });
   };
 
   // Interactive Cart Handlers
@@ -1419,7 +1440,7 @@ export default function App() {
             recentActivity={recentActivityState}
             onToggleWishlist={handleToggleWishlist}
             isDarkMode={isDarkMode}
-            products={productsData}
+            products={{ ...products, ...productsData }}
             onSelectProduct={(id) => {
               setSelectedProductId(id);
               const prod = productsData[id] || products[id];

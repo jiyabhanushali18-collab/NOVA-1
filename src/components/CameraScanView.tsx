@@ -6,7 +6,7 @@ import { CameraScanResult, ScanImageSource, ScanProductResult, runCameraScan } f
 
 interface CameraScanViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string }) => void;
-  onProductMatched?: (product: ProductItem) => void;
+  onProductMatched?: (product: ProductItem, scanImageUrl?: string) => void;
   userGender?: string;
 }
 
@@ -117,7 +117,8 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       setScanResult(result);
       if (result.results.length > 0) {
         const bestResult = result.results.reduce((best, entry) => (entry.score > best.score ? entry : best), result.results[0]);
-        onProductMatched?.(bestResult.product);
+        const actualScanImg = bestResult.item?.cropDataUrl || result.compressedImageUrl || bestResult.product?.imageUrl;
+        onProductMatched?.(bestResult.product, actualScanImg);
       }
     } catch (error) {
       const message = error instanceof Error && error.message.includes('fetch products')

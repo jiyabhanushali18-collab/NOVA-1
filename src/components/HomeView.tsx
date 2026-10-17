@@ -1,5 +1,124 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScreenId, ProductItem } from '../types';
+
+const ActivityCardImage: React.FC<{
+  activity: any;
+  matchedProduct?: ProductItem;
+  isDarkMode?: boolean;
+}> = ({ activity, matchedProduct, isDarkMode }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const candidateUrl = useMemo(() => {
+    if (typeof activity.imageUrl === 'string' && activity.imageUrl.trim()) {
+      return activity.imageUrl.trim();
+    }
+    if (matchedProduct?.imageUrl?.trim()) {
+      return matchedProduct.imageUrl.trim();
+    }
+    return '';
+  }, [activity.imageUrl, matchedProduct]);
+
+  useEffect(() => {
+    setImgLoaded(false);
+    setImgError(false);
+  }, [candidateUrl]);
+
+  if (!candidateUrl || imgError) {
+    const isScan = activity.badge === 'Camera Scan' || activity.badge === 'Scan' || activity.name?.toLowerCase().includes('scan');
+    const isAR = activity.badge === 'AR Try-On' || activity.name?.toLowerCase().includes('try-on') || activity.name?.toLowerCase().includes('fitting');
+    const isReward = activity.badge === 'NOVA Rewards' || activity.name?.toLowerCase().includes('reward') || activity.name?.toLowerCase().includes('points');
+    const isWardrobe = activity.badge === 'Wardrobe' || activity.name?.toLowerCase().includes('wardrobe');
+
+    if (isScan) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-[#0D1527] via-[#16223D] to-[#0A101F] text-white relative select-none">
+          <div className="absolute inset-3 pointer-events-none opacity-40">
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-indigo-400 rounded-tl-sm" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-indigo-400 rounded-tr-sm" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-indigo-400 rounded-bl-sm" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-indigo-400 rounded-br-sm" />
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-[#553BE2]/30 border border-[#553BE2]/40 flex items-center justify-center text-indigo-300 mb-2 shadow-inner">
+            <span className="material-symbols-outlined text-2xl">photo_camera</span>
+          </div>
+          <span className="text-[11px] font-bold text-slate-100 tracking-tight leading-tight">Camera Vision</span>
+          <span className="text-[9px] text-indigo-300/80 font-semibold mt-0.5">Scanned Outfit</span>
+        </div>
+      );
+    }
+
+    if (isAR) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-[#1E1045] via-[#2A165E] to-[#12082B] text-white relative select-none">
+          <div className="w-12 h-12 rounded-2xl bg-purple-600/30 border border-purple-400/40 flex items-center justify-center text-purple-200 mb-2 shadow-inner">
+            <span className="material-symbols-outlined text-2xl">view_in_ar</span>
+          </div>
+          <span className="text-[11px] font-bold text-slate-100 tracking-tight leading-tight">AR Fitting</span>
+          <span className="text-[9px] text-purple-300/80 font-semibold mt-0.5">Virtual Try-On</span>
+        </div>
+      );
+    }
+
+    if (isReward) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-[#451A03] via-[#78350F] to-[#291002] text-white relative select-none">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/30 border border-amber-400/40 flex items-center justify-center text-amber-300 mb-2 shadow-inner">
+            <span className="material-symbols-outlined text-2xl">stars</span>
+          </div>
+          <span className="text-[11px] font-bold text-amber-100 tracking-tight leading-tight">NOVA Rewards</span>
+          <span className="text-[9px] text-amber-300/90 font-semibold mt-0.5">+Points Earned</span>
+        </div>
+      );
+    }
+
+    if (isWardrobe) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0A0E1A] text-white relative select-none">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300 mb-2 shadow-inner">
+            <span className="material-symbols-outlined text-2xl">checkroom</span>
+          </div>
+          <span className="text-[11px] font-bold text-slate-100 tracking-tight leading-tight">Wardrobe</span>
+          <span className="text-[9px] text-indigo-300/80 font-semibold mt-0.5">Closet Item</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-[#1E293B] via-[#0F172A] to-[#1E293B] text-white relative select-none">
+        <div className="w-12 h-12 rounded-2xl bg-slate-700/50 border border-slate-600/40 flex items-center justify-center text-slate-300 mb-2 shadow-inner">
+          <span className="material-symbols-outlined text-2xl">{activity.icon || 'apparel'}</span>
+        </div>
+        <span className="text-[11px] font-bold text-slate-200 tracking-tight leading-tight truncate max-w-full px-1">{activity.name || 'Activity'}</span>
+        <span className="text-[9px] text-slate-400 font-semibold mt-0.5">{activity.badge || 'NOVA'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full relative bg-[#F2EEFF]/50 overflow-hidden">
+      {!imgLoaded && (
+        <div className={`absolute inset-0 z-0 flex items-center justify-center ${isDarkMode ? 'bg-slate-800' : 'bg-[#EAE4F8]'} animate-pulse`}>
+          <div className="w-6 h-6 rounded-full border-2 border-indigo-400/30 border-t-[#553BE2] animate-spin" />
+        </div>
+      )}
+
+      <img 
+        alt={activity.name}
+        className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${imgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+        referrerPolicy="no-referrer"
+        src={candidateUrl}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setImgLoaded(true)}
+        onError={() => {
+          setImgLoaded(true);
+          setImgError(true);
+        }}
+      />
+    </div>
+  );
+};
 
 interface HomeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -260,13 +379,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 }}
                 className="flex-none w-36 group cursor-pointer"
               >
-                <div className="h-48 rounded-2xl overflow-hidden relative shadow-[0_8px_20px_-4px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)] border border-[#E4DFF5] bg-white mb-2">
-                  <img 
-                    alt={activity.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                    referrerPolicy="no-referrer"
-                    src={activity.imageUrl}
-                  />
+                <div className={`h-48 rounded-2xl overflow-hidden relative shadow-[0_8px_20px_-4px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)] border border-[#E4DFF5] ${isDarkMode ? 'bg-slate-900' : 'bg-[#0D1527]'} mb-2`}>
+                  <ActivityCardImage activity={activity} matchedProduct={matched} isDarkMode={isDarkMode} />
                   <div className={`absolute top-2.5 left-2.5 ${activity.color} backdrop-blur-md text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center shadow-sm`}> 
                     <span className="material-symbols-outlined text-[10px] mr-1 leading-none">{activity.icon}</span> 
                     {activity.badge}
