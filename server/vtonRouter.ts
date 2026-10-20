@@ -74,7 +74,6 @@ router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, a
   const clientOrigin = String(req.headers.origin || req.headers.referer || '');
   const authHeader = String(req.headers.authorization || '');
   const userId = authHeader ? 'authenticated-user' : 'guest-user';
-
   try {
     const result = await decartKeyPool.generateClientToken({
       expiresIn: 300,
