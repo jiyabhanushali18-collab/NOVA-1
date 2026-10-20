@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Check, Smartphone, BarChart3, HelpCircle, ShieldCheck, Heart, Layout, Tag, MessageSquare, Compass, Info, Scale, CheckSquare } from 'lucide-react';
 
 interface OnboardingProps {

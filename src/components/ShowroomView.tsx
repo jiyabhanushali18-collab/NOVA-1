@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db, firebaseProjectId, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';

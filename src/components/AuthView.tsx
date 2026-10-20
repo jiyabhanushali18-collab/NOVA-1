@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, ChevronDown, LockKeyhole, UserRound, Sparkles, Plus, CalendarDays, Clock3 } from 'lucide-react';
 import { sendFirebaseEmailSignInLink } from '../services/emailLinkAuth';
 import { COUNTRIES, Country } from '../utils/countries';

@@ -9,6 +9,7 @@ interface TryOnResultViewProps {
   onAddToCart: (prodId: string, color: string, size: string) => void;
   selectedProductId?: string;
   onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => void;
+  capturedImage?: string | null;
 }
 
 export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
@@ -17,7 +18,8 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   setSelectedColor,
   onAddToCart,
   selectedProductId = 'lavender-hoodie',
-  onSubmitReview
+  onSubmitReview,
+  capturedImage
 }) => {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
@@ -33,7 +35,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   ];
 
   // Get matching model preview based on selected color or fallback to lavender
-  const currentPreviewImg = swipeModels[selectedColor] || swipeModels['Lavender'];
+  const currentPreviewImg = capturedImage || swipeModels[selectedColor] || swipeModels['Lavender'];
 
   const handleShare = async () => {
     const shareData = {
@@ -109,6 +111,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
           referrerPolicy="no-referrer"
           src={currentPreviewImg}
         />
+        
         
         {/* Holographic scanner camera corners */}
         <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl"></div>

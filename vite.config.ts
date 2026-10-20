@@ -11,7 +11,7 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
-    server: {
+        server: {
       port: 5173,
       // Proxy requests to your Python FastAPI server running on port 8000
       proxy: {
@@ -22,7 +22,7 @@ export default defineConfig(() => {
         },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      hmr: process.env.DISABLE_HMR !== 'true',
+      hmr: false,
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {
         // ignore large native/android build trees to avoid dep-scan restarts

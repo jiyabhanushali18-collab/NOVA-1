@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "node node_modules/tsx/dist/cli.mjs server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -26,14 +26,15 @@
     "firebase": "^10.12.0",
     "firebase-admin": "^14.1.0",
     "jimp": "^1.6.1",
-    "lucide-react": "^0.546.0",
+    "lucide-react": "^0.475.0",
     "motion": "^12.23.24",
     "node-fetch": "^2.7.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "sharp": "^0.35.2",
     "vite": "^6.2.3",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@decartai/sdk": "^0.2.12"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

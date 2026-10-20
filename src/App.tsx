@@ -1358,6 +1358,7 @@ export default function App() {
   const [selectedColor, setSelectedColor] = useState<string>('Lavender');
   const [selectedGarment, setSelectedGarment] = useState<string>('Lavender');
   const [selectedProductId, setSelectedProductId] = useState<string>('lavender-hoodie');
+  const [capturedTryOnImage, setCapturedTryOnImage] = useState<string | null>(null);
 
   const handleScannedProductMatched = (product: ProductItem, scanImageUrl?: string) => {
     if (!product?.id) return;
@@ -1455,6 +1456,7 @@ export default function App() {
             onNavigate={navigate} 
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
+            onCaptureImage={(captured) => setCapturedTryOnImage(captured)}
           />
         );
       case 'tryon-result':
@@ -1466,6 +1468,7 @@ export default function App() {
             onAddToCart={handleAddToCart}
             selectedProductId={selectedProductId}
             onSubmitReview={handleSubmitProductReview}
+            capturedImage={capturedTryOnImage}
           />
         );
       case 'camera-scan':

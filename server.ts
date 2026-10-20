@@ -40,40 +40,38 @@ async function start() {
       { default: authRouter },
       { default: chatRouter },
       { default: analysisRouter },
-      { default: productRouter }
+      { default: productRouter },
+      { default: vtonRouter }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
       import('./server/chatRouter.ts'),
       import('./server/analysisRouter.ts'),
-      import('./server/productRouter.ts')
+      import('./server/productRouter.ts'),
+      import('./server/vtonRouter.ts')
     ]);
 
     app.use('/api', authRouter);
     app.use('/api', chatRouter);
     app.use('/api', analysisRouter);
     app.use('/api', productRouter);
+    app.use('/api', vtonRouter);
 
     // Create Vite server for development. HMR is disabled because this server
     // runs Vite in middleware mode and owns the application port itself.
-const vite = await createViteServer({
-  server: {
-    middlewareMode: true,
-    allowedHosts: ['nova-1-1.onrender.com'],
-    hmr: false
-  }
-});
+    const vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        allowedHosts: ['nova-1-1.onrender.com'],
+        hmr: false
+      }
+    });
 
-// Use Vite's connect instance as middleware 
-app.use(vite.middlewares);
+    // Use Vite's connect instance as middleware 
+    app.use(vite.middlewares);
 
-// Fallback to index.html for SPA 
-app.get('/', (req, res) => { 
-  res.sendFile(path.resolve(currentDirectory, 'index.html')); 
-});
-
-    // Fallback to index.html for SPA
-    app.get('/', (req, res) => {
-      res.sendFile(path.resolve(currentDirectory, 'index.html'));
+    // Fallback to index.html for SPA 
+    app.get('/', (req, res) => { 
+      res.sendFile(path.resolve(currentDirectory, 'index.html')); 
     });
 
     // Keep a second local dev process from making startup fail completely.
@@ -107,32 +105,3 @@ app.get('/', (req, res) => {
 }
 
 start();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

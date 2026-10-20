@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Camera, Images, RefreshCw, Sparkles, Upload, WandSparkles } from 'lucide-react';
 import { NovaAnalysisProfile, NovaStyleAnalysisResult } from '../types';
 import { analyzeSelfie } from '../services/analysisService';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, Info, Lock, Mars, RefreshCw, Ruler, ShieldCheck, Shirt, Sparkles, Venus, Waves } from 'lucide-react';
 import { Measurement, Preference } from '../types';
 
