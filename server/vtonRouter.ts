@@ -11,7 +11,7 @@ const getApiKey = () => {
 /**
  * Mint a client token for WebRTC connection to Live VTON AI
  */
-router.get(['/vton/token', '/token'], async (_req, res) => {
+router.get(['/vton/token', '/token', '/decart/token'], async (_req, res) => {
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -36,7 +36,7 @@ router.get(['/vton/token', '/token'], async (_req, res) => {
  * Proxy image from external URL to base64 Data URL so the client can safely pass it
  * without cross-origin browser fetch blocking.
  */
-router.post('/vton/proxy-image', async (req, res) => {
+router.post(['/vton/proxy-image', '/decart/proxy-image'], async (req, res) => {
   try {
     const { imageUrl } = req.body;
     if (!imageUrl || typeof imageUrl !== 'string') {
