@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { ScreenId } from '../types';
+import { analytics } from '../services/analyticsService';
 import { Capacitor } from '@capacitor/core';
 import {
   saveImageToDeviceGallery,
@@ -135,9 +136,16 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const isConnectingRef = useRef(false);
   const isLiveRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionStartTimeRef = useRef<number | null>(null);
 
   const activeModelBg = DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS['Lavender'];
   const activeGarmentObj = garmentsList.find((g) => g.id === selectedGarment) || garmentsList[0];
+
+  useEffect(() => {
+    if (selectedGarment && activeGarmentObj) {
+      analytics.trackProductImpression({ id: selectedGarment, name: activeGarmentObj.name }, 'ar_tryon');
+    }
+  }, [selectedGarment, activeGarmentObj?.name]);
 
   // Stop session cleanly
   const stopLiveSession = useCallback(() => {
@@ -145,13 +153,17 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       sessionRef.current.stop();
       sessionRef.current = null;
     }
+    if (isLiveRef.current && sessionStartTimeRef.current) {
+      const elapsed = Date.now() - sessionStartTimeRef.current;
+      analytics.trackArTryOnEnded(selectedGarment, elapsed);
+    }
     isLiveRef.current = false;
     isConnectingRef.current = false;
     setIsCameraActive(false);
     setIsVideoLive(false);
     setIsConnecting(false);
     setStatusText('Camera ready');
-  }, []);
+  }, [selectedGarment]);
 
   // Clean up session strictly on unmount
   useEffect(() => {
@@ -171,6 +183,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     isConnectingRef.current = true;
     setIsConnecting(true);
     setStatusText('Connecting AI...');
+    sessionStartTimeRef.current = Date.now();
+    analytics.trackArTryOnStarted(selectedGarment, activeGarmentObj?.name, 'ar_tryon');
 
     const garmentSource = initialGarmentImage || activeGarmentObj?.file || activeGarmentObj?.img;
 
@@ -192,9 +206,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           setIsVideoLive(true);
           setIsConnecting(false);
           setStatusText('Live AI Active');
+          const durationMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : undefined;
+          analytics.trackArTryOnSucceeded(selectedGarment, activeGarmentObj?.name, durationMs);
         },
         onError: (err) => {
           console.warn('Live session error:', err);
+          analytics.trackArTryOnFailed(selectedGarment, 'stream_error', activeGarmentObj?.name);
           stopLiveSession();
         },
       });
@@ -202,6 +219,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       sessionRef.current = handle;
     } catch (err: any) {
       console.error('Could not start live session:', err);
+      const errorCategory = err?.name === 'NotAllowedError' ? 'camera_permission_denied' : 'connection_failed';
+      analytics.trackArTryOnFailed(selectedGarment, errorCategory, activeGarmentObj?.name);
       stopLiveSession();
       const friendlyMessage =
         err?.name === 'NotAllowedError'
@@ -215,7 +234,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   // Garment selection: instant dispatch via cached blob/file
   const handleGarmentClick = (item: GarmentItem) => {
+    const prev = selectedGarment;
     setSelectedGarment(item.id);
+    if (prev !== item.id) {
+      analytics.trackArTryOnProductChanged(item.id, prev);
+    }
     if (sessionRef.current && isLiveRef.current) {
       const payload = item.file || item.img;
       sessionRef.current.setGarment(payload).catch(() => {});
@@ -338,6 +361,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         localStoreResult.status === 'fulfilled' && !!localStoreResult.value;
 
       // 3. Clear, accurate popup confirmation matching requirements
+      if (localSuccess) {
+        analytics.trackArTryOnResultSaved(selectedGarment, activeGarmentObj?.name);
+      }
+
       if (localSuccess && gallerySuccess) {
         setSavePopup({
           isOpen: true,

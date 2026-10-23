@@ -29,7 +29,8 @@ function getServiceAccount() {
   }
 
   // Check explicit or fallback JSON path
-  const accountPath = filePath || path.join(__dirname, "serviceAccount.json");
+  const fallbackDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
+  const accountPath = filePath || path.join(fallbackDir, "serviceAccount.json");
 
   if (fs.existsSync(accountPath)) {
     try {

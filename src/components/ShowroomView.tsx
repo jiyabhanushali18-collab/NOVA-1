@@ -4,6 +4,7 @@ import { collection, limit, onSnapshot, query, where } from 'firebase/firestore'
 import { auth, db, firebaseProjectId, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
 import { normalizeProductVariants } from '../utils/productVariants';
+import { analytics } from '../services/analyticsService';
 
 interface ShowroomViewProps {
   products: ProductItem[];
@@ -12,7 +13,7 @@ interface ShowroomViewProps {
   onNavigate: (screen: ScreenId) => void;
   wishlist?: string[];
   onToggleWishlist?: (productId: string) => void;
-  onSelectProduct?: (productId: string) => void;
+  onSelectProduct?: (productId: string, product?: ProductItem) => void;
   cartItemsCount?: number;
   isDarkMode?: boolean;
   productReviews?: Record<string, ProductReview[]>;
@@ -232,7 +233,7 @@ const ProductCard = memo(({
   vendor?: VendorItem;
   isWishlisted: boolean;
   onToggleWishlist?: (productId: string) => void;
-  onSelectProduct?: (productId: string) => void;
+  onSelectProduct?: (productId: string, product?: ProductItem) => void;
   variant?: ProductCardVariant;
   index?: number;
   isDarkMode?: boolean;
@@ -248,7 +249,7 @@ const ProductCard = memo(({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 14 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.035, 0.2) }}
-      onClick={() => onSelectProduct?.(product.id)}
+      onClick={() => onSelectProduct?.(product.id, product)}
       className={`group relative shrink-0 cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 ${
         isDarkMode
           ? 'border-white/12 bg-white/[0.07] shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-2xl hover:border-violet-300/50 hover:shadow-[0_18px_55px_rgba(139,92,246,0.22)]'
@@ -274,9 +275,15 @@ const ProductCard = memo(({
         </span>
       </motion.button>
 
-      <div className={`relative overflow-hidden rounded-xl border ${
-        isDarkMode ? 'border-white/10 bg-slate-800/70' : 'border-[#E4DFF5] bg-[#F2EEFF]'
-      } ${compact ? 'h-40' : 'aspect-[4/5]'}`}>
+      <div 
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectProduct?.(product.id, product);
+        }}
+        className={`relative overflow-hidden rounded-xl border cursor-pointer ${
+          isDarkMode ? 'border-white/10 bg-slate-800/70' : 'border-[#E4DFF5] bg-[#F2EEFF]'
+        } ${compact ? 'h-40' : 'aspect-[4/5]'}`}
+      >
         <img
           src={product.imageUrl || fallbackImage}
           alt={product.name}
@@ -296,7 +303,13 @@ const ProductCard = memo(({
           <VendorLogo vendor={{ vendorName, logoUrl: vendorLogo, isVerified: vendor?.isVerified }} size="sm" isDarkMode={isDarkMode} />
           <span className={`min-w-0 truncate text-[10px] font-semibold ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{vendorName}</span>
         </div>
-        <div>
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectProduct?.(product.id, product);
+          }}
+          className="cursor-pointer"
+        >
           <p className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>{product.category}</p>
           <h3 className={`${compact ? 'text-sm' : 'text-[15px]'} line-clamp-1 font-bold transition-colors ${
             isDarkMode ? 'text-white group-hover:text-violet-200' : 'text-[#131426] group-hover:text-[#553BE2]'
@@ -582,9 +595,43 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   const selectedCount = selectedVendorItem?.productCount ?? (selectedVendor === ALL_VENDORS ? displayCollectionProducts.length : productCountByVendor[selectedVendor] || displayCollectionProducts.length);
   const collectionTitle = selectedVendorItem ? `${selectedVendorItem.vendorName} Collection` : 'All Products';
 
-  const handleSelectProduct = (id: string) => {
-    onSelectProduct?.(id);
+  const handleSelectVendor = (vendorId: string, vendorName?: string) => {
+    setSelectedVendor(vendorId);
+    analytics.trackFilterApplied('vendor', vendorId, 'showroom', { vendorName: vendorName || (vendorId === ALL_VENDORS ? 'All Vendors' : vendorId) });
   };
+
+  const handleSelectProduct = (id: string, product?: ProductItem) => {
+    const p = product || visibleProducts.find((item) => item.id === id) || visibleTopRated.find((item) => item.id === id);
+    if (searchTerm.trim() && p) {
+      analytics.trackSearchClick(p, searchTerm.trim(), 'showroom');
+    }
+    onSelectProduct?.(id, p);
+  };
+
+  // Track debounced search queries
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed || trimmed.length < 2) return;
+
+    const timer = setTimeout(() => {
+      analytics.trackSearch(trimmed, visibleProducts.length + visibleTopRated.length, 'showroom');
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, visibleProducts.length, visibleTopRated.length]);
+
+  // Track product impressions
+  useEffect(() => {
+    visibleTopRated.slice(0, 10).forEach((product) => {
+      analytics.trackProductImpression(product, 'showroom_top_rated');
+    });
+  }, [visibleTopRated]);
+
+  useEffect(() => {
+    visibleProducts.slice(0, 20).forEach((product) => {
+      analytics.trackProductImpression(product, 'showroom_collection');
+    });
+  }, [visibleProducts]);
 
   return (
     <div className={`space-y-7 pb-6 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
@@ -648,7 +695,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           <VendorButton
             selected={selectedVendor === ALL_VENDORS}
             label="All Vendors"
-            onClick={() => setSelectedVendor(ALL_VENDORS)}
+            onClick={() => handleSelectVendor(ALL_VENDORS, 'All Vendors')}
             isDarkMode={isDarkMode}
           />
           {vendorsLoading ? (
@@ -666,7 +713,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
                 selected={selectedVendor === vendor.vendorId}
                 label={vendor.vendorName}
                 productCount={vendor.productCount ?? productCountByVendor[vendor.vendorId]}
-                onClick={() => setSelectedVendor(vendor.vendorId)}
+                onClick={() => handleSelectVendor(vendor.vendorId, vendor.vendorName)}
                 isDarkMode={isDarkMode}
               />
             ))

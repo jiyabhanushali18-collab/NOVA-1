@@ -6,6 +6,7 @@ import { products, swipeModels, recentScans as staticRecentScans } from './data'
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
 
 // Modular View Imports
+import { analytics } from './services/analyticsService';
 import { HomeView } from './components/HomeView';
 import { ArTryOnView } from './components/ArTryOnView';
 import { TryOnResultView } from './components/TryOnResultView';
@@ -1023,12 +1024,15 @@ export default function App() {
           if (productId) {
             const review: ProductReview = {
               id: doc.id,
-              reviewer: String(data.reviewer || 'Guest'),
+              reviewer: String(data.reviewer || data.userName || 'Guest'),
+              userName: String(data.userName || data.reviewer || 'Guest'),
               rating: Number(data.rating || 0),
-              text: String(data.text || ''),
+              text: String(data.text || data.comment || ''),
+              comment: String(data.comment || data.text || ''),
               date: String(data.date || new Date().toLocaleDateString()),
               source: data.source === 'tryon' ? 'tryon' : 'product',
-              accountUid: data.accountUid ? String(data.accountUid) : undefined
+              accountUid: data.accountUid ? String(data.accountUid) : undefined,
+              createdAt: data.createdAt
             };
 
             if (!reviewsByProduct[productId]) reviewsByProduct[productId] = [];
@@ -1218,12 +1222,16 @@ export default function App() {
   const [isQuickHubOpen, setIsQuickHubOpen] = useState<boolean>(false);
 
   const handleToggleWishlist = (productId: string) => {
+    const prod = productsData[productId] || products[productId] || { id: productId };
     setWishlist((prev) => {
       const isAdding = !prev.includes(productId);
       const updated = isAdding ? [...prev, productId] : prev.filter((id) => id !== productId);
       localStorage.setItem('wishlist', JSON.stringify(updated));
       if (isAdding) {
         awardNovaPoints(15, 'Saved item to Wishlist');
+        analytics.trackWishlistAdd(prod, screenRef.current || 'wishlist');
+      } else {
+        analytics.trackWishlistRemove(prod, screenRef.current || 'wishlist');
       }
       return updated;
     });
@@ -1251,6 +1259,11 @@ export default function App() {
     }
   });
 
+  // Synchronize analytics identity
+  useEffect(() => {
+    analytics.setUserId(activeUid || userEmail || undefined);
+  }, [activeUid, userEmail]);
+
   // reload recent activity whenever active account changes (new account => no recent activity)
   useEffect(() => {
     try {
@@ -1277,17 +1290,23 @@ export default function App() {
   const scanCount = recentScanItems.length;
 
   // Navigation wrapper that logs activity for relevant screens
-  const navigate = (to: ScreenId, opts?: { productId?: string }) => {
+  const navigate = (to: ScreenId, opts?: { productId?: string; product?: ProductItem }) => {
+    const currentScreen = screenRef.current;
+    if (opts?.product && opts?.productId) {
+      setProductsData((prev) => ({ ...prev, [opts.productId!]: opts.product! }));
+    }
     if (opts?.productId) {
       const selectedId = opts.productId;
       setSelectedProductId(selectedId);
-      const prod = productsData[selectedId] || products[selectedId];
+      const prod = opts?.product || productsData[selectedId] || products[selectedId];
       if (prod) {
         setSelectedColor(getDefaultProductColor(prod));
+        if (to === 'product-details') {
+          analytics.trackProductView(prod, currentScreen || 'home');
+        }
       }
     }
 
-    const currentScreen = screenRef.current;
     const time = new Date().toLocaleString();
     if (to === 'ar-tryon') {
       const prodId = opts?.productId || selectedProductId;
@@ -1307,7 +1326,7 @@ export default function App() {
       addRecentActivity({ id: Date.now().toLocaleString(), name: prod?.name ? `${prod.name} Scan` : 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: scanImg });
     } else if (to === 'product-details') {
       const id = opts?.productId || selectedProductId;
-      const prod = productsData[id] || products[id];
+      const prod = opts?.product || productsData[id] || products[id];
       if (prod) addRecentActivity({ id: Date.now().toString(), name: prod.name, time, badge: 'Viewed', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod.imageUrl });
     } else if (to === 'scan-outfit') {
       const scanImg = staticRecentScans[0]?.imageUrl || '';
@@ -1380,6 +1399,7 @@ export default function App() {
 
   // Interactive Cart Handlers
   const handleAddToCart = (prodId: string, color: string, size: string) => {
+    const p = productsData[prodId] || products[prodId];
     const isPresentIndex = cartItems.findIndex(
       (item) => item.product.id === prodId && item.color === color && item.size === size
     );
@@ -1388,8 +1408,10 @@ export default function App() {
       const updated = [...cartItems];
       updated[isPresentIndex].quantity += 1;
       setCartItems(updated);
+      if (p) {
+        analytics.trackCartAdd(p, color, size, 1, screenRef.current || 'cart');
+      }
     } else {
-      const p = productsData[prodId] || products[prodId];
       if (p) {
         setCartItems([
           ...cartItems,
@@ -1400,11 +1422,13 @@ export default function App() {
             size
           }
         ]);
+        analytics.trackCartAdd(p, color, size, 1, screenRef.current || 'cart');
       }
     }
   };
 
   const handleUpdateQuantity = (idx: number, dQ: number) => {
+    const item = cartItems[idx];
     const updated = [...cartItems];
     const newQty = updated[idx].quantity + dQ;
     if (newQty <= 0) {
@@ -1413,12 +1437,19 @@ export default function App() {
       updated[idx].quantity = newQty;
     }
     setCartItems(updated);
+    if (item && item.product) {
+      analytics.trackCartQuantityUpdate(item.product, item.quantity, newQty);
+    }
   };
 
   const handleRemoveItem = (idx: number) => {
+    const item = cartItems[idx];
     const updated = [...cartItems];
     updated.splice(idx, 1);
     setCartItems(updated);
+    if (item && item.product) {
+      analytics.trackCartRemove(item.product, item.color, item.size);
+    }
   };
 
   const handleClearCart = () => {
@@ -1442,11 +1473,16 @@ export default function App() {
             onToggleWishlist={handleToggleWishlist}
             isDarkMode={isDarkMode}
             products={{ ...products, ...productsData }}
-            onSelectProduct={(id) => {
+            onSelectProduct={(id, selectedItem) => {
+              if (selectedItem) {
+                setProductsData((prev) => ({ ...prev, [id]: selectedItem }));
+              }
               setSelectedProductId(id);
-              const prod = productsData[id] || products[id];
-              setSelectedColor(getDefaultProductColor(prod));
-              navigate('product-details', { productId: id });
+              const prod = selectedItem || productsData[id] || products[id];
+              if (prod) {
+                setSelectedColor(getDefaultProductColor(prod));
+              }
+              navigate('product-details', { productId: id, product: selectedItem });
             }}
           />
         );
@@ -1551,7 +1587,7 @@ export default function App() {
       case 'product-details':
         return (
           <ProductDetailsView 
-            products={productsData}
+            products={{ ...products, ...productsData }}
             onNavigate={navigate} 
             onAddToCart={handleAddToCart}
             selectedColor={selectedColor}
@@ -1569,25 +1605,30 @@ export default function App() {
       case 'showroom':
         return (
           <ShowroomView 
-            products={Object.values(productsData)}
+            products={Object.values({ ...products, ...productsData })}
             loading={productsLoading}
             error={productsError}
             onNavigate={navigate}
             wishlist={wishlist}
             onToggleWishlist={handleToggleWishlist}
             isDarkMode={isDarkMode}
-            onSelectProduct={(id) => {
+            onSelectProduct={(id, selectedItem) => {
+              if (selectedItem) {
+                setProductsData((prev) => ({ ...prev, [id]: selectedItem }));
+              }
               setSelectedProductId(id);
-              const prod = productsData[id] || products[id];
-              setSelectedColor(getDefaultProductColor(prod));
-              navigate('product-details', { productId: id });
+              const prod = selectedItem || productsData[id] || products[id];
+              if (prod) {
+                setSelectedColor(getDefaultProductColor(prod));
+              }
+              navigate('product-details', { productId: id, product: selectedItem });
             }}
             cartItemsCount={countCartTotalItems()}
             productReviews={productReviews}
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} recentScans={recentScanItems} isDarkMode={isDarkMode} />;
+        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} recentScans={recentScanItems} isDarkMode={isDarkMode} userId={activeUid || userEmail} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':

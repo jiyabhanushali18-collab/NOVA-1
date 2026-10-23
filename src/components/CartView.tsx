@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScreenId, CartItem, DeliveryAddress, OrderRecord } from '../types';
+import { analytics } from '../services/analyticsService';
 import {
   createOrderSnapshot,
   fetchUserDeliveryAddress,
@@ -221,6 +222,11 @@ export const CartView: React.FC<CartViewProps> = ({
     return current;
   };
 
+  const handleProceedToAddress = () => {
+    analytics.trackCheckoutStarted(cartItems, grandTotal, cartItems.reduce((acc, curr) => acc + curr.quantity, 0));
+    setStep('address');
+  };
+
   const handleProceedToPayment = async () => {
     setAddressError(null);
     setAddressSavedMessage(null);
@@ -307,6 +313,7 @@ export const CartView: React.FC<CartViewProps> = ({
         deliveryAddress: currentAddress
       });
 
+      analytics.trackPurchaseCompleted(order);
       setConfirmedOrder(order);
       onOrderPlaced?.(order);
       setStep('completed');
@@ -562,7 +569,7 @@ export const CartView: React.FC<CartViewProps> = ({
               </div>
 
               <button 
-                onClick={() => setStep('address')}
+                onClick={handleProceedToAddress}
                 className="w-full py-4 bg-[#553BE2] text-white text-xs font-bold tracking-wide rounded-2xl flex items-center justify-center gap-1.5 shadow-lg shadow-[#553BE2]/20 active:opacity-95 hover:opacity-95"
               >
                 Proceed to Shipping Address <span className="material-symbols-outlined text-base">arrow_forward</span>

@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
 import { ProductItem, ScreenId } from '../types';
 import { CameraScanResult, ScanImageSource, ScanProductResult, runCameraScan } from '../services/cameraScanService';
+import { saveOutfitScan } from '../services/scanHistoryService';
 
 interface CameraScanViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string }) => void;
@@ -119,6 +120,28 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
         const bestResult = result.results.reduce((best, entry) => (entry.score > best.score ? entry : best), result.results[0]);
         const actualScanImg = bestResult.item?.cropDataUrl || result.compressedImageUrl || bestResult.product?.imageUrl;
         onProductMatched?.(bestResult.product, actualScanImg);
+
+        saveOutfitScan({
+          name: bestResult.product?.name || bestResult.title || 'Scanned Outfit',
+          imageUrl: actualScanImg,
+          score: typeof bestResult.score === 'number'
+            ? (bestResult.score > 1 ? Number(bestResult.score.toFixed(1)) : Number((bestResult.score * 10).toFixed(1)))
+            : 9.2,
+          category: bestResult.product?.category || bestResult.item?.label || 'Curated Outfit',
+          colors: (bestResult.item?.features as any)?.palette?.map((p: any) => p.hex) || [bestResult.item?.features?.colorHex || '#553BE2', '#A594FD', '#131426'],
+          matchedProductId: bestResult.product?.id,
+          matchedProductName: bestResult.product?.name,
+          matchedProductPrice: bestResult.product?.price,
+          matchedProductImage: bestResult.product?.imageUrl,
+        });
+      } else if (result.compressedImageUrl) {
+        saveOutfitScan({
+          name: 'Custom Outfit Scan',
+          imageUrl: result.compressedImageUrl,
+          score: 8.8,
+          category: 'Personal Style',
+          colors: ['#553BE2', '#A594FD', '#131426'],
+        });
       }
     } catch (error) {
       const message = error instanceof Error && error.message.includes('fetch products')

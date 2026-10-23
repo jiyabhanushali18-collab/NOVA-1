@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScreenId, ProductItem } from '../types';
+import { analytics } from '../services/analyticsService';
 
 const ActivityCardImage: React.FC<{
   activity: any;
@@ -126,7 +127,7 @@ interface HomeViewProps {
   wishlist?: string[];
   recentActivity?: any[];
   onToggleWishlist?: (productId: string) => void;
-  onSelectProduct?: (productId: string) => void;
+  onSelectProduct?: (productId: string, product?: ProductItem) => void;
   isDarkMode?: boolean;
   products?: Record<string, ProductItem>;
 }
@@ -142,6 +143,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
   products = {}
 }) => {
   const activityList = recentActivity;
+
+  useEffect(() => {
+    (activityList || []).forEach((activity: any) => {
+      const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+      if (matched) {
+        analytics.trackProductImpression(matched, 'home_recent_activity');
+      }
+    });
+  }, [activityList, products]);
   return (
     <div className="space-y-6 pb-2">
       {/* Greeting Section */}

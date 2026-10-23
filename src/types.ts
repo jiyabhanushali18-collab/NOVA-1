@@ -348,3 +348,24 @@ export interface SavedLook {
   width?: number;
   height?: number;
 }
+
+export interface OutfitScanRecord {
+  id: string;
+  userId?: string;
+  name: string;
+  time: string;
+  timestamp: number;
+  imageUrl: string;
+  score: number | string;
+  category?: string;
+  colors?: string[];
+  attributes?: {
+    fit?: string;
+    style?: string;
+    season?: string;
+  };
+  matchedProductId?: string;
+  matchedProductName?: string;
+  matchedProductPrice?: number;
+  matchedProductImage?: string;
+}

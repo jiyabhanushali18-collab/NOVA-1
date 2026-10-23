@@ -49,13 +49,15 @@ async function start() {
       { default: chatRouter },
       { default: analysisRouter },
       { default: productRouter },
-      { default: vtonRouter }
+      { default: vtonRouter },
+      { default: analyticsRouter }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
       import('./server/chatRouter.ts'),
       import('./server/analysisRouter.ts'),
       import('./server/productRouter.ts'),
-      import('./server/vtonRouter.ts')
+      import('./server/vtonRouter.ts'),
+      import('./server/analyticsRouter.ts')
     ]);
 
     app.use('/api', authRouter);
@@ -63,6 +65,7 @@ async function start() {
     app.use('/api', analysisRouter);
     app.use('/api', productRouter);
     app.use('/api', vtonRouter);
+    app.use('/api', analyticsRouter);
 
     // Create Vite server for development. HMR is disabled because this server
     // runs Vite in middleware mode and owns the application port itself.

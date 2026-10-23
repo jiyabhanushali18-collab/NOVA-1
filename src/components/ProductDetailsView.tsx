@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ProductVariant, ScreenId, ProductItem, ProductReview } from '../types';
 import { findColorImages } from '../utils/productVariants';
 import { getRequiredColorHex, isDarkColor, isLightColor, normalizeColorKey } from '../utils/colors';
+import { analytics } from '../services/analyticsService';
 
 const normalizeColor = normalizeColorKey;
 
@@ -61,10 +62,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   reviewsCount,
   reviewListenerError,
   onSubmitReview,
-  currentUserName
+  currentUserName,
+  currentReviewerName
 }) => {
   const fallbackProduct = Object.values(products)[0] || products['lavender-hoodie'];
-  const mainProduct = selectedProductId ? products[selectedProductId] || fallbackProduct : fallbackProduct;
+  const mainProduct = selectedProductId 
+    ? (products[selectedProductId] || Object.values(products).find((p) => p.id === selectedProductId || p.productId === selectedProductId) || fallbackProduct)
+    : fallbackProduct;
   const [selectedSize, setSelectedSize] = useState('M');
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -72,13 +76,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
 
-  const reviewStars = averageRating && averageRating > 0 ? averageRating : mainProduct.rating;
-  const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : mainProduct.reviewsCount;
-  const variantColors = getProductColors(mainProduct);
-  const selectedVariant = mainProduct.variants?.find((variant) => normalizeColor(getVariantLabel(variant)) === normalizeColor(selectedColor)) || mainProduct.variants?.[0];
+  const reviewStars = averageRating && averageRating > 0 ? averageRating : (mainProduct?.rating || 0);
+  const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : (mainProduct?.reviewsCount || (reviews ? reviews.length : 0));
+  const variantColors = mainProduct ? getProductColors(mainProduct) : [];
+  const selectedVariant = mainProduct?.variants?.find((variant) => normalizeColor(getVariantLabel(variant)) === normalizeColor(selectedColor)) || mainProduct?.variants?.[0];
   const selectedVariantStock = selectedVariant?.stock;
-  const currentStock = selectedVariantStock ?? mainProduct.stockLeft;
-  const currentInStock = selectedVariant?.isAvailable ?? (currentStock !== undefined ? currentStock > 0 : mainProduct.inStock);
+  const currentStock = selectedVariantStock ?? mainProduct?.stockLeft;
+  const currentInStock = selectedVariant?.isAvailable ?? (currentStock !== undefined ? currentStock > 0 : (mainProduct?.inStock ?? true));
   const currentSku = selectedVariant?.sku;
 
   const formatReviewDate = (createdAt: any) => {
@@ -117,6 +121,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     setGalleryIndex(0);
   }, [selectedColor]);
 
+  // Track product view in analytics
+  React.useEffect(() => {
+    if (mainProduct && mainProduct.id) {
+      analytics.trackProductView(mainProduct, 'product_details');
+    }
+  }, [mainProduct?.id]);
+
   // Get the correct image URL or gallery for the selected color
   const getSelectedColorImages = () => {
     if (!mainProduct) return [] as string[];
@@ -154,6 +165,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const selectedColorImages = getSelectedColorImages();
   const heroImageUrl = selectedColorImages[galleryIndex] || selectedColorImages[0] || mainProduct.imageUrl || '';
 
+  const handleLaunchAr = () => {
+    if (mainProduct) {
+      analytics.trackArTryOnStarted(mainProduct.id, mainProduct.name, 'product_details');
+    }
+    onNavigate('ar-tryon');
+  };
+
   const handleAddToCart = (prodId: string, color: string, size: string) => {
     onAddToCart(prodId, color, size);
     const productName = products[prodId]?.name || 'Product';
@@ -172,6 +190,31 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     const product = products[item.id];
     return product && product.imageUrl && typeof product.imageUrl === 'string' && product.imageUrl.trim().length > 0;
   });
+
+  // Track Complete the Look items impression
+  React.useEffect(() => {
+    completeLookItems.forEach((item) => {
+      const prod = products[item.id];
+      if (prod) {
+        analytics.trackProductImpression(prod, 'product_details_complete_look');
+      }
+    });
+  }, [completeLookItems.length, mainProduct?.id]);
+
+  if (!mainProduct) {
+    return (
+      <div className={`p-8 text-center space-y-4 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
+        <h2 className="text-xl font-bold">Product Not Found</h2>
+        <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>The requested product could not be found or loaded.</p>
+        <button
+          onClick={() => onNavigate('showroom')}
+          className="px-6 py-2.5 rounded-xl bg-[#553BE2] text-white text-xs font-bold shadow-md hover:bg-[#4830cb] transition-colors"
+        >
+          Back to Showroom
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="-mx-4 space-y-6">
@@ -198,7 +241,15 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           }}
         />
         {/* badges inside hero */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2">
+        <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
+          <button 
+            type="button"
+            onClick={() => onNavigate('showroom')}
+            className="bg-white/90 backdrop-blur-md p-2 rounded-full text-[#131426] hover:bg-white shadow-sm flex items-center justify-center border border-[#E4DFF5] active:scale-95 transition-all cursor-pointer"
+            title="Back to Showroom"
+          >
+            <span className="material-symbols-outlined text-base leading-none">arrow_back</span>
+          </button>
           <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-extrabold text-[#553BE2] flex items-center gap-1 shadow-sm uppercase tracking-wider border border-[#E4DFF5]">
             <span className="material-symbols-outlined text-xs leading-none text-red-500">local_fire_department</span> Top Pick
           </span>
@@ -236,10 +287,17 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         <div className={`rounded-3xl p-5 shadow-md ${isDarkMode ? 'bg-slate-900/90 border border-slate-800' : 'glass-card'}`}>
           <div className="flex justify-between items-start gap-2 mb-2">
             <div>
-              {/* Taxonomy Label */}
-              <span className="inline-block text-[#553BE2] px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider mb-2 bg-[#F2EEFF]">
-                {mainProduct.category}
-              </span>
+              {/* Taxonomy Label & Vendor */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-block text-[#553BE2] px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-[#F2EEFF]">
+                  {mainProduct.category}
+                </span>
+                {mainProduct.vendorName && (
+                  <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                    by <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>{mainProduct.vendorName}</span>
+                  </span>
+                )}
+              </div>
               <h1 className={`text-2xl font-bold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{mainProduct.name}</h1>
             </div>
             
@@ -281,7 +339,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
           {/* Holistic Virtual try-on direct CTA banner */}
           <div 
-            onClick={() => onNavigate('ar-tryon')}
+            onClick={handleLaunchAr}
             className={`rounded-xl p-3 flex items-center justify-between mb-5 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 border ${
               isDarkMode
                 ? 'bg-indigo-950/30 border-indigo-800/30'
@@ -393,7 +451,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           {/* Footer actions buttons block */}
           <div className="flex gap-2.5 pt-1">
             <button 
-              onClick={() => onNavigate('ar-tryon')}
+              onClick={handleLaunchAr}
               className="flex-1 py-3 rounded-xl border border-[#553BE2] text-[#553BE2] font-bold flex items-center justify-center gap-1.5 text-xs bg-white hover:bg-[#F2EEFF] transition-colors"
             >
               <span className="material-symbols-outlined text-base">view_in_ar</span> Try Now (AR)
@@ -436,13 +494,23 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           <div className={`p-3 text-xs leading-relaxed min-h-[140px] ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
             {activeTab === 'details' && (
               <div className="space-y-3 animate-fade-in">
-                <p>Stay modern, stylish and extremely snug with NOVA's trademark heavy cotton fleece hoodie. Engineered specifically for casual coordinate wear.</p>
-                <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Cotton Fleece blend</li>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Relaxed smart silhouette</li>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Braided drawstring hood</li>
-                  <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Kangaroo storage pocket</li>
-                </ul>
+                <p>{mainProduct.description || "Stay modern, stylish and extremely snug with NOVA's trademark engineered coordinate wear."}</p>
+                {mainProduct.details && mainProduct.details.length > 0 ? (
+                  <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
+                    {mainProduct.details.map((detail, idx) => (
+                      <li key={idx} className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> {detail}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Premium fabric blend</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Relaxed smart silhouette</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Reinforced stitching</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Signature hardware</li>
+                  </ul>
+                )}
               </div>
             )}
             {activeTab === 'material' && (
@@ -507,20 +575,22 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     reviews.map((review) => (
                       <div key={review.id} className={`rounded-3xl border p-4 shadow-sm ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-white'}`}>
                         <div className="flex items-center justify-between gap-2">
-                          <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{review.userName}</div>
+                          <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{review.userName || review.reviewer || 'Verified Buyer'}</div>
                           <div className="text-amber-500 text-sm">
                             {Array.from({ length: 5 }).map((_, index) => (
                               <span key={index}>{index < review.rating ? '★' : '☆'}</span>
                             ))}
                           </div>
                         </div>
-                        <div className="text-[11px] text-[#5E667A] mb-2">{formatReviewDate(review.createdAt)}</div>
-                        <p className={`text-[12px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#131426]'}`}>{review.comment}</p>
+                        <div className="text-[11px] text-[#5E667A] mb-2">{formatReviewDate(review.createdAt || review.date)}</div>
+                        <p className={`text-[12px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#131426]'}`}>{review.comment || review.text}</p>
                       </div>
                     ))
                   ) : (
-                    <div className={`rounded-3xl border p-4 text-sm text-[#5E667A] ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
-                      No reviews yet. Be the first to share your opinion.
+                    <div className={`rounded-3xl border p-6 text-center space-y-2 ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
+                      <span className="material-symbols-outlined text-3xl text-[#553BE2]/60">rate_review</span>
+                      <h4 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>No reviews yet</h4>
+                      <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Be the first to share your opinion about this product!</p>
                     </div>
                   )}
                 </div>

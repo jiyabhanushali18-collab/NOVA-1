@@ -3,6 +3,8 @@ import { ProductItem, Measurement, Preference } from './types';
 export const products: Record<string, ProductItem> = {
   'lavender-hoodie': {
     id: 'lavender-hoodie',
+    vendorId: 'vendor_urban_style',
+    vendorName: 'Urban Style Studios',
     name: 'Lavender Hoodie',
     category: 'Streetwear',
     price: 1499,
@@ -32,6 +34,8 @@ export const products: Record<string, ProductItem> = {
   },
   'cargo-pants': {
     id: 'cargo-pants',
+    vendorId: 'vendor_urban_style',
+    vendorName: 'Urban Style Studios',
     name: 'Cargo Pants',
     category: 'Casual',
     price: 1899,
@@ -50,6 +54,8 @@ export const products: Record<string, ProductItem> = {
   },
   'white-sneakers': {
     id: 'white-sneakers',
+    vendorId: 'vendor_kicks_lab',
+    vendorName: 'Kicks Lab',
     name: 'White Sneakers',
     category: 'Footwear',
     price: 2299,
@@ -68,6 +74,8 @@ export const products: Record<string, ProductItem> = {
   },
   'crossbody-bag': {
     id: 'crossbody-bag',
+    vendorId: 'vendor_atelier_luxe',
+    vendorName: 'Atelier Luxe',
     name: 'Crossbody Bag',
     category: 'Accessories',
     price: 999,
@@ -86,6 +94,8 @@ export const products: Record<string, ProductItem> = {
   },
   'grey-jacket': {
     id: 'grey-jacket',
+    vendorId: 'vendor_nordic_apparel',
+    vendorName: 'Nordic Apparel',
     name: 'Grey Jacket',
     category: 'Outerwear',
     price: 3499,
@@ -103,6 +113,8 @@ export const products: Record<string, ProductItem> = {
   },
   'denim-jacket': {
     id: 'denim-jacket',
+    vendorId: 'vendor_urban_style',
+    vendorName: 'Urban Style Studios',
     name: 'Streetwear Denim Jacket',
     category: 'Outerwear',
     price: 2199,
@@ -120,6 +132,8 @@ export const products: Record<string, ProductItem> = {
   },
   'beige-shirt': {
     id: 'beige-shirt',
+    vendorId: 'vendor_nordic_apparel',
+    vendorName: 'Nordic Apparel',
     name: 'Smart Casual Beige Shirt',
     category: 'Casual wear',
     price: 1199,
