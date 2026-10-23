@@ -1,4 +1,4 @@
-import { apiUrl } from './apiClient';
+import { apiUrl, PRODUCTION_API_URL } from './apiClient';
 
 export interface LiveTryOnSessionConfig {
   videoElement: HTMLVideoElement;
@@ -20,6 +20,9 @@ export interface LiveTryOnSessionHandle {
 
 // In-memory cache for processed garment blobs so switching garments is instant
 const garmentCache = new Map<string, Blob | string>();
+
+// Cached session token to eliminate duplicate network handshakes
+let cachedTokenState: { token: string; expiresAt: number } | null = null;
 
 export const DEFAULT_GARMENTS = [
   {
@@ -49,20 +52,85 @@ export const DEFAULT_MODELS: Record<string, string> = {
 };
 
 /**
- * Fetch a mint client session token from the local NOVA server
+ * Fetch a mint client session token with multi-tier fallback, caching,
+ * and retry handling to eliminate "fetch failed" on slow connections or cold starts.
  */
 export async function getLiveTryOnToken(): Promise<string> {
-  const response = await fetch(apiUrl('/api/vton/token'));
-  if (!response.ok) {
-    const errorJson = await response.json().catch(() => ({}));
-    throw new Error(errorJson.error || 'Failed to fetch session token from server');
+  const now = Date.now();
+  if (cachedTokenState && cachedTokenState.expiresAt > now + 60000) {
+    return cachedTokenState.token;
   }
-  const data = await response.json();
-  const token = data.apiKey || data.token;
-  if (!token) {
-    throw new Error('No session token returned from server');
+
+  const candidateEndpoints: string[] = [];
+
+  // 1. Configured / platform apiUrl
+  const standardUrl = apiUrl('/api/vton/token');
+  if (standardUrl) candidateEndpoints.push(standardUrl);
+
+  // 2. Production Render cloud backend (always available & has CORS enabled)
+  candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
+
+  // 3. Local Node server fallbacks if running in browser
+  if (typeof window !== 'undefined') {
+    const port = window.location.port;
+    if (port && port !== '3000') {
+      candidateEndpoints.push(`http://${window.location.hostname}:3000/api/vton/token`);
+    }
+    candidateEndpoints.push('http://localhost:3000/api/vton/token');
+    candidateEndpoints.push('http://127.0.0.1:3000/api/vton/token');
   }
-  return token;
+
+  const uniqueEndpoints = Array.from(new Set(candidateEndpoints.filter(Boolean)));
+  let lastError: any = null;
+
+  for (const endpoint of uniqueEndpoints) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutMs = attempt === 0 ? 12000 : 25000;
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        const response = await fetch(endpoint, {
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        });
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          const errorJson = await response.json().catch(() => ({}));
+          throw new Error(errorJson.error || `Server HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const token = data.apiKey || data.token;
+        if (!token) {
+          throw new Error('Server returned empty token');
+        }
+
+        // Cache token for 45 minutes
+        cachedTokenState = {
+          token,
+          expiresAt: now + 45 * 60 * 1000,
+        };
+
+        return token;
+      } catch (err: any) {
+        lastError = err;
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 600));
+        }
+      }
+    }
+  }
+
+  const friendlyMessage =
+    lastError?.name === 'AbortError'
+      ? 'AI server is warming up. Tap Try On Live to retry.'
+      : lastError?.message && !lastError.message.includes('fetch')
+      ? lastError.message
+      : 'Unable to connect to AI server. Tap to retry.';
+
+  throw new Error(friendlyMessage);
 }
 
 /**
@@ -156,13 +224,25 @@ export async function prepareGarmentForLiveTryOn(
     }
 
     if (typeof garment === 'string') {
-      if (garment.startsWith('data:')) {
+      // Data URL or Blob URL: compress directly
+      if (garment.startsWith('data:') || garment.startsWith('blob:')) {
         const compressed = await compressGarmentImage(garment);
         garmentCache.set(garment, compressed);
         return compressed;
       }
 
-      // Local or remote URL
+      // Local static assets (/garments/lavender.jpg etc.): load directly on Canvas without proxy
+      if (garment.startsWith('/') || garment.startsWith('./')) {
+        try {
+          const compressed = await compressGarmentImage(garment);
+          garmentCache.set(garment, compressed);
+          return compressed;
+        } catch (e) {
+          console.warn('Direct local asset canvas load warning, trying fetch:', e);
+        }
+      }
+
+      // Remote or local URL: try direct fetch
       try {
         const res = await fetch(garment, { mode: 'cors' });
         if (res.ok) {
@@ -175,22 +255,30 @@ export async function prepareGarmentForLiveTryOn(
         // Fallback to proxy if remote CORS blocked
       }
 
-      try {
-        const proxyRes = await fetch(apiUrl('/api/vton/proxy-image'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: garment }),
-        });
-        if (proxyRes.ok) {
-          const proxyData = await proxyRes.json();
-          if (proxyData.dataUrl) {
-            const compressed = await compressGarmentImage(proxyData.dataUrl);
-            garmentCache.set(garment, compressed);
-            return compressed;
+      // Proxy fallback for external URLs
+      const proxyEndpoints = [
+        apiUrl('/api/vton/proxy-image'),
+        `${PRODUCTION_API_URL}/api/vton/proxy-image`,
+      ];
+
+      for (const endpoint of Array.from(new Set(proxyEndpoints))) {
+        try {
+          const proxyRes = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl: garment }),
+          });
+          if (proxyRes.ok) {
+            const proxyData = await proxyRes.json();
+            if (proxyData.dataUrl) {
+              const compressed = await compressGarmentImage(proxyData.dataUrl);
+              garmentCache.set(garment, compressed);
+              return compressed;
+            }
           }
+        } catch (e) {
+          console.warn('Proxy garment image failed on', endpoint, e);
         }
-      } catch (e) {
-        console.warn('Proxy garment image failed:', e);
       }
     }
   } catch (err) {
@@ -377,7 +465,7 @@ export async function startLiveTryOnSession(
       stream?.getTracks?.().forEach((t) => t.stop());
       config.videoElement.srcObject = null;
     }
-    config.onStatusChange?.('Disconnected');
+    config.onStatusChange?.('Camera ready');
   };
 
   const flipCamera = async () => {

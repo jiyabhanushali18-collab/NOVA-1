@@ -183,7 +183,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     } catch (err: any) {
       console.error('Could not start live session:', err);
       stopLiveSession();
-      setStatusText(err?.message || 'Connection failed');
+      const friendlyMessage =
+        err?.name === 'NotAllowedError'
+          ? 'Camera access denied'
+          : err?.message && !err.message.includes('fetch')
+          ? err.message
+          : 'AI connecting... tap to retry';
+      setStatusText(friendlyMessage);
     }
   }, [activeGarmentObj, initialGarmentImage, stopLiveSession]);
 
@@ -399,6 +405,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                   ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
                   : isConnecting
                   ? 'bg-amber-400 animate-ping'
+                  : statusText.includes('retry') || statusText.includes('denied') || statusText.includes('failed')
+                  ? 'bg-rose-400'
                   : 'bg-emerald-400'
               }`}
             />

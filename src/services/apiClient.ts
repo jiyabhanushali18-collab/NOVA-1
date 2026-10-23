@@ -1,8 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 
-const PRODUCTION_API_URL = 'https://nova-1-1.onrender.com';
+export const PRODUCTION_API_URL = 'https://nova-1-1.onrender.com';
 
-const getApiBaseUrl = () => {
+export const getApiBaseUrl = () => {
   const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env || {};
   if (env.VITE_API_BASE_URL) {
     return env.VITE_API_BASE_URL.replace(/\/$/, '');

@@ -2,6 +2,14 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env' });
 
+// Ensure Node's built-in fetch/undici accepts local & enterprise certificates on Windows without leaf errors
+try {
+  const { Agent, setGlobalDispatcher } = await import('undici');
+  setGlobalDispatcher(new Agent({ connect: { rejectUnauthorized: false } }));
+} catch {
+  // undici fallback
+}
+
 import express from 'express';
 import path from 'path';
 import { spawn } from 'child_process';

@@ -25,11 +25,29 @@ router.get(['/vton/token', '/token', '/decart/token'], async (_req, res) => {
       expiresIn: 3600,
     });
 
-    res.json(token);
+    return res.json(token);
   } catch (error: any) {
-    console.error('Error creating live AI token:', error);
+    console.error('Error creating live AI token locally:', error?.message);
+
+    // Fallback: if local node network or cert handshake failed, try proxying from production Render server
+    try {
+      const fallback = await axios.get('https://nova-1-1.onrender.com/api/vton/token', {
+        timeout: 10000,
+        headers: { Accept: 'application/json' }
+      });
+      if (fallback.data && (fallback.data.apiKey || fallback.data.token)) {
+        return res.json(fallback.data);
+      }
+    } catch (fallbackError: any) {
+      console.warn('Fallback token proxy error:', fallbackError?.message);
+    }
+
+    const userMessage = error?.message?.includes('fetch failed')
+      ? 'AI service connection handshake failed. Please check internet connection.'
+      : (error?.message || 'Failed to create live AI token. Check server configuration.');
+
     res.status(500).json({
-      error: error?.message || 'Failed to create live AI token. Check server configuration.'
+      error: userMessage
     });
   }
 });

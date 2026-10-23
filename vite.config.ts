@@ -15,14 +15,24 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
-        server: {
+    server: {
       port: 5173,
-      // Proxy requests to your Python FastAPI server running on port 8000
       proxy: {
-        '/api': {
+        '/api/analyze-vision': {
           target: 'http://127.0.0.1:8000',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+        '/upload': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+        },
+        '/output': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+        },
+        '/api': {
+          target: 'http://127.0.0.1:3000',
+          changeOrigin: true,
         },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
