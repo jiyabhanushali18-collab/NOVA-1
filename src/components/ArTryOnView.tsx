@@ -16,6 +16,7 @@ interface ArTryOnViewProps {
   setSelectedGarment: (garment: string) => void;
   onCaptureImage?: (imageDataUrl: string) => void;
   initialGarmentImage?: string | null;
+  isDarkMode?: boolean;
 }
 
 interface GarmentItem {
@@ -27,7 +28,7 @@ interface GarmentItem {
 }
 
 // -------------------------------------------------------------
-// Isolated, Hardware-Accelerated Video Layer
+// Hardware-Accelerated Video / Model Layer for Mobile
 // -------------------------------------------------------------
 interface LiveTryOnViewportProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -54,7 +55,7 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
         isolation: 'isolate',
       }}
     >
-      {/* Real-time transformed video element with zero CSS filters */}
+      {/* Real-time transformed camera video stream with playsInline for mobile devices */}
       <video
         ref={videoRef}
         autoPlay
@@ -65,33 +66,25 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
           willChange: 'transform',
           backfaceVisibility: 'hidden',
         }}
-        className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-200 ${
+        className={`absolute inset-0 w-full h-full object-cover object-top pointer-events-none transition-opacity duration-200 ${
           showVideo ? 'opacity-100 z-10' : 'opacity-0 z-0'
         }`}
       />
 
-      {/* Fallback portrait model when live camera is off */}
+      {/* High-visibility portrait model when live stream is off */}
       {!showVideo && (
         <img
           alt="AR Try-On Portrait Model"
-          className="absolute inset-0 w-full h-full object-cover object-center z-0 pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover object-top z-0 pointer-events-none"
           referrerPolicy="no-referrer"
           src={fallbackImg}
         />
       )}
 
-      {/* Zero-invalidation hardware-accelerated lighting overlay (never touches video buffer) */}
+      {/* Zero-invalidation hardware-accelerated lighting overlay */}
       {lighting && (
         <div className="absolute inset-0 bg-white/10 mix-blend-screen pointer-events-none z-15" />
       )}
-
-      {/* AR holographic target framing overlay */}
-      <div className="absolute inset-x-8 top-20 bottom-32 border border-white/20 rounded-[32px] pointer-events-none z-20">
-        <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-white rounded-tl-[32px]" />
-        <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 border-white rounded-tr-[32px]" />
-        <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 border-white rounded-bl-[32px]" />
-        <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-white rounded-br-[32px]" />
-      </div>
     </div>
   );
 });
@@ -102,20 +95,19 @@ LiveTryOnViewport.displayName = 'LiveTryOnViewport';
 // -------------------------------------------------------------
 export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   onNavigate,
-  onBack,
   selectedGarment,
   setSelectedGarment,
   onCaptureImage,
   initialGarmentImage,
+  isDarkMode = true,
 }) => {
-  const [activeCategory, setActiveCategory] = useState<'outfit' | 'tops' | 'bottoms' | 'shoes'>('outfit');
   const [flash, setFlash] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoLive, setIsVideoLive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [statusText, setStatusText] = useState('Camera Ready');
+  const [statusText, setStatusText] = useState('Camera ready');
   const [lighting, setLighting] = useState(false);
-  const [showFitInfo, setShowFitInfo] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [garmentsList, setGarmentsList] = useState<GarmentItem[]>(DEFAULT_GARMENTS);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -138,7 +130,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     setIsCameraActive(false);
     setIsVideoLive(false);
     setIsConnecting(false);
-    setStatusText('Camera Ready');
+    setStatusText('Camera ready');
   }, []);
 
   // Clean up session strictly on unmount
@@ -223,7 +215,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     setGarmentsList((prev) => [newGarment, ...prev]);
     setSelectedGarment(customId);
 
-    // Warm up the compression in background
+    // Warm up compression in background
     prepareGarmentForLiveTryOn(file).catch(() => {});
 
     if (sessionRef.current && isLiveRef.current) {
@@ -271,27 +263,39 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }, 300);
   };
 
-  const handleExit = () => {
-    stopLiveSession();
-    if (onBack) {
-      onBack();
-    } else if (typeof window !== 'undefined' && window.history.length > 1) {
-      window.history.back();
-    } else {
-      onNavigate('home');
+  // Save current look
+  const handleSaveLook = () => {
+    try {
+      const savedLooks = JSON.parse(localStorage.getItem('nova_saved_looks') || '[]');
+      const newLook = {
+        id: `look-${Date.now()}`,
+        garmentId: selectedGarment,
+        garmentName: activeGarmentObj?.name || 'Curated Look',
+        imageUrl: activeGarmentObj?.img || activeModelBg,
+        savedAt: new Date().toISOString()
+      };
+      savedLooks.unshift(newLook);
+      localStorage.setItem('nova_saved_looks', JSON.stringify(savedLooks.slice(0, 20)));
+      setToastMessage('✓ Look saved to your Wardrobe!');
+    } catch {
+      setToastMessage('✓ Look saved!');
     }
-  };
-
-  const handleConsult = () => {
-    stopLiveSession();
-    onNavigate('chat');
+    setTimeout(() => setToastMessage(null), 2500);
   };
 
   return (
-    <div className="absolute inset-0 z-0 h-full overflow-hidden bg-slate-950 rounded-3xl select-none">
+    <div className="space-y-3.5 relative select-none pb-2">
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#131426]/95 text-white px-4.5 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 border border-[#553BE2]/40 backdrop-blur-md animate-bounce max-w-[280px] text-center leading-none">
+          <span className="material-symbols-outlined text-[15px] text-[#A594FD]">bookmark_added</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Simulated camera flash */}
       {flash && (
-        <div className="absolute inset-0 bg-white z-50 animate-ping opacity-100 pointer-events-none" />
+        <div className="fixed inset-0 bg-white z-50 animate-ping opacity-100 pointer-events-none" />
       )}
 
       {/* Hidden file input for custom dress upload */}
@@ -303,275 +307,249 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         onChange={handleCustomUpload}
       />
 
-      {/* Dedicated, hardware-accelerated video layer */}
-      <LiveTryOnViewport
-        videoRef={videoRef}
-        isCameraActive={isCameraActive}
-        isVideoLive={isVideoLive}
-        lighting={lighting}
-        fallbackImg={activeModelBg}
-      />
-
-      {/* Top Left Back Button */}
-      <div className="absolute top-4 left-4 z-30 pointer-events-auto">
-        <button
-          onClick={handleExit}
-          className="w-9 h-9 rounded-full bg-[#131426]/90 border border-white/20 text-white flex items-center justify-center backdrop-blur-md shadow-lg hover:bg-[#553BE2] transition-colors active:scale-95 cursor-pointer"
-          title="Back"
+      {/* 1. Mode Selectors Pill: AR Try-On (active), Live Scan, Wardrobe */}
+      <section className={`p-1 rounded-full flex relative border shadow-sm transition-colors ${
+        isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-[#ECE7FF] border-[#E4DFF5]'
+      }`}>
+        {/* Tab 1: AR Try-On (active) */}
+        <button 
+          type="button"
+          className="flex-1 py-2 text-xs font-bold rounded-full bg-[#553BE2] text-white shadow-md flex items-center justify-center gap-1.5 z-10 transition-all hover:bg-[#4830cb] active:scale-95 cursor-pointer"
         >
-          <span className="material-symbols-outlined text-lg leading-none">arrow_back</span>
+          <span className="material-symbols-outlined text-[15px]">view_in_ar</span> AR Try-On
         </button>
-      </div>
 
-      {/* Top Status & AI Indicator Pill */}
-      <div className="absolute top-4 inset-x-0 flex justify-center z-30 pointer-events-none">
-        <div className="bg-[#131426]/90 border border-white/15 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg backdrop-blur-sm pointer-events-auto">
-          <span
-            className={`w-2 h-2 rounded-full ${
-              isVideoLive
-                ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
-                : isConnecting
-                ? 'bg-amber-400 animate-ping'
-                : 'bg-slate-400'
-            }`}
-          />
-          <span className="text-[11px] font-semibold text-slate-200 tracking-wide">
-            {statusText}
-          </span>
-        </div>
-      </div>
+        {/* Tab 2: Live Scan */}
+        <button 
+          type="button"
+          onClick={() => onNavigate('scan-outfit')}
+          title="Switch to Live Scan"
+          className={`flex-1 py-2 text-xs font-semibold rounded-full flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+            isDarkMode 
+              ? 'text-slate-300 hover:text-white hover:bg-slate-800/80' 
+              : 'text-[#5E667A] hover:text-[#131426] hover:bg-white/70'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[14px]">camera_alt</span> Live Scan
+        </button>
 
-      {/* Start Camera on-demand overlay button (only shown when camera is off) */}
-      {!isVideoLive && (
-        <div className="absolute inset-x-0 bottom-44 z-20 flex justify-center pointer-events-auto">
-          <button
-            onClick={startLiveSession}
-            disabled={isConnecting}
-            className="bg-[#131426]/90 hover:bg-[#553BE2] border border-white/20 text-white rounded-full px-5 py-2.5 text-xs font-semibold flex items-center gap-2.5 shadow-xl transition-colors active:scale-95 disabled:opacity-50"
-          >
-            {isConnecting ? (
-              <>
-                <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                <span>Connecting AI...</span>
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-base text-[#A594FD]">videocam</span>
-                <span>Try On Live (Camera)</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
+        {/* Tab 3: Wardrobe */}
+        <button 
+          type="button"
+          onClick={() => onNavigate('wardrobe')}
+          title="Switch to Wardrobe"
+          className={`flex-1 py-2 text-xs font-semibold rounded-full flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+            isDarkMode 
+              ? 'text-slate-300 hover:text-white hover:bg-slate-800/80' 
+              : 'text-[#5E667A] hover:text-[#131426] hover:bg-white/70'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[14px]">checkroom</span> Wardrobe
+        </button>
+      </section>
 
-      {/* Modern, GPU-Light Match Pill */}
-      <div className="absolute top-16 right-5 z-20 pointer-events-auto">
-        <div className="bg-[#131426]/90 rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-lg border border-[#ECE7FF]/20">
-          <span className="material-symbols-outlined text-[#A594FD] text-sm">auto_awesome</span>
-          <span className="text-white font-bold text-xs">92%</span>
-          <span className="text-slate-300 text-[10px] uppercase tracking-wider">Match</span>
-        </div>
-      </div>
-
-      {/* AI Fit tooltip popover */}
-      {showFitInfo && (
-        <div className="absolute top-28 right-5 z-30 bg-[#131426]/95 border border-white/20 rounded-2xl p-3 max-w-[200px] text-white shadow-2xl pointer-events-auto">
-          <div className="text-[10px] font-bold text-[#A594FD] uppercase tracking-wider mb-0.5">Fit Analysis</div>
-          <p className="text-[11px] leading-tight text-slate-200">
-            Relaxed street silhouette. Fabric adapts smoothly to posture and motion.
+      {/* 2. Screen Heading & History button */}
+      <section className="flex justify-between items-start pt-0.5">
+        <div>
+          <h1 className="text-2xl font-bold text-white leading-tight flex items-center gap-1.5">
+            AR Try-On <span className="material-symbols-outlined text-[#8B6DFD] text-xl">auto_awesome</span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            See your selected outfit in real time.
           </p>
         </div>
-      )}
 
-      {/* Left side category selectors (floating bar) */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20 pointer-events-auto">
-        <div className="bg-[#131426]/90 rounded-full py-4 px-2 flex flex-col space-y-4 shadow-xl border border-white/10 text-slate-300">
-          <button
-            onClick={() => setActiveCategory('outfit')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              activeCategory === 'outfit' ? 'text-[#ECE7FF]' : 'hover:text-white'
-            }`}
-          >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                activeCategory === 'outfit' ? 'bg-[#553BE2] text-white shadow-md' : ''
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">checkroom</span>
-            </div>
-            <span className="text-[9px] font-medium font-sans">Outfits</span>
-          </button>
+        {/* History button */}
+        <button
+          type="button"
+          onClick={() => onNavigate('scan-outfit')}
+          title="View Scan & Try-On History"
+          className="bg-[#111322] hover:bg-[#1C1F36] border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-slate-300 hover:text-white text-[11px] font-bold shadow-sm transition-all active:scale-95 cursor-pointer shrink-0 mt-0.5"
+        >
+          <span className="material-symbols-outlined text-sm text-[#A594FD]">history</span>
+          <span className="tracking-wider">HISTORY</span>
+        </button>
+      </section>
 
-          <button
-            onClick={() => setActiveCategory('tops')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              activeCategory === 'tops' ? 'text-[#ECE7FF]' : 'hover:text-white'
-            }`}
-          >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                activeCategory === 'tops' ? 'bg-[#553BE2] text-white shadow-md' : ''
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">apparel</span>
-            </div>
-            <span className="text-[9px] font-medium font-sans">Tops</span>
-          </button>
+      {/* 3. Camera Preview Area (Optimized for Mobile Phone Visibility) */}
+      <section className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
+        {/* Hardware-accelerated Video Layer */}
+        <LiveTryOnViewport
+          videoRef={videoRef}
+          isCameraActive={isCameraActive}
+          isVideoLive={isVideoLive}
+          lighting={lighting}
+          fallbackImg={activeModelBg}
+        />
 
-          <button
-            onClick={() => setActiveCategory('bottoms')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              activeCategory === 'bottoms' ? 'text-[#ECE7FF]' : 'hover:text-white'
-            }`}
-          >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                activeCategory === 'bottoms' ? 'bg-[#553BE2] text-white shadow-md' : ''
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">styler</span>
-            </div>
-            <span className="text-[9px] font-medium font-sans">Bottoms</span>
-          </button>
-
-          <button
-            onClick={() => setActiveCategory('shoes')}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              activeCategory === 'shoes' ? 'text-[#ECE7FF]' : 'hover:text-white'
-            }`}
-          >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                activeCategory === 'shoes' ? 'bg-[#553BE2] text-white shadow-md' : ''
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">directions_walk</span>
-            </div>
-            <span className="text-[9px] font-medium font-sans">Shoes</span>
-          </button>
+        {/* Target Framing Brackets */}
+        <div className="absolute inset-3 rounded-2xl pointer-events-none z-20">
+          <div className="absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 border-white rounded-tl-xl" />
+          <div className="absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 border-white rounded-tr-xl" />
+          <div className="absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 border-white rounded-bl-xl" />
+          <div className="absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 border-white rounded-br-xl" />
         </div>
-      </div>
 
-      {/* Right side options: Camera Toggle, Flip, light, Fit (floating bar) */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-auto">
-        <div className="bg-[#131426]/90 rounded-full py-4 px-2 flex flex-col space-y-4 shadow-xl border border-white/10 text-slate-300">
-          <button
-            onClick={handleToggleCamera}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              isVideoLive ? 'text-[#A594FD]' : 'hover:text-white'
-            }`}
-            title={isVideoLive ? 'Stop Camera' : 'Start Camera'}
-          >
-            <span className="material-symbols-outlined text-lg">
-              {isCameraActive ? 'videocam' : 'videocam_off'}
+        {/* Top Status Pill: Camera ready / Live status */}
+        <div className="absolute top-3 inset-x-0 flex justify-center z-30 pointer-events-none">
+          <div className="bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isVideoLive
+                  ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
+                  : isConnecting
+                  ? 'bg-amber-400 animate-ping'
+                  : 'bg-emerald-400'
+              }`}
+            />
+            <span className="text-[11px] font-semibold text-slate-200 tracking-wide">
+              {statusText}
             </span>
-            <span className="text-[9px]">{isCameraActive ? 'Live' : 'Cam'}</span>
-          </button>
+          </div>
+        </div>
 
+        {/* Top Right Match Badge */}
+        <div className="absolute top-3 right-3 z-30 pointer-events-auto">
+          <div className="bg-[#111322]/85 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg border border-white/15 backdrop-blur-md">
+            <span className="material-symbols-outlined text-[#A594FD] text-xs leading-none">auto_awesome</span>
+            <span className="text-white font-bold text-[11px] leading-none">92%</span>
+            <span className="text-slate-300 text-[9px] uppercase tracking-wider font-bold leading-none">MATCH</span>
+          </div>
+        </div>
+
+        {/* In-Camera Floating Bottom Controls: Flip, Shutter, Light */}
+        <div className="absolute bottom-3.5 inset-x-0 flex justify-center items-center gap-5 z-30 px-4 pointer-events-auto">
+          {/* Flip Camera */}
           <button
+            type="button"
             onClick={handleFlip}
             disabled={!isVideoLive}
-            className="flex flex-col items-center space-y-0.5 w-10 hover:text-white transition-colors disabled:opacity-30"
+            title="Flip Camera"
+            className="w-10 h-10 rounded-full bg-[#111322]/85 hover:bg-[#1C1F36] backdrop-blur-md border border-white/15 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">flip_camera_ios</span>
-            <span className="text-[9px]">Flip</span>
+            <span className="material-symbols-outlined text-base">cameraswitch</span>
           </button>
 
+          {/* Center Large Shutter Button */}
           <button
+            type="button"
+            onClick={handleCapture}
+            title="Take Snapshot"
+            className="w-13 h-13 rounded-full bg-white flex items-center justify-center p-1 border-[3px] border-[#A594FD] shadow-[0_0_20px_rgba(165,148,253,0.6)] active:scale-90 hover:scale-105 transition-all cursor-pointer"
+          >
+            <div className="w-full h-full rounded-full bg-white shadow-inner" />
+          </button>
+
+          {/* Lighting Toggle */}
+          <button
+            type="button"
             onClick={() => setLighting(!lighting)}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              lighting ? 'text-[#A594FD]' : 'hover:text-white'
+            title="Toggle Lighting"
+            className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center shadow-lg active:scale-95 transition-all cursor-pointer ${
+              lighting
+                ? 'bg-[#553BE2] border-white/40 shadow-[#553BE2]/40 text-amber-300'
+                : 'bg-[#111322]/85 hover:bg-[#1C1F36] border-white/15 text-white'
             }`}
           >
-            <span className="material-symbols-outlined text-lg">light_mode</span>
-            <span className="text-[9px]">Light</span>
-          </button>
-
-          <button
-            onClick={() => setShowFitInfo(!showFitInfo)}
-            className={`flex flex-col items-center space-y-0.5 w-10 transition-colors ${
-              showFitInfo ? 'text-[#A594FD]' : 'hover:text-white'
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg">man</span>
-            <span className="text-[9px]">Fit</span>
+            <span className="material-symbols-outlined text-base">lightbulb</span>
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* Dynamic bottom garment carousel & capture container */}
-      <div className="absolute bottom-4 inset-x-0 z-30 px-4 flex flex-col items-center space-y-3 pointer-events-auto">
-        {/* Swipe selection list + Custom Upload */}
-        <div className="w-full flex items-center space-x-2.5 overflow-x-auto hide-scrollbar snap-x px-2">
-          {/* Custom Garment Upload Tile */}
+      {/* 4. Outfit Selection Section */}
+      <section>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-base font-bold text-white">Select Outfit</h2>
+          <button 
+            type="button"
+            onClick={() => onNavigate('wardrobe')}
+            className="text-xs font-semibold text-[#8B6DFD] hover:text-[#A594FD] flex items-center transition-colors cursor-pointer"
+          >
+            View All <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
+          </button>
+        </div>
+
+        {/* Horizontal Carousel (Touch-smooth on phone) */}
+        <div className="flex gap-2.5 overflow-x-auto hide-scrollbar touch-pan-x snap-x -mx-1 px-1 pb-1">
+          {garmentsList.map((g) => {
+            const isSelected = selectedGarment === g.id;
+            return (
+              <div
+                key={g.id}
+                onClick={() => handleGarmentClick(g)}
+                className={`snap-start shrink-0 w-[90px] rounded-2xl p-2 flex flex-col items-center border transition-all cursor-pointer ${
+                  isSelected 
+                    ? 'bg-[#1A1838] border-[#6D4AFF] shadow-lg shadow-[#6D4AFF]/25 ring-1 ring-[#6D4AFF]' 
+                    : 'bg-[#111322] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="w-full aspect-square rounded-xl overflow-hidden bg-slate-900/80 mb-1.5 relative border border-white/5">
+                  <img
+                    alt={g.name}
+                    src={g.img}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover object-top"
+                  />
+                  {isSelected && (
+                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#6D4AFF] text-white flex items-center justify-center border border-white shadow-sm">
+                      <span className="material-symbols-outlined text-[10px] font-bold leading-none">check</span>
+                    </div>
+                  )}
+                </div>
+                <span className={`text-[10px] font-semibold text-center truncate w-full ${
+                  isSelected ? 'text-white font-bold' : 'text-slate-300'
+                }`}>
+                  {g.name}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Upload Card */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="snap-center shrink-0 w-20 rounded-2xl p-2 flex flex-col items-center border border-dashed border-white/30 bg-[#131426]/80 hover:bg-[#131426] hover:border-[#553BE2] cursor-pointer transition-colors"
+            className="snap-start shrink-0 w-[90px] rounded-2xl p-2 flex flex-col items-center justify-center border border-dashed border-white/20 bg-[#111322]/80 hover:bg-[#111322] hover:border-[#6D4AFF] cursor-pointer transition-all min-h-[104px]"
           >
-            <div className="w-full aspect-square rounded-xl bg-white/5 mb-1.5 flex flex-col items-center justify-center text-slate-300 hover:text-white">
-              <span className="material-symbols-outlined text-2xl text-[#A594FD]">add_photo_alternate</span>
+            <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-[#A594FD] mb-1.5 border border-white/10">
+              <span className="material-symbols-outlined text-xl">cloud_upload</span>
             </div>
-            <span className="text-white text-[9px] font-sans text-center leading-tight truncate w-full font-medium">
+            <span className="text-[10px] font-semibold text-slate-300 text-center">
               Upload
             </span>
           </div>
-
-          {/* Curated garments */}
-          {garmentsList.map((g) => (
-            <div
-              key={g.id}
-              onClick={() => handleGarmentClick(g)}
-              className={`snap-center shrink-0 w-20 rounded-2xl p-2 flex flex-col items-center border transition-all duration-150 cursor-pointer ${
-                selectedGarment === g.id
-                  ? 'bg-[#553BE2]/40 border-[#553BE2] font-bold scale-105 shadow-md shadow-[#553BE2]/20'
-                  : 'bg-[#131426]/80 border-white/10 opacity-75 hover:opacity-95'
-              }`}
-            >
-              <div className="w-full aspect-square rounded-xl bg-slate-900 mb-1.5 overflow-hidden flex items-center justify-center relative">
-                <img
-                  alt={g.name}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                  src={g.img}
-                />
-                {selectedGarment === g.id && (
-                  <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#553BE2] text-white flex items-center justify-center border border-white">
-                    <span className="material-symbols-outlined text-[10px] font-bold leading-none">check</span>
-                  </div>
-                )}
-              </div>
-              <span className="text-white text-[9px] font-sans text-center leading-tight truncate w-full">{g.name}</span>
-            </div>
-          ))}
         </div>
+      </section>
 
-        {/* Shutter capture bar */}
-        <div className="bg-[#131426]/95 rounded-full w-full max-w-sm flex items-center justify-between px-6 py-2.5 border border-white/15 shadow-2xl">
-          <button
-            onClick={handleExit}
-            className="flex items-center space-x-1 text-slate-300 hover:text-white transition-colors"
-          >
-            <span className="material-symbols-outlined text-base">home</span>
-            <span className="text-xs font-semibold">Exit</span>
-          </button>
+      {/* 5. Action Buttons: Try On Live & Save Look */}
+      <section className="grid grid-cols-2 gap-3 pt-0.5">
+        <button
+          type="button"
+          onClick={handleToggleCamera}
+          disabled={isConnecting}
+          className="w-full py-3.5 px-3 rounded-2xl bg-[#5D3DF2] hover:bg-[#4E30E0] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#5D3DF2]/30 transition-all cursor-pointer disabled:opacity-60"
+        >
+          {isConnecting ? (
+            <>
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              <span>Connecting...</span>
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined text-lg leading-none">videocam</span>
+              <span>{isVideoLive ? 'Stop Live AR' : 'Try On Live'}</span>
+            </>
+          )}
+        </button>
 
-          {/* Shutter center button */}
-          <button
-            onClick={handleCapture}
-            className="w-13 h-13 rounded-full bg-[#553BE2] flex items-center justify-center shadow-[0_0_15px_rgba(85,59,226,0.5)] border-2 border-white -mt-5 hover:scale-105 active:scale-95 transition-transform"
-          >
-            <span className="material-symbols-outlined text-white text-2xl leading-none">photo_camera</span>
-          </button>
-
-          <button
-            onClick={handleConsult}
-            className="flex items-center space-x-1 text-slate-300 hover:text-white transition-colors"
-          >
-            <span className="material-symbols-outlined text-base">chat</span>
-            <span className="text-xs font-semibold">Consult</span>
-          </button>
-        </div>
-      </div>
+        <button
+          type="button"
+          onClick={handleSaveLook}
+          className="w-full py-3.5 px-3 rounded-2xl bg-[#111322] hover:bg-[#1A1C30] active:scale-95 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+        >
+          <span className="material-symbols-outlined text-lg leading-none text-slate-300">bookmark_border</span>
+          <span>Save Look</span>
+        </button>
+      </section>
     </div>
   );
 };

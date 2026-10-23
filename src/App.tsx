@@ -1457,6 +1457,7 @@ export default function App() {
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
             onCaptureImage={(captured) => setCapturedTryOnImage(captured)}
+            isDarkMode={isDarkMode}
           />
         );
       case 'tryon-result':
@@ -2012,8 +2013,8 @@ export default function App() {
     return false;
   };
 
-  // Determine if full-screen preview camera active (no standard header/nav shown on live tryon to emulate immersive filter experience!)
-  const isImmersiveAR = screen === 'ar-tryon' || screen === 'setup-preferences' || screen === 'profile-analysis' || screen === 'email-verification';
+  // Determine if full-screen preview camera active (setup preferences, profile analysis, email verification)
+  const isImmersiveAR = screen === 'setup-preferences' || screen === 'profile-analysis' || screen === 'email-verification';
 
   // Splash Screen Guard
   if (screen === 'splash') {

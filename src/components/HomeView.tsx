@@ -259,7 +259,28 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
-          {/* Item 3: Camera Scan */}
+          {/* Item 3: AR Try-On */}
+          <div 
+            onClick={() => onNavigate('ar-tryon')}
+            className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
+              isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
+            }`}
+          >
+            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
+            }`}>
+              <span className="material-symbols-outlined leading-none">view_in_ar</span>
+            </div>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AR Try-On</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Try outfits virtually with AR.</p>
+            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
+              isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
+            }`}>
+              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
+            </div>
+          </div>
+
+          {/* Item 4: Camera Scan */}
           <div 
             onClick={() => onNavigate('camera-scan')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
@@ -280,7 +301,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
-          {/* Item 4: Virtual Wardrobe */}
+          {/* Item 5: Virtual Wardrobe */}
           <div
             onClick={() => onNavigate('wardrobe')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
@@ -294,27 +315,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
             <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Virtual Wardrobe</h3>
             <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Build AI garments from scans, prints, and textures.</p>
-            <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
-              isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
-            }`}>
-              <span className="material-symbols-outlined text-xs leading-none">arrow_forward</span>
-            </div>
-          </div>
-
-          {/* Item 5: AR Try-On */}
-          <div 
-            onClick={() => onNavigate('ar-tryon')}
-            className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
-              isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
-            }`}
-          >
-            <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
-            }`}>
-              <span className="material-symbols-outlined leading-none">view_in_ar</span>
-            </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AR Try-On</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Try outfits virtually with AR.</p>
             <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
               isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>

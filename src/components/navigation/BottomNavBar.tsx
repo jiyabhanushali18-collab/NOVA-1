@@ -13,7 +13,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   onOpenQuickHub
 }) => {
   const isHomeActive = currentScreen === 'home';
-  const isScanActive = currentScreen === 'scan-outfit' || currentScreen === 'camera-scan';
+  const isScanActive = currentScreen === 'scan-outfit' || currentScreen === 'camera-scan' || currentScreen === 'ar-tryon' || currentScreen === 'tryon-result';
   const isStylistActive = currentScreen === 'chat';
   const isProfileActive = currentScreen === 'profile' || currentScreen === 'terms' || currentScreen === 'privacy';
 

@@ -111,19 +111,11 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
         </div>
       </section>
 
-      {/* Mode selectors: Live Scan, AR Try-On, Wardrobe */}
+      {/* Mode selectors: AR Try-On, Live Scan, Wardrobe */}
       <section className={`p-1 rounded-full flex relative border shadow-sm transition-colors ${
         isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-[#ECE7FF] border-[#E4DFF5]'
       }`}>
-        {/* Tab 1: Live Scan (active) */}
-        <button 
-          onClick={() => onNavigate('camera-scan')}
-          className="flex-1 py-2 text-xs font-bold rounded-full bg-[#553BE2] text-white shadow-md flex items-center justify-center gap-1.5 z-10 transition-all hover:bg-[#4830cb] active:scale-95 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[14px]">camera_alt</span> Live Scan
-        </button>
-
-        {/* Tab 2: AR Try-On (replaces Photo Scan) */}
+        {/* Tab 1: AR Try-On */}
         <button 
           onClick={() => onNavigate('ar-tryon')}
           title="Try on outfits virtually with real-time AR"
@@ -134,6 +126,14 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           }`}
         >
           <span className="material-symbols-outlined text-[15px] text-[#553BE2]">view_in_ar</span> AR Try-On
+        </button>
+
+        {/* Tab 2: Live Scan (active) */}
+        <button 
+          onClick={() => onNavigate('camera-scan')}
+          className="flex-1 py-2 text-xs font-bold rounded-full bg-[#553BE2] text-white shadow-md flex items-center justify-center gap-1.5 z-10 transition-all hover:bg-[#4830cb] active:scale-95 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[14px]">camera_alt</span> Live Scan
         </button>
 
         {/* Tab 3: Wardrobe */}

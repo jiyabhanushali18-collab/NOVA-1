@@ -47,29 +47,6 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
 
   const hubItems: HubItem[] = [
     {
-      id: 'camera-scan',
-      title: 'Camera Scan',
-      badge: 'AI VISION',
-      description: 'Scan outfit & garments in real-time',
-      screen: 'camera-scan',
-      iconBg: 'bg-[#4F46E5]',
-      icon: (
-        <svg 
-          viewBox="0 0 24 24" 
-          width="24" 
-          height="24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2.2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-          <circle cx="12" cy="13" r="4" />
-        </svg>
-      )
-    },
-    {
       id: 'ar-fitting',
       title: 'AR Virtual Fitting',
       badge: 'REAL-TIME',
@@ -97,6 +74,29 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
           <path d="M12 7v5.5" />
           <path d="M12 12.5l5-2.7" />
           <path d="M12 12.5l-5-2.7" />
+        </svg>
+      )
+    },
+    {
+      id: 'camera-scan',
+      title: 'Camera Scan',
+      badge: 'AI VISION',
+      description: 'Scan outfit & garments in real-time',
+      screen: 'camera-scan',
+      iconBg: 'bg-[#4F46E5]',
+      icon: (
+        <svg 
+          viewBox="0 0 24 24" 
+          width="24" 
+          height="24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2.2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
         </svg>
       )
     },
