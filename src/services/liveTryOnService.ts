@@ -1,8 +1,11 @@
-export interface LiveTryOnSessionConfig {
+import { apiUrl } from './apiClient';
+
+
   videoElement: HTMLVideoElement;
   garmentImage?: File | Blob | string | null;
   facingMode?: 'user' | 'environment';
   onStatusChange?: (status: string) => void;
+  onLocalStream?: (stream: MediaStream) => void;
   onError?: (error: Error) => void;
   onConnected?: () => void;
 }
@@ -256,7 +259,6 @@ export async function startLiveTryOnSession(
 
   // Match model dimensions
   let localStream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
     video: {
       facingMode: currentFacingMode,
       width: model.width || 1280,
@@ -265,6 +267,11 @@ export async function startLiveTryOnSession(
     },
   });
 
+  config.videoElement.srcObject = localStream;
+  config.videoElement.play().catch((err) => {
+    console.warn('Camera preview play error:', err);
+  });
+  config.onLocalStream?.(localStream);
   config.onStatusChange?.('Connecting to AI...');
 
   // Use error logger to silence routine disconnect warnings
@@ -279,28 +286,35 @@ export async function startLiveTryOnSession(
 
   // Connect WebRTC stream cleanly without giant initial payload.
   // This eliminates "WebSocket opening handshake timed out" errors.
-  const realtimeClient = await client.realtime.connect(localStream, {
-    model,
-    onRemoteStream: (transformedStream: MediaStream) => {
-      if (isDestroyed) return;
-      if (config.videoElement) {
+  let realtimeClient;
+  try {
+    realtimeClient = await client.realtime.connect(localStream, {
+      model,
+      onRemoteStream: (transformedStream: MediaStream) => {
+        if (isDestroyed) return;
         config.videoElement.srcObject = transformedStream;
         config.videoElement.play().catch((err) => {
           console.warn('Video play error:', err);
         });
-      }
-      config.onStatusChange?.('Live AI Active');
-      config.onConnected?.();
-    },
-    onConnectionChange: (state) => {
-      if (isDestroyed) return;
-      if (state === 'reconnecting') {
-        config.onStatusChange?.('Reconnecting AI...');
-      } else if (state === 'disconnected') {
-        config.onStatusChange?.('Disconnected');
-      }
-    },
-  });
+        config.onStatusChange?.('Live AI Active');
+        config.onConnected?.();
+      },
+      onConnectionChange: (state) => {
+        if (isDestroyed) return;
+        if (state === 'reconnecting') {
+          config.onStatusChange?.('Reconnecting AI...');
+        } else if (state === 'disconnected') {
+          config.onStatusChange?.('Disconnected');
+        }
+      },
+    });
+  } catch (error) {
+    localStream.getTracks().forEach((track) => track.stop());
+    if (config.videoElement.srcObject === localStream) {
+      config.videoElement.srcObject = null;
+    }
+    throw error;
+  }
 
   // Serialized, non-blocking garment sender
   let isUpdatingGarment = false;
@@ -375,7 +389,6 @@ export async function startLiveTryOnSession(
       localStream.getVideoTracks().forEach((t) => t.stop());
 
       const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
         video: {
           facingMode: currentFacingMode,
           width: model.width || 1280,

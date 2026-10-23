@@ -5,7 +5,9 @@ import axios from 'axios';
 const router = express.Router();
 
 const getApiKey = () => {
-  return process.env.VTON_API_KEY || 'dct_nova_icMPpxWjNuwXYZltqFExguJrjleyiKwmwbfkiCThSdLMlnhMbskdUfUeYuYCluxY';
+  // Return only the environment variable. Never fall back to a literal key.
+  // Set VTON_API_KEY in the hosting provider's environment settings.
+  return process.env.VTON_API_KEY || '';
 };
 
 /**

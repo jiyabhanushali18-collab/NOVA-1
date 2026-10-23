@@ -6,6 +6,10 @@ import { defineConfig } from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    optimizeDeps: {
+      include: ['retry'],
+      exclude: ['@decartai/sdk'],
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

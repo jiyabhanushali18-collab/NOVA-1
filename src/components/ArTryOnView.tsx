@@ -30,6 +30,7 @@ interface GarmentItem {
 // -------------------------------------------------------------
 interface LiveTryOnViewportProps {
   videoRef: React.RefObject<HTMLVideoElement>;
+  isCameraActive: boolean;
   isVideoLive: boolean;
   lighting: boolean;
   fallbackImg: string;
@@ -37,10 +38,13 @@ interface LiveTryOnViewportProps {
 
 const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
   videoRef,
+  isCameraActive,
   isVideoLive,
   lighting,
   fallbackImg,
 }) => {
+  const showVideo = isCameraActive || isVideoLive;
+
   return (
     <div
       className="absolute inset-0 overflow-hidden bg-black select-none pointer-events-none"
@@ -61,12 +65,12 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
           backfaceVisibility: 'hidden',
         }}
         className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-200 ${
-          isVideoLive ? 'opacity-100 z-10' : 'opacity-0 z-0'
+          showVideo ? 'opacity-100 z-10' : 'opacity-0 z-0'
         }`}
       />
 
       {/* Fallback portrait model when live camera is off */}
-      {!isVideoLive && (
+      {!showVideo && (
         <img
           alt="AR Try-On Portrait Model"
           className="absolute inset-0 w-full h-full object-cover object-center z-0 pointer-events-none"
@@ -104,6 +108,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 }) => {
   const [activeCategory, setActiveCategory] = useState<'outfit' | 'tops' | 'bottoms' | 'shoes'>('outfit');
   const [flash, setFlash] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoLive, setIsVideoLive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [statusText, setStatusText] = useState('Camera Ready');
@@ -128,6 +133,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
     isLiveRef.current = false;
     isConnectingRef.current = false;
+    setIsCameraActive(false);
     setIsVideoLive(false);
     setIsConnecting(false);
     setStatusText('Camera Ready');
@@ -159,6 +165,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         videoElement: videoRef.current,
         garmentImage: garmentSource,
         facingMode: 'user',
+        onLocalStream: () => {
+          setIsCameraActive(true);
+          setStatusText('Camera active - connecting AI...');
+        },
         onStatusChange: (status) => {
           setStatusText(status);
         },
@@ -178,8 +188,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       sessionRef.current = handle;
     } catch (err: any) {
       console.error('Could not start live session:', err);
-      setStatusText(err?.message || 'Connection failed');
       stopLiveSession();
+      setStatusText(err?.message || 'Connection failed');
     }
   }, [activeGarmentObj, initialGarmentImage, stopLiveSession]);
 
@@ -243,7 +253,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const handleCapture = () => {
     setFlash(true);
 
-    if (isLiveRef.current && videoRef.current) {
+    if ((isCameraActive || isLiveRef.current) && videoRef.current) {
       const frame = captureVideoFrame(videoRef.current);
       if (frame && onCaptureImage) {
         onCaptureImage(frame);
@@ -288,6 +298,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       {/* Dedicated, hardware-accelerated video layer */}
       <LiveTryOnViewport
         videoRef={videoRef}
+        isCameraActive={isCameraActive}
         isVideoLive={isVideoLive}
         lighting={lighting}
         fallbackImg={activeModelBg}
@@ -433,9 +444,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             title={isVideoLive ? 'Stop Camera' : 'Start Camera'}
           >
             <span className="material-symbols-outlined text-lg">
-              {isVideoLive ? 'videocam' : 'videocam_off'}
+              {isCameraActive ? 'videocam' : 'videocam_off'}
             </span>
-            <span className="text-[9px]">{isVideoLive ? 'Live' : 'Cam'}</span>
+            <span className="text-[9px]">{isCameraActive ? 'Live' : 'Cam'}</span>
           </button>
 
           <button
