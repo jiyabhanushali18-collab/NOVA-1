@@ -311,7 +311,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center mb-3 text-[#553BE2] border shadow-xs ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
             }`}>
-              <span className="material-symbols-outlined leading-none">checkroom</span>
+              <span className="material-symbols-outlined leading-none">view_in_ar</span>
             </div>
             <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AR Try-On</h3>
             <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Try outfits virtually with AR.</p>

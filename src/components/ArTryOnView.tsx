@@ -11,6 +11,7 @@ import {
 
 interface ArTryOnViewProps {
   onNavigate: (screen: ScreenId) => void;
+  onBack?: () => void;
   selectedGarment: string;
   setSelectedGarment: (garment: string) => void;
   onCaptureImage?: (imageDataUrl: string) => void;
@@ -101,6 +102,7 @@ LiveTryOnViewport.displayName = 'LiveTryOnViewport';
 // -------------------------------------------------------------
 export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   onNavigate,
+  onBack,
   selectedGarment,
   setSelectedGarment,
   onCaptureImage,
@@ -271,7 +273,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   const handleExit = () => {
     stopLiveSession();
-    onNavigate('home');
+    if (onBack) {
+      onBack();
+    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+    } else {
+      onNavigate('home');
+    }
   };
 
   const handleConsult = () => {
@@ -303,6 +311,17 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         lighting={lighting}
         fallbackImg={activeModelBg}
       />
+
+      {/* Top Left Back Button */}
+      <div className="absolute top-4 left-4 z-30 pointer-events-auto">
+        <button
+          onClick={handleExit}
+          className="w-9 h-9 rounded-full bg-[#131426]/90 border border-white/20 text-white flex items-center justify-center backdrop-blur-md shadow-lg hover:bg-[#553BE2] transition-colors active:scale-95 cursor-pointer"
+          title="Back"
+        >
+          <span className="material-symbols-outlined text-lg leading-none">arrow_back</span>
+        </button>
+      </div>
 
       {/* Top Status & AI Indicator Pill */}
       <div className="absolute top-4 inset-x-0 flex justify-center z-30 pointer-events-none">

@@ -408,21 +408,34 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
             </div>
 
             {/* Scanning details action buttons */}
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-2 mt-4">
               <button 
                 onClick={handleScanAgain}
-                className="flex-1 py-2.5 rounded-full border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] transition-colors font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm"
+                className="flex-1 py-2.5 rounded-full border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] transition-colors font-bold flex items-center justify-center gap-1 text-xs shadow-sm"
               >
-                <span className="material-symbols-outlined text-base">refresh</span>
-                Scan Again
+                <span className="material-symbols-outlined text-sm">refresh</span>
+                Again
               </button>
               
+              <button 
+                onClick={() => {
+                  if (displayProduct) {
+                    onProductMatched?.(displayProduct, detectedImage);
+                  }
+                  onNavigate('ar-tryon');
+                }}
+                className="flex-1 py-2.5 rounded-full border border-[#553BE2] text-[#553BE2] bg-[#F2EEFF] hover:bg-[#ECE7FF] transition-colors font-bold flex items-center justify-center gap-1 text-xs shadow-sm"
+              >
+                <span className="material-symbols-outlined text-sm">view_in_ar</span>
+                AR Try-On
+              </button>
+
               <button 
                 onClick={handleViewDetails}
                 className="flex-1 py-2.5 rounded-full bg-[#553BE2] text-white font-bold flex items-center justify-center gap-1 hover:opacity-95 transition-opacity text-xs shadow-md shadow-[#553BE2]/20"
               >
-                View Details
-                <span className="material-symbols-outlined text-base leading-none">chevron_right</span>
+                Details
+                <span className="material-symbols-outlined text-sm leading-none">chevron_right</span>
               </button>
             </div>
           </div>

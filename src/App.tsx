@@ -1293,13 +1293,13 @@ export default function App() {
       const prodId = opts?.productId || selectedProductId;
       const prod = productsData[prodId] || products[prodId];
       const tryonImg = (prod && prod.imageUrl) ? prod.imageUrl : (swipeModels[selectedColor] || swipeModels['Lavender'] || '');
-      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} AR Try-On` : 'AR Virtual Fitting', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: tryonImg });
+      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} AR Try-On` : 'AR Virtual Fitting', time, badge: 'AR Try-On', icon: 'view_in_ar', color: 'bg-primary/80', imageUrl: tryonImg });
       awardNovaPoints(25, 'Engaged in AR Try-On', tryonImg);
     } else if (to === 'tryon-result') {
       const prodId = opts?.productId || selectedProductId;
       const prod = productsData[prodId] || products[prodId];
       const tryonImg = swipeModels[selectedColor] || (prod ? prod.imageUrl : swipeModels['Lavender']);
-      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} Try-On` : 'AR Try-On Result', time, badge: 'AR Try-On', icon: 'checkroom', color: 'bg-primary/80', imageUrl: tryonImg });
+      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} Try-On` : 'AR Try-On Result', time, badge: 'AR Try-On', icon: 'view_in_ar', color: 'bg-primary/80', imageUrl: tryonImg });
     } else if (to === 'camera-scan') {
       const prodId = opts?.productId || selectedProductId;
       const prod = productsData[prodId] || products[prodId];
@@ -1583,7 +1583,7 @@ export default function App() {
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} recentScans={recentScanItems} />;
+        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} recentScans={recentScanItems} isDarkMode={isDarkMode} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':
