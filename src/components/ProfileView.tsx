@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord, DeliveryAddress } from '../types';
+import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord, DeliveryAddress, SavedLook } from '../types';
+import { fetchUserSavedLooks, deleteUserSavedLook, saveImageToDeviceGallery, downloadSavedLook } from '../services/savedLooksService';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
 import { initialMeasurements, initialPreferences, products } from '../data';
 import { languages, LocaleCode, useI18n } from '../i18n';
@@ -103,6 +104,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isWishlistModalOpen, setIsWishlistModalOpen] = useState(false);
+  const [isSavedLooksModalOpen, setIsSavedLooksModalOpen] = useState(false);
+  const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
+  const [isLoadingSavedLooks, setIsLoadingSavedLooks] = useState(false);
+  const [selectedLookPreview, setSelectedLookPreview] = useState<SavedLook | null>(null);
 
   // Payment Methods interactive state
   const [paymentMethods, setPaymentMethods] = useState(() => {
@@ -210,6 +215,63 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const effectiveUid = userId || activeUid || userEmail || '';
+
+  // Synchronize user's saved looks from local storage
+  React.useEffect(() => {
+    setIsLoadingSavedLooks(true);
+    fetchUserSavedLooks(effectiveUid || 'local_user')
+      .then((looks) => setSavedLooks(looks))
+      .catch((err) => console.warn('Failed to load saved looks:', err))
+      .finally(() => setIsLoadingSavedLooks(false));
+  }, [effectiveUid]);
+
+  // Open Saved Looks modal automatically if routed from AR Try-On "View Saved Looks"
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem('nova_open_saved_looks') === 'true') {
+        localStorage.removeItem('nova_open_saved_looks');
+        setIsSavedLooksModalOpen(true);
+      }
+    } catch {}
+  }, []);
+
+  // Listen for local updates so Saved Looks updates reactively
+  React.useEffect(() => {
+    const handleStorageUpdate = () => {
+      fetchUserSavedLooks(effectiveUid || 'local_user').then((looks) => setSavedLooks(looks));
+    };
+    window.addEventListener('nova:saved_look_updated', handleStorageUpdate);
+    return () => window.removeEventListener('nova:saved_look_updated', handleStorageUpdate);
+  }, [effectiveUid]);
+
+  const handleDeleteSavedLook = async (lookId: string) => {
+    try {
+      await deleteUserSavedLook(effectiveUid || 'local_user', lookId);
+      setSavedLooks((prev) => prev.filter((l) => l.id !== lookId));
+      if (selectedLookPreview?.id === lookId) {
+        setSelectedLookPreview(null);
+      }
+      setProfileToast('✓ Look removed from Saved Looks');
+      setTimeout(() => setProfileToast(null), 2500);
+    } catch {
+      setProfileToast('Failed to remove look');
+      setTimeout(() => setProfileToast(null), 2500);
+    }
+  };
+
+  const handleDownloadLook = async (look: SavedLook) => {
+    try {
+      const res = await downloadSavedLook(look);
+      if (res.success) {
+        setProfileToast('✓ Image saved to device!');
+      } else {
+        setProfileToast(res.error || 'Could not download image');
+      }
+    } catch {
+      setProfileToast('Download failed');
+    }
+    setTimeout(() => setProfileToast(null), 2500);
+  };
   const effectiveIsGuest = isGuest || isGuestIdentity(effectiveUid, isGuest);
 
   const buildUserAddressEntries = React.useCallback(() => {
@@ -835,19 +897,92 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
       </section>
 
+      {/* Persistent Saved Looks Section */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className={`text-base font-bold flex items-center gap-1.5 ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>
+            <span className="material-symbols-outlined text-[#553BE2] text-lg leading-none">auto_awesome</span>
+            Saved Looks {savedLooks.length > 0 && `(${savedLooks.length})`}
+          </h3>
+          {savedLooks.length > 0 && (
+            <button
+              onClick={() => setIsSavedLooksModalOpen(true)}
+              className="text-xs font-semibold text-[#553BE2] hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-0.5"
+            >
+              View All <span className="material-symbols-outlined text-sm">chevron_right</span>
+            </button>
+          )}
+        </div>
+
+        {savedLooks.length === 0 ? (
+          <div className={`rounded-2xl p-6 text-center space-y-3 border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80' : 'glass-card border-[#E4DFF5]'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto border ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-slate-700' : 'bg-[#F2EEFF] text-[#553BE2] border-[#E4DFF5]'}`}>
+              <span className="material-symbols-outlined text-2xl font-bold">checkroom</span>
+            </div>
+            <div className="space-y-1">
+              <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>No saved looks yet</h4>
+              <p className={`text-[10px] leading-normal max-w-[220px] mx-auto ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+                Try on outfits in AR and tap "Save Look" to curate your virtual wardrobe!
+              </p>
+            </div>
+            <button 
+              onClick={() => onNavigate('ar-tryon')}
+              className="bg-[#553BE2] hover:opacity-95 text-[10px] font-black text-white px-3.5 py-1.5 rounded-xl uppercase tracking-wide transition-all shadow-sm shadow-[#553BE2]/20 cursor-pointer active:scale-95 inline-block"
+            >
+              Try On Outfits
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {savedLooks.slice(0, 4).map((look) => (
+              <div
+                key={look.id}
+                onClick={() => setSelectedLookPreview(look)}
+                className={`rounded-2xl p-2.5 flex flex-col gap-2 border transition-all cursor-pointer hover:scale-[1.02] ${
+                  isDarkMode
+                    ? 'bg-slate-900/60 border-slate-700/80 hover:border-[#6D4AFF]'
+                    : 'glass-card border-[#E4DFF5] hover:border-[#553BE2]'
+                }`}
+              >
+                <div className="w-full aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 relative border border-white/10">
+                  <img
+                    alt={look.garmentName}
+                    src={look.thumbnailUrl || look.imageUrl}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover object-top"
+                  />
+                  <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[8px] font-bold text-white flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-[9px] text-[#A594FD]">auto_awesome</span>
+                    <span>AI Look</span>
+                  </div>
+                </div>
+                <div className="leading-tight px-0.5">
+                  <h4 className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
+                    {look.garmentName}
+                  </h4>
+                  <p className={`text-[9px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                    {new Date(look.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Quick Actions grids */}
       <section className="space-y-3">
         <h3 className={`text-base font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>Quick Actions</h3>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Saved\nLooks', icon: 'favorite', target: 'ar-tryon' },
+            { label: 'Saved\nLooks', icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true) },
             { label: 'Try-On\nHistory', icon: 'history', target: 'scan-outfit' },
             { label: 'My\nScans', icon: 'center_focus_strong', target: 'camera-scan' },
             { label: 'Coupons\n& Offers', icon: 'local_offer', target: 'cart' }
           ].map((act) => (
             <button 
               key={act.label}
-              onClick={() => onNavigate(act.target as any)}
+              onClick={() => (act as any).action ? (act as any).action() : onNavigate((act as any).target)}
               className={`rounded-2xl p-3 flex flex-col items-center justify-center gap-2 transition-all group border ${isDarkMode ? 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600' : 'glass-card border-transparent hover:border-[#E4DFF5]'}`}
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300' : 'bg-[#F2EEFF] text-[#553BE2]'}`}>
@@ -864,6 +999,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <ul className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-[#E4DFF5]'}`}>
           {[
             { label: t('profile.settings.wishlist'), icon: 'favorite', action: () => setIsWishlistModalOpen(true), extra: wishlist.length > 0 ? `${wishlist.length} Items` : '0' },
+            { label: 'Saved Looks', icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true), extra: savedLooks.length > 0 ? `${savedLooks.length} Look(s)` : '0' },
             { label: t('profile.settings.paymentMethods'), icon: 'payment', action: () => setIsPaymentModalOpen(true), extra: `${paymentMethods.filter((p: any) => p.type === 'Credit Card').length} Card(s), ${paymentMethods.filter((p: any) => p.type === 'UPI').length} UPI` },
             { label: t('profile.settings.addresses'), icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
             { label: t('profile.settings.darkMode'), icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
@@ -1747,6 +1883,141 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             >
               Done
             </button>
+          </div>
+        </div>
+      )}
+      {/* Saved Looks Modal */}
+      {isSavedLooksModalOpen && (
+        <div className="fixed inset-0 bg-[#131426]/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`border rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-scale-up max-h-[85vh] overflow-y-auto ${
+            isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-[#E4DFF5] text-[#131426]'
+          }`}>
+            <div className={`flex justify-between items-center pb-3 border-b ${isDarkMode ? 'border-slate-800' : 'border-[#E4DFF5]'}`}>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#553BE2]">auto_awesome</span>
+                My Saved Looks ({savedLooks.length})
+              </h3>
+              <button 
+                onClick={() => setIsSavedLooksModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {savedLooks.length === 0 ? (
+              <div className="text-center py-8 space-y-3">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-[#F2EEFF] border-[#E4DFF5] text-[#553BE2]'}`}>
+                  <span className="material-symbols-outlined text-3xl">checkroom</span>
+                </div>
+                <h4 className="text-sm font-bold">No saved looks yet</h4>
+                <p className="text-xs text-slate-400 max-w-[260px] mx-auto">
+                  Try on outfits in AR Try-On and tap "Save Look" to save them to your phone gallery and profile.
+                </p>
+                <button
+                  onClick={() => {
+                    setIsSavedLooksModalOpen(false);
+                    onNavigate('ar-tryon');
+                  }}
+                  className="bg-[#553BE2] hover:bg-[#4830cb] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer inline-block"
+                >
+                  Go to AR Try-On
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                {savedLooks.map((look) => (
+                  <div
+                    key={look.id}
+                    onClick={() => setSelectedLookPreview(look)}
+                    className={`rounded-2xl p-2 flex flex-col gap-1.5 border transition-all cursor-pointer hover:border-[#6D4AFF] group ${
+                      isDarkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50 border-[#E4DFF5]'
+                    }`}
+                  >
+                    <div className="w-full aspect-[3/4] rounded-xl overflow-hidden bg-black relative border border-white/10">
+                      <img
+                        alt={look.garmentName}
+                        src={look.thumbnailUrl || look.imageUrl}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSavedLook(look.id);
+                        }}
+                        title="Delete look"
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 text-white flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-xs">delete</span>
+                      </button>
+                    </div>
+                    <div className="px-1">
+                      <h4 className="text-xs font-bold truncate">{look.garmentName}</h4>
+                      <p className="text-[10px] text-slate-400">
+                        {new Date(look.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button 
+              type="button"
+              onClick={() => setIsSavedLooksModalOpen(false)}
+              className="w-full py-3 text-xs font-bold rounded-xl transition-colors mt-2 bg-[#553BE2] text-white hover:bg-[#4830cb] cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* High-Resolution Lightbox Viewer */}
+      {selectedLookPreview && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="max-w-sm w-full space-y-3">
+            <div className="flex justify-between items-center text-white px-1">
+              <div>
+                <h3 className="text-base font-bold truncate">{selectedLookPreview.garmentName}</h3>
+                <p className="text-[11px] text-slate-400">
+                  {new Date(selectedLookPreview.savedAt).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedLookPreview(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="aspect-[3/4] w-full rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl relative">
+              <img
+                alt={selectedLookPreview.garmentName}
+                src={selectedLookPreview.imageUrl}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover object-top"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={() => handleDownloadLook(selectedLookPreview)}
+                className="py-2.5 px-3 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">download</span>
+                <span>Download Image</span>
+              </button>
+              <button
+                onClick={() => handleDeleteSavedLook(selectedLookPreview.id)}
+                className="py-2.5 px-3 rounded-xl bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+                <span>Delete Look</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

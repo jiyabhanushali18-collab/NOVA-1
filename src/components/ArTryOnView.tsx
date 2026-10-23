@@ -1,5 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { ScreenId } from '../types';
+import { Capacitor } from '@capacitor/core';
+import {
+  saveImageToDeviceGallery,
+  saveLookLocally,
+  captureCurrentTryOnImage,
+  generateLookFilename,
+} from '../services/savedLooksService';
 import {
   startLiveTryOnSession,
   captureVideoFrame,
@@ -17,6 +24,9 @@ interface ArTryOnViewProps {
   onCaptureImage?: (imageDataUrl: string) => void;
   initialGarmentImage?: string | null;
   isDarkMode?: boolean;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 interface GarmentItem {
@@ -100,7 +110,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   onCaptureImage,
   initialGarmentImage,
   isDarkMode = true,
+  userId,
+  userEmail,
+  userName,
 }) => {
+  const [isSavingLook, setIsSavingLook] = useState(false);
   const [flash, setFlash] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isVideoLive, setIsVideoLive] = useState(false);
@@ -108,6 +122,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const [statusText, setStatusText] = useState('Camera ready');
   const [lighting, setLighting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [savePopup, setSavePopup] = useState<{
+    isOpen: boolean;
+    message: string;
+    previewUrl?: string;
+    isError?: boolean;
+  } | null>(null);
   const [garmentsList, setGarmentsList] = useState<GarmentItem[]>(DEFAULT_GARMENTS);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -269,24 +289,94 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }, 300);
   };
 
-  // Save current look
-  const handleSaveLook = () => {
+  // Save current look: captures visible try-on, saves to phone gallery, and saves to NOVA account locally
+  const handleSaveLook = async () => {
+    if (isSavingLook) return;
+
+    setIsSavingLook(true);
+
     try {
-      const savedLooks = JSON.parse(localStorage.getItem('nova_saved_looks') || '[]');
-      const newLook = {
-        id: `look-${Date.now()}`,
-        garmentId: selectedGarment,
-        garmentName: activeGarmentObj?.name || 'Curated Look',
-        imageUrl: activeGarmentObj?.img || activeModelBg,
-        savedAt: new Date().toISOString()
-      };
-      savedLooks.unshift(newLook);
-      localStorage.setItem('nova_saved_looks', JSON.stringify(savedLooks.slice(0, 20)));
-      setToastMessage('✓ Look saved to your Wardrobe!');
-    } catch {
-      setToastMessage('✓ Look saved!');
+      // 1. Capture the actual visible, processed try-on result
+      const captureResult = await captureCurrentTryOnImage({
+        videoElement: videoRef.current,
+        isVideoLive,
+        isCameraActive,
+        fallbackImageUrl: activeModelBg,
+      });
+
+      if (!captureResult || !captureResult.dataUrl) {
+        setSavePopup({
+          isOpen: true,
+          message: 'Could not capture current look. Please try again.',
+          isError: true,
+        });
+        return;
+      }
+
+      const filename = generateLookFilename();
+      const effectiveUserId = userId || userEmail || 'local_user';
+
+      // 2. Parallel / Independent destinations: Device Gallery + Local Device Store
+      const [galleryResult, localStoreResult] = await Promise.allSettled([
+        saveImageToDeviceGallery(captureResult.dataUrl, filename),
+        saveLookLocally({
+          userId: effectiveUserId,
+          imageUrl: captureResult.dataUrl,
+          garmentId: selectedGarment,
+          garmentName: activeGarmentObj?.name || 'Curated Look',
+          garmentCategory: activeGarmentObj?.category || 'Casual wear',
+          garmentImg: activeGarmentObj?.img,
+          filename,
+          width: captureResult.width,
+          height: captureResult.height,
+        }),
+      ]);
+
+      const gallerySuccess =
+        galleryResult.status === 'fulfilled' && galleryResult.value.success;
+      const localSuccess =
+        localStoreResult.status === 'fulfilled' && !!localStoreResult.value;
+
+      // 3. Clear, accurate popup confirmation matching requirements
+      if (localSuccess && gallerySuccess) {
+        setSavePopup({
+          isOpen: true,
+          message: 'Your look is saved in NOVA and your phone gallery.',
+          previewUrl: captureResult.dataUrl,
+          isError: false,
+        });
+      } else if (localSuccess && !gallerySuccess) {
+        setSavePopup({
+          isOpen: true,
+          message: "Your look is saved in NOVA. It couldn't be saved to your phone gallery.",
+          previewUrl: captureResult.dataUrl,
+          isError: false,
+        });
+      } else {
+        setSavePopup({
+          isOpen: true,
+          message: 'Failed to save look locally. Please try again.',
+          isError: true,
+        });
+      }
+    } catch (err: any) {
+      console.error('Save look failure:', err);
+      setSavePopup({
+        isOpen: true,
+        message: 'Failed to save look. Please try again.',
+        isError: true,
+      });
+    } finally {
+      setIsSavingLook(false);
     }
-    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleViewSavedLooks = () => {
+    try {
+      localStorage.setItem('nova_open_saved_looks', 'true');
+    } catch {}
+    setSavePopup(null);
+    onNavigate('profile');
   };
 
   return (
@@ -552,12 +642,94 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         <button
           type="button"
           onClick={handleSaveLook}
-          className="w-full py-3.5 px-3 rounded-2xl bg-[#111322] hover:bg-[#1A1C30] active:scale-95 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+          disabled={isSavingLook}
+          className="w-full py-3.5 px-3 rounded-2xl bg-[#111322] hover:bg-[#1A1C30] active:scale-95 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-60"
         >
-          <span className="material-symbols-outlined text-lg leading-none text-slate-300">bookmark_border</span>
-          <span>Save Look</span>
+          {isSavingLook ? (
+            <>
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-[#A594FD] border-t-transparent animate-spin" />
+              <span>Saving Look...</span>
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined text-lg leading-none text-slate-300">bookmark_border</span>
+              <span>Save Look</span>
+            </>
+          )}
         </button>
       </section>
+
+      {/* Save Look Confirmation Popup Modal */}
+      {savePopup && savePopup.isOpen && (
+        <div className="fixed inset-0 bg-[#0B0C15]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-[28px] p-6 bg-[#111322] border border-[#553BE2]/40 shadow-2xl text-center space-y-4">
+            {/* Status Icon */}
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto border ${
+              savePopup.isError 
+                ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' 
+                : 'bg-[#553BE2]/15 text-[#A594FD] border-[#553BE2]/40'
+            }`}>
+              <span className="material-symbols-outlined text-3xl">
+                {savePopup.isError ? 'error_outline' : 'bookmark_added'}
+              </span>
+            </div>
+
+            {/* Title & Message */}
+            <div className="space-y-1.5 px-1">
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {savePopup.isError ? 'Save Failed' : 'Look Saved Successfully!'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {savePopup.message}
+              </p>
+            </div>
+
+            {/* Look thumbnail preview */}
+            {savePopup.previewUrl && !savePopup.isError && (
+              <div className="w-20 h-28 rounded-xl overflow-hidden mx-auto border border-white/15 bg-black shadow-inner">
+                <img
+                  alt="Saved Look"
+                  src={savePopup.previewUrl}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2">
+              {!savePopup.isError ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleViewSavedLooks}
+                    className="w-full py-3 px-4 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#553BE2]/30 transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">auto_awesome</span>
+                    <span>View Saved Looks</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSavePopup(null)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-slate-300 hover:text-white font-semibold text-xs border border-white/10 transition-all cursor-pointer"
+                  >
+                    Continue Try-On
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSavePopup(null)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-xs border border-white/10 transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

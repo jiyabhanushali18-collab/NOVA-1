@@ -1458,6 +1458,9 @@ export default function App() {
             setSelectedGarment={setSelectedGarment}
             onCaptureImage={(captured) => setCapturedTryOnImage(captured)}
             isDarkMode={isDarkMode}
+            userId={activeUid || userEmail}
+            userEmail={userEmail}
+            userName={userName}
           />
         );
       case 'tryon-result':

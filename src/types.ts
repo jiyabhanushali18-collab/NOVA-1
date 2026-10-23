@@ -330,3 +330,21 @@ export interface CapsuleWardrobePlan {
   itemIds: string[];
   tags: string[];
 }
+
+
+export interface SavedLook {
+  id: string;
+  userId: string;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  garmentId?: string;
+  garmentName: string;
+  garmentCategory?: string;
+  garmentImg?: string;
+  savedAt: string;
+  gallerySaved?: boolean;
+  galleryUri?: string;
+  filename?: string;
+  width?: number;
+  height?: number;
+}
