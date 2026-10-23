@@ -1,6 +1,6 @@
 import { apiUrl } from './apiClient';
 
-
+export interface LiveTryOnSessionConfig {
   videoElement: HTMLVideoElement;
   garmentImage?: File | Blob | string | null;
   facingMode?: 'user' | 'environment';
@@ -52,7 +52,7 @@ export const DEFAULT_MODELS: Record<string, string> = {
  * Fetch a mint client session token from the local NOVA server
  */
 export async function getLiveTryOnToken(): Promise<string> {
-  const response = await fetch('/api/vton/token');
+  const response = await fetch(apiUrl('/api/vton/token'));
   if (!response.ok) {
     const errorJson = await response.json().catch(() => ({}));
     throw new Error(errorJson.error || 'Failed to fetch session token from server');
@@ -176,7 +176,7 @@ export async function prepareGarmentForLiveTryOn(
       }
 
       try {
-        const proxyRes = await fetch('/api/vton/proxy-image', {
+        const proxyRes = await fetch(apiUrl('/api/vton/proxy-image'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: garment }),
