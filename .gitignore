@@ -7,3 +7,15 @@ coverage/
 .env*
 !.env.example
 server_ai/gcp-key.json
+
+# Credentials, secrets, and private keys
+*.keystore
+*.jks
+*.pem
+*.key
+serviceAccount.json
+*service-account*.json
+*serviceAccount*.json
+
+# Temporary audit output and scratch scripts
+scratch/

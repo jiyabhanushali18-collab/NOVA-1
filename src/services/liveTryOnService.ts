@@ -23,6 +23,12 @@ const garmentCache = new Map<string, Blob | string>();
 
 // Cached session token to eliminate duplicate network handshakes
 let cachedTokenState: { token: string; expiresAt: number } | null = null;
+let activeCredentialId: string | null = null;
+
+export function invalidateLiveTryOnToken(): void {
+  cachedTokenState = null;
+  activeCredentialId = null;
+}
 
 export const DEFAULT_GARMENTS = [
   {
@@ -105,6 +111,10 @@ export async function getLiveTryOnToken(): Promise<string> {
         const token = data.apiKey || data.token;
         if (!token) {
           throw new Error('Server returned empty token');
+        }
+
+        if (data.credentialId) {
+          activeCredentialId = data.credentialId;
         }
 
         // Cache token for 45 minutes
@@ -397,6 +407,18 @@ export async function startLiveTryOnSession(
       },
     });
   } catch (error) {
+    invalidateLiveTryOnToken();
+    if (activeCredentialId) {
+      fetch(apiUrl('/api/vton/session-event'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credentialId: activeCredentialId,
+          event: 'session_error',
+          reason: (error as any)?.message || 'connection_failure'
+        }),
+      }).catch(() => {});
+    }
     localStream.getTracks().forEach((track) => track.stop());
     if (config.videoElement.srcObject === localStream) {
       config.videoElement.srcObject = null;
