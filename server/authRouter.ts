@@ -68,7 +68,15 @@ interface OTPRecord {
 
 const CURRENT_TERMS_VERSION = '2026.10.1';
 const CURRENT_PRIVACY_VERSION = '2026.10.1';
-const SESSION_SECRET = process.env.NOVA_SESSION_SECRET || 'nova-vision-labs-session-secret-2026';
+const getRequiredSecret = (name: string): string => {
+  const secret = process.env[name]?.trim();
+  if (!secret || Buffer.byteLength(secret) < 32) {
+    throw new Error(`${name} must be configured with at least 32 bytes of random data.`);
+  }
+  return secret;
+};
+const SESSION_SECRET = getRequiredSecret('NOVA_SESSION_SECRET');
+const OTP_HASH_SECRET = getRequiredSecret('OTP_HASH_SECRET');
 
 const localOtpStore = new Map<string, OTPRecord>();
 const localConsentStore = new Map<string, LegalConsentPayload>();
@@ -352,7 +360,7 @@ const generateOTP = () => {
   return String(num).padStart(6, '0');
 };
 
-const hashOTP = (otp: string) => crypto.createHash('sha256').update(otp).digest('hex');
+const hashOTP = (otp: string) => crypto.createHmac('sha256', OTP_HASH_SECRET).update(otp).digest('hex');
 
 const isValidEmail = (email?: string) =>
   typeof email === 'string' &&

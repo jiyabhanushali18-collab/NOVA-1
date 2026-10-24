@@ -8,7 +8,7 @@ interface TryOnResultViewProps {
   setSelectedColor: (color: string) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
   selectedProductId?: string;
-  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => void;
+  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => Promise<void>;
   capturedImage?: string | null;
 }
 
@@ -24,6 +24,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const swatches = [
@@ -251,22 +252,30 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
 
         <button
           type="button"
-          onClick={() => {
-            if (!onSubmitReview) return;
+          onClick={async () => {
+            if (!onSubmitReview || isSubmittingReview) return;
             if (reviewRating <= 0 || !reviewText.trim()) {
               setToastMessage('Select rating and write a review before submitting.');
               setTimeout(() => setToastMessage(null), 2500);
               return;
             }
-            onSubmitReview(selectedProductId, reviewRating, reviewText, 'tryon');
-            setReviewRating(0);
-            setReviewText('');
-            setToastMessage('Thanks! Your try-on review has been submitted.');
-            setTimeout(() => setToastMessage(null), 2500);
+            setIsSubmittingReview(true);
+            try {
+              await onSubmitReview(selectedProductId, reviewRating, reviewText, 'tryon');
+              setReviewRating(0);
+              setReviewText('');
+              setToastMessage('Your try-on review was saved.');
+            } catch (error) {
+              setToastMessage(error instanceof Error ? error.message : 'Could not save your review.');
+            } finally {
+              setIsSubmittingReview(false);
+              setTimeout(() => setToastMessage(null), 2500);
+            }
           }}
+          disabled={isSubmittingReview}
           className="mt-4 w-full rounded-2xl bg-[#553BE2] text-white py-3 text-sm font-semibold hover:opacity-95 transition-opacity"
         >
-          Submit Try-On Review
+          {isSubmittingReview ? 'Saving Review...' : 'Submit Try-On Review'}
         </button>
       </section>
 

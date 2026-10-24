@@ -75,6 +75,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [galleryIndex, setGalleryIndex] = useState<number>(0);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const reviewStars = averageRating && averageRating > 0 ? averageRating : (mainProduct?.rating || 0);
   const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : (mainProduct?.reviewsCount || (reviews ? reviews.length : 0));
@@ -94,17 +95,24 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   };
 
   const handleReviewSubmit = async () => {
-    if (!mainProduct || !onSubmitReview) return;
+    if (!mainProduct || !onSubmitReview || isSubmittingReview) return;
     if (reviewRating < 1 || reviewRating > 5 || !reviewComment.trim()) {
       setToastMessage('Please provide a rating and comment.');
       setTimeout(() => setToastMessage(null), 3000);
       return;
     }
-    await onSubmitReview(mainProduct.id, reviewRating, reviewComment.trim());
-    setReviewComment('');
-    setReviewRating(5);
-    setToastMessage('Review submitted successfully.');
-    setTimeout(() => setToastMessage(null), 3000);
+    setIsSubmittingReview(true);
+    try {
+      await onSubmitReview(mainProduct.id, reviewRating, reviewComment.trim());
+      setReviewComment('');
+      setReviewRating(5);
+      setToastMessage('Review saved and published.');
+    } catch (error) {
+      setToastMessage(error instanceof Error ? error.message : 'Could not save your review.');
+    } finally {
+      setIsSubmittingReview(false);
+      setTimeout(() => setToastMessage(null), 3000);
+    }
   };
 
   // Set default color to first color when product changes
@@ -563,9 +571,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     <button
                       type="button"
                       onClick={handleReviewSubmit}
+                      disabled={isSubmittingReview}
                       className="w-full rounded-2xl bg-[#553BE2] py-3 text-xs font-bold text-white hover:opacity-95 transition-opacity"
                     >
-                      Submit Review
+                      {isSubmittingReview ? 'Saving Review...' : 'Submit Review'}
                     </button>
                   </div>
                 </div>
@@ -589,8 +598,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   ) : (
                     <div className={`rounded-3xl border p-6 text-center space-y-2 ${isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
                       <span className="material-symbols-outlined text-3xl text-[#553BE2]/60">rate_review</span>
-                      <h4 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>No reviews yet</h4>
-                      <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Be the first to share your opinion about this product!</p>
+                      <h4 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
+                        {reviewCountLabel > 0 ? 'Written reviews unavailable' : 'No reviews yet'}
+                      </h4>
+                      <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                        {reviewCountLabel > 0
+                          ? `${reviewCountLabel} ratings are recorded, but their written review details are not available.`
+                          : 'Be the first to share your opinion about this product!'}
+                      </p>
                     </div>
                   )}
                 </div>

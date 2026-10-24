@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, ChevronDown, LockKeyhole, UserRound, Sparkles, Plus, CalendarDays, Clock3 } from 'lucide-react';
-import { sendFirebaseEmailSignInLink } from '../services/emailLinkAuth';
+import { apiUrl } from '../services/apiClient';
 import { COUNTRIES, Country } from '../utils/countries';
 import { useI18n } from '../i18n';
 import { LegalConsentRecord, LegalDocumentType } from '../types';
@@ -373,8 +373,22 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setIsSubmitting(true);
 
     try {
-      await sendFirebaseEmailSignInLink(normalizedEmail);
-      setSuccess('A sign-in link was sent to your email. Open it in this browser to finish creating your account.');
+      const response = await fetch(apiUrl('/api/auth/send-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          isSignup: true,
+          legalConsent: consentSnapshot,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Could not send the verification code. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+      setSuccess('A 6-digit verification code was sent to your email.');
       setIsSubmitting(false);
       if (onProceedToEmailVerification) {
         onProceedToEmailVerification(
@@ -387,19 +401,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
         );
       }
     } catch (err) {
-      console.error('Error sending Firebase email sign-in link:', err);
-      const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : '';
-      setError(
-        code === 'auth/unauthorized-continue-uri'
-          ? 'This website address is not authorized for Firebase email links. Add your Netlify domain in Firebase Authentication settings.'
-          : code === 'auth/operation-not-allowed'
-            ? 'Enable Email link sign-in in Firebase Authentication settings.'
-            : 'Could not send the sign-in link. Please check Firebase Authentication settings and try again.'
-      );
+      console.error('Error sending OTP:', err);
+      setError('Could not send the verification code. Please check your connection and try again.');
       setIsSubmitting(false);
     }
   };
-
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     

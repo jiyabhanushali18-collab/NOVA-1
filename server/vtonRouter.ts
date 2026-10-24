@@ -5,12 +5,7 @@ import { decartKeyPool, classifyDecartError } from './decartKeyPool';
 const router = express.Router();
 
 const getAdminSecret = (): string =>
-  (
-    process.env.DECART_ADMIN_SECRET ||
-    process.env.NOVA_ADMIN_SECRET ||
-    process.env.NOVA_SESSION_SECRET ||
-    ''
-  ).trim();
+  (process.env.DECART_ADMIN_SECRET || '').trim();
 
 // In-memory IP rate limiter for token minting (abuse prevention)
 const tokenRequestTimes = new Map<string, number[]>();

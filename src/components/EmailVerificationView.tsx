@@ -1,38 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { AlertCircle, Check, Loader2, Mail, RefreshCw } from 'lucide-react';
-import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { auth } from '../firebase';
-import {
-  EMAIL_FOR_SIGN_IN_KEY,
-  sendFirebaseEmailSignInLink
-} from '../services/emailLinkAuth';
+import { signInWithServerCustomToken } from '../firebase';
+import { apiUrl } from '../services/apiClient';
+import type { LegalConsentRecord, DeliveryAddress } from '../types';
 
 interface EmailVerificationViewProps {
   email: string;
-  onVerificationSuccess: (result: { uid: string; email: string }) => void;
+  onVerificationSuccess: (result: {
+    uid: string;
+    email: string;
+    customToken?: string;
+    sessionToken?: string;
+    legalConsent?: LegalConsentRecord;
+    deliveryAddress?: DeliveryAddress;
+  }) => void;
   onChangeEmail: (email: string) => void;
 }
 
-const getFirebaseAuthErrorMessage = (error: unknown) => {
-  const code = typeof error === 'object' && error !== null && 'code' in error
-    ? String(error.code)
-    : '';
-
-  if (code === 'auth/invalid-action-code') return 'This sign-in link is invalid or has expired. Request a new link.';
-  if (code === 'auth/expired-action-code') return 'This sign-in link has expired. Request a new link.';
-  if (code === 'auth/invalid-email') return 'The email address is invalid. Please request a new link.';
-  if (code === 'auth/unauthorized-continue-uri') return 'This website address is not authorized in Firebase Authentication settings.';
-  if (code === 'auth/unauthorized-domain') return 'Add this website domain to Firebase Authentication authorized domains.';
-  if (code === 'auth/operation-not-allowed') return 'Enable Email link sign-in in Firebase Authentication settings.';
-  return 'Could not complete email verification. Please request a new link and try again.';
-};
+const OTP_LENGTH = 6;
 
 export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   email,
   onVerificationSuccess,
   onChangeEmail
 }) => {
+  const [otp, setOtp] = useState('');
   const [currentEmail, setCurrentEmail] = useState(email);
   const [editedEmail, setEditedEmail] = useState(email);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -41,89 +34,147 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   const [resendCountdown, setResendCountdown] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const processedLink = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (resendCountdown <= 0) return;
-    const timer = window.setTimeout(() => setResendCountdown((remaining) => remaining - 1), 1000);
+    const timer = window.setTimeout(() => setResendCountdown((n) => n - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [resendCountdown]);
 
-  useEffect(() => {
-    if (processedLink.current || !isSignInWithEmailLink(auth, window.location.href)) return;
-    processedLink.current = true;
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH);
+    setOtp(val);
+    setError(null);
+  };
 
-    const completeEmailSignIn = async () => {
-      const storedEmail = localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
-      if (!storedEmail) {
-        setError('For security, open this link in the same browser where you started signup.');
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== OTP_LENGTH) {
+      setError(`Please enter the full ${OTP_LENGTH}-digit code.`);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/verify-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentEmail, otp }),
+      });
+      const data = await response.json() as {
+        success?: boolean;
+        error?: string;
+        uid?: string;
+        email?: string;
+        customToken?: string;
+        sessionToken?: string;
+        legalConsent?: LegalConsentRecord;
+        deliveryAddress?: DeliveryAddress;
+        attemptsRemaining?: number;
+      };
+
+      if (!response.ok || !data.success) {
+        const attemptsNote = typeof data.attemptsRemaining === 'number'
+          ? ` ${data.attemptsRemaining} attempt${data.attemptsRemaining !== 1 ? 's' : ''} remaining.`
+          : '';
+        setError((data.error || 'Verification failed. Please try again.') + attemptsNote);
+        setLoading(false);
         return;
       }
 
-      setLoading(true);
-      setError(null);
-      try {
-        const credential = await signInWithEmailLink(auth, storedEmail, window.location.href);
-        if (!credential.user.emailVerified) {
-          throw new Error('Firebase did not mark the email as verified.');
+      // Sign into Firebase with the custom token returned by the backend
+      if (data.customToken) {
+        try {
+          await signInWithServerCustomToken(data.customToken);
+        } catch (firebaseErr) {
+          console.error('Firebase custom token sign-in failed:', firebaseErr);
+          // Non-fatal: session token and profile are already created; proceed
         }
-
-        localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setSuccess(true);
-        window.setTimeout(() => {
-          onVerificationSuccess({
-            uid: credential.user.uid,
-            email: credential.user.email || storedEmail
-          });
-        }, 900);
-      } catch (verificationError) {
-        console.error('Firebase email link verification failed:', verificationError);
-        setError(getFirebaseAuthErrorMessage(verificationError));
-        setLoading(false);
       }
-    };
 
-    void completeEmailSignIn();
-  }, [onVerificationSuccess]);
-
-  const sendLink = async (targetEmail: string) => {
-    const normalizedEmail = targetEmail.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setError('Please enter a valid email address.');
-      return false;
-    }
-
-    setResendLoading(true);
-    setError(null);
-    try {
-      await sendFirebaseEmailSignInLink(normalizedEmail);
-      setCurrentEmail(normalizedEmail);
-      setEditedEmail(normalizedEmail);
-      onChangeEmail(normalizedEmail);
-      setIsEditingEmail(false);
-      setResendCountdown(30);
-      return true;
-    } catch (sendError) {
-      console.error('Failed to send Firebase email sign-in link:', sendError);
-      setError(getFirebaseAuthErrorMessage(sendError));
-      return false;
-    } finally {
-      setResendLoading(false);
+      setSuccess(true);
+      window.setTimeout(() => {
+        onVerificationSuccess({
+          uid: data.uid || currentEmail,
+          email: data.email || currentEmail,
+          customToken: data.customToken,
+          sessionToken: data.sessionToken,
+          legalConsent: data.legalConsent,
+          deliveryAddress: data.deliveryAddress,
+        });
+      }, 900);
+    } catch (err) {
+      console.error('OTP verification error:', err);
+      setError('Could not verify the code. Please check your connection and try again.');
+      setLoading(false);
     }
   };
 
   const handleResend = async () => {
     if (resendCountdown > 0 || resendLoading) return;
-    await sendLink(currentEmail);
+    setResendLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/resend-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentEmail }),
+      });
+      const data = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Could not resend the code. Please try again.');
+      } else {
+        setOtp('');
+        setResendCountdown(30);
+        inputRef.current?.focus();
+      }
+    } catch {
+      setError('Could not resend the code. Please check your connection and try again.');
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   const handleChangeEmail = async () => {
-    if (editedEmail.trim().toLowerCase() === currentEmail.toLowerCase()) {
+    const normalized = editedEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (normalized === currentEmail.toLowerCase()) {
       setIsEditingEmail(false);
       return;
     }
-    await sendLink(editedEmail);
+    setResendLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(apiUrl('/api/auth/send-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalized, isSignup: true }),
+      });
+      const data = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Could not send code to new address. Please try again.');
+      } else {
+        setCurrentEmail(normalized);
+        setEditedEmail(normalized);
+        onChangeEmail(normalized);
+        setIsEditingEmail(false);
+        setOtp('');
+        setResendCountdown(30);
+        inputRef.current?.focus();
+      }
+    } catch {
+      setError('Could not send code to new address. Please check your connection and try again.');
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   return (
@@ -137,14 +188,16 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           {success ? <Check className="h-8 w-8" /> : <Mail className="h-8 w-8" />}
         </div>
         <h1 className="text-2xl font-bold text-[#131426] text-center mb-2">
-          {success ? 'Email Verified' : 'Check Your Email'}
+          {success ? 'Email Verified' : 'Enter Verification Code'}
         </h1>
         <p className="text-[#5E667A] text-center">
           {success
             ? 'Your account is ready. Continuing to profile setup...'
-            : 'We sent you a secure sign-in link. Open it in this same browser to verify your email and finish signup.'}
+            : `We sent a 6-digit code to`}
         </p>
-        <p className="text-[#131426] font-semibold text-center mt-2 break-all">{currentEmail}</p>
+        {!success && (
+          <p className="text-[#131426] font-semibold text-center mt-1 break-all">{currentEmail}</p>
+        )}
 
         {error && (
           <div className="mt-6 flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
@@ -155,6 +208,36 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
 
         {!success && (
           <>
+            <form onSubmit={handleVerify} className="mt-6 space-y-4">
+              <div>
+                <label htmlFor="otp-input" className="text-xs font-black text-[#5E667A] uppercase tracking-widest block mb-2">
+                  Verification Code
+                </label>
+                <input
+                  id="otp-input"
+                  ref={inputRef}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="\d{6}"
+                  maxLength={OTP_LENGTH}
+                  value={otp}
+                  onChange={handleOtpChange}
+                  placeholder="000000"
+                  disabled={loading}
+                  className="w-full px-4 py-4 text-center text-2xl font-bold tracking-[0.4em] bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all disabled:opacity-50"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading || otp.length !== OTP_LENGTH}
+                className="w-full py-3 px-4 rounded-2xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-sm font-bold shadow-lg shadow-[#553BE2]/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {loading ? 'Verifying...' : 'Verify Code'}
+              </button>
+            </form>
+
             {isEditingEmail ? (
               <div className="mt-6 p-4 bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg">
                 <label htmlFor="verification-email" className="text-xs font-black text-[#5E667A] uppercase tracking-widest block mb-2">
@@ -174,7 +257,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                     disabled={resendLoading}
                     className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-[#553BE2] rounded-lg disabled:opacity-50"
                   >
-                    {resendLoading ? 'Sending...' : 'Send Link'}
+                    {resendLoading ? 'Sending...' : 'Send Code'}
                   </button>
                   <button
                     onClick={() => {
@@ -197,23 +280,22 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
             )}
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-[#5E667A] mb-3">Didn't receive the email?</p>
+              <p className="text-sm text-[#5E667A] mb-3">Didn't receive the code?</p>
               <button
                 onClick={handleResend}
                 disabled={resendCountdown > 0 || resendLoading || loading}
                 className="text-sm font-medium text-[#553BE2] disabled:text-[#8E96AA] flex items-center justify-center gap-2 mx-auto"
               >
                 {resendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                {resendLoading ? 'Sending...' : resendCountdown > 0 ? `Resend link in 00:${String(resendCountdown).padStart(2, '0')}` : 'Resend sign-in link'}
+                {resendLoading
+                  ? 'Sending...'
+                  : resendCountdown > 0
+                    ? `Resend code in 00:${String(resendCountdown).padStart(2, '0')}`
+                    : 'Resend code'}
               </button>
             </div>
-
           </>
         )}
-
-        <p className="text-xs text-[#5E667A] text-center mt-6">
-          Firebase securely handles the verification email. No custom email domain is needed.
-        </p>
       </motion.div>
     </div>
   );

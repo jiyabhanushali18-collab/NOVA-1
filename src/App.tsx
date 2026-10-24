@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
-import { isSignInWithEmailLink } from 'firebase/auth';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
 import { products, swipeModels, recentScans as staticRecentScans } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
@@ -524,16 +523,6 @@ export default function App() {
     setScreen(previousScreen);
   };
 
-  useEffect(() => {
-    if (!isSignInWithEmailLink(auth, window.location.href)) return;
-    if (!pendingEmailVerification) {
-      console.error('Received a Firebase sign-in link without the pending signup details in this browser.');
-      resetScreenHistory('login');
-      return;
-    }
-    resetScreenHistory('email-verification');
-  }, [pendingEmailVerification]);
-
   // Account management
   const { accounts, addAccount, removeAccount, replaceAccounts } = useAccounts();
   const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
@@ -913,6 +902,7 @@ export default function App() {
   const [productsData, setProductsData] = useState<Record<string, ProductItem>>({});
   const [productReviews, setProductReviews] = useState<Record<string, ProductReview[]>>(() => loadStoredProductReviews());
   const productReviewsRef = useRef(productReviews);
+  const [reviewListenerError, setReviewListenerError] = useState<string | null>(null);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
   const [productsError, setProductsError] = useState<string | null>(null);
 
@@ -946,69 +936,76 @@ export default function App() {
   const handleSubmitProductReview = async (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product') => {
     if (!productId || rating <= 0 || !text.trim()) return;
 
-    const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';
-    const reviewId = `${productId}-${Date.now()}`;
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      throw new Error('Sign in with your verified account before submitting a review.');
+    }
 
+    const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';
+    const reviewText = text.trim();
+    let savedReviewId: string;
+    try {
+      const reviewRef = await addDoc(collection(db, 'product_reviews'), {
+        productId,
+        reviewer: reviewerName,
+        userName: reviewerName,
+        rating,
+        text: reviewText,
+        comment: reviewText,
+        date: new Date().toLocaleDateString(),
+        source,
+        accountUid: firebaseUser.uid,
+        createdAt: serverTimestamp()
+      });
+      savedReviewId = reviewRef.id;
+    } catch (error) {
+      console.error('Error saving review to Firestore:', error);
+      throw new Error('Your review could not be saved. Check your connection and Firestore permissions, then try again.');
+    }
+
+    const savedReview: ProductReview = {
+      id: savedReviewId,
+      productId,
+      reviewer: reviewerName,
+      userName: reviewerName,
+      rating,
+      text: reviewText,
+      comment: reviewText,
+      date: new Date().toLocaleDateString(),
+      source,
+      accountUid: firebaseUser.uid,
+      createdAt: new Date()
+    };
     setProductReviews((prev) => {
       const nextReviews = {
         ...prev,
-        [productId]: [
-          {
-            id: reviewId,
-            reviewer: reviewerName,
-            rating,
-            text: text.trim(),
-            date: new Date().toLocaleDateString(),
-            source,
-            accountUid: activeUid
-          },
-          ...(prev[productId] || [])
-        ]
+        [productId]: [savedReview, ...(prev[productId] || []).filter((review) => review.id !== savedReviewId)]
       };
-
       saveStoredProductReviews(nextReviews);
-
-      const prod = productsData[productId] || products[productId];
-      if (prod) {
-        const updatedAggregate = calculateRatingFromReviews(prod, nextReviews[productId]);
-        setProductsData((current) => ({
-          ...current,
-          [productId]: {
-            ...prod,
-            rating: updatedAggregate.rating,
-            reviewsCount: updatedAggregate.reviewsCount
-          }
-        }));
-        awardNovaPoints(20, 'Submitted product review');
-        addRecentActivity({
-          id: Date.now().toString(),
-          name: `${prod.name} review`,
-          time: new Date().toLocaleTimeString(),
-          badge: 'Review',
-          icon: 'star',
-          color: 'bg-amber-500/80',
-          imageUrl: prod.imageUrl
-        });
-      }
-
       return nextReviews;
     });
 
-    // Save review to Firestore for all users (use server timestamp)
-    try {
-      await addDoc(collection(db, 'product_reviews'), {
-        id: reviewId,
-        productId,
-        reviewer: reviewerName,
-        rating,
-        text: text.trim(),
-        date: new Date().toLocaleDateString(),
-        source,
-        accountUid: activeUid,
-        createdAt: serverTimestamp()
+    const prod = productsData[productId] || products[productId];
+    if (prod) {
+      const updatedAggregate = calculateRatingFromReviews(prod, [savedReview, ...(productReviewsRef.current[productId] || [])]);
+      setProductsData((current) => ({
+        ...current,
+        [productId]: {
+          ...prod,
+          rating: updatedAggregate.rating,
+          reviewsCount: updatedAggregate.reviewsCount
+        }
+      }));
+      awardNovaPoints(20, 'Submitted product review');
+      addRecentActivity({
+        id: Date.now().toString(),
+        name: `${prod.name} review`,
+        time: new Date().toLocaleTimeString(),
+        badge: 'Review',
+        icon: 'star',
+        color: 'bg-amber-500/80',
+        imageUrl: prod.imageUrl
       });
-    } catch (error) {
-      console.error('Error saving review to Firestore:', error);
     }
   };
 
@@ -1017,6 +1014,7 @@ export default function App() {
     const coll = collection(db, 'product_reviews');
     const unsub = onSnapshot(coll, (snapshot) => {
       try {
+        setReviewListenerError(null);
         const reviewsByProduct: Record<string, ProductReview[]> = {};
         snapshot.forEach((doc) => {
           const data = doc.data();
@@ -1048,6 +1046,7 @@ export default function App() {
       }
     }, (error) => {
       console.error('Realtime reviews listener error:', error);
+      setReviewListenerError('Reviews could not be loaded. Please try again later.');
     });
 
     return () => unsub();
@@ -1585,9 +1584,22 @@ export default function App() {
           />
         );
       case 'product-details':
+        {
+          const allProducts = { ...products, ...productsData };
+          const selectedReviewProduct = allProducts[selectedProductId]
+            || Object.values(allProducts).find((product) => product.productId === selectedProductId);
+          const reviewKeys = [...new Set([
+            selectedProductId,
+            selectedReviewProduct?.id,
+            selectedReviewProduct?.productId
+          ].filter((key): key is string => Boolean(key)))];
+          const selectedReviews = Array.from(new Map(
+            reviewKeys.flatMap((key) => productReviews[key] || []).map((review) => [review.id, review])
+          ).values());
+
         return (
           <ProductDetailsView 
-            products={{ ...products, ...productsData }}
+            products={allProducts}
             onNavigate={navigate} 
             onAddToCart={handleAddToCart}
             selectedColor={selectedColor}
@@ -1596,12 +1608,16 @@ export default function App() {
             onToggleWishlist={handleToggleWishlist}
             selectedProductId={selectedProductId}
             isDarkMode={isDarkMode}
-            reviews={productReviews[selectedProductId] || []}
+            reviews={selectedReviews}
+            reviewsCount={selectedReviewProduct?.reviewsCount}
+            averageRating={selectedReviewProduct?.rating}
+            reviewListenerError={reviewListenerError}
             currentReviewerName={activeAccount?.name || activeAccount?.username || userName}
             activeUid={activeUid}
             onSubmitReview={handleSubmitProductReview}
           />
         );
+        }
       case 'showroom':
         return (
           <ShowroomView 
@@ -2243,7 +2259,7 @@ export default function App() {
             </div>
             {wishlist.length === 0 ? (
               <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-                No saved items yet — tap the heart on products to save them.
+                No saved items yet â€” tap the heart on products to save them.
               </div>
             ) : (
               <div className="space-y-3">
@@ -2259,7 +2275,7 @@ export default function App() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{prod.name}</div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>₹{prod.price}</div>
+                        <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>â‚¹{prod.price}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
