@@ -26,7 +26,8 @@ interface AuthViewProps {
     address?: string,
     pinCode?: string,
     phone?: string,
-    legalConsent?: LegalConsentRecord
+    legalConsent?: LegalConsentRecord,
+    isSignUp?: boolean
   ) => void;
   initialMode?: 'login' | 'signup';
   prefilledName?: string;
@@ -201,7 +202,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     ));
   };
 
-  const loginWithAccount = (
+  const loginWithAccount = async (
     account: RegisterUser,
     phone: string,
     isSignUp = false,
@@ -209,6 +210,45 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     signupPinCode?: string,
     legalConsent?: LegalConsentRecord
   ) => {
+    if (!isSignUp) {
+      const normalizedEmail = account.email.trim().toLowerCase();
+      if (!onProceedToEmailVerification || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        setError('This account does not have a valid email address for secure sign-in.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(apiUrl('/api/auth/send-otp'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: normalizedEmail, isSignup: false }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setError(data.error || 'Could not send a sign-in code. Please try again.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        onProceedToEmailVerification(
+          normalizedEmail,
+          account.name,
+          account.address,
+          account.pinCode,
+          phone,
+          undefined,
+          false
+        );
+        return;
+      } catch (err) {
+        console.error('Error sending sign-in OTP:', err);
+        setError('Could not send a sign-in code. Please check your connection and try again.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     setSuccess('Login successful! Redirecting you to Home.');
     setTimeout(() => {
       setIsSubmitting(false);
@@ -282,11 +322,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       const updatedUsers = [newUser, ...registeredUsers.filter((u) => u.uid !== newUser.uid)];
       localStorage.setItem('nova_registered_users', JSON.stringify(updatedUsers));
       setRegisteredUsers(updatedUsers);
-      loginWithAccount(newUser, finalPhone, true, signupAddress, signupPinCode, consentRecord);
+      await loginWithAccount(newUser, finalPhone, true, signupAddress, signupPinCode, consentRecord);
       return;
     }
 
-    loginWithAccount({
+    await loginWithAccount({
       uid: matched?.uid || finalEmail,
       name: finalName,
       email: finalEmail,
@@ -301,11 +341,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     }, finalPhone, mode === 'signup', signupAddress, signupPinCode, consentRecord);
   };
 
-  const handleSelectAccount = (account: RegisterUser) => {
+  const handleSelectAccount = async (account: RegisterUser) => {
     setSelectedAccountUid(account.uid);
     setIsSubmitting(true);
     const fullPhone = getFullPhoneNumber(phoneNumber.trim(), selectedCountry).replace(/\s+/g, '');
-    loginWithAccount(account, fullPhone);
+    await loginWithAccount(account, fullPhone);
   };
 
   const handleSignupWithEmail = async (e: React.FormEvent) => {
@@ -350,15 +390,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       return;
     }
 
-    // Prevent duplicate account registration for an already-registered email address
-    const existingEmailUser = registeredUsers.find(
-      (u) => u.accountType !== 'Guest' && u.email.trim().toLowerCase() === normalizedEmail
-    );
-    if (existingEmailUser) {
-      setError('An account with this email address is already registered. Please sign in instead.');
-      return;
-    }
-
     // Enforce explicit legal consent before submitting registration
     if (!hasAcceptedLegal) {
       setConsentError("Please read and agree to NOVA's Terms & Conditions and Privacy Policy before creating an account.");
@@ -397,7 +428,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
           address.trim() || undefined,
           pinCode.trim() || undefined,
           fullPhone,
-          consentSnapshot
+          consentSnapshot,
+          true
         );
       }
     } catch (err) {
@@ -412,6 +444,32 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     // For signup, use email-based verification flow
     if (mode === 'signup') {
       await handleSignupWithEmail(e);
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        setError('Please provide a valid email address.');
+        return;
+      }
+
+      setError(null);
+      setSuccess(null);
+      setIsSubmitting(true);
+      const account = registeredUsers.find(
+        (user) => user.accountType !== 'Guest' && user.email.trim().toLowerCase() === normalizedEmail
+      );
+      await loginWithAccount(
+        account || {
+          uid: normalizedEmail,
+          name: normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+          phone: '',
+          accountType: 'Registered'
+        },
+        account?.phone || ''
+      );
       return;
     }
 
@@ -664,9 +722,26 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                   </div>
                   <p className="text-xs text-[#5E667A] leading-relaxed">
                     {mode === 'login'
-                      ? 'Enter your registered phone number. OTP verification is coming next.'
+                      ? 'Sign in with your registered email or phone number.'
                       : 'Create an account to preserve your wardrobe, preferences, and profile.'}
                   </p>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">Email Address{mode === 'login' ? ' (recommended)' : ''}</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5E667A]">
+                      <ShieldCheck className="w-4.5 h-4.5" />
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      required={mode === 'signup'}
+                    />
+                  </div>
                 </div>
 
                 {mode === 'signup' && (
@@ -682,23 +757,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                       placeholder="Arjun Mehta"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
-                      required={mode === 'signup'}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">Email Address</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5E667A]">
-                      <ShieldCheck className="w-4.5 h-4.5" />
-                    </div>
-                    <input
-                      type="email"
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
                       required={mode === 'signup'}
                     />
@@ -799,13 +857,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(normalizePhoneNumber(e.target.value))}
                     className="w-full pl-10 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
-                    required
+                    required={mode === 'signup'}
                   />
                 </div>
               </div>
                   <span className="text-[9px] text-[#5E667A] block mt-1 ml-1 leading-tight">
                     {mode === 'login'
-                      ? 'Only registered phone numbers can continue.'
+                      ? 'If you sign in with email above, you do not need to enter a phone number.'
                       : 'Use a valid phone number to register and continue.'}
                   </span>
                 </div>

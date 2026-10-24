@@ -7,9 +7,15 @@ import type { LegalConsentRecord, DeliveryAddress } from '../types';
 
 interface EmailVerificationViewProps {
   email: string;
+  isSignUp: boolean;
+  legalConsent?: LegalConsentRecord;
   onVerificationSuccess: (result: {
     uid: string;
     email: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+    pinCode?: string;
     customToken?: string;
     sessionToken?: string;
     legalConsent?: LegalConsentRecord;
@@ -22,6 +28,8 @@ const OTP_LENGTH = 6;
 
 export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   email,
+  isSignUp,
+  legalConsent,
   onVerificationSuccess,
   onChangeEmail
 }) => {
@@ -64,13 +72,17 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
       const response = await fetch(apiUrl('/api/auth/verify-otp'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: currentEmail, otp }),
+        body: JSON.stringify({ email: currentEmail, otp, isSignup: isSignUp }),
       });
       const data = await response.json() as {
         success?: boolean;
         error?: string;
         uid?: string;
         email?: string;
+        name?: string;
+        phone?: string;
+        address?: string;
+        pinCode?: string;
         customToken?: string;
         sessionToken?: string;
         legalConsent?: LegalConsentRecord;
@@ -107,6 +119,10 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
         onVerificationSuccess({
           uid: data.uid || currentEmail,
           email: data.email || currentEmail,
+          name: data.name,
+          phone: data.phone,
+          address: data.address,
+          pinCode: data.pinCode,
           customToken: data.customToken,
           sessionToken: data.sessionToken,
           legalConsent: data.legalConsent,
@@ -161,7 +177,11 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
       const response = await fetch(apiUrl('/api/auth/send-otp'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalized, isSignup: true }),
+        body: JSON.stringify({
+          email: normalized,
+          isSignup: isSignUp,
+          legalConsent: isSignUp && legalConsent ? { ...legalConsent, email: normalized } : undefined
+        }),
       });
       const data = await response.json() as { success?: boolean; error?: string };
       if (!response.ok || !data.success) {

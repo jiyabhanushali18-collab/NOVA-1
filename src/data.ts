@@ -11,13 +11,13 @@ export const products: Record<string, ProductItem> = {
     originalPrice: 1699,
     rating: 4.6,
     reviewsCount: 128,
-    imageUrl: 'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&q=80',
+    imageUrl: './garments/lavender.jpg',
     imageUrls: [
-      'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&h=600&q=80',
+      './garments/lavender.jpg',
       'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1556821552-5ff63b1446d7?w=500&h=600&q=80&crop=entropy&cs=tinysrgb',
-      'https://images.unsplash.com/photo-1578932750294-708994cc4054?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1506634215556-11fef7d1c69d?w=500&h=600&q=80'
+      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=500&h=600&q=80'
     ],
     colors: ['Lavender', 'Mint Green', 'Beige', 'Black', 'Sky Blue'],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
@@ -41,11 +41,11 @@ export const products: Record<string, ProductItem> = {
     price: 1899,
     rating: 4.5,
     reviewsCount: 92,
-    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=500&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=500&auto=format&fit=crop&q=80',
     imageUrls: [
-      'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1532635241649-7e968b12c664?w=500&h=600&q=80'
+      'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=500&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1543076447-215ad9ba6923?w=500&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=500&auto=format&fit=crop&q=80'
     ],
     colors: ['Beige', 'Black', 'Olive'],
     sizes: ['30', '32', '34', '36'],
@@ -64,8 +64,8 @@ export const products: Record<string, ProductItem> = {
     imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
     imageUrls: [
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1552062407-291826bca4c9?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1578932750294-708994cc4054?w=500&h=600&q=80'
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=600&q=80'
     ],
     colors: ['White', 'Off-White', 'Black Accents'],
     sizes: ['UK 7', 'UK 8', 'UK 9', 'UK 10'],
@@ -84,7 +84,7 @@ export const products: Record<string, ProductItem> = {
     imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
     imageUrls: [
       'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1581235720704-06d3636d27f7?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&h=600&q=80',
       'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&h=600&q=80'
     ],
     colors: ['Black', 'Navy', 'Graphite'],
@@ -101,10 +101,10 @@ export const products: Record<string, ProductItem> = {
     price: 3499,
     rating: 4.7,
     reviewsCount: 88,
-    imageUrl: 'https://images.unsplash.com/photo-1539533057867-fe50032efd77?w=500&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&auto=format&fit=crop&q=80',
     imageUrls: [
-      'https://images.unsplash.com/photo-1539533057867-fe50032efd77?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&h=600&q=80'
+      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&auto=format&fit=crop&q=80'
     ],
     colors: ['Classic Grey', 'Navy Blue'],
     sizes: ['S', 'M', 'L', 'XL'],
@@ -120,10 +120,10 @@ export const products: Record<string, ProductItem> = {
     price: 2199,
     rating: 4.6,
     reviewsCount: 142,
-    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&auto=format&fit=crop&q=80',
     imageUrls: [
-      'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1578932750294-708994cc4054?w=500&h=600&q=80'
+      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=500&auto=format&fit=crop&q=80'
     ],
     colors: ['Stonewash Blue', 'Classic Denim'],
     sizes: ['S', 'M', 'L', 'XL'],
@@ -139,11 +139,11 @@ export const products: Record<string, ProductItem> = {
     price: 1199,
     rating: 4.3,
     reviewsCount: 84,
-    imageUrl: 'https://images.unsplash.com/photo-1596215578519-c21a6004885c?w=500&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=500&auto=format&fit=crop&q=80',
     imageUrls: [
-      'https://images.unsplash.com/photo-1596215578519-c21a6004885c?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1578886385458-5db141f40a99?w=500&h=600&q=80',
-      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=500&h=600&q=80'
+      'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=500&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=600&q=80',
+      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&auto=format&fit=crop&q=80'
     ],
     colors: ['Beige', 'Sand', 'Chambray'],
     sizes: ['S', 'M', 'L', 'XL'],

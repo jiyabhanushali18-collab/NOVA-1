@@ -41,6 +41,7 @@ interface ProductDetailsViewProps {
   averageRating?: number;
   reviewsCount?: number;
   reviewListenerError?: string | null;
+  isFirebaseAuthenticated?: boolean;
   onSubmitReview?: (productId: string, rating: number, comment: string) => Promise<void>;
   currentUserName?: string;
   currentReviewerName?: string;
@@ -61,6 +62,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   averageRating,
   reviewsCount,
   reviewListenerError,
+  isFirebaseAuthenticated = false,
   onSubmitReview,
   currentUserName,
   currentReviewerName
@@ -76,6 +78,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewFeedback, setReviewFeedback] = useState<{ message: string; isError: boolean } | null>(null);
 
   const reviewStars = averageRating && averageRating > 0 ? averageRating : (mainProduct?.rating || 0);
   const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : (mainProduct?.reviewsCount || (reviews ? reviews.length : 0));
@@ -97,21 +100,23 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const handleReviewSubmit = async () => {
     if (!mainProduct || !onSubmitReview || isSubmittingReview) return;
     if (reviewRating < 1 || reviewRating > 5 || !reviewComment.trim()) {
-      setToastMessage('Please provide a rating and comment.');
-      setTimeout(() => setToastMessage(null), 3000);
+      setReviewFeedback({ message: 'Please provide a rating and comment.', isError: true });
       return;
     }
     setIsSubmittingReview(true);
+    setReviewFeedback(null);
     try {
       await onSubmitReview(mainProduct.id, reviewRating, reviewComment.trim());
       setReviewComment('');
       setReviewRating(5);
-      setToastMessage('Review saved and published.');
+      setReviewFeedback({ message: 'Review saved and published.', isError: false });
     } catch (error) {
-      setToastMessage(error instanceof Error ? error.message : 'Could not save your review.');
+      setReviewFeedback({
+        message: error instanceof Error ? error.message : 'Could not save your review.',
+        isError: true
+      });
     } finally {
       setIsSubmittingReview(false);
-      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -576,6 +581,19 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     >
                       {isSubmittingReview ? 'Saving Review...' : 'Submit Review'}
                     </button>
+                    {!isFirebaseAuthenticated && (
+                      <p className="text-xs text-amber-700" role="status">
+                        Secure sign-in is required to publish reviews. Sign out, then sign in again and verify your email.
+                      </p>
+                    )}
+                    {reviewFeedback && (
+                      <p
+                        className={`text-xs ${reviewFeedback.isError ? 'text-red-600' : 'text-emerald-700'}`}
+                        role={reviewFeedback.isError ? 'alert' : 'status'}
+                      >
+                        {reviewFeedback.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 

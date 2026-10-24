@@ -20,6 +20,7 @@ export interface LiveTryOnSessionHandle {
 
 // In-memory cache for processed garment blobs so switching garments is instant
 const garmentCache = new Map<string, Blob | string>();
+const publicAsset = (assetPath: string) => `${import.meta.env.BASE_URL}${assetPath}`;
 
 // Cached session token to eliminate duplicate network handshakes
 let cachedTokenState: { token: string; expiresAt: number } | null = null;
@@ -35,26 +36,26 @@ export const DEFAULT_GARMENTS = [
     id: 'Lavender',
     name: 'Lavender Hoodie',
     category: 'Casual wear',
-    img: '/garments/lavender.jpg',
+    img: publicAsset('garments/lavender.jpg'),
   },
   {
     id: 'Mint Green',
     name: 'Denim Jacket',
     category: 'Streetwear',
-    img: '/garments/mint.jpg',
+    img: publicAsset('garments/mint.jpg'),
   },
   {
     id: 'Beige',
     name: 'Beige Shirt',
     category: 'Smart Casual',
-    img: '/garments/beige.jpg',
+    img: publicAsset('garments/beige.jpg'),
   },
 ];
 
 export const DEFAULT_MODELS: Record<string, string> = {
-  Lavender: '/garments/model-lavender.jpg',
-  'Mint Green': '/garments/model-mint.jpg',
-  Beige: '/garments/model-beige.jpg',
+  Lavender: publicAsset('garments/model-lavender.jpg'),
+  'Mint Green': publicAsset('garments/model-mint.jpg'),
+  Beige: publicAsset('garments/model-beige.jpg'),
 };
 
 /**
@@ -372,8 +373,8 @@ export async function startLiveTryOnSession(
   config.onLocalStream?.(localStream);
   config.onStatusChange?.('Connecting to AI...');
 
-  // Use error logger to silence routine disconnect warnings
-  const logger = createConsoleLogger('error');
+  // Keep SDK connection failures visible in the browser console.
+  const logger = createConsoleLogger('warn');
 
   const client = createVtonClient({
     apiKeyProvider: getLiveTryOnToken,
@@ -381,6 +382,7 @@ export async function startLiveTryOnSession(
   });
 
   let isDestroyed = false;
+  let hasConnected = false;
 
   // Connect WebRTC stream cleanly without giant initial payload.
   // This eliminates "WebSocket opening handshake timed out" errors.
@@ -388,21 +390,42 @@ export async function startLiveTryOnSession(
   try {
     realtimeClient = await client.realtime.connect(localStream, {
       model,
+      retries: 0,
+      capacityRetryBudgetMs: 0,
       onRemoteStream: (transformedStream: MediaStream) => {
         if (isDestroyed) return;
+        if (!hasConnected) {
+          hasConnected = true;
+          config.onConnected?.();
+        }
         config.videoElement.srcObject = transformedStream;
         config.videoElement.play().catch((err) => {
           console.warn('Video play error:', err);
         });
         config.onStatusChange?.('Live AI Active');
-        config.onConnected?.();
       },
       onConnectionChange: (state) => {
         if (isDestroyed) return;
-        if (state === 'reconnecting') {
-          config.onStatusChange?.('Reconnecting AI...');
+        if (state === 'connected' || state === 'generating') {
+          if (!hasConnected) {
+            hasConnected = true;
+            config.onConnected?.();
+          }
+          config.onStatusChange?.('AI connected - waiting for transformed video...');
+        } else if (state === 'reconnecting') {
+          config.videoElement.srcObject = localStream;
+          config.videoElement.play().catch((err) => {
+            console.warn('Local camera preview play error:', err);
+          });
+          config.onStatusChange?.('AI connection lost - reconnecting...');
         } else if (state === 'disconnected') {
-          config.onStatusChange?.('Disconnected');
+          config.videoElement.srcObject = localStream;
+          config.videoElement.play().catch((err) => {
+            console.warn('Local camera preview play error:', err);
+          });
+          config.onStatusChange?.(hasConnected
+            ? 'AI disconnected - waiting to reconnect...'
+            : 'AI connection retrying...');
         }
       },
     });
@@ -419,12 +442,31 @@ export async function startLiveTryOnSession(
         }),
       }).catch(() => {});
     }
-    localStream.getTracks().forEach((track) => track.stop());
-    if (config.videoElement.srcObject === localStream) {
-      config.videoElement.srcObject = null;
-    }
+    config.videoElement.srcObject = localStream;
+    config.videoElement.play().catch((playError) => {
+      console.warn('Local camera preview play error after AI connection failure:', playError);
+    });
     throw error;
   }
+
+  let terminalErrorReported = false;
+  const reportRealtimeError = (error: Error) => {
+    if (isDestroyed || terminalErrorReported) return;
+    terminalErrorReported = true;
+    config.onError?.(error);
+  };
+  realtimeClient.on('error', (error: { message?: string }) => {
+    reportRealtimeError(new Error(error.message || 'The live AI connection was lost. Tap Try On Live to reconnect.'));
+  });
+  realtimeClient.on('sessionEnded', ({ reason }: { reason: string }) => {
+    const reasonMessage: Record<string, string> = {
+      insufficient_credits: 'The live try-on service has no credits available.',
+      session_limit: 'The live try-on service reached its session limit.',
+      policy_violation: 'The live try-on service ended this session due to a policy restriction.',
+      moderation_violation: 'The live try-on service ended this session due to a content restriction.',
+    };
+    reportRealtimeError(new Error(reasonMessage[reason] || `The live try-on service ended the session (${reason}).`));
+  });
 
   // Serialized, non-blocking garment sender
   let isUpdatingGarment = false;

@@ -468,6 +468,7 @@ export default function App() {
     pinCode?: string;
     phone?: string;
     legalConsent?: LegalConsentRecord;
+    isSignUp?: boolean;
   } | null>(() => {
     try {
       const saved = localStorage.getItem(PENDING_EMAIL_SIGNUP_KEY);
@@ -1612,6 +1613,7 @@ export default function App() {
             reviewsCount={selectedReviewProduct?.reviewsCount}
             averageRating={selectedReviewProduct?.rating}
             reviewListenerError={reviewListenerError}
+            isFirebaseAuthenticated={Boolean(auth.currentUser)}
             currentReviewerName={activeAccount?.name || activeAccount?.username || userName}
             activeUid={activeUid}
             onSubmitReview={handleSubmitProductReview}
@@ -1694,11 +1696,12 @@ export default function App() {
     address?: string,
     pinCode?: string,
     phone?: string,
-    legalConsent?: LegalConsentRecord
+    legalConsent?: LegalConsentRecord,
+    isSignUp = true
   ) => {
-    const pendingSignup = { email, name, address, pinCode, phone, legalConsent };
-    localStorage.setItem(PENDING_EMAIL_SIGNUP_KEY, JSON.stringify(pendingSignup));
-    setPendingEmailVerification(pendingSignup);
+    const pendingVerification = { email, name, address, pinCode, phone, legalConsent, isSignUp };
+    localStorage.setItem(PENDING_EMAIL_SIGNUP_KEY, JSON.stringify(pendingVerification));
+    setPendingEmailVerification(pendingVerification);
     resetScreenHistory('email-verification');
   };
 
@@ -1714,6 +1717,10 @@ export default function App() {
   const handleEmailVerificationSuccess = async (verificationResult: {
     uid?: string;
     email: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+    pinCode?: string;
     customToken?: string;
     sessionToken?: string;
     legalConsent?: LegalConsentRecord;
@@ -1725,7 +1732,11 @@ export default function App() {
       return;
     }
 
-    const { email, name, address, pinCode, phone, legalConsent } = pendingEmailVerification;
+    const { email, legalConsent, isSignUp = true } = pendingEmailVerification;
+    const name = verificationResult.name || pendingEmailVerification.name;
+    const address = verificationResult.address || pendingEmailVerification.address;
+    const pinCode = verificationResult.pinCode || pendingEmailVerification.pinCode;
+    const phone = verificationResult.phone || pendingEmailVerification.phone;
     const firebaseUid = verificationResult.uid || email;
 
     if (verificationResult.sessionToken) {
@@ -1747,7 +1758,7 @@ export default function App() {
     const initialSavedAddresses = structuredAddress ? [structuredAddress] : [];
     writeCachedUserAddress(firebaseUid, structuredAddress, initialSavedAddresses);
 
-    // Complete the signup with email verified
+    // Complete sign-in only after Firebase has confirmed the email OTP.
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('novaSessionType', 'registered');
     localStorage.setItem('novaSelectedAccountUid', firebaseUid);
@@ -1781,12 +1792,12 @@ export default function App() {
         });
     }
 
-    // Save user details to Firestore (isSignUp=true for email-based signup)
+    // Merge the verified account details into its Firebase profile.
     saveUserToFirestore(
       name,
       email,
       phone || '',
-      true,
+      isSignUp,
       address,
       pinCode,
       firebaseUid,
@@ -1857,8 +1868,7 @@ export default function App() {
       console.error('Failed to manage account:', err);
     }
 
-    // Navigate to setup preferences for new signup
-    resetScreenHistory('setup-preferences');
+    resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
   };
 
   const handleLoginSuccess = (
@@ -2093,6 +2103,8 @@ export default function App() {
         <main className="flex-grow relative px-4 py-3 flex flex-col justify-center">
           <EmailVerificationView
             email={pendingEmailVerification.email}
+            isSignUp={pendingEmailVerification.isSignUp !== false}
+            legalConsent={pendingEmailVerification.legalConsent}
             onVerificationSuccess={handleEmailVerificationSuccess}
             onChangeEmail={handlePendingVerificationEmailChange}
           />

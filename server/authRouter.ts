@@ -6,7 +6,10 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import "./firebaseAdmin";
 
-console.log("Email delivery configured:", Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL));
+console.log(
+  "Email delivery configured:",
+  Boolean(process.env.BREVO_API_KEY?.trim() && process.env.BREVO_SENDER_EMAIL?.trim())
+);
 
 const router = express.Router();
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -58,6 +61,7 @@ interface OrderPayload {
 interface OTPRecord {
   email: string;
   otpHash: string;
+  isSignup: boolean;
   createdAt: number;
   expiresAt: number;
   attempts: number;
@@ -94,7 +98,7 @@ const initializeFirebaseServices = () => {
     console.log('Firebase services initialized successfully.');
   } catch (error: any) {
     firebaseEnabled = false;
-    console.warn('Firebase services unavailable, using local OTP fallback.', error?.message || error);
+    console.warn('Firebase Admin unavailable; secure email authentication is disabled.', error?.message || error);
     if (firebaseInitError) {
       console.warn('Firebase Admin init error:', firebaseInitError.message);
     }
@@ -341,15 +345,14 @@ const normalizeConsentPayload = (
 const maskEmail = (email: string) => email.replace(/^(.).+(@.+)$/, '$1***$2');
 
 const getSafeSmtpConfigStatus = () => {
-  const { host, port, secure, user, pass, fromEmail, fromName } = getSmtpConfig();
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  const fromEmail = process.env.BREVO_SENDER_EMAIL?.trim();
+  const fromName = process.env.BREVO_SENDER_NAME?.trim() || 'NOVA';
   return {
-    configured: Boolean(host && user && pass),
-    host: host || null,
-    port,
-    secure,
-    user: user ? maskEmail(user) : null,
-    passwordLoaded: Boolean(pass),
-    fromEmail,
+    provider: 'Brevo',
+    configured: Boolean(apiKey && fromEmail),
+    apiKeyLoaded: Boolean(apiKey),
+    fromEmail: fromEmail || null,
     fromName
   };
 };
@@ -512,6 +515,12 @@ router.post('/auth/send-otp', async (req: Request, res: Response) => {
   try {
     const { email, isSignup, legalConsent } = req.body;
     if (!isValidEmail(email)) return res.status(400).json({ success: false, error: 'Invalid email' });
+    if (!firebaseEnabled || !auth || !firestore) {
+      return res.status(503).json({
+        success: false,
+        error: 'Secure email sign-in is unavailable because Firebase Admin is not configured. Configure a valid Firebase service account, then restart the server.'
+      });
+    }
 
     const normalizedConsent = normalizeConsentPayload(legalConsent, 'signup');
     if (isSignup === true && !normalizedConsent) {
@@ -522,6 +531,30 @@ router.post('/auth/send-otp', async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    let existingFirebaseUser = true;
+    try {
+      await auth.getUserByEmail(normalizedEmail);
+    } catch (error: any) {
+      if (error?.code === 'auth/user-not-found') {
+        existingFirebaseUser = false;
+      } else {
+        throw error;
+      }
+    }
+
+    if (isSignup === true && existingFirebaseUser) {
+      return res.status(409).json({
+        success: false,
+        error: 'An account with this email already exists. Sign in with this email instead.'
+      });
+    }
+    if (isSignup !== true && !existingFirebaseUser) {
+      return res.status(404).json({
+        success: false,
+        error: 'No account was found for this email. Create an account first.'
+      });
+    }
+
     const existingRecord = await getStoredOtp(normalizedEmail);
     const now = Date.now();
 
@@ -553,6 +586,7 @@ router.post('/auth/send-otp', async (req: Request, res: Response) => {
     const otpRecord: OTPRecord = {
       email: normalizedEmail,
       otpHash,
+      isSignup: isSignup === true,
       createdAt,
       expiresAt,
       attempts: 0,
@@ -611,6 +645,7 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
     const updatedRecord: OTPRecord = {
       email: normalizedEmail,
       otpHash,
+      isSignup: existingRecord.isSignup === true,
       createdAt,
       expiresAt,
       attempts: 0,
@@ -632,8 +667,14 @@ router.post('/auth/resend-otp', async (req: Request, res: Response) => {
 // POST /api/auth/verify-otp
 router.post('/auth/verify-otp', async (req: Request, res: Response) => {
   try {
-    const { email, otp, name, address, pinCode, phone, legalConsent } = req.body;
+    const { email, otp, name, address, pinCode, phone, legalConsent, isSignup } = req.body;
     if (!isValidEmail(email) || !otp || typeof otp !== 'string') return res.status(400).json({ success: false, error: 'Invalid parameters' });
+    if (!firebaseEnabled || !auth || !firestore) {
+      return res.status(503).json({
+        success: false,
+        error: 'Secure email sign-in is unavailable because Firebase Admin is not configured. Configure a valid Firebase service account, then restart the server.'
+      });
+    }
 
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedOtp = otp.trim();
@@ -655,6 +696,9 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
     }
 
     const data = existingRecord as any;
+    if (typeof data.isSignup === 'boolean' && data.isSignup !== (isSignup === true)) {
+      return res.status(400).json({ success: false, error: 'This code was requested for a different sign-in flow. Request a new code.' });
+    }
     if ((data.expiresAt || 0) < now) {
       await deleteStoredOtp(normalizedEmail);
       return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new code.' });
@@ -681,17 +725,29 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
     console.log('[OTP] Verification succeeded.', { email: maskEmail(normalizedEmail), storage: firebaseEnabled ? 'firestore' : 'memory' });
 
     const cleanPhone = typeof phone === 'string' && phone.trim() ? phone.trim() : '';
-    const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalizedEmail.split('@')[0];
+    const requestedDisplayName = typeof name === 'string' && name.trim() ? name.trim() : normalizedEmail.split('@')[0];
 
     if (firebaseEnabled && auth && firestore) {
       let userRecord;
       try {
         userRecord = await auth.getUserByEmail(normalizedEmail);
+        if (isSignup === true) {
+          return res.status(409).json({
+            success: false,
+            error: 'An account with this email already exists. Sign in with this email instead.'
+          });
+        }
         if (!userRecord.emailVerified) {
           await auth.updateUser(userRecord.uid, { emailVerified: true });
         }
       } catch (err: any) {
         if (err.code === 'auth/user-not-found') {
+          if (isSignup !== true) {
+            return res.status(404).json({
+              success: false,
+              error: 'No account was found for this email. Create an account first.'
+            });
+          }
           userRecord = await auth.createUser({ email: normalizedEmail, emailVerified: true });
         } else {
           console.error('Firebase auth lookup/create error:', err);
@@ -700,12 +756,20 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
       }
 
       const uid = userRecord.uid;
-      const username = normalizedEmail.split('@')[0] || displayName;
+      let resolvedName = requestedDisplayName;
+      let resolvedPhone = cleanPhone;
+      let resolvedAddress: string | undefined;
+      let resolvedPinCode: string | undefined;
+      const username = normalizedEmail.split('@')[0] || resolvedName;
       let resolvedDeliveryAddress: DeliveryAddressPayload | null = null;
       try {
         const userDocRef = firestore.collection(USERS_COLLECTION).doc(uid);
         const existingUserSnap = await userDocRef.get();
         const existingUserData = existingUserSnap?.exists ? existingUserSnap.data() : null;
+        resolvedName = isSignup === true
+          ? requestedDisplayName
+          : existingUserData?.name || userRecord.displayName || requestedDisplayName;
+        resolvedPhone = cleanPhone || existingUserData?.phoneNumber || existingUserData?.phone || userRecord.phoneNumber || '';
         const existingDeliveryAddress = existingUserData?.deliveryAddress || null;
         const existingSavedAddresses: DeliveryAddressPayload[] = Array.isArray(existingUserData?.savedAddresses)
           ? existingUserData.savedAddresses
@@ -714,8 +778,8 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
         resolvedDeliveryAddress = buildBackendDeliveryAddress({
           rawAddress: typeof address === 'string' ? address : undefined,
           pinCode: typeof pinCode === 'string' ? pinCode : undefined,
-          fullName: displayName,
-          phone: cleanPhone || existingUserData?.phoneNumber || existingUserData?.phone || '',
+          fullName: resolvedName,
+          phone: resolvedPhone,
           existing: existingDeliveryAddress
         });
 
@@ -724,12 +788,12 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
           uid,
           email: normalizedEmail,
           username,
-          name: displayName,
+          name: resolvedName,
           emailVerified: true,
-          displayName,
+          displayName: resolvedName,
           photoURL: existingUserData?.photoURL || '',
-          phoneNumber: cleanPhone || existingUserData?.phoneNumber || '',
-          phone: cleanPhone || existingUserData?.phone || '',
+          phoneNumber: resolvedPhone,
+          phone: resolvedPhone,
           gender: existingUserData?.gender || '',
           dob: existingUserData?.dob || '',
           createdAt: existingUserData?.createdAt || nowTs,
@@ -750,6 +814,16 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
         } else if (resolvedDeliveryAddress?.pinCode) {
           userData.pinCode = resolvedDeliveryAddress.pinCode;
         }
+        resolvedAddress = typeof userData.address === 'string'
+          ? userData.address
+          : typeof existingUserData?.address === 'string'
+            ? existingUserData.address
+            : resolvedDeliveryAddress?.formattedAddress;
+        resolvedPinCode = typeof userData.pinCode === 'string'
+          ? userData.pinCode
+          : typeof existingUserData?.pinCode === 'string'
+            ? existingUserData.pinCode
+            : resolvedDeliveryAddress?.pinCode;
 
         if (resolvedDeliveryAddress) {
           const updatedSavedList = deduplicateSavedAddresses(existingSavedAddresses, resolvedDeliveryAddress);
@@ -807,6 +881,10 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
         message: 'Email verified',
         uid,
         email: normalizedEmail,
+        name: resolvedName,
+        phone: resolvedPhone,
+        address: resolvedAddress,
+        pinCode: resolvedPinCode,
         customToken,
         sessionToken,
         deliveryAddress: resolvedDeliveryAddress,
@@ -818,7 +896,7 @@ router.post('/auth/verify-otp', async (req: Request, res: Response) => {
     const localDeliveryAddress = buildBackendDeliveryAddress({
       rawAddress: typeof address === 'string' ? address : undefined,
       pinCode: typeof pinCode === 'string' ? pinCode : undefined,
-      fullName: displayName,
+      fullName: requestedDisplayName,
       phone: cleanPhone,
       existing: existingLocalAddr?.primaryAddress || null
     });

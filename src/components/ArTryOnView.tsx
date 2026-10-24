@@ -133,6 +133,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef<LiveTryOnSessionHandle | null>(null);
+  const localPreviewStreamRef = useRef<MediaStream | null>(null);
   const isConnectingRef = useRef(false);
   const isLiveRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +153,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     if (sessionRef.current) {
       sessionRef.current.stop();
       sessionRef.current = null;
+    } else if (localPreviewStreamRef.current) {
+      localPreviewStreamRef.current.getTracks().forEach((track) => track.stop());
+      if (videoRef.current?.srcObject === localPreviewStreamRef.current) {
+        videoRef.current.srcObject = null;
+      }
     }
+    localPreviewStreamRef.current = null;
     if (isLiveRef.current && sessionStartTimeRef.current) {
       const elapsed = Date.now() - sessionStartTimeRef.current;
       analytics.trackArTryOnEnded(selectedGarment, elapsed);
@@ -171,6 +178,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       if (sessionRef.current) {
         sessionRef.current.stop();
         sessionRef.current = null;
+      } else if (localPreviewStreamRef.current) {
+        localPreviewStreamRef.current.getTracks().forEach((track) => track.stop());
+        localPreviewStreamRef.current = null;
       }
     };
   }, []);
@@ -179,6 +189,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const startLiveSession = useCallback(async () => {
     if (isConnectingRef.current || isLiveRef.current) return;
     if (!videoRef.current) return;
+
+    if (localPreviewStreamRef.current) {
+      localPreviewStreamRef.current.getTracks().forEach((track) => track.stop());
+      localPreviewStreamRef.current = null;
+      videoRef.current.srcObject = null;
+      setIsCameraActive(false);
+    }
 
     isConnectingRef.current = true;
     setIsConnecting(true);
@@ -193,7 +210,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         videoElement: videoRef.current,
         garmentImage: garmentSource,
         facingMode: 'user',
-        onLocalStream: () => {
+        onLocalStream: (stream) => {
+          localPreviewStreamRef.current = stream;
           setIsCameraActive(true);
           setStatusText('Camera active - connecting AI...');
         },
@@ -213,6 +231,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           console.warn('Live session error:', err);
           analytics.trackArTryOnFailed(selectedGarment, 'stream_error', activeGarmentObj?.name);
           stopLiveSession();
+          setStatusText(err.message || 'AI connection lost. Tap Try On Live to retry.');
         },
       });
 
@@ -221,14 +240,17 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       console.error('Could not start live session:', err);
       const errorCategory = err?.name === 'NotAllowedError' ? 'camera_permission_denied' : 'connection_failed';
       analytics.trackArTryOnFailed(selectedGarment, errorCategory, activeGarmentObj?.name);
-      stopLiveSession();
-      const friendlyMessage =
-        err?.name === 'NotAllowedError'
-          ? 'Camera access denied'
-          : err?.message && !err.message.includes('fetch')
-          ? err.message
-          : 'AI connecting... tap to retry';
-      setStatusText(friendlyMessage);
+      isConnectingRef.current = false;
+      setIsConnecting(false);
+      const errorMessage = typeof err?.message === 'string' && err.message.trim()
+        ? err.message.trim()
+        : typeof err?.error?.message === 'string' && err.error.message.trim()
+        ? err.error.message.trim()
+        : 'Unknown connection error';
+      const detail = errorMessage.length > 140 ? `${errorMessage.slice(0, 137)}...` : errorMessage;
+      setStatusText(err?.name === 'NotAllowedError'
+        ? 'Camera access denied'
+        : `AI connection failed: ${detail}`);
     }
   }, [activeGarmentObj, initialGarmentImage, stopLiveSession]);
 
@@ -515,7 +537,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
         {/* Top Status Pill: Camera ready / Live status */}
         <div className="absolute top-3 inset-x-0 flex justify-center z-30 pointer-events-none">
-          <div className="bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
+          <div className="max-w-[calc(100%-1rem)] bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
             <span
               className={`w-2 h-2 rounded-full ${
                 isVideoLive
@@ -527,7 +549,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                   : 'bg-emerald-400'
               }`}
             />
-            <span className="text-[11px] font-semibold text-slate-200 tracking-wide">
+            <span title={statusText} className="max-w-[70vw] truncate text-[11px] font-semibold text-slate-200 tracking-wide">
               {statusText}
             </span>
           </div>
