@@ -938,7 +938,7 @@ export default function App() {
 
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) {
-      throw new Error('Sign in with your verified account before submitting a review.');
+      throw new Error('Your NOVA account is signed in, but Firebase Authentication is not active. Your review was not saved. Fix the Firebase Admin credentials, then verify your email again.');
     }
 
     const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';

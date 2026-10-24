@@ -366,74 +366,104 @@ const isValidEmail = (email?: string) =>
   typeof email === 'string' &&
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-const sendOTPEmail = async (email: string, otp: string): Promise<{ ok: boolean; status?: number; error?: string }> => {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.RESEND_FROM_EMAIL?.trim();
-  const html = `
-      <h2>NOVA - The Future of Fashion</h2>
-      <p>Your verification code is:</p>
-      <h1 style="letter-spacing:6px">${otp}</h1>
-      <p>This code expires in 5 minutes.</p>
-      <p>If you didn't request this email, please ignore it.</p>
-    `;
+
+const sendOTPEmail = async (
+  email: string,
+  otp: string
+): Promise<{ ok: boolean; status?: number; error?: string }> => {
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  const from = process.env.BREVO_SENDER_EMAIL?.trim();
+  const senderName = process.env.BREVO_SENDER_NAME?.trim() || "NOVA";
 
   if (!apiKey || !from) {
-    console.error("[Email] Resend is not configured; missing RESEND_API_KEY or RESEND_FROM_EMAIL.");
-    return { ok: false, status: 503, error: 'Email delivery is not configured. Please contact support.' };
+    console.error(
+      "[Email] Brevo is not configured; missing BREVO_API_KEY or BREVO_SENDER_EMAIL."
+    );
+    return {
+      ok: false,
+      status: 503,
+      error: "Email delivery is not configured. Please contact support."
+    };
   }
 
+  const html = `
+    <h2>NOVA - The Future of Fashion</h2>
+    <p>Your verification code is:</p>
+    <h1 style="letter-spacing:6px">${otp}</h1>
+    <p>This code expires in 5 minutes.</p>
+    <p>If you didn't request this email, please ignore it.</p>
+  `;
+
   try {
-    console.log("[Email] Sending OTP through Resend.", {
+    console.log("[Email] Sending OTP through Brevo.", {
       recipient: maskEmail(email),
       senderEmail: from
     });
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject: 'Verify your NOVA Account',
-        text: `Your NOVA verification code is ${otp}. This code expires in 5 minutes.`,
-        html
-      }),
-      signal: AbortSignal.timeout(10_000)
-    });
+    const response = await fetch(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        method: "POST",
+        headers: {
+          "api-key": apiKey,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          sender: {
+            name: senderName,
+            email: from
+          },
+          to: [{ email }],
+          subject: "Verify your NOVA Account",
+          textContent: `Your NOVA verification code is ${otp}. This code expires in 5 minutes.`,
+          htmlContent: html
+        }),
+        signal: AbortSignal.timeout(10000)
+      }
+    );
 
-    const result = await response.json() as { id?: string; message?: string; name?: string };
     if (!response.ok) {
-      const error = result.message || result.name || `Resend returned HTTP ${response.status}`;
-      console.error("[Email] Resend rejected the OTP email.", {
+      const errorText = await response.text();
+      console.error("[Email] Brevo rejected the OTP email.", {
         status: response.status,
-        error,
+        error: errorText.slice(0, 500),
         recipient: maskEmail(email)
       });
-      return { ok: false, status: response.status, error };
+
+      return {
+        ok: false,
+        status: response.status,
+        error: "Email delivery failed. Please try again."
+      };
     }
 
-    console.log("[Email] Resend accepted the OTP email.", {
-      messageId: result.id,
+    const result = await response.json() as { messageId?: string };
+
+    console.log("[Email] Brevo accepted the OTP email.", {
+      messageId: result.messageId,
       recipient: maskEmail(email)
     });
+
     return { ok: true };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown email provider error';
-    const timedOut = error instanceof Error && error.name === 'TimeoutError';
-    console.error("[Email] Resend request failed.", {
+    const message =
+      error instanceof Error ? error.message : "Unknown email provider error";
+
+    console.error("[Email] Brevo request failed.", {
       message,
       recipient: maskEmail(email)
     });
+
     return {
       ok: false,
-      status: timedOut ? 504 : 502,
-      error: timedOut ? 'Email provider request timed out. Please try again.' : 'Email delivery failed. Please try again.'
+      status: 502,
+      error: "Email delivery failed. Please try again."
     };
   }
 };
+
+
 // Helper: get OTP doc ref
 const otpDocRef = (email: string) => {
   if (firebaseEnabled && firestore) {

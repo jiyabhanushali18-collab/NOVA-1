@@ -87,14 +87,19 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
         return;
       }
 
-      // Sign into Firebase with the custom token returned by the backend
-      if (data.customToken) {
-        try {
-          await signInWithServerCustomToken(data.customToken);
-        } catch (firebaseErr) {
-          console.error('Firebase custom token sign-in failed:', firebaseErr);
-          // Non-fatal: session token and profile are already created; proceed
-        }
+      if (!data.customToken) {
+        setError('Your email was verified, but Firebase sign-in is unavailable. Ask the app administrator to fix the Firebase Admin service-account credentials, then verify again.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await signInWithServerCustomToken(data.customToken);
+      } catch (firebaseErr) {
+        console.error('Firebase custom token sign-in failed:', firebaseErr);
+        setError('Your email was verified, but Firebase could not sign you in. Please contact the app administrator.');
+        setLoading(false);
+        return;
       }
 
       setSuccess(true);
