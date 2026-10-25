@@ -148,15 +148,9 @@ export const DEFAULT_MODELS: Record<string, string> = {
 export async function getLiveTryOnToken(): Promise<string> {
   const candidateEndpoints: string[] = [];
 
-  // 1. Configured / platform apiUrl
-  const standardUrl = apiUrl('/api/vton/token');
-  if (standardUrl) candidateEndpoints.push(standardUrl);
-
-  // 2. Production Render cloud backend (always available & has CORS enabled)
-  candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
-
-  // 3. Local Node server fallbacks if running in browser
+  // 1. In browser, local endpoints (and relative URL) first so local server rotation pool is used
   if (typeof window !== 'undefined') {
+    candidateEndpoints.push('/api/vton/token');
     const port = window.location.port;
     if (port && port !== '3000') {
       candidateEndpoints.push(`http://${window.location.hostname}:3000/api/vton/token`);
@@ -164,6 +158,13 @@ export async function getLiveTryOnToken(): Promise<string> {
     candidateEndpoints.push('http://localhost:3000/api/vton/token');
     candidateEndpoints.push('http://127.0.0.1:3000/api/vton/token');
   }
+
+  // 2. Configured / platform apiUrl
+  const standardUrl = apiUrl('/api/vton/token');
+  if (standardUrl) candidateEndpoints.push(standardUrl);
+
+  // 3. Production Render cloud backend (always available & has CORS enabled)
+  candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
 
   const uniqueEndpoints = Array.from(new Set(candidateEndpoints.filter(Boolean)));
   let lastError: any = null;
@@ -516,36 +517,40 @@ export async function startLiveTryOnSession(
         }
       },
     };
-    try {
-      realtimeClient = await runSerializedLiveConnect(
-        config.signal,
-        () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
-        () => client.realtime.connect(localStream, connectionOptions)
-      );
-    } catch (error) {
-      const isStaleAttempt = error instanceof Error
-        && error.name === 'AbortError'
-        && error.message === 'Stale connect attempt';
-      if (!isStaleAttempt || config.signal?.aborted) throw error;
-
-      config.onStatusChange?.('AI connection was interrupted - retrying...');
-      const retryClient = createVtonClient({
-        apiKeyProvider: getLiveTryOnToken,
-        logger,
-      });
-      realtimeClient = await runSerializedLiveConnect(
-        config.signal,
-        () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
-        () => retryClient.realtime.connect(localStream, connectionOptions)
-      );
+    let connectAttempts = 0;
+    while (!realtimeClient && connectAttempts < 3) {
+      connectAttempts++;
+      try {
+        throwIfAborted();
+        const activeClient = connectAttempts === 1 ? client : createVtonClient({
+          apiKeyProvider: getLiveTryOnToken,
+          logger,
+        });
+        realtimeClient = await runSerializedLiveConnect(
+          config.signal,
+          () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
+          () => activeClient.realtime.connect(localStream, connectionOptions)
+        );
+      } catch (error: any) {
+        if (config.signal?.aborted) throw error;
+        const msg = typeof error?.message === 'string' ? error.message : String(error || '');
+        const isStale = msg.includes('Stale connect attempt') || error?.name === 'AbortError';
+        if (isStale && connectAttempts < 3) {
+          config.onStatusChange?.('AI connection was interrupted - retrying...');
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          continue;
+        }
+        throw error;
+      }
     }
     if (config.signal?.aborted) {
-      realtimeClient.disconnect();
+      realtimeClient?.disconnect();
       localStream.getTracks().forEach((track) => track.stop());
       throwIfAborted();
     }
-  } catch (error) {
-    const isCancelled = config.signal?.aborted || (error instanceof Error && error.name === 'AbortError');
+  } catch (error: any) {
+    const errorMsg = typeof error?.message === 'string' ? error.message : String(error || '');
+    const isCancelled = config.signal?.aborted || error?.name === 'AbortError' || errorMsg.includes('cancelled');
     if (isCancelled) {
       localStream.getTracks().forEach((track) => track.stop());
       if (config.videoElement.srcObject === localStream) {

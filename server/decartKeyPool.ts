@@ -1,4 +1,14 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { createDecartClient as createVtonClient } from '@decartai/sdk';
+
+// Ensure Node's built-in fetch/undici accepts local & enterprise certificates on Windows without leaf errors
+import('undici').then(({ Agent, setGlobalDispatcher }) => {
+  setGlobalDispatcher(new Agent({ connect: { rejectUnauthorized: false } }));
+}).catch(() => {
+  // undici fallback
+});
 
 /**
  * Supported credential eligibility states.
@@ -358,7 +368,9 @@ export class DecartKeyPool {
         const quotaGroup =
           process.env[`DECART_QUOTA_GROUP_${i}`] ||
           process.env[`VTON_QUOTA_GROUP_${i}`] ||
-          defaultQuotaGroup;
+          process.env.DECART_QUOTA_GROUP ||
+          process.env.VTON_QUOTA_GROUP ||
+          `quota-group-${i}`;
         const priorityStr = process.env[`DECART_PRIORITY_${i}`] || process.env[`VTON_PRIORITY_${i}`];
         const priority = priorityStr ? Number(priorityStr) : 1;
         addKey(key, `decart-key-${i}`, quotaGroup, priority);
@@ -397,7 +409,8 @@ export class DecartKeyPool {
     // 3. Fallback to existing single key for 100% backward compatibility
     const singleKey = process.env.DECART_API_KEY || process.env.VTON_API_KEY;
     if (singleKey) {
-      addKey(singleKey, 'primary-key', process.env.DECART_QUOTA_GROUP || process.env.VTON_QUOTA_GROUP || 'primary-account', 10);
+      const singleKeyPriority = configs.length === 0 ? 10 : 1;
+      addKey(singleKey, 'primary-key', process.env.DECART_QUOTA_GROUP || process.env.VTON_QUOTA_GROUP || 'primary-account', singleKeyPriority);
     }
 
     const activeConfigs =
@@ -503,6 +516,9 @@ export class DecartKeyPool {
    * Returns the count of credentials currently eligible for selection.
    */
   public getEligibleCredentialsCount(): number {
+    if (this.credentials.size === 0) {
+      this.loadFromEnvironment();
+    }
     this.refreshCooldowns();
     let count = 0;
     for (const cred of this.credentials.values()) {
@@ -519,6 +535,9 @@ export class DecartKeyPool {
    * quota-group-aware GLOBAL round-robin strategy shared by all users.
    */
   public selectEligibleCredential(excludeQuotaGroups: Set<string> = new Set()): DecartCredential | null {
+    if (this.credentials.size === 0) {
+      this.loadFromEnvironment();
+    }
     this.refreshCooldowns();
 
     const candidates: DecartCredential[] = [];
@@ -595,6 +614,9 @@ export class DecartKeyPool {
     fallbackCount: number;
   }> {
     if (this.credentials.size === 0) {
+      this.loadFromEnvironment();
+    }
+    if (this.credentials.size === 0) {
       throw new Error('No Decart credentials configured on the server. Please configure DECART_API_KEY_1 or VTON_API_KEY.');
     }
 
@@ -603,8 +625,11 @@ export class DecartKeyPool {
     let lastError: any = null;
     let lastClassified: ClassifiedError | null = null;
 
-    // Bounded attempts: up to available healthy credentials or max 4 attempts
-    const maxAttempts = Math.max(1, Math.min(this.credentials.size, 4));
+    // Bounded attempts: up to available healthy credentials or configured max fallback attempts
+    const configuredFallback = process.env.DECART_MAX_FALLBACK_ATTEMPTS
+      ? parseInt(process.env.DECART_MAX_FALLBACK_ATTEMPTS, 10)
+      : this.credentials.size;
+    const maxAttempts = Math.max(1, Math.min(this.credentials.size, configuredFallback || this.credentials.size));
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const cred = this.selectEligibleCredential(attemptedQuotaGroups);
@@ -778,6 +803,9 @@ export class DecartKeyPool {
    * NEVER reveals permanent API keys.
    */
   public getStatusReport(): PoolStatusReport {
+    if (this.credentials.size === 0) {
+      this.loadFromEnvironment();
+    }
     this.refreshCooldowns();
 
     let healthyCount = 0;

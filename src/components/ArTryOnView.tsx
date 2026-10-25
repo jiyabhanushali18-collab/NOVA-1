@@ -275,7 +275,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         ? err.error.message.trim()
         : 'Unknown connection error';
       const detail = errorMessage.length > 140 ? `${errorMessage.slice(0, 137)}...` : errorMessage;
-      const isStaleAttempt = err?.name === 'AbortError' && errorMessage === 'Stale connect attempt';
+      const isStaleAttempt = err?.name === 'AbortError' || errorMessage.includes('Stale connect attempt');
       setStatusText(err?.name === 'NotAllowedError'
         ? 'Camera access denied'
         : isStaleAttempt
