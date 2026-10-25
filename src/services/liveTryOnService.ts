@@ -8,6 +8,7 @@ export interface LiveTryOnSessionConfig {
   onLocalStream?: (stream: MediaStream) => void;
   onError?: (error: Error) => void;
   onConnected?: () => void;
+  signal?: AbortSignal;
 }
 
 export interface LiveTryOnSessionHandle {
@@ -21,14 +22,96 @@ export interface LiveTryOnSessionHandle {
 // In-memory cache for processed garment blobs so switching garments is instant
 const garmentCache = new Map<string, Blob | string>();
 const publicAsset = (assetPath: string) => `${import.meta.env.BASE_URL}${assetPath}`;
+let liveConnectQueue: Promise<void> = Promise.resolve();
+let queuedLiveConnects = 0;
 
-// Cached session token to eliminate duplicate network handshakes
-let cachedTokenState: { token: string; expiresAt: number } | null = null;
-let activeCredentialId: string | null = null;
+async function runSerializedLiveConnect<T>(
+  signal: AbortSignal | undefined,
+  onWaiting: () => void,
+  connect: () => Promise<T>
+): Promise<T> {
+  const previousConnect = liveConnectQueue;
+  let releaseQueue!: () => void;
+  liveConnectQueue = new Promise<void>((resolve) => {
+    releaseQueue = resolve;
+  });
+  const wasQueued = queuedLiveConnects > 0;
+  queuedLiveConnects += 1;
+  let acquiredQueue = false;
+  let abortListener: (() => void) | undefined;
+
+  try {
+    if (wasQueued) {
+      onWaiting();
+      if (signal) {
+        if (signal.aborted) {
+          throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
+        }
+        await Promise.race([
+          previousConnect,
+          new Promise<void>((_, reject) => {
+            abortListener = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
+            signal.addEventListener('abort', abortListener, { once: true });
+          }),
+        ]);
+      } else {
+        await previousConnect;
+      }
+    } else {
+      await previousConnect;
+    }
+
+    acquiredQueue = true;
+    if (signal?.aborted) {
+      throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
+    }
+
+    return await connect();
+  } finally {
+    if (abortListener) signal?.removeEventListener('abort', abortListener);
+    queuedLiveConnects -= 1;
+    if (acquiredQueue) {
+      releaseQueue();
+    } else {
+      void previousConnect.then(releaseQueue);
+    }
+  }
+}
+
+// Keep credential metadata for failure feedback, never reuse the client token.
+let activeTokenState: {
+  credentialId: string | null;
+  feedbackEndpoint: string;
+} | null = null;
 
 export function invalidateLiveTryOnToken(): void {
-  cachedTokenState = null;
-  activeCredentialId = null;
+  activeTokenState = null;
+}
+
+function reportSessionFailure(reason: string): void {
+  const tokenState = activeTokenState;
+  invalidateLiveTryOnToken();
+
+  if (!tokenState?.credentialId) return;
+
+  const isCreditFailure = reason.toLowerCase().includes('credit');
+  void fetch(tokenState.feedbackEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      credentialId: tokenState.credentialId,
+      event: isCreditFailure ? 'terminal_error' : 'session_error',
+      reason,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Session feedback request failed with HTTP ${response.status}`);
+      }
+    })
+    .catch((error) => {
+      console.warn('Could not report live try-on session failure:', error);
+    });
 }
 
 export const DEFAULT_GARMENTS = [
@@ -63,11 +146,6 @@ export const DEFAULT_MODELS: Record<string, string> = {
  * and retry handling to eliminate "fetch failed" on slow connections or cold starts.
  */
 export async function getLiveTryOnToken(): Promise<string> {
-  const now = Date.now();
-  if (cachedTokenState && cachedTokenState.expiresAt > now + 60000) {
-    return cachedTokenState.token;
-  }
-
   const candidateEndpoints: string[] = [];
 
   // 1. Configured / platform apiUrl
@@ -114,14 +192,10 @@ export async function getLiveTryOnToken(): Promise<string> {
           throw new Error('Server returned empty token');
         }
 
-        if (data.credentialId) {
-          activeCredentialId = data.credentialId;
-        }
-
-        // Cache token for 45 minutes
-        cachedTokenState = {
-          token,
-          expiresAt: now + 45 * 60 * 1000,
+        // The SDK calls its provider for every dial; retain only feedback metadata.
+        activeTokenState = {
+          credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
+          feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
         };
 
         return token;
@@ -348,6 +422,12 @@ export function captureVideoFrame(video: HTMLVideoElement): string | null {
 export async function startLiveTryOnSession(
   config: LiveTryOnSessionConfig
 ): Promise<LiveTryOnSessionHandle> {
+  const throwIfAborted = () => {
+    if (config.signal?.aborted) {
+      throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
+    }
+  };
+
   let currentFacingMode = config.facingMode || 'user';
   config.onStatusChange?.('Requesting camera access...');
 
@@ -365,6 +445,10 @@ export async function startLiveTryOnSession(
       frameRate: captureFps,
     },
   });
+  if (config.signal?.aborted) {
+    localStream.getTracks().forEach((track) => track.stop());
+    throwIfAborted();
+  }
 
   config.videoElement.srcObject = localStream;
   config.videoElement.play().catch((err) => {
@@ -384,14 +468,17 @@ export async function startLiveTryOnSession(
   let isDestroyed = false;
   let hasConnected = false;
 
-  // Connect WebRTC stream cleanly without giant initial payload.
-  // This eliminates "WebSocket opening handshake timed out" errors.
+  // Connect WebRTC stream without a large initial payload; let the SDK retry
+  // transient network and capacity failures using its bounded defaults.
   let realtimeClient;
   try {
-    realtimeClient = await client.realtime.connect(localStream, {
+    throwIfAborted();
+    const connectionOptions = {
       model,
-      retries: 0,
-      capacityRetryBudgetMs: 0,
+      capacityRetryBudgetMs: 30000,
+      onCapacityWait: ({ retryAfterMs }) => {
+        config.onStatusChange?.(`AI server busy - retrying in ${Math.ceil(retryAfterMs / 1000)} seconds...`);
+      },
       onRemoteStream: (transformedStream: MediaStream) => {
         if (isDestroyed) return;
         if (!hasConnected) {
@@ -428,20 +515,45 @@ export async function startLiveTryOnSession(
             : 'AI connection retrying...');
         }
       },
-    });
-  } catch (error) {
-    invalidateLiveTryOnToken();
-    if (activeCredentialId) {
-      fetch(apiUrl('/api/vton/session-event'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          credentialId: activeCredentialId,
-          event: 'session_error',
-          reason: (error as any)?.message || 'connection_failure'
-        }),
-      }).catch(() => {});
+    };
+    try {
+      realtimeClient = await runSerializedLiveConnect(
+        config.signal,
+        () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
+        () => client.realtime.connect(localStream, connectionOptions)
+      );
+    } catch (error) {
+      const isStaleAttempt = error instanceof Error
+        && error.name === 'AbortError'
+        && error.message === 'Stale connect attempt';
+      if (!isStaleAttempt || config.signal?.aborted) throw error;
+
+      config.onStatusChange?.('AI connection was interrupted - retrying...');
+      const retryClient = createVtonClient({
+        apiKeyProvider: getLiveTryOnToken,
+        logger,
+      });
+      realtimeClient = await runSerializedLiveConnect(
+        config.signal,
+        () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
+        () => retryClient.realtime.connect(localStream, connectionOptions)
+      );
     }
+    if (config.signal?.aborted) {
+      realtimeClient.disconnect();
+      localStream.getTracks().forEach((track) => track.stop());
+      throwIfAborted();
+    }
+  } catch (error) {
+    const isCancelled = config.signal?.aborted || (error instanceof Error && error.name === 'AbortError');
+    if (isCancelled) {
+      localStream.getTracks().forEach((track) => track.stop());
+      if (config.videoElement.srcObject === localStream) {
+        config.videoElement.srcObject = null;
+      }
+      throw error;
+    }
+    reportSessionFailure((error as any)?.message || 'connection_failure');
     config.videoElement.srcObject = localStream;
     config.videoElement.play().catch((playError) => {
       console.warn('Local camera preview play error after AI connection failure:', playError);
@@ -453,6 +565,7 @@ export async function startLiveTryOnSession(
   const reportRealtimeError = (error: Error) => {
     if (isDestroyed || terminalErrorReported) return;
     terminalErrorReported = true;
+    reportSessionFailure(error.message);
     config.onError?.(error);
   };
   realtimeClient.on('error', (error: { message?: string }) => {

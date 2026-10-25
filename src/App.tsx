@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
-import { products, swipeModels, recentScans as staticRecentScans } from './data';
+import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
 
 // Modular View Imports
@@ -437,6 +437,7 @@ export default function App() {
   const screenHistoryRef = useRef<ScreenId[]>(['splash']);
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
+  const [userContactEmail, setUserContactEmail] = useState<string>(() => localStorage.getItem('userContactEmail') || localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
   const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
   const [userAddress, setUserAddress] = useState<string>(() => localStorage.getItem('userAddress') || '');
   const [userPinCode, setUserPinCode] = useState<string>(() => localStorage.getItem('userPinCode') || '');
@@ -531,11 +532,13 @@ export default function App() {
       if (acc) {
         const nextName = acc.name || acc.username || '';
         const nextEmail = acc.email || '';
+        const nextContactEmail = acc.contactEmail || nextEmail;
         const nextPhone = getAccountPhone(acc);
         const nextAddr = acc.address || (acc.deliveryAddress ? formatDeliveryAddress(acc.deliveryAddress) : '');
         const nextPin = acc.pinCode || acc.deliveryAddress?.pinCode || '';
         setUserName(nextName);
         setUserEmail(nextEmail);
+        setUserContactEmail(nextContactEmail);
         setUserPhone(nextPhone);
         setUserAddress(nextAddr);
         setUserPinCode(nextPin);
@@ -545,6 +548,7 @@ export default function App() {
         try {
           localStorage.setItem('userName', nextName);
           localStorage.setItem('userEmail', nextEmail);
+          localStorage.setItem('userContactEmail', nextContactEmail);
           localStorage.setItem('userPhone', nextPhone);
           localStorage.setItem('userAddress', nextAddr);
           localStorage.setItem('userPinCode', nextPin);
@@ -655,6 +659,56 @@ export default function App() {
         ]);
       }
     }
+  };
+
+  const handleProfileSaved = async (profile: { name: string; email: string; phone: string; address: string }) => {
+    const firebaseUser = !isGuestSession ? await waitForFirebaseAuthReady() : null;
+    if (!isGuestSession && !firebaseUser) {
+      throw new Error('Your sign-in session has expired. Please sign in again, then save your profile.');
+    }
+
+    const currentUid = activeUid || firebaseUser?.uid || userEmail;
+    const updatedAccount: NovaAccount = {
+      ...activeAccount,
+      uid: currentUid,
+      username: activeAccount?.username || userEmail.split('@')[0] || profile.name,
+      name: profile.name,
+      email: userEmail,
+      contactEmail: profile.email,
+      phone: profile.phone,
+      address: profile.address,
+      pinCode: userPinCode,
+      deliveryAddress: userDeliveryAddress || undefined,
+      savedAddresses: userSavedAddresses,
+      createdAt: activeAccount?.createdAt || Date.now()
+    };
+
+    if (firebaseUser) {
+      const userDocumentId = firebaseUser.uid;
+      const profileUpdate = {
+        uid: firebaseUser.uid,
+        name: profile.name,
+        contactEmail: profile.email,
+        phone: profile.phone,
+        address: profile.address,
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(doc(db, 'users', userDocumentId), profileUpdate, { merge: true });
+      await setDoc(doc(db, 'users', userDocumentId, 'profile', 'meta'), profileUpdate, { merge: true });
+    }
+
+    localStorage.setItem('userName', profile.name);
+    localStorage.setItem('userContactEmail', profile.email);
+    localStorage.setItem('userPhone', profile.phone);
+    localStorage.setItem('userAddress', profile.address);
+    setUserName(profile.name);
+    setUserContactEmail(profile.email);
+    setUserPhone(profile.phone);
+    setUserAddress(profile.address);
+    replaceAccounts([
+      updatedAccount,
+      ...accounts.filter((account) => account.uid !== currentUid)
+    ]);
   };
 
   // Verify stored legal consent status for registered accounts (checks if a material terms update requires renewal)
@@ -1283,12 +1337,6 @@ export default function App() {
     });
   };
 
-  const recentScanItems = recentActivityState
-    .filter((entry) => entry.badge === 'Scan' || entry.badge === 'Camera Scan')
-    .slice(0, 6);
-
-  const scanCount = recentScanItems.length;
-
   // Navigation wrapper that logs activity for relevant screens
   const navigate = (to: ScreenId, opts?: { productId?: string; product?: ProductItem }) => {
     const currentScreen = screenRef.current;
@@ -1308,29 +1356,10 @@ export default function App() {
     }
 
     const time = new Date().toLocaleString();
-    if (to === 'ar-tryon') {
-      const prodId = opts?.productId || selectedProductId;
-      const prod = productsData[prodId] || products[prodId];
-      const tryonImg = (prod && prod.imageUrl) ? prod.imageUrl : (swipeModels[selectedColor] || swipeModels['Lavender'] || '');
-      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} AR Try-On` : 'AR Virtual Fitting', time, badge: 'AR Try-On', icon: 'view_in_ar', color: 'bg-primary/80', imageUrl: tryonImg });
-      awardNovaPoints(25, 'Engaged in AR Try-On', tryonImg);
-    } else if (to === 'tryon-result') {
-      const prodId = opts?.productId || selectedProductId;
-      const prod = productsData[prodId] || products[prodId];
-      const tryonImg = swipeModels[selectedColor] || (prod ? prod.imageUrl : swipeModels['Lavender']);
-      addRecentActivity({ id: Date.now().toString(), name: prod?.name ? `${prod.name} Try-On` : 'AR Try-On Result', time, badge: 'AR Try-On', icon: 'view_in_ar', color: 'bg-primary/80', imageUrl: tryonImg });
-    } else if (to === 'camera-scan') {
-      const prodId = opts?.productId || selectedProductId;
-      const prod = productsData[prodId] || products[prodId];
-      const scanImg = prod?.imageUrl || '';
-      addRecentActivity({ id: Date.now().toLocaleString(), name: prod?.name ? `${prod.name} Scan` : 'Camera Scan', time, badge: 'Camera Scan', icon: 'photo_camera', color: 'bg-secondary/80', imageUrl: scanImg });
-    } else if (to === 'product-details') {
+    if (to === 'product-details') {
       const id = opts?.productId || selectedProductId;
       const prod = opts?.product || productsData[id] || products[id];
       if (prod) addRecentActivity({ id: Date.now().toString(), name: prod.name, time, badge: 'Viewed', icon: 'checkroom', color: 'bg-primary/80', imageUrl: prod.imageUrl });
-    } else if (to === 'scan-outfit') {
-      const scanImg = staticRecentScans[0]?.imageUrl || '';
-      addRecentActivity({ id: Date.now().toString(), name: 'Scan Outfit', time, badge: 'Scan', icon: 'center_focus_strong', color: 'bg-teal-600/80', imageUrl: scanImg });
     } else if (to === 'wardrobe') {
       addRecentActivity({ id: Date.now().toString(), name: 'Virtual Wardrobe', time, badge: 'Wardrobe', icon: 'checkroom', color: 'bg-indigo-600/80', imageUrl: '' });
     }
@@ -1345,6 +1374,20 @@ export default function App() {
     }
 
     setScreen(to);
+  };
+
+  const handleTryOnSuccess = (garment: { id: string; name: string; imageUrl: string }) => {
+    awardNovaPoints(25, `Tried on ${garment.name}`, garment.imageUrl);
+    addRecentActivity({
+      id: `tryon-${garment.id}-${Date.now()}`,
+      name: garment.name,
+      time: new Date().toLocaleString(),
+      badge: 'AR Try-On',
+      icon: 'view_in_ar',
+      color: 'bg-primary/80',
+      imageUrl: garment.imageUrl,
+      isSuccessfulTryOn: true
+    });
   };
 
   const cartStorageKey = `nova_cart_${activeUid || 'guest'}`;
@@ -1378,6 +1421,7 @@ export default function App() {
   const [selectedGarment, setSelectedGarment] = useState<string>('Lavender');
   const [selectedProductId, setSelectedProductId] = useState<string>('lavender-hoodie');
   const [capturedTryOnImage, setCapturedTryOnImage] = useState<string | null>(null);
+  const [capturedTryOnIsLive, setCapturedTryOnIsLive] = useState(false);
 
   const handleScannedProductMatched = (product: ProductItem, scanImageUrl?: string) => {
     if (!product?.id) return;
@@ -1492,7 +1536,11 @@ export default function App() {
             onNavigate={navigate} 
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
-            onCaptureImage={(captured) => setCapturedTryOnImage(captured)}
+            onCaptureImage={(captured, isLiveTryOn) => {
+              setCapturedTryOnImage(captured);
+              setCapturedTryOnIsLive(isLiveTryOn);
+            }}
+            onTryOnSuccess={handleTryOnSuccess}
             isDarkMode={isDarkMode}
             userId={activeUid || userEmail}
             userEmail={userEmail}
@@ -1509,10 +1557,12 @@ export default function App() {
             selectedProductId={selectedProductId}
             onSubmitReview={handleSubmitProductReview}
             capturedImage={capturedTryOnImage}
+            garmentName={selectedGarment}
+            isLiveTryOnImage={capturedTryOnIsLive}
           />
         );
       case 'camera-scan':
-        return <CameraScanView onNavigate={navigate} onProductMatched={handleScannedProductMatched} userGender={activeAccount?.gender} />;
+        return <CameraScanView onNavigate={navigate} onProductMatched={handleScannedProductMatched} userGender={activeAccount?.gender} userId={activeUid || userEmail} />;
       case 'profile':
         return (
           <ProfileView 
@@ -1520,7 +1570,8 @@ export default function App() {
             userId={activeUid || userEmail}
             userName={userName} 
             setUserName={setUserName} 
-            userEmail={userEmail}
+            userEmail={userContactEmail}
+            onSaveProfile={handleProfileSaved}
             userPhone={userPhone}
             userAddress={userAddress}
             userPinCode={userPinCode}
@@ -1601,7 +1652,9 @@ export default function App() {
         return (
           <ProductDetailsView 
             products={allProducts}
+            databaseProducts={Object.values(productsData)}
             onNavigate={navigate} 
+            onSelectProduct={(product) => navigate('product-details', { productId: product.id, product })}
             onAddToCart={handleAddToCart}
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
@@ -1624,6 +1677,7 @@ export default function App() {
         return (
           <ShowroomView 
             products={Object.values({ ...products, ...productsData })}
+            databaseProducts={Object.values(productsData)}
             loading={productsLoading}
             error={productsError}
             onNavigate={navigate}
@@ -1646,7 +1700,7 @@ export default function App() {
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} scanCount={scanCount} recentScans={recentScanItems} isDarkMode={isDarkMode} userId={activeUid || userEmail} />;
+        return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':
@@ -1764,12 +1818,14 @@ export default function App() {
     localStorage.setItem('novaSelectedAccountUid', firebaseUid);
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
+    localStorage.setItem('userContactEmail', email);
     localStorage.setItem('userPhone', phone || '');
     localStorage.setItem('userAddress', address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
     localStorage.setItem('userPinCode', pinCode || structuredAddress?.pinCode || '');
 
     setUserName(name);
     setUserEmail(email);
+    setUserContactEmail(email);
     setUserPhone(phone || '');
     setUserAddress(address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
     setUserPinCode(pinCode || structuredAddress?.pinCode || '');
@@ -1910,11 +1966,13 @@ export default function App() {
     localStorage.setItem('novaSelectedAccountUid', selectedUid);
     localStorage.setItem('userName', name);
     localStorage.setItem('userEmail', email);
+    localStorage.setItem('userContactEmail', email);
     localStorage.setItem('userPhone', phone);
     localStorage.setItem('userAddress', address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
     localStorage.setItem('userPinCode', pinCode || structuredAddress?.pinCode || '');
     setUserName(name);
     setUserEmail(email);
+    setUserContactEmail(email);
     setUserPhone(phone);
     setUserAddress(address || (structuredAddress ? formatDeliveryAddress(structuredAddress) : ''));
     setUserPinCode(pinCode || structuredAddress?.pinCode || '');
@@ -2011,6 +2069,7 @@ export default function App() {
     localStorage.setItem('novaGuestId', guestId);
     localStorage.setItem('userName', guestName);
     localStorage.setItem('userEmail', guestEmail);
+    localStorage.setItem('userContactEmail', guestEmail);
     localStorage.setItem('userPhone', '');
     localStorage.removeItem('userAddress');
     localStorage.removeItem('userPinCode');
@@ -2024,6 +2083,7 @@ export default function App() {
 
     setUserName(guestName);
     setUserEmail(guestEmail);
+    setUserContactEmail(guestEmail);
     setUserPhone('');
     setUserAddress('');
     setUserPinCode('');

@@ -260,6 +260,7 @@ export interface NovaAccount {
   name?: string;
   username: string;
   email: string;
+  contactEmail?: string;
   phone?: string;
   address?: string;
   pinCode?: string;
@@ -356,7 +357,7 @@ export interface OutfitScanRecord {
   time: string;
   timestamp: number;
   imageUrl: string;
-  score: number | string;
+  score?: number | string;
   category?: string;
   colors?: string[];
   attributes?: {

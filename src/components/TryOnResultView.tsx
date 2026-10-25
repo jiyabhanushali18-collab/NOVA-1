@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScreenId } from '../types';
 import { swatchImages, swipeModels } from '../data';
+import { getTryOnStyleScore, TryOnStyleScore } from '../services/tryOnScoreService';
 
 interface TryOnResultViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -10,6 +11,8 @@ interface TryOnResultViewProps {
   selectedProductId?: string;
   onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => Promise<void>;
   capturedImage?: string | null;
+  garmentName?: string;
+  isLiveTryOnImage?: boolean;
 }
 
 export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
@@ -19,13 +22,18 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   onAddToCart,
   selectedProductId = 'lavender-hoodie',
   onSubmitReview,
-  capturedImage
+  capturedImage,
+  garmentName = '',
+  isLiveTryOnImage = false
 }) => {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [styleScore, setStyleScore] = useState<TryOnStyleScore | null>(null);
+  const [styleScoreError, setStyleScoreError] = useState<string | null>(null);
+  const [scoreRequest, setScoreRequest] = useState(0);
 
   const swatches = [
     { name: 'Lavender', text: 'Lavender' },
@@ -37,6 +45,27 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
 
   // Get matching model preview based on selected color or fallback to lavender
   const currentPreviewImg = capturedImage || swipeModels[selectedColor] || swipeModels['Lavender'];
+
+  useEffect(() => {
+    if (!isLiveTryOnImage || !capturedImage?.startsWith('data:image/')) {
+      setStyleScore(null);
+      setStyleScoreError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setStyleScore(null);
+    setStyleScoreError(null);
+    getTryOnStyleScore(capturedImage, garmentName, controller.signal)
+      .then(setStyleScore)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setStyleScoreError(error instanceof Error ? error.message : 'AI style scoring is temporarily unavailable.');
+        }
+      });
+
+    return () => controller.abort();
+  }, [capturedImage, garmentName, isLiveTryOnImage, scoreRequest]);
 
   const handleShare = async () => {
     const shareData = {
@@ -81,26 +110,50 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         </div>
       )}
 
-      {/* Header & Match Score details */}
-      <section className="flex justify-between items-start pt-2">
-        <div className="max-w-[65%]">
+      {/* Header */}
+      <section className="pt-2">
+        <div className="flex items-start justify-between gap-4">
+          <div>
           <h1 className="text-2xl font-bold text-[#131426] leading-tight">Try-On Result</h1>
           <p className="text-xs text-[#5E667A] mt-1">
             Here's how you look! You can change color swatches below, inspect material details, or save your curated outfit.
           </p>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-bold text-[#5E667A] uppercase tracking-widest mb-1 shadow-sm px-1 bg-white border border-[#E4DFF5] rounded">Score</span>
-          <div className="relative w-14 h-14 rounded-full bg-conic flex items-center justify-center shadow-md border border-[#E4DFF5]" style={{
-            background: 'conic-gradient(#553BE2 92%, #ECE7FF 0)'
-          }}>
-            <div className="absolute inset-[3px] bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
-              <span className="text-base font-bold text-[#553BE2] leading-none">92%</span>
-            </div>
           </div>
-          <span className="text-[10px] font-bold text-[#553BE2] mt-1.5 flex items-center gap-0.5 leading-none">
-            Ideal Fit! <span className="material-symbols-outlined text-[13px] leading-none">auto_awesome</span>
-          </span>
+          <div className="shrink-0 text-center" aria-live="polite">
+            <span className="block text-[9px] font-bold text-[#5E667A] uppercase tracking-widest mb-1">AI style score</span>
+            {styleScore ? (
+              <>
+                <div
+                  className="relative w-14 h-14 rounded-full flex items-center justify-center shadow-md border border-[#E4DFF5]"
+                  style={{ background: `conic-gradient(#553BE2 ${styleScore.score}%, #ECE7FF 0)` }}
+                  aria-label={`AI style score ${styleScore.score} percent`}
+                  title="AI estimate of outfit coordination and garment integration, not a body-fit measurement."
+                >
+                  <div className="absolute inset-[3px] bg-white rounded-full flex items-center justify-center shadow-inner">
+                    <span className="text-base font-bold text-[#553BE2] leading-none">{styleScore.score}%</span>
+                  </div>
+                </div>
+                <span className="block max-w-28 text-[9px] text-[#5E667A] mt-1">{styleScore.feedback}</span>
+              </>
+            ) : styleScoreError ? (
+              <div className="w-28 text-[10px] text-rose-600">
+                <span>{styleScoreError}</span>
+                <button
+                  type="button"
+                  className="block mx-auto mt-1 font-bold text-[#553BE2] underline"
+                  onClick={() => setScoreRequest((request) => request + 1)}
+                >
+                  Try again
+                </button>
+              </div>
+            ) : isLiveTryOnImage && capturedImage?.startsWith('data:image/') ? (
+              <div className="w-14 h-14 rounded-full border-2 border-[#E4DFF5] flex items-center justify-center text-[9px] text-[#5E667A]">
+                Scoring...
+              </div>
+            ) : (
+              <span className="block max-w-24 text-[10px] text-[#5E667A]">Connect live AI and capture a try-on to get a score.</span>
+            )}
+          </div>
         </div>
       </section>
 

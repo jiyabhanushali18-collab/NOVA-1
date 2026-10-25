@@ -22,7 +22,8 @@ interface ArTryOnViewProps {
   onBack?: () => void;
   selectedGarment: string;
   setSelectedGarment: (garment: string) => void;
-  onCaptureImage?: (imageDataUrl: string) => void;
+  onCaptureImage?: (imageDataUrl: string, isLiveTryOn: boolean) => void;
+  onTryOnSuccess?: (garment: { id: string; name: string; imageUrl: string }) => void;
   initialGarmentImage?: string | null;
   isDarkMode?: boolean;
   userId?: string;
@@ -109,6 +110,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   selectedGarment,
   setSelectedGarment,
   onCaptureImage,
+  onTryOnSuccess,
   initialGarmentImage,
   isDarkMode = true,
   userId,
@@ -136,6 +138,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const localPreviewStreamRef = useRef<MediaStream | null>(null);
   const isConnectingRef = useRef(false);
   const isLiveRef = useRef(false);
+  const pendingConnectControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
 
@@ -150,6 +153,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   // Stop session cleanly
   const stopLiveSession = useCallback(() => {
+    const pendingConnect = pendingConnectControllerRef.current;
+    if (pendingConnect) {
+      pendingConnect.abort();
+      setStatusText('Cancelling AI connection...');
+    }
     if (sessionRef.current) {
       sessionRef.current.stop();
       sessionRef.current = null;
@@ -169,12 +177,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     setIsCameraActive(false);
     setIsVideoLive(false);
     setIsConnecting(false);
-    setStatusText('Camera ready');
+    if (!pendingConnect) setStatusText('Camera ready');
   }, [selectedGarment]);
 
   // Clean up session strictly on unmount
   useEffect(() => {
     return () => {
+      pendingConnectControllerRef.current?.abort();
+      pendingConnectControllerRef.current = null;
       if (sessionRef.current) {
         sessionRef.current.stop();
         sessionRef.current = null;
@@ -187,7 +197,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   // Start live session on-demand
   const startLiveSession = useCallback(async () => {
-    if (isConnectingRef.current || isLiveRef.current) return;
+    if (isConnectingRef.current || isLiveRef.current || pendingConnectControllerRef.current) return;
     if (!videoRef.current) return;
 
     if (localPreviewStreamRef.current) {
@@ -198,6 +208,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
 
     isConnectingRef.current = true;
+    const connectController = new AbortController();
+    pendingConnectControllerRef.current = connectController;
     setIsConnecting(true);
     setStatusText('Connecting AI...');
     sessionStartTimeRef.current = Date.now();
@@ -210,6 +222,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         videoElement: videoRef.current,
         garmentImage: garmentSource,
         facingMode: 'user',
+        signal: connectController.signal,
         onLocalStream: (stream) => {
           localPreviewStreamRef.current = stream;
           setIsCameraActive(true);
@@ -226,6 +239,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           setStatusText('Live AI Active');
           const durationMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : undefined;
           analytics.trackArTryOnSucceeded(selectedGarment, activeGarmentObj?.name, durationMs);
+          if (activeGarmentObj) {
+            onTryOnSuccess?.({
+              id: activeGarmentObj.id,
+              name: activeGarmentObj.name,
+              imageUrl: activeGarmentObj.img.startsWith('blob:') ? '' : activeGarmentObj.img
+            });
+          }
         },
         onError: (err) => {
           console.warn('Live session error:', err);
@@ -235,8 +255,15 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         },
       });
 
+      if (connectController.signal.aborted) {
+        handle.stop();
+        return;
+      }
       sessionRef.current = handle;
     } catch (err: any) {
+      if (connectController.signal.aborted) {
+        return;
+      }
       console.error('Could not start live session:', err);
       const errorCategory = err?.name === 'NotAllowedError' ? 'camera_permission_denied' : 'connection_failed';
       analytics.trackArTryOnFailed(selectedGarment, errorCategory, activeGarmentObj?.name);
@@ -248,11 +275,23 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         ? err.error.message.trim()
         : 'Unknown connection error';
       const detail = errorMessage.length > 140 ? `${errorMessage.slice(0, 137)}...` : errorMessage;
+      const isStaleAttempt = err?.name === 'AbortError' && errorMessage === 'Stale connect attempt';
       setStatusText(err?.name === 'NotAllowedError'
         ? 'Camera access denied'
+        : isStaleAttempt
+        ? 'AI connection was interrupted. Tap Try On Live to reconnect.'
         : `AI connection failed: ${detail}`);
+    } finally {
+      if (pendingConnectControllerRef.current === connectController) {
+        pendingConnectControllerRef.current = null;
+      }
+      if (connectController.signal.aborted) {
+        isConnectingRef.current = false;
+        setIsConnecting(false);
+        setStatusText('Camera ready');
+      }
     }
-  }, [activeGarmentObj, initialGarmentImage, stopLiveSession]);
+  }, [activeGarmentObj, initialGarmentImage, onTryOnSuccess, stopLiveSession]);
 
   // Garment selection: instant dispatch via cached blob/file
   const handleGarmentClick = (item: GarmentItem) => {
@@ -321,10 +360,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     if ((isCameraActive || isLiveRef.current) && videoRef.current) {
       const frame = captureVideoFrame(videoRef.current);
       if (frame && onCaptureImage) {
-        onCaptureImage(frame);
+        onCaptureImage(frame, isLiveRef.current);
       }
     } else if (onCaptureImage) {
-      onCaptureImage(activeModelBg);
+      onCaptureImage(activeModelBg, false);
     }
 
     setTimeout(() => {
@@ -552,15 +591,6 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             <span title={statusText} className="max-w-[70vw] truncate text-[11px] font-semibold text-slate-200 tracking-wide">
               {statusText}
             </span>
-          </div>
-        </div>
-
-        {/* Top Right Match Badge */}
-        <div className="absolute top-3 right-3 z-30 pointer-events-auto">
-          <div className="bg-[#111322]/85 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg border border-white/15 backdrop-blur-md">
-            <span className="material-symbols-outlined text-[#A594FD] text-xs leading-none">auto_awesome</span>
-            <span className="text-white font-bold text-[11px] leading-none">92%</span>
-            <span className="text-slate-300 text-[9px] uppercase tracking-wider font-bold leading-none">MATCH</span>
           </div>
         </div>
 

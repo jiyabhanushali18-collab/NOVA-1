@@ -1,27 +1,19 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import en from './locales/en.json';
 import hi from './locales/hi.json';
-import es from './locales/es.json';
-import fr from './locales/fr.json';
-import de from './locales/de.json';
-import ja from './locales/ja.json';
 
-export type LocaleCode = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'ja';
+export type LocaleCode = 'en' | 'hi';
 
 type TranslationMap = Record<string, string>;
 
 const STORAGE_KEY = 'app_locale';
 const LEGACY_LANGUAGE_KEY = 'app_language';
 
-const dictionaries: Record<LocaleCode, TranslationMap> = { en, hi, es, fr, de, ja };
+const dictionaries: Record<LocaleCode, TranslationMap> = { en, hi };
 
 export const languages: Array<{ code: LocaleCode; label: string; nativeName: string; dir: 'ltr' | 'rtl' }> = [
   { code: 'en', label: 'English', nativeName: 'English', dir: 'ltr' },
-  { code: 'hi', label: 'Hindi', nativeName: 'हिन्दी', dir: 'ltr' },
-  { code: 'es', label: 'Spanish', nativeName: 'Español', dir: 'ltr' },
-  { code: 'fr', label: 'French', nativeName: 'Français', dir: 'ltr' },
-  { code: 'de', label: 'German', nativeName: 'Deutsch', dir: 'ltr' },
-  { code: 'ja', label: 'Japanese', nativeName: '日本語', dir: 'ltr' }
+  { code: 'hi', label: 'Hindi', nativeName: 'हिन्दी', dir: 'ltr' }
 ];
 
 const legacyLanguageToLocale = (value?: string | null): LocaleCode | undefined => {
@@ -37,8 +29,8 @@ const legacyLanguageToLocale = (value?: string | null): LocaleCode | undefined =
 
 const getInitialLocale = (): LocaleCode => {
   try {
-    const storedLocale = localStorage.getItem(STORAGE_KEY) as LocaleCode | null;
-    if (storedLocale && storedLocale in dictionaries) return storedLocale;
+    const storedLocale = localStorage.getItem(STORAGE_KEY);
+    if (storedLocale === 'en' || storedLocale === 'hi') return storedLocale;
 
     const legacyLocale = legacyLanguageToLocale(localStorage.getItem(LEGACY_LANGUAGE_KEY));
     if (legacyLocale) return legacyLocale;

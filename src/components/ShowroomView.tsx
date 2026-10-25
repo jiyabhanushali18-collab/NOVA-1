@@ -5,9 +5,11 @@ import { auth, db, firebaseProjectId, waitForFirebaseAuthReady } from '../fireba
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
 import { normalizeProductVariants } from '../utils/productVariants';
 import { analytics } from '../services/analyticsService';
+import { useI18n } from '../i18n';
 
 interface ShowroomViewProps {
   products: ProductItem[];
+  databaseProducts?: ProductItem[];
   loading?: boolean;
   error?: string | null;
   onNavigate: (screen: ScreenId) => void;
@@ -20,6 +22,7 @@ interface ShowroomViewProps {
 }
 
 type ProductCardVariant = 'carousel' | 'grid';
+type ProductSortOption = 'recommended' | 'price-low-high' | 'price-high-low' | 'rating';
 
 const ALL_VENDORS = 'all';
 const VENDOR_STORAGE_KEY = 'nova_showroom_selected_vendor';
@@ -324,7 +327,7 @@ const ProductCard = memo(({
           }`}>
             <span className="text-amber-400">★</span>
             {Number(product.rating || 0).toFixed(1)}
-            {!compact && product.reviewsCount > 0 ? <span className={isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}>({product.reviewsCount})</span> : null}
+            {product.reviewsCount > 0 ? <span className={isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}>({product.reviewsCount})</span> : null}
           </span>
         </div>
       </div>
@@ -347,6 +350,7 @@ const ShimmerCard = ({ compact = false, isDarkMode = false }: { compact?: boolea
 
 export const ShowroomView: React.FC<ShowroomViewProps> = ({
   products,
+  databaseProducts = [],
   loading = false,
   error = null,
   onNavigate,
@@ -357,20 +361,22 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   isDarkMode = false,
   productReviews = {}
 }) => {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortOption, setSortOption] = useState<ProductSortOption>('recommended');
   const [selectedVendor, setSelectedVendor] = useState(() => localStorage.getItem(VENDOR_STORAGE_KEY) || ALL_VENDORS);
   const [vendors, setVendors] = useState<VendorItem[]>(() => cachedVendors || []);
   const [vendorsLoading, setVendorsLoading] = useState(!cachedVendors);
   const [vendorsError, setVendorsError] = useState<string | null>(null);
-  const [topRatedProducts, setTopRatedProducts] = useState<ProductItem[]>([]);
-  const [topRatedLoading, setTopRatedLoading] = useState(true);
   const [collectionProducts, setCollectionProducts] = useState<ProductItem[]>([]);
   const [collectionLoading, setCollectionLoading] = useState(true);
   const [collectionError, setCollectionError] = useState<string | null>(null);
 
   const derivedVendors = useMemo(() => {
     const map = new Map<string, VendorItem>();
-    collectionProducts.concat(topRatedProducts, products).forEach((product) => {
+    collectionProducts.concat(products).forEach((product) => {
       if (!product.vendorId || map.has(product.vendorId)) return;
       map.set(product.vendorId, {
         id: product.vendorId,
@@ -382,7 +388,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       });
     });
     return Array.from(map.values()).sort((a, b) => a.vendorName.localeCompare(b.vendorName));
-  }, [collectionProducts, products, topRatedProducts]);
+  }, [collectionProducts, products]);
 
   const marketplaceVendors = useMemo(() => {
     const map = new Map<string, VendorItem>();
@@ -411,12 +417,12 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
 
   const productCountByVendor = useMemo(() => {
     const counts: Record<string, number> = {};
-    collectionProducts.concat(topRatedProducts, products).forEach((product) => {
+    collectionProducts.concat(products).forEach((product) => {
       if (!product.vendorId) return;
       counts[product.vendorId] = (counts[product.vendorId] || 0) + 1;
     });
     return counts;
-  }, [collectionProducts, products, topRatedProducts]);
+  }, [collectionProducts, products]);
 
   const selectedVendorItem = selectedVendor === ALL_VENDORS ? undefined : vendorsById[selectedVendor];
 
@@ -459,51 +465,6 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       unsubscribe?.();
     };
   }, []);
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
-    const collectionName = 'products';
-    const queryDescription = 'products limit 1000 top-rated client filter rating >= 4.7';
-
-    setTopRatedLoading(true);
-    waitForFirebaseAuthReady().then(() => {
-      if (cancelled) return;
-      const topRatedQuery = query(collection(db, collectionName), limit(1000));
-
-      unsubscribe = onSnapshot(topRatedQuery, (snapshot) => {
-        console.debug('Firebase products snapshot received:', {
-          ...getFirebaseDebugContext(collectionName, queryDescription),
-          documentsReceived: snapshot.size,
-          fromCache: snapshot.metadata.fromCache,
-          changedDocumentIds: snapshot.docChanges().map((change) => `${change.type}:${change.doc.id}`)
-        });
-        try {
-          const nextProducts = snapshot.docs
-            .map((doc) => normalizeProduct(doc.id, doc.data(), firebaseVendorsById))
-            .filter((product) => isValidProduct(product))
-            .filter((product) => Number(product.rating || 0) >= 4.7)
-            .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
-            .slice(0, 100);
-          setTopRatedProducts(nextProducts);
-        } catch (error) {
-          logFirebaseProductFetchError(error, collectionName, queryDescription);
-          setTopRatedProducts([]);
-        } finally {
-          setTopRatedLoading(false);
-        }
-      }, (firebaseError) => {
-        logFirebaseProductFetchError(firebaseError, collectionName, queryDescription);
-        setTopRatedProducts([]);
-        setTopRatedLoading(false);
-      });
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, [firebaseVendorsById]);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -582,18 +543,49 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     return products.filter((product) => product.vendorId === selectedVendor);
   }, [products, selectedVendor]);
   const displayCollectionProducts = collectionProducts.length > 0 ? collectionProducts : fallbackCollectionProducts;
-  const displayTopRatedProducts = topRatedProducts.length > 0
-    ? topRatedProducts
-    : products
-        .filter((product) => Number(product.rating || 0) >= 4.7 || product.isTopRated)
-        .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
-        .slice(0, 10);
   const blockingCollectionError = collectionError && displayCollectionProducts.length === 0 ? collectionError : null;
   const blockingProductsError = error && displayCollectionProducts.length === 0 ? error : null;
-  const visibleTopRated = useMemo(() => displayTopRatedProducts.filter(matchesSearch), [searchTerm, displayTopRatedProducts]);
-  const visibleProducts = useMemo(() => displayCollectionProducts.filter(matchesSearch), [displayCollectionProducts, searchTerm]);
+  const productCategories = useMemo(() => Array.from(new Set(
+    displayCollectionProducts.map((product) => product.category.trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b)), [displayCollectionProducts]);
+  const visibleProducts = useMemo(() => {
+    const filtered = displayCollectionProducts.filter((product) => (
+      matchesSearch(product) &&
+      (selectedCategory === 'all' || product.category === selectedCategory)
+    ));
+
+    switch (sortOption) {
+      case 'price-low-high':
+        return filtered.sort((a, b) => a.price - b.price);
+      case 'price-high-low':
+        return filtered.sort((a, b) => b.price - a.price);
+      case 'rating':
+        return filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      default:
+        return filtered;
+    }
+  }, [displayCollectionProducts, searchTerm, selectedCategory, sortOption]);
+  const activeFilterCount = Number(selectedCategory !== 'all') +
+    Number(sortOption !== 'recommended');
+  const topReviewedProducts = useMemo(() => databaseProducts
+    .map((product) => {
+      const reviews = productReviews[product.id] || (product.productId ? productReviews[product.productId] : undefined) || [];
+      const reviewCount = Math.max(product.reviewsCount || 0, reviews.length);
+      const averageRating = reviews.length > 0
+        ? reviews.reduce((total, review) => total + Number(review.rating || 0), 0) / reviews.length
+        : Number(product.rating || 0);
+
+      return {
+        ...product,
+        reviewsCount: reviewCount,
+        rating: averageRating
+      };
+    })
+    .filter((product) => isValidProduct(product) && (product.reviewsCount || 0) > 0)
+    .sort((a, b) => (b.reviewsCount || 0) - (a.reviewsCount || 0) || (b.rating || 0) - (a.rating || 0))
+    .slice(0, 8), [databaseProducts, productReviews]);
   const selectedCount = selectedVendorItem?.productCount ?? (selectedVendor === ALL_VENDORS ? displayCollectionProducts.length : productCountByVendor[selectedVendor] || displayCollectionProducts.length);
-  const collectionTitle = selectedVendorItem ? `${selectedVendorItem.vendorName} Collection` : 'All Products';
+  const collectionTitle = selectedVendorItem ? `${selectedVendorItem.vendorName} Collection` : t('showroom.allProducts');
 
   const handleSelectVendor = (vendorId: string, vendorName?: string) => {
     setSelectedVendor(vendorId);
@@ -601,7 +593,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   };
 
   const handleSelectProduct = (id: string, product?: ProductItem) => {
-    const p = product || visibleProducts.find((item) => item.id === id) || visibleTopRated.find((item) => item.id === id);
+    const p = product || visibleProducts.find((item) => item.id === id);
     if (searchTerm.trim() && p) {
       analytics.trackSearchClick(p, searchTerm.trim(), 'showroom');
     }
@@ -614,18 +606,11 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     if (!trimmed || trimmed.length < 2) return;
 
     const timer = setTimeout(() => {
-      analytics.trackSearch(trimmed, visibleProducts.length + visibleTopRated.length, 'showroom');
+      analytics.trackSearch(trimmed, visibleProducts.length, 'showroom');
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, visibleProducts.length, visibleTopRated.length]);
-
-  // Track product impressions
-  useEffect(() => {
-    visibleTopRated.slice(0, 10).forEach((product) => {
-      analytics.trackProductImpression(product, 'showroom_top_rated');
-    });
-  }, [visibleTopRated]);
+  }, [searchTerm, visibleProducts.length]);
 
   useEffect(() => {
     visibleProducts.slice(0, 20).forEach((product) => {
@@ -639,19 +624,19 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className={`flex items-center gap-2 text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
-              NOVA Showroom <span className="text-amber-400">✨</span>
+              {t('showroom.title')} <span className="text-amber-400">✨</span>
             </h1>
-            <p className={`mt-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Discover brands, vendor drops and curated collections</p>
+            <p className={`mt-1 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('showroom.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
             <button className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border ${
               isDarkMode ? 'border-white/10 bg-white/[0.06] text-white backdrop-blur-xl' : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm'
-            }`} title="Notifications">
+            }`} title={t('showroom.notifications')}>
               <span className="material-symbols-outlined">notifications</span>
             </button>
             <button onClick={() => onNavigate('cart')} className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border ${
               isDarkMode ? 'border-white/10 bg-white/[0.06] text-white backdrop-blur-xl' : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm'
-            }`} title="Cart">
+            }`} title={t('showroom.cart')}>
               <span className="material-symbols-outlined">shopping_cart</span>
               {cartItemsCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#553BE2] px-1 text-[10px] font-black text-white">
@@ -673,29 +658,93 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search products, vendors..."
+            placeholder={t('showroom.search')}
             className={`h-full min-w-0 flex-1 bg-transparent text-sm font-medium outline-none sm:text-base ${
               isDarkMode ? 'text-white placeholder:text-slate-400' : 'text-[#131426] placeholder:text-[#8E96AA]'
             }`}
           />
         </label>
-        <button className={`flex h-16 w-16 items-center justify-center rounded-2xl border ${
-          isDarkMode ? 'border-white/12 bg-white/[0.07] text-white backdrop-blur-2xl' : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm'
-        }`} title="Filters">
+        <button
+          type="button"
+          onClick={() => setIsFilterPanelOpen((open) => !open)}
+          aria-label={t('showroom.filters')}
+          aria-expanded={isFilterPanelOpen}
+          className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border transition-colors ${
+            isDarkMode
+              ? 'border-white/12 bg-white/[0.07] text-white backdrop-blur-2xl hover:bg-white/[0.12]'
+              : 'border-[#E4DFF5] bg-white text-[#131426] shadow-sm hover:bg-[#F8F6FF]'
+          }`}
+          title={t('showroom.filters')}
+        >
           <span className="material-symbols-outlined">tune</span>
+          {activeFilterCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#553BE2] px-1 text-[10px] font-bold text-white">
+              {activeFilterCount}
+            </span>
+          )}
         </button>
       </section>
 
+      {isFilterPanelOpen && (
+        <section className={`rounded-2xl border p-4 shadow-sm ${
+          isDarkMode ? 'border-white/10 bg-slate-900/95' : 'border-[#E4DFF5] bg-white'
+        }`} aria-label={t('showroom.productFilters')}>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('showroom.filterProducts')}</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('all');
+                setSortOption('recommended');
+              }}
+              className="text-xs font-semibold text-[#553BE2] hover:underline"
+            >
+              {t('showroom.clearFilters')}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className={`space-y-1.5 text-xs font-semibold ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+              <span>{t('showroom.category')}</span>
+              <select
+                value={selectedCategory}
+                onChange={(event) => setSelectedCategory(event.target.value)}
+                className={`h-11 w-full rounded-xl border px-3 text-sm outline-none focus:border-[#553BE2] ${
+                  isDarkMode ? 'border-slate-700 bg-slate-800 text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                }`}
+              >
+                <option value="all">{t('showroom.allCategories')}</option>
+                {productCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </label>
+            <label className={`space-y-1.5 text-xs font-semibold ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+              <span>{t('showroom.sortBy')}</span>
+              <select
+                value={sortOption}
+                onChange={(event) => setSortOption(event.target.value as ProductSortOption)}
+                className={`h-11 w-full rounded-xl border px-3 text-sm outline-none focus:border-[#553BE2] ${
+                  isDarkMode ? 'border-slate-700 bg-slate-800 text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                }`}
+              >
+                <option value="recommended">{t('showroom.recommended')}</option>
+                <option value="price-low-high">{t('showroom.priceLowHigh')}</option>
+                <option value="price-high-low">{t('showroom.priceHighLow')}</option>
+                <option value="rating">{t('showroom.highestRated')}</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      )}
+
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Our Vendors</h2>
+          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('showroom.vendors')}</h2>
           {vendorsError && <span className="text-xs font-semibold text-rose-500">{vendorsError}</span>}
         </div>
         <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
           <VendorButton
             selected={selectedVendor === ALL_VENDORS}
-            label="All Vendors"
-            onClick={() => handleSelectVendor(ALL_VENDORS, 'All Vendors')}
+            label={t('showroom.allVendors')}
+            onClick={() => handleSelectVendor(ALL_VENDORS, t('showroom.allVendors'))}
             isDarkMode={isDarkMode}
           />
           {vendorsLoading ? (
@@ -722,15 +771,17 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
       </section>
 
       <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>⭐ Top Rated Products</h2>
-          <span className={`text-sm font-semibold ${isDarkMode ? 'text-violet-300' : 'text-[#553BE2]'}`}>View all</span>
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('showroom.topReviewed')}</h2>
+            <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+              {t('showroom.reviewedSubtitle')}
+            </p>
+          </div>
         </div>
-        <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
-          {topRatedLoading && visibleTopRated.length === 0 ? (
-            Array.from({ length: 5 }).map((_, index) => <ShimmerCard key={index} compact isDarkMode={isDarkMode} />)
-          ) : visibleTopRated.length > 0 ? (
-            visibleTopRated.map((product, index) => (
+        {topReviewedProducts.length > 0 ? (
+          <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+            {topReviewedProducts.map((product, index) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -742,15 +793,15 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
                 index={index}
                 isDarkMode={isDarkMode}
               />
-            ))
-          ) : (
-            <div className={`w-full rounded-2xl border p-5 text-sm ${
-              isDarkMode ? 'border-white/10 bg-white/[0.06] text-slate-300' : 'border-[#E4DFF5] bg-white text-[#5E667A] shadow-sm'
-            }`}>
-              No top rated products available yet.
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`rounded-2xl border p-5 text-sm ${
+            isDarkMode ? 'border-white/10 bg-white/[0.06] text-slate-300' : 'border-[#E4DFF5] bg-white text-[#5E667A]'
+          }`}>
+            {t('showroom.noReviews')}
+          </div>
+        )}
       </section>
 
       <section>
@@ -780,8 +831,8 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
               ? 'border-white/10 bg-white/[0.06] shadow-[0_18px_50px_rgba(0,0,0,0.25)] backdrop-blur-2xl'
               : 'border-[#E4DFF5] bg-white shadow-sm'
           }`}>
-            <p className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>No products available from this vendor yet.</p>
-            <p className={`mt-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Explore another vendor.</p>
+            <p className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('showroom.noProducts')}</p>
+            <p className={`mt-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('showroom.exploreVendor')}</p>
           </motion.div>
         ) : (
           <AnimatePresence mode="popLayout">

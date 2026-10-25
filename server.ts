@@ -50,6 +50,7 @@ async function start() {
       { default: analysisRouter },
       { default: productRouter },
       { default: vtonRouter },
+      { default: tryOnScoreRouter },
       { default: analyticsRouter }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
@@ -57,6 +58,7 @@ async function start() {
       import('./server/analysisRouter.ts'),
       import('./server/productRouter.ts'),
       import('./server/vtonRouter.ts'),
+      import('./server/tryOnScoreRouter.ts'),
       import('./server/analyticsRouter.ts')
     ]);
 
@@ -65,6 +67,7 @@ async function start() {
     app.use('/api', analysisRouter);
     app.use('/api', productRouter);
     app.use('/api', vtonRouter);
+    app.use('/api', tryOnScoreRouter);
     app.use('/api', analyticsRouter);
 
     // Create Vite server for development. HMR is disabled because this server

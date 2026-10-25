@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScreenId } from '../../types';
+import { useI18n } from '../../i18n';
 
 interface BottomNavBarProps {
   currentScreen: ScreenId;
@@ -12,6 +13,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   onNavigate,
   onOpenQuickHub
 }) => {
+  const { t } = useI18n();
   const isHomeActive = currentScreen === 'home';
   const isScanActive = currentScreen === 'scan-outfit' || currentScreen === 'camera-scan' || currentScreen === 'ar-tryon' || currentScreen === 'tryon-result';
   const isStylistActive = currentScreen === 'chat';
@@ -23,7 +25,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       <div className="w-full max-w-md mx-auto px-4 pb-3">
         {/* Navigation container: dark navy-blue #0D172B, border #26334B, fully rounded pill container */}
         <nav 
-          aria-label="Bottom Navigation"
+          aria-label={t('nav.bottomNavigation')}
           className="pointer-events-auto relative w-full h-[76px] rounded-full px-2 flex items-center justify-between bg-[#0D172B] border border-[#26334B] shadow-[0_16px_40px_rgba(0,0,0,0.65),0_4px_16px_rgba(96,69,255,0.2)] select-none"
         >
           {/* 1. Home */}
@@ -33,7 +35,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isHomeActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
             }`}
-            title="Home"
+            title={t('nav.home')}
           >
             {/* Outline House Icon with open doorway */}
             <svg 
@@ -52,7 +54,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <span className={`text-[11.5px] mt-1 font-semibold tracking-tight transition-colors ${
               isHomeActive ? 'text-[#6045FF] font-bold' : 'text-[#94A3B8]'
             }`}>
-              Home
+              {t('nav.home')}
             </span>
           </button>
 
@@ -63,7 +65,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isScanActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
             }`}
-            title="Scan"
+            title={t('nav.scan')}
           >
             {/* Camera Scanning / Focus Reticle Icon */}
             <svg 
@@ -86,7 +88,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <span className={`text-[11.5px] mt-1 font-semibold tracking-tight transition-colors ${
               isScanActive ? 'text-[#6045FF] font-bold' : 'text-[#94A3B8]'
             }`}>
-              Scan
+              {t('nav.scan')}
             </span>
           </button>
 
@@ -95,7 +97,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <button
               type="button"
               onClick={onOpenQuickHub}
-              aria-label="Open NOVA Hub"
+              aria-label={t('nav.openHub')}
               className="absolute -top-[16px] w-[64px] h-[64px] rounded-full bg-gradient-to-b from-[#6545FF] to-[#4D32E8] text-white flex items-center justify-center border-[2.5px] border-white shadow-[0_0_26px_rgba(101,69,255,0.75),0_8px_20px_rgba(0,0,0,0.55)] transition-all active:scale-90 hover:scale-105 cursor-pointer group"
             >
               {/* Four solid rounded white squares (2x2 grid) */}
@@ -115,7 +117,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isStylistActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
             }`}
-            title="Stylist"
+            title={t('nav.stylist')}
           >
             {/* Overlapping Chat Speech Bubbles Icon */}
             <svg 
@@ -135,7 +137,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <span className={`text-[11.5px] mt-1 font-semibold tracking-tight transition-colors ${
               isStylistActive ? 'text-[#6045FF] font-bold' : 'text-[#94A3B8]'
             }`}>
-              Stylist
+              {t('nav.stylist')}
             </span>
           </button>
 
@@ -146,7 +148,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isProfileActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
             }`}
-            title="Profile"
+            title={t('nav.profile')}
           >
             {/* User Silhouette Icon */}
             <svg 
@@ -162,7 +164,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <span className={`text-[11.5px] mt-1 font-semibold tracking-tight transition-colors ${
               isProfileActive ? 'text-[#6045FF] font-bold' : 'text-[#94A3B8]'
             }`}>
-              Profile
+              {t('nav.profile')}
             </span>
           </button>
         </nav>

@@ -4,8 +4,6 @@ import { getScanHistory, deleteOutfitScan, clearAllScanHistory } from '../servic
 
 interface ScanOutfitViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string }) => void;
-  scanCount?: number;
-  recentScans?: any[];
   isDarkMode?: boolean;
   userId?: string;
 }
@@ -131,7 +129,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           onClick={() => setIsHistoryModalOpen(true)}
           title="Click to view all scan history"
           className={`rounded-2xl p-2.5 px-3 flex flex-col items-center justify-center text-center shadow-sm shrink-0 min-w-[80px] border transition-all cursor-pointer hover:border-[#553BE2] hover:shadow-lg active:scale-95 group ${
-            isDarkMode 
+            isDarkMode
               ? 'bg-slate-900/90 border-slate-800 text-white hover:bg-slate-800/90' 
               : 'bg-white border-[#E4DFF5] text-[#131426] hover:bg-[#FAF9FF]'
           }`}
@@ -190,10 +188,10 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
         </button>
       </section>
 
-      {/* Viewfinder block and Right column advice panel */}
-      <section className="flex gap-4">
+      {/* Full-width outfit viewfinder */}
+      <section className="space-y-3">
         {/* Big live scanning camera viewfinder */}
-        <div className="flex-1 relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-950 border border-[#E4DFF5]/40 shadow-lg group">
+        <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden bg-slate-950 border border-[#E4DFF5]/40 shadow-lg group">
           <img 
             alt="Live view finder showing model modeling purple hoodie" 
             className={`w-full h-full object-cover opacity-90 transition-transform duration-500 ${
@@ -264,69 +262,6 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           </div>
         </div>
 
-        {/* Right column guide cards */}
-        <div className="w-[130px] flex flex-col gap-3 shrink-0">
-          
-          {/* Scan Tips */}
-          <div className={`rounded-xl p-2.5 border shadow-sm ${
-            isDarkMode 
-              ? 'bg-slate-900/80 border-slate-800' 
-              : 'bg-white/80 border-[#E4DFF5] backdrop-blur-sm'
-          }`}>
-            <h3 className="text-[10px] font-bold text-[#553BE2] uppercase tracking-widest mb-1.5 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">lightbulb</span> Tips
-            </h3>
-            <ul className={`text-[9px] space-y-1.5 font-sans leading-tight ${
-              isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'
-            }`}>
-              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-[#553BE2]">check_circle</span> Good lighting</li>
-              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-[#553BE2]">check_circle</span> Full face/body</li>
-              <li className="flex items-start gap-1"><span className="material-symbols-outlined text-[11px] mt-0.5 text-[#553BE2]">check_circle</span> Clean setting</li>
-            </ul>
-          </div>
-
-          {/* Analysis outcomes */}
-          <div className={`rounded-xl p-2.5 flex-1 border shadow-sm ${
-            isDarkMode 
-              ? 'bg-slate-900/80 border-slate-800' 
-              : 'bg-white/80 border-[#E4DFF5] backdrop-blur-sm'
-          }`}>
-            <h3 className={`text-[10px] font-bold uppercase tracking-widest mb-2 leading-none ${
-              isDarkMode ? 'text-slate-200' : 'text-[#131426]'
-            }`}>Outputs</h3>
-            <ul className={`text-[10px] space-y-3 font-sans font-semibold leading-none ${
-              isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'
-            }`}>
-              <li 
-                onClick={() => onNavigate('camera-scan')}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-[#553BE2] transition-colors"
-              >
-                <div className={`p-1 rounded text-[#553BE2] ${isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'}`}>
-                  <span className="material-symbols-outlined text-xs">analytics</span>
-                </div>
-                Insights
-              </li>
-              <li 
-                onClick={() => onNavigate('camera-scan')}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-[#553BE2] transition-colors"
-              >
-                <div className={`p-1 rounded text-[#553BE2] ${isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'}`}>
-                  <span className="material-symbols-outlined text-xs">interests</span>
-                </div>
-                Similar
-              </li>
-              <li 
-                onClick={() => onNavigate('showroom')}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-[#553BE2] transition-colors"
-              >
-                <div className={`p-1 rounded text-[#553BE2] ${isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'}`}>
-                  <span className="material-symbols-outlined text-xs">shopping_bag</span>
-                </div>
-                Shop
-              </li>
-            </ul>
-          </div>
-        </div>
       </section>
 
       {/* Dynamic Recent Scans Section */}
@@ -340,14 +275,16 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
               {scans.length}
             </span>
           </h2>
-          <button 
-            type="button"
-            onClick={() => setIsHistoryModalOpen(true)}
-            className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline cursor-pointer group"
-          >
-            <span>View All</span>
-            <span className="material-symbols-outlined text-sm ml-0.5 leading-none group-hover:translate-x-0.5 transition-transform">chevron_right</span>
-          </button>
+          {scans.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline cursor-pointer group"
+            >
+              <span>View All</span>
+              <span className="material-symbols-outlined text-sm ml-0.5 leading-none group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+            </button>
+          )}
         </div>
 
         {scans.length === 0 ? (
@@ -388,10 +325,12 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                     referrerPolicy="no-referrer"
                     src={sc.imageUrl}
                   />
-                  <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-[#553BE2] text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm border border-[#E4DFF5] leading-none flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[10px] text-[#A594FD]">auto_awesome</span>
-                    <span>{sc.score}</span>
-                  </div>
+                  {sc.score !== undefined && (
+                    <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-[#553BE2] text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm border border-[#E4DFF5] leading-none flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[10px] text-[#A594FD]">auto_awesome</span>
+                      <span>{sc.score}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="leading-tight px-1">
                   <p className={`text-xs font-bold truncate ${
@@ -510,10 +449,12 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                       <p className="text-[10px] text-slate-400">{scan.category || 'Outfit'}</p>
                       
                       <div className="flex items-center gap-2 pt-0.5">
-                        <span className="px-1.5 py-0.5 rounded-md bg-[#553BE2]/20 text-[#A594FD] text-[9px] font-bold border border-[#553BE2]/30 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[10px]">auto_awesome</span>
-                          <span>{scan.score}</span>
-                        </span>
+                        {scan.score !== undefined && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-[#553BE2]/20 text-[#A594FD] text-[9px] font-bold border border-[#553BE2]/30 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[10px]">auto_awesome</span>
+                            <span>{scan.score}</span>
+                          </span>
+                        )}
                         <span className="text-[9px] text-slate-400">{scan.time}</span>
                       </div>
                     </div>

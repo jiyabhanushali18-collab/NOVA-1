@@ -54,6 +54,9 @@ export const CartView: React.FC<CartViewProps> = ({
   const [couponCode, setCouponCode] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
   const [addressChoice, setAddressChoice] = useState<'home' | 'work'>('home');
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState(
+    savedDeliveryAddress?.id || savedAddresses[0]?.id || ''
+  );
   const [paymentChoice, setPaymentChoice] = useState<'upi' | 'card' | 'cod'>('upi');
 
   // Delivery address form fields (linked to authenticated user's saved address or empty when none exists)
@@ -133,9 +136,19 @@ export const CartView: React.FC<CartViewProps> = ({
 
         setResolvedPrimaryAddress(effectivePrimary);
         setUserAddressList(effectiveList);
+        const selectedAddress = effectiveList.find((address) => address.id === selectedSavedAddressId)
+          || effectivePrimary
+          || effectiveList[0]
+          || null;
+        setSelectedSavedAddressId(selectedAddress?.id || '');
+        if (selectedAddress?.label?.toLowerCase().includes('work') || selectedAddress?.label?.toLowerCase().includes('office')) {
+          setAddressChoice('work');
+        } else {
+          setAddressChoice('home');
+        }
 
-        if (effectivePrimary && (effectivePrimary.flatNo || effectivePrimary.pinCode)) {
-          applyAddressToForm(effectivePrimary, userName, userPhone);
+        if (selectedAddress && (selectedAddress.flatNo || selectedAddress.pinCode)) {
+          applyAddressToForm(selectedAddress, userName, userPhone);
           setSaveAddressToProfile(false);
         } else {
           // Registered user with no saved address: prefill name & phone, show empty address fields
@@ -165,26 +178,19 @@ export const CartView: React.FC<CartViewProps> = ({
     };
   }, [userId, userEmail, userName, userPhone, userAddress, userPinCode, effectiveIsGuest]);
 
-  const homePreset = !effectiveIsGuest
-    ? userAddressList.find((a) => (a.label || 'home').toLowerCase().includes('home')) || resolvedPrimaryAddress
-    : null;
-  const workPreset = !effectiveIsGuest
-    ? userAddressList.find(
-        (a) =>
-          (a.label || '').toLowerCase().includes('work') ||
-          (a.label || '').toLowerCase().includes('office')
-      ) || null
-    : null;
-
   const handleSelectAddressPreset = (choice: 'home' | 'work') => {
     setAddressChoice(choice);
+    setSelectedSavedAddressId('');
     setAddressError(null);
     if (effectiveIsGuest) return;
-    if (choice === 'home' && homePreset) {
-      applyAddressToForm(homePreset, userName, userPhone);
-    } else if (choice === 'work' && workPreset) {
-      applyAddressToForm(workPreset, userName, userPhone);
-    }
+    applyAddressToForm(null, userName, userPhone);
+  };
+
+  const handleSelectSavedAddress = (address: DeliveryAddress) => {
+    setSelectedSavedAddressId(address.id || '');
+    setAddressError(null);
+    setSaveAddressToProfile(false);
+    applyAddressToForm(address, userName, userPhone);
   };
 
   // Cart financial summaries
@@ -204,9 +210,10 @@ export const CartView: React.FC<CartViewProps> = ({
   };
 
   const buildCurrentCheckoutAddress = (): DeliveryAddress => {
-    const label = addressChoice === 'work' ? 'Office' : 'Home';
+    const selectedSavedAddress = userAddressList.find((address) => address.id === selectedSavedAddressId);
+    const label = selectedSavedAddress?.label || (addressChoice === 'work' ? 'Office' : 'Home');
     const current: DeliveryAddress = {
-      id: `addr_${addressChoice}_default`,
+      id: selectedSavedAddress?.id || `addr_${Date.now()}`,
       label,
       fullName: fullName.trim() || (!effectiveIsGuest ? userName.trim() : ''),
       phone: phone.trim() || (!effectiveIsGuest ? userPhone.trim() : ''),
@@ -215,7 +222,7 @@ export const CartView: React.FC<CartViewProps> = ({
       city: city.trim(),
       pinCode: pinCode.trim(),
       country: 'India',
-      isDefault: addressChoice === 'home',
+      isDefault: selectedSavedAddress?.isDefault ?? (userAddressList.length === 0),
       updatedAt: new Date().toISOString()
     };
     current.formattedAddress = formatDeliveryAddress(current);
@@ -253,6 +260,7 @@ export const CartView: React.FC<CartViewProps> = ({
         );
         setResolvedPrimaryAddress(primaryAddress);
         setUserAddressList(updatedList);
+        setSelectedSavedAddressId(primaryAddress.id || '');
         await onSaveAddress?.(primaryAddress, updatedList);
         setAddressSavedMessage('Saved to your profile for future checkouts.');
       } catch (err: any) {
@@ -292,6 +300,7 @@ export const CartView: React.FC<CartViewProps> = ({
         );
         setResolvedPrimaryAddress(primaryAddress);
         setUserAddressList(updatedList);
+        setSelectedSavedAddressId(primaryAddress.id || '');
         await onSaveAddress?.(primaryAddress, updatedList);
       }
 
@@ -582,48 +591,66 @@ export const CartView: React.FC<CartViewProps> = ({
       {/* STEP 2: SHIPPING ADDRESS ENTRY */}
       {step === 'address' && (
         <div className="space-y-5 animate-fade-in">
-          {/* Preset address choice pills */}
-          <div className="grid grid-cols-2 gap-3">
-            <div 
-              onClick={() => handleSelectAddressPreset('home')}
-              className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
-                addressChoice === 'home' 
-                  ? 'border-[#553BE2] bg-[#F2EEFF] shadow-sm' 
-                  : 'border-[#E4DFF5] bg-white'
-              }`}
-            >
-              <span className={`material-symbols-outlined text-xl ${addressChoice === 'home' ? 'text-[#553BE2]' : 'text-[#8E96AA]'}`}>home</span>
-              <div className="leading-tight min-w-0">
-                <p className="text-xs font-bold text-[#131426]">Deliver to Home</p>
-                <p className="text-[10px] text-[#5E667A] mt-1 line-clamp-2">
-                  {homePreset && (homePreset.flatNo || homePreset.city)
-                    ? [homePreset.flatNo, homePreset.city, homePreset.pinCode].filter(Boolean).join(', ')
-                    : effectiveIsGuest
-                    ? 'Guest checkout — enter details below'
-                    : 'No saved home address — enter below'}
-                </p>
-              </div>
+          {!effectiveIsGuest && userAddressList.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Choose a saved delivery address">
+              {userAddressList.map((address, index) => {
+                const isSelected = selectedSavedAddressId === address.id;
+                return (
+                  <button
+                    key={address.id || `saved-address-${index}`}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => handleSelectSavedAddress(address)}
+                    className={`flex min-w-0 items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                      isSelected ? 'border-[#553BE2] bg-[#F2EEFF] shadow-sm' : 'border-[#E4DFF5] bg-white hover:border-[#B8A9F5]'
+                    }`}
+                  >
+                    <span className={`material-symbols-outlined text-xl ${isSelected ? 'text-[#553BE2]' : 'text-[#8E96AA]'}`}>
+                      {address.label?.toLowerCase().includes('work') || address.label?.toLowerCase().includes('office') ? 'domain' : 'home'}
+                    </span>
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-bold text-[#131426]">{address.label || `Address ${index + 1}`}</span>
+                        {isSelected && <span className="material-symbols-outlined text-base text-[#553BE2]">check_circle</span>}
+                      </span>
+                      <span className="mt-1 block line-clamp-2 text-[10px] text-[#5E667A]">
+                        {[address.flatNo, address.landmark, address.city, address.pinCode].filter(Boolean).join(', ')}
+                      </span>
+                      <span className="mt-1 block truncate text-[10px] text-[#5E667A]">{address.fullName} · {address.phone}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-
-            <div 
-              onClick={() => handleSelectAddressPreset('work')}
-              className={`p-3.5 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
-                addressChoice === 'work' 
-                  ? 'border-[#553BE2] bg-[#F2EEFF] shadow-sm' 
-                  : 'border-[#E4DFF5] bg-white'
-              }`}
-            >
-              <span className={`material-symbols-outlined text-xl ${addressChoice === 'work' ? 'text-[#553BE2]' : 'text-[#8E96AA]'}`}>domain</span>
-              <div className="leading-tight min-w-0">
-                <p className="text-xs font-bold text-[#131426]">Deliver to Office</p>
-                <p className="text-[10px] text-[#5E667A] mt-1 line-clamp-2">
-                  {workPreset && (workPreset.flatNo || workPreset.city)
-                    ? [workPreset.flatNo, workPreset.city, workPreset.pinCode].filter(Boolean).join(', ')
-                    : 'Enter office delivery details below'}
-                </p>
-              </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {(['home', 'work'] as const).map((choice) => {
+                const isHome = choice === 'home';
+                const selected = addressChoice === choice;
+                return (
+                  <button
+                    key={choice}
+                    type="button"
+                    onClick={() => handleSelectAddressPreset(choice)}
+                    aria-pressed={selected}
+                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                      selected ? 'border-[#553BE2] bg-[#F2EEFF] shadow-sm' : 'border-[#E4DFF5] bg-white'
+                    }`}
+                  >
+                    <span className={`material-symbols-outlined text-xl ${selected ? 'text-[#553BE2]' : 'text-[#8E96AA]'}`}>
+                      {isHome ? 'home' : 'domain'}
+                    </span>
+                    <span className="min-w-0 leading-tight">
+                      <span className="block text-xs font-bold text-[#131426]">Deliver to {isHome ? 'Home' : 'Office'}</span>
+                      <span className="mt-1 block text-[10px] text-[#5E667A]">
+                        {effectiveIsGuest ? 'Guest checkout — enter details below' : 'Enter delivery details below'}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          )}
 
           {/* Detailed field forms */}
           <div className="glass-card rounded-2xl p-4 space-y-3 text-left">
@@ -776,7 +803,7 @@ export const CartView: React.FC<CartViewProps> = ({
           <div className="glass-card rounded-2xl p-3.5 text-left flex items-start justify-between gap-3">
             <div className="min-w-0">
               <span className="text-[10px] font-bold text-[#5E667A] uppercase tracking-widest block">
-                DELIVERING TO ({addressChoice === 'work' ? 'OFFICE' : 'HOME'})
+                DELIVERING TO ({buildCurrentCheckoutAddress().label?.toUpperCase() || 'HOME'})
               </span>
               <p className="text-xs font-bold text-[#131426] mt-0.5 truncate">
                 {fullName} • {phone}

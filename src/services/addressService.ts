@@ -143,8 +143,7 @@ export const deduplicateAddresses = (
   incoming: DeliveryAddress
 ): DeliveryAddress[] => {
   const cleanLabel = (incoming.label || 'Home').trim();
-  const labelKey = cleanLabel.toLowerCase();
-  const targetId = incoming.id || `addr_${labelKey.replace(/\s+/g, '_')}_default`;
+  const targetId = incoming.id || `addr_${Date.now()}`;
 
   const normalizedIncoming: DeliveryAddress = {
     ...incoming,
@@ -159,20 +158,13 @@ export const deduplicateAddresses = (
     pinCode: incoming.pinCode.trim(),
     country: (incoming.country || 'India').trim(),
     formattedAddress: formatDeliveryAddress(incoming),
-    isDefault: incoming.isDefault ?? true,
+    isDefault: incoming.isDefault ?? existingList.length === 0,
     updatedAt: new Date().toISOString()
   };
 
   const remaining = (existingList || []).filter((item) => {
     if (!item || !item.flatNo) return false;
     if (item.id && item.id === targetId) return false;
-    if ((item.label || '').trim().toLowerCase() === labelKey) return false;
-    if (
-      item.flatNo.trim().toLowerCase() === normalizedIncoming.flatNo.toLowerCase() &&
-      item.pinCode.trim() === normalizedIncoming.pinCode
-    ) {
-      return false;
-    }
     return true;
   });
 
@@ -476,9 +468,11 @@ export const saveUserDeliveryAddress = async (
     throw new Error(validation.error || 'Invalid delivery address.');
   }
 
+  const cached = readCachedUserAddress(user.uid);
+  const baseList = existingSavedList?.length ? existingSavedList : cached.savedAddresses;
   const normalized: DeliveryAddress = {
     ...address,
-    id: address.id || `addr_${(address.label || 'home').toLowerCase().replace(/\s+/g, '_')}_default`,
+    id: address.id || `addr_${Date.now()}`,
     label: (address.label || 'Home').trim(),
     fullName: address.fullName.trim(),
     phone: address.phone.trim(),
@@ -488,13 +482,10 @@ export const saveUserDeliveryAddress = async (
     state: (address.state || '').trim(),
     pinCode: address.pinCode.trim(),
     country: (address.country || 'India').trim(),
-    isDefault: true,
+    isDefault: address.isDefault ?? baseList.length === 0,
     updatedAt: new Date().toISOString()
   };
   normalized.formattedAddress = formatDeliveryAddress(normalized);
-
-  const cached = readCachedUserAddress(user.uid);
-  const baseList = existingSavedList || cached.savedAddresses;
   const savedAddresses = deduplicateAddresses(baseList, normalized);
 
   // Save to per-user local cache & nova_registered_users

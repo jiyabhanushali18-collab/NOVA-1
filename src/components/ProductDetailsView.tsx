@@ -29,7 +29,9 @@ const getVariantLabel = (variant?: ProductVariant) => variant?.colorName || vari
 
 interface ProductDetailsViewProps {
   products: Record<string, ProductItem>;
+  databaseProducts?: ProductItem[];
   onNavigate: (screen: ScreenId) => void;
+  onSelectProduct?: (product: ProductItem) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
   selectedColor: string;
   setSelectedColor: (color: string) => void;
@@ -50,7 +52,9 @@ interface ProductDetailsViewProps {
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   products,
+  databaseProducts = [],
   onNavigate,
+  onSelectProduct,
   onAddToCart,
   selectedColor,
   setSelectedColor,
@@ -192,27 +196,19 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const allCompleteLookItems = [
-    { id: 'cargo-pants', name: 'Cargo Pants', price: '₹1,899', rating: '4.5' },
-    { id: 'white-sneakers', name: 'White Sneakers', price: '₹2,299', rating: '4.8' },
-    { id: 'crossbody-bag', name: 'Crossbody Bag', price: '₹999', rating: '4.4' }
-  ];
-
-  // Filter to only show items that have valid images
-  const completeLookItems = allCompleteLookItems.filter(item => {
-    const product = products[item.id];
-    return product && product.imageUrl && typeof product.imageUrl === 'string' && product.imageUrl.trim().length > 0;
-  });
+  const completeLookItems = React.useMemo(() => databaseProducts.filter((product) =>
+    product.id !== mainProduct?.id &&
+    product.imageUrl?.trim() &&
+    product.name?.trim() &&
+    Number(product.price) > 0
+  ).slice(0, 8), [databaseProducts, mainProduct?.id]);
 
   // Track Complete the Look items impression
   React.useEffect(() => {
-    completeLookItems.forEach((item) => {
-      const prod = products[item.id];
-      if (prod) {
-        analytics.trackProductImpression(prod, 'product_details_complete_look');
-      }
+    completeLookItems.forEach((product) => {
+      analytics.trackProductImpression(product, 'product_details_complete_look');
     });
-  }, [completeLookItems.length, mainProduct?.id]);
+  }, [completeLookItems, mainProduct?.id]);
 
   if (!mainProduct) {
     return (
@@ -295,26 +291,36 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         </div>
       </section>
 
-      {/* Product Information specs body */}
-      <section className="px-4 relative z-10 -mt-8">
-        <div className={`rounded-3xl p-5 shadow-md ${isDarkMode ? 'bg-slate-900/90 border border-slate-800' : 'glass-card'}`}>
-          <div className="flex justify-between items-start gap-2 mb-2">
-            <div>
-              {/* Taxonomy Label & Vendor */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-block text-[#553BE2] px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-[#F2EEFF]">
+      <section className="px-4 relative z-10 -mt-6">
+        <div className={`rounded-3xl p-5 shadow-md ${isDarkMode ? 'bg-slate-900/95 border border-slate-800' : 'glass-card'}`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="rounded-full bg-[#F2EEFF] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#553BE2]">
                   {mainProduct.category}
                 </span>
                 {mainProduct.vendorName && (
-                  <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-                    by <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>{mainProduct.vendorName}</span>
+                  <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                    by <span className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>{mainProduct.vendorName}</span>
                   </span>
                 )}
               </div>
-              <h1 className={`text-2xl font-bold tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{mainProduct.name}</h1>
+              <h1 className={`break-words text-xl font-bold leading-snug tracking-tight sm:text-2xl ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
+                {mainProduct.name}
+              </h1>
+              <div className={`mt-2 flex flex-wrap items-center gap-x-2 text-xs ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
+                <span className="inline-flex items-center gap-1 font-semibold">
+                  <span className="material-symbols-outlined text-sm leading-none text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                  {reviewStars}
+                </span>
+                <span aria-hidden="true" className="text-slate-400">·</span>
+                <span>{reviewCountLabel} reviews</span>
+              </div>
             </div>
-            
-            <button 
+            <button
+              type="button"
+              aria-label={wishlist.includes(mainProduct.id) ? 'Remove from saved items' : 'Add to saved items'}
+              aria-pressed={wishlist.includes(mainProduct.id)}
               onClick={() => {
                 if (onToggleWishlist) {
                   onToggleWishlist(mainProduct.id);
@@ -323,157 +329,140 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   setTimeout(() => setToastMessage(null), 2500);
                 }
               }}
-              className={`p-2.5 rounded-2xl border transition-all active:scale-95 cursor-pointer ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
                 wishlist.includes(mainProduct.id)
-                  ? 'border-[#553BE2]/30 bg-[#F2EEFF] text-[#553BE2] shadow-sm'
-                  : 'border-[#E4DFF5] bg-white text-[#8E96AA] hover:text-[#5E667A] hover:border-[#553BE2]/40'
+                  ? 'border-[#553BE2]/30 bg-[#F2EEFF] text-[#553BE2]'
+                  : isDarkMode
+                    ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-indigo-500'
+                    : 'border-[#E4DFF5] bg-white text-[#8E96AA] hover:border-[#553BE2]/40 hover:text-[#553BE2]'
               }`}
             >
-              <span className="material-symbols-outlined leading-none text-lg" style={{ fontVariationSettings: wishlist.includes(mainProduct.id) ? "'FILL' 1" : undefined }}>
+              <span className="material-symbols-outlined text-lg leading-none" style={{ fontVariationSettings: wishlist.includes(mainProduct.id) ? "'FILL' 1" : undefined }}>
                 {wishlist.includes(mainProduct.id) ? 'favorite' : 'favorite_border'}
               </span>
             </button>
           </div>
-          
-          {/* Star review ratings */}
-          <div className={`flex items-center gap-1 mt-2 mb-4 text-xs font-semibold ${
-            isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'
-          }`}>
-            <span className="material-symbols-outlined text-amber-500 text-sm leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            <span>{reviewStars}</span>
-            <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>({reviewCountLabel} Reviews)</span>
-          </div>
 
-          {/* Pricing tag */}
-          <div className="mb-5 leading-none">
-            <div className="text-2xl font-extrabold text-[#553BE2]">₹{mainProduct.price}</div>
-            <div className={`text-[10px] mt-1 uppercase tracking-wider font-semibold ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Inclusive of all taxes</div>
-          </div>
-
-          {/* Holistic Virtual try-on direct CTA banner */}
-          <div 
-            onClick={handleLaunchAr}
-            className={`rounded-xl p-3 flex items-center justify-between mb-5 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 border ${
-              isDarkMode
-                ? 'bg-indigo-950/30 border-indigo-800/30'
-                : 'bg-[#F2EEFF] border-[#E4DFF5]'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl flex items-center justify-center ${
-                isDarkMode
-                  ? 'bg-indigo-950/50 text-indigo-300'
-                  : 'bg-[#ECE7FF] text-[#553BE2]'
-              }`}>
-                <span className="material-symbols-outlined text-lg leading-none">face</span>
-              </div>
-              <div className="leading-tight">
-                <div className={`text-xs font-extrabold ${isDarkMode ? 'text-indigo-300' : 'text-[#553BE2]'}`}>Try it on virtually</div>
-                <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Use AR Try-On to see how it fits you in real-time.</div>
-              </div>
+          <div className={`my-4 flex items-end justify-between gap-3 border-y py-3 ${isDarkMode ? 'border-slate-800' : 'border-[#E4DFF5]'}`}>
+            <div>
+              <div className="text-2xl font-extrabold leading-none text-[#553BE2]">₹{mainProduct.price}</div>
+              <div className={`mt-1.5 text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>Inclusive of all taxes</div>
             </div>
-            <span className={`material-symbols-outlined text-base ${isDarkMode ? 'text-indigo-400' : 'text-[#553BE2]'}`}>chevron_right</span>
-          </div>
-
-          {/* Color swatches selector */}
-          <div className="mb-5">
-            <div className={`text-xs font-bold uppercase tracking-widest mb-1.5 ${
-              isDarkMode
-                ? 'text-slate-400 color-current'
-                : 'text-[#5E667A]'
-            }`}>Color: <span className={`font-semibold ${
-              isDarkMode ? 'text-slate-100' : 'text-[#131426]'
-            }`}>{getVariantLabel(selectedVariant) || selectedColor}</span></div>
-            <div className="flex gap-2.5">
-              {(mainProduct.variants && mainProduct.variants.length > 0 ? mainProduct.variants : variantColors.map((colorName, index) => ({
-                id: colorName,
-                colorName,
-                colorHex: getRequiredColorHex(colorName),
-                images: [],
-                thumbnail: '',
-                isAvailable: true,
-                displayOrder: index,
-                color: colorName
-              }))).map((variant) => {
-                const colorName = getVariantLabel(variant);
-                const isActive = selectedColor === colorName;
-                const colorHex = variant.colorHex || getRequiredColorHex(colorName);
-                return (
-                  <button
-                    key={variant.id || colorName}
-                    onClick={() => setSelectedColor(colorName)}
-                    title={colorName}
-                    className={`h-8 w-8 rounded-full border transition-all ${
-                      isActive ? 'ring-2 ring-[#553BE2] ring-offset-2 ring-offset-white shadow-[0_0_14px_rgba(85, 59, 226,0.35)]' : 'opacity-70 hover:opacity-100'
-                    } ${isLightColor(colorHex) ? 'border-[#E4DFF5]' : 'border-white/40'} ${isDarkColor(colorHex) ? 'shadow-md shadow-slate-950/25' : ''}`}
-                    style={{ backgroundColor: colorHex }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Size choices lists */}
-          <div className="mb-5">
-            <div className={`flex justify-between items-center mb-1.5 text-xs font-bold ${
-              isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'
+            <span className={`mb-0.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              currentInStock
+                ? isDarkMode ? 'bg-emerald-950/60 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+                : isDarkMode ? 'bg-rose-950/60 text-rose-300' : 'bg-rose-50 text-rose-700'
             }`}>
-              <span className="uppercase tracking-widest">Size</span>
-              <button 
-                onClick={() => alert('Refer to M chest specs: 98cm, sleeve: 62cm.')}
-                className="text-[#553BE2] font-semibold flex items-center gap-1 hover:underline"
-              >
-                <span className="material-symbols-outlined text-xs leading-none">straighten</span> Size Guide
-              </button>
-            </div>
-            <div className="flex gap-2">
-              {mainProduct.sizes.map((sz) => {
-                const isActive = selectedSize === sz;
-                return (
-                  <button
-                    key={sz}
-                    onClick={() => setSelectedSize(sz)}
-                    className={`w-10 h-10 rounded-xl border text-xs font-bold flex items-center justify-center transition-all ${
-                      isActive 
-                        ? isDarkMode
-                          ? 'border-indigo-400 bg-indigo-950/50 text-indigo-300 font-extrabold'
-                          : 'border-[#553BE2] bg-[#F2EEFF] text-[#553BE2] font-extrabold'
-                        : isDarkMode
-                          ? 'border-slate-700 text-slate-300 hover:border-indigo-700'
-                          : 'border-[#E4DFF5] text-[#5E667A] hover:border-[#553BE2]/50'
-                    }`}
-                  >
-                    {sz}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex justify-between mt-2.5 text-[10px] font-bold">
-              <span className={`${currentInStock ? 'text-green-600' : 'text-rose-600'} flex items-center gap-0.5`}>
-                <span className="material-symbols-outlined text-xs leading-none">{currentInStock ? 'check_circle' : 'cancel'}</span> {currentInStock ? 'In Stock' : 'Out of Stock'}
-              </span>
-              {currentStock !== undefined && currentInStock && (
-                <span className="text-amber-600">Only {currentStock} left!</span>
-              )}
-            </div>
-            {currentSku && (
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#5E667A]">SKU: {currentSku}</div>
-            )}
+              <span className="material-symbols-outlined text-sm leading-none">{currentInStock ? 'check_circle' : 'cancel'}</span>
+              {currentInStock ? 'In stock' : 'Out of stock'}
+            </span>
           </div>
 
-          {/* Footer actions buttons block */}
-          <div className="flex gap-2.5 pt-1">
-            <button 
+          <div className="space-y-5">
+            <div>
+              <div className={`mb-2 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
+                <span>Color</span>
+                <span className={`text-xs font-normal ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                  {getVariantLabel(selectedVariant) || selectedColor}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {(mainProduct.variants && mainProduct.variants.length > 0 ? mainProduct.variants : variantColors.map((colorName, index) => ({
+                  id: colorName,
+                  colorName,
+                  colorHex: getRequiredColorHex(colorName),
+                  images: [],
+                  thumbnail: '',
+                  isAvailable: true,
+                  displayOrder: index,
+                  color: colorName
+                }))).map((variant) => {
+                  const colorName = getVariantLabel(variant);
+                  const isActive = selectedColor === colorName;
+                  const colorHex = variant.colorHex || getRequiredColorHex(colorName);
+                  return (
+                    <button
+                      key={variant.id || colorName}
+                      type="button"
+                      onClick={() => setSelectedColor(colorName)}
+                      title={colorName}
+                      aria-label={`Color: ${colorName}`}
+                      aria-pressed={isActive}
+                      className={`h-8 w-8 rounded-full border transition-all ${
+                        isActive ? 'ring-2 ring-[#553BE2] ring-offset-2 shadow-[0_0_14px_rgba(85,59,226,0.25)]' : 'opacity-75 hover:opacity-100'
+                      } ${isDarkMode ? 'ring-offset-slate-900' : 'ring-offset-white'} ${isLightColor(colorHex) ? 'border-[#E4DFF5]' : 'border-white/40'} ${isDarkColor(colorHex) ? 'shadow-md shadow-slate-950/25' : ''}`}
+                      style={{ backgroundColor: colorHex }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className={`mb-2 flex items-center justify-between gap-3 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
+                <span>Choose size</span>
+                <button
+                  type="button"
+                  onClick={() => alert('Refer to M chest specs: 98cm, sleeve: 62cm.')}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-[#553BE2] hover:underline"
+                >
+                  <span className="material-symbols-outlined text-sm leading-none">straighten</span>
+                  Size guide
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {mainProduct.sizes.map((sz) => {
+                  const isActive = selectedSize === sz;
+                  return (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setSelectedSize(sz)}
+                      aria-pressed={isActive}
+                      className={`min-w-11 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                        isActive
+                          ? isDarkMode
+                            ? 'border-indigo-400 bg-indigo-950/50 text-indigo-300'
+                            : 'border-[#553BE2] bg-[#F2EEFF] text-[#553BE2]'
+                          : isDarkMode
+                            ? 'border-slate-700 text-slate-300 hover:border-indigo-700'
+                            : 'border-[#E4DFF5] text-[#5E667A] hover:border-[#553BE2]/50'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={`mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                {currentStock !== undefined && currentInStock && (
+                  <span className="font-medium text-amber-600">Only {currentStock} left</span>
+                )}
+                {currentSku && <span className="uppercase tracking-wide">SKU: {currentSku}</span>}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
               onClick={handleLaunchAr}
-              className="flex-1 py-3 rounded-xl border border-[#553BE2] text-[#553BE2] font-bold flex items-center justify-center gap-1.5 text-xs bg-white hover:bg-[#F2EEFF] transition-colors"
+              className={`flex min-w-0 items-center justify-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-colors ${
+                isDarkMode
+                  ? 'border-indigo-500/60 bg-indigo-950/30 text-indigo-300 hover:bg-indigo-950/60'
+                  : 'border-[#553BE2] bg-white text-[#553BE2] hover:bg-[#F2EEFF]'
+              }`}
             >
-              <span className="material-symbols-outlined text-base">view_in_ar</span> Try Now (AR)
+              <span className="material-symbols-outlined text-base">view_in_ar</span>
+              <span className="truncate">Try on</span>
             </button>
-            <button 
+            <button
+              type="button"
               onClick={() => handleAddToCart(mainProduct.id, selectedColor, selectedSize)}
-              className="flex-1 py-3 rounded-xl bg-[#553BE2] text-white font-bold flex items-center justify-center gap-1.5 text-xs shadow-md shadow-[#553BE2]/20 hover:opacity-95 transition-opacity"
+              className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-[#553BE2] py-3 text-xs font-bold text-white shadow-md shadow-[#553BE2]/20 transition-opacity hover:opacity-95"
             >
-              <span className="material-symbols-outlined text-base">shopping_bag</span> Add to Cart
+              <span className="material-symbols-outlined text-base">shopping_bag</span>
+              <span className="truncate">Add to Cart</span>
             </button>
           </div>
         </div>
@@ -640,66 +629,70 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       </section>
 
       {/* Complete The Look accessories suggestions list - only show if there are valid items */}
-      {completeLookItems.length > 0 && (
-        <section className="px-4">
+      <section className="px-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Complete the Look</h2>
             <button 
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate('showroom')}
               className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
             >
               Explore All <span className="material-symbols-outlined text-sm ml-0.5">chevron_right</span>
             </button>
           </div>
           
-          <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-            {completeLookItems.map((item) => (
-              <div 
-                key={item.id}
-                onClick={() => handleAddToCart(item.id, 'Default', 'One Size')}
-                className="min-w-[130px] glass-card rounded-2xl p-2.5 relative cursor-pointer border border-transparent hover:border-[#E4DFF5] transition-colors"
-              >
-                <button 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (onToggleWishlist) {
-                      onToggleWishlist(item.id);
-                      const isSaved = wishlist.includes(item.id);
-                      setToastMessage(isSaved ? `Removed ${item.name} from Saved Items` : `✓ Saved ${item.name} to Saved Items!`);
-                      setTimeout(() => setToastMessage(null), 2500);
-                    }
-                  }}
-                  className={`absolute top-3.5 right-3.5 z-10 rounded-full p-1.5 shadow-md flex items-center justify-center transition-all cursor-pointer ${
-                    wishlist.includes(item.id)
-                      ? 'bg-red-50 text-red-600 border border-red-100'
-                      : 'text-[#5E667A] bg-white/90 hover:bg-white hover:text-red-500'
-                  }`}
+          {completeLookItems.length > 0 ? (
+            <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+              {completeLookItems.map((product) => (
+                <div
+                  key={product.id}
+                  onClick={() => onSelectProduct?.(product)}
+                  className="min-w-[130px] glass-card rounded-2xl p-2.5 relative cursor-pointer border border-transparent hover:border-[#E4DFF5] transition-colors"
                 >
-                  <span className="material-symbols-outlined text-xs leading-none" style={{ fontVariationSettings: wishlist.includes(item.id) ? "'FILL' 1" : undefined }}>
-                    {wishlist.includes(item.id) ? 'favorite' : 'favorite_border'}
-                  </span>
-                </button>
-                <div className="h-32 rounded-xl bg-[#F2EEFF] mb-2 overflow-hidden flex items-center justify-center">
-                  <img 
-                    alt={item.name} 
-                    className="w-full h-full object-cover mix-blend-multiply" 
-                    referrerPolicy="no-referrer"
-                    src={products[item.id]?.imageUrl}
-                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onToggleWishlist) {
+                        onToggleWishlist(product.id);
+                        const isSaved = wishlist.includes(product.id);
+                        setToastMessage(isSaved ? `Removed ${product.name} from Saved Items` : `✓ Saved ${product.name} to Saved Items!`);
+                        setTimeout(() => setToastMessage(null), 2500);
+                      }
+                    }}
+                    className={`absolute top-3.5 right-3.5 z-10 rounded-full p-1.5 shadow-md flex items-center justify-center transition-all cursor-pointer ${
+                      wishlist.includes(product.id)
+                        ? 'bg-red-50 text-red-600 border border-red-100'
+                        : 'text-[#5E667A] bg-white/90 hover:bg-white hover:text-red-500'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-xs leading-none" style={{ fontVariationSettings: wishlist.includes(product.id) ? "'FILL' 1" : undefined }}>
+                      {wishlist.includes(product.id) ? 'favorite' : 'favorite_border'}
+                    </span>
+                  </button>
+                  <div className="h-32 rounded-xl bg-[#F2EEFF] mb-2 overflow-hidden flex items-center justify-center">
+                    <img
+                      alt={product.name}
+                      className="w-full h-full object-cover mix-blend-multiply"
+                      referrerPolicy="no-referrer"
+                      src={product.imageUrl}
+                    />
+                  </div>
+                  <div className="text-[11px] font-bold text-[#131426] truncate">{product.name}</div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs font-extrabold text-[#553BE2]">₹{Number(product.price).toLocaleString('en-IN')}</span>
+                    <span className="text-[9px] font-bold text-[#5E667A] flex items-center">
+                      <span className="material-symbols-outlined text-[10px] text-amber-500 mr-0.5">star</span>
+                      {Number(product.rating || 0).toFixed(1)}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-[11px] font-bold text-[#131426] truncate">{item.name}</div>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-xs font-extrabold text-[#553BE2]">{item.price}</span>
-                  <span className="text-[9px] font-bold text-[#5E667A] flex items-center">
-                    <span className="material-symbols-outlined text-[10px] text-amber-500 mr-0.5">star</span>
-                    {item.rating}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+              ))}
+            </div>
+          ) : (
+            <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+              No other database products are available right now.
+            </p>
+          )}
+      </section>
     </div>
   );
 };

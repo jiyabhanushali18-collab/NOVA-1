@@ -77,7 +77,7 @@ router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, a
 
   try {
     const result = await decartKeyPool.generateClientToken({
-      expiresIn: 3600,
+      expiresIn: 300,
       allowedModels: ['lucy-vton-latest'],
       maxSessionDuration: 300,
       userId,

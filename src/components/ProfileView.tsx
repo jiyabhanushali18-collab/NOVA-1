@@ -8,7 +8,6 @@ import { PRIVACY_VERSION, TERMS_VERSION } from '../legal/legalDocuments';
 import {
   formatDeliveryAddress,
   isGuestIdentity,
-  parseAddressToDeliveryAddress,
   saveUserDeliveryAddress,
   writeCachedUserAddress
 } from '../services/addressService';
@@ -19,6 +18,7 @@ interface ProfileViewProps {
   userName: string;
   setUserName: (name: string) => void;
   userEmail?: string;
+  onSaveProfile?: (profile: { name: string; email: string; phone: string; address: string }) => Promise<void>;
   userPhone?: string;
   userAddress?: string;
   userPinCode?: string;
@@ -55,12 +55,27 @@ const getDefaultProductColor = (product?: ProductItem) => (
   product?.variants?.[0]?.colorName || product?.variants?.[0]?.color || product?.colors?.[0] || 'Default'
 );
 
+const GooglePayMark = ({ className = '' }: { className?: string }) => (
+  <span aria-label="Google Pay" className={`inline-flex items-center font-bold tracking-tight ${className}`}>
+    <span
+      className="bg-clip-text text-transparent"
+      style={{
+        backgroundImage: 'linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC04 50% 75%, #EA4335 75%)'
+      }}
+    >
+      G
+    </span>
+    <span className="ml-0.5 text-[#5F6368]">Pay</span>
+  </span>
+);
+
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
   onNavigate, 
   userId = '',
   userName,
   setUserName,
   userAddress,
+  onSaveProfile,
   userPinCode = '',
   savedDeliveryAddress = null,
   savedAddresses = [],
@@ -92,10 +107,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   legalConsent
 }) => {
   const { locale, language, setLocale, t } = useI18n();
+  const effectiveUid = userId || activeUid || userEmail || '';
+  const paymentMethodsStorageKey = `nova_payment_methods_${encodeURIComponent(effectiveUid || 'local_user')}`;
+  const profileAddressesStorageKey = `nova_profile_addresses_${encodeURIComponent(effectiveUid || 'local_user')}`;
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [profileToast, setProfileToast] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
 
   // Settings modals toggle states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -109,26 +129,67 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [isLoadingSavedLooks, setIsLoadingSavedLooks] = useState(false);
   const [selectedLookPreview, setSelectedLookPreview] = useState<SavedLook | null>(null);
 
-  // Payment Methods interactive state
-  const [paymentMethods, setPaymentMethods] = useState(() => {
+  const readPaymentMethods = (storageKey: string, migrateLegacy = false) => {
     try {
-      const saved = localStorage.getItem('payment_methods');
-      return saved ? JSON.parse(saved) : [
-        { id: '1', type: 'Credit Card', provider: 'Visa Signature', number: '•••• •••• •••• 4235', cardholder: 'Arjun Mehta', expiry: '08/29', color: 'from-blue-600 via-indigo-600 to-purple-600' },
-        { id: '2', type: 'UPI', provider: 'UPI Option', handle: 'arjunmehta@okaxis', isDefault: true, color: 'from-indigo-600 to-blue-500' }
-      ];
-    } catch {
-      return [
-        { id: '1', type: 'Credit Card', provider: 'Visa Signature', number: '•••• •••• •••• 4235', cardholder: 'Arjun Mehta', expiry: '08/29', color: 'from-blue-600 via-indigo-600 to-purple-600' },
-        { id: '2', type: 'UPI', provider: 'UPI Option', handle: 'arjunmehta@okaxis', isDefault: true, color: 'from-indigo-600 to-blue-500' }
-      ];
-    }
-  });
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        localStorage.removeItem('payment_methods');
+        const parsed: unknown = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+      }
 
-  // Saving Payment Methods changes
+      if (!migrateLegacy) return [];
+      const legacy = localStorage.getItem('payment_methods');
+      if (!legacy) return [];
+
+      const parsed: unknown = JSON.parse(legacy);
+      const methods = Array.isArray(parsed) ? parsed.filter((method) => {
+        if (!method || typeof method !== 'object') return false;
+        const entry = method as Record<string, unknown>;
+        const provider = String(entry.provider || '');
+        const handle = String(entry.handle || '');
+        const cardholder = String(entry.cardholder || '');
+        const number = String(entry.number || '');
+        return !(
+          provider === 'Visa Signature' ||
+          provider === 'UPI Option' ||
+          handle === 'arjunmehta@okaxis' ||
+          cardholder === 'Arjun Mehta' ||
+          number.endsWith('4235')
+        );
+      }) : [];
+
+      if (methods.length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(methods));
+      }
+      localStorage.removeItem('payment_methods');
+      return methods;
+    } catch (error) {
+      console.error('Could not load saved payment methods:', error);
+      return [];
+    }
+  };
+
+  const [paymentMethods, setPaymentMethods] = useState<any[]>(() => readPaymentMethods(paymentMethodsStorageKey, true));
+  const [paymentMethodsOwnerKey, setPaymentMethodsOwnerKey] = useState(paymentMethodsStorageKey);
+
   React.useEffect(() => {
-    localStorage.setItem('payment_methods', JSON.stringify(paymentMethods));
-  }, [paymentMethods]);
+    setPaymentMethods(readPaymentMethods(paymentMethodsStorageKey, true));
+    setPaymentMethodsOwnerKey(paymentMethodsStorageKey);
+  }, [paymentMethodsStorageKey]);
+
+  const persistPaymentMethods = (nextPaymentMethods: any[]) => {
+    if (paymentMethodsOwnerKey !== paymentMethodsStorageKey) {
+      throw new Error('Payment methods are still loading for this account. Please try again.');
+    }
+    try {
+      localStorage.setItem(paymentMethodsStorageKey, JSON.stringify(nextPaymentMethods));
+      setPaymentMethods(nextPaymentMethods);
+    } catch (error) {
+      console.error('Could not save payment methods:', error);
+      throw new Error('Could not save payment methods on this device. Check available browser storage and try again.');
+    }
+  };
 
   // Temporary payment inputs states
   const [isAddingCard, setIsAddingCard] = useState(false);
@@ -140,24 +201,39 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleAddCard = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCardNumber || !newCardHolder || !newCardExpiry) {
+    const digits = newCardNumber.replace(/\D/g, '');
+    if (digits.length < 12 || digits.length > 19 || !newCardHolder.trim() || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(newCardExpiry)) {
       setProfileToast('Please specify card credentials');
       setTimeout(() => setProfileToast(null), 2500);
       return;
     }
-    // Clean card number format display
-    const lastDigits = newCardNumber.replace(/\D/g, '').slice(-4) || '1111';
+    const lastDigits = digits.slice(-4);
     const formattedNumber = `•••• •••• •••• ${lastDigits}`;
+    const provider = digits.startsWith('4')
+      ? 'Visa'
+      : /^(5[1-5]|2[2-7])/.test(digits)
+        ? 'Mastercard'
+        : /^(34|37)/.test(digits)
+          ? 'American Express'
+          : /^(60|65|81|82|508)/.test(digits)
+            ? 'RuPay'
+            : 'Card';
     const newCard = {
       id: Date.now().toString(),
       type: 'Credit Card',
-      provider: 'Mastercard Premium',
+      provider,
       number: formattedNumber,
-      cardholder: newCardHolder,
+      cardholder: newCardHolder.trim(),
       expiry: newCardExpiry,
       color: 'from-purple-600 via-indigo-600 to-blue-600'
     };
-    setPaymentMethods([...paymentMethods, newCard]);
+    try {
+      persistPaymentMethods([...paymentMethods, newCard]);
+    } catch (error) {
+      setProfileToast(error instanceof Error ? error.message : 'Could not save this card.');
+      setTimeout(() => setProfileToast(null), 3000);
+      return;
+    }
     setIsAddingCard(false);
     setNewCardNumber('');
     setNewCardHolder('');
@@ -182,7 +258,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       isDefault: false,
       color: 'from-blue-600 to-indigo-500'
     };
-    setPaymentMethods([...paymentMethods, newUPI]);
+    try {
+      persistPaymentMethods([...paymentMethods, newUPI]);
+    } catch (error) {
+      setProfileToast(error instanceof Error ? error.message : 'Could not save this UPI handle.');
+      setTimeout(() => setProfileToast(null), 3000);
+      return;
+    }
     setIsAddingUPI(false);
     setNewUPIHandle('');
     setProfileToast('⚡ UPI ID registered successfully!');
@@ -191,7 +273,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleDeletePayment = (id: string) => {
     const matched = paymentMethods.find(p => p.id === id);
-    setPaymentMethods(paymentMethods.filter(p => p.id !== id));
+    try {
+      persistPaymentMethods(paymentMethods.filter((paymentMethod) => paymentMethod.id !== id));
+    } catch (error) {
+      setProfileToast(error instanceof Error ? error.message : 'Could not remove this payment method.');
+      setTimeout(() => setProfileToast(null), 3000);
+      return;
+    }
     setProfileToast(`✕ Removed ${matched?.type === 'UPI' ? 'UPI Handle' : 'Card'} successfully`);
     setTimeout(() => setProfileToast(null), 2000);
   };
@@ -213,8 +301,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       raw: addr,
     };
   };
-
-  const effectiveUid = userId || activeUid || userEmail || '';
 
   // Synchronize user's saved looks from local storage
   React.useEffect(() => {
@@ -275,30 +361,74 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const effectiveIsGuest = isGuest || isGuestIdentity(effectiveUid, isGuest);
 
   const buildUserAddressEntries = React.useCallback(() => {
-    if (effectiveIsGuest || !effectiveUid) return [];
     const list: DeliveryAddress[] = [];
     if (Array.isArray(savedAddresses) && savedAddresses.length > 0) {
       list.push(...savedAddresses);
     } else if (savedDeliveryAddress && (savedDeliveryAddress.flatNo || savedDeliveryAddress.city || savedDeliveryAddress.pinCode)) {
       list.push(savedDeliveryAddress);
-    } else if (userAddress && userAddress.trim()) {
-      const parsed = parseAddressToDeliveryAddress({
-        rawAddress: userAddress,
-        pinCode: userPinCode,
-        fullName: userName,
-        phone: userPhone,
-      });
-      if (parsed) list.push(parsed);
+    } else {
+      try {
+        const saved = localStorage.getItem(profileAddressesStorageKey);
+        if (saved) {
+          const parsed: unknown = JSON.parse(saved);
+          if (Array.isArray(parsed)) list.push(...parsed);
+        }
+      } catch (error) {
+        console.error('Could not load saved addresses:', error);
+      }
     }
     return list.map((a, idx) => toUiAddressEntry(a, idx));
-  }, [effectiveIsGuest, effectiveUid, savedAddresses, savedDeliveryAddress, userAddress, userPinCode, userName, userPhone]);
+  }, [profileAddressesStorageKey, savedAddresses, savedDeliveryAddress, userName, userPhone, userPinCode]);
 
   // Addresses interactive state (scoped per authenticated user, never shared globally)
   const [addresses, setAddresses] = useState<any[]>(() => buildUserAddressEntries());
+  const selectedAddressId = savedDeliveryAddress?.id ||
+    addresses.find((address: any) => address.raw?.isDefault)?.id ||
+    addresses[0]?.id ||
+    '';
 
   React.useEffect(() => {
     setAddresses(buildUserAddressEntries());
   }, [buildUserAddressEntries]);
+
+  const handleSelectAddress = async (address: any) => {
+    if (address.id === selectedAddressId) return;
+    const selectedRawAddress: DeliveryAddress = {
+      ...address.raw,
+      isDefault: true
+    };
+    const otherAddresses: DeliveryAddress[] = addresses
+      .filter((entry: any) => entry.id !== address.id)
+      .map((entry: any) => ({ ...entry.raw, isDefault: false }));
+
+    try {
+      if (effectiveUid && !effectiveIsGuest) {
+        const savedResult = await saveUserDeliveryAddress(
+          {
+            uid: effectiveUid,
+            email: userEmail,
+            name: userName,
+            phone: userPhone,
+            isGuest: effectiveIsGuest
+          },
+          selectedRawAddress,
+          otherAddresses
+        );
+        setAddresses(savedResult.savedAddresses.map((entry, index) => toUiAddressEntry(entry, index)));
+        await onSaveAddress?.(savedResult.primaryAddress, savedResult.savedAddresses);
+      } else {
+        const nextAddresses = [selectedRawAddress, ...otherAddresses];
+        localStorage.setItem(profileAddressesStorageKey, JSON.stringify(nextAddresses));
+        setAddresses(nextAddresses.map((entry, index) => toUiAddressEntry(entry, index)));
+      }
+      setProfileToast('Default delivery address updated.');
+      setTimeout(() => setProfileToast(null), 2500);
+    } catch (error) {
+      console.error('Could not select delivery address:', error);
+      setProfileToast(error instanceof Error ? error.message : 'Could not select this address. Please try again.');
+      setTimeout(() => setProfileToast(null), 3000);
+    }
+  };
 
   // Temporary address inputs states
   const [isAddingAddress, setIsAddingAddress] = useState(false);
@@ -331,23 +461,36 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
-    const newAddr = toUiAddressEntry(deliveryObj, addresses.length);
-    const nextUiAddresses = [...addresses, newAddr];
-    setAddresses(nextUiAddresses);
-
-    if (effectiveUid && !effectiveIsGuest) {
-      const savedResult = await saveUserDeliveryAddress(
-        {
-          uid: effectiveUid,
-          email: userEmail,
-          name: userName,
-          phone: userPhone,
-          isGuest: effectiveIsGuest,
-        },
-        deliveryObj,
-        savedAddresses
-      );
-      onSaveAddress?.(savedResult.primaryAddress, savedResult.savedAddresses);
+    try {
+      let nextRawAddresses: DeliveryAddress[];
+      if (effectiveUid && !effectiveIsGuest) {
+        const existingAddresses = addresses.map((address: any) => address.raw as DeliveryAddress);
+        const savedResult = await saveUserDeliveryAddress(
+          {
+            uid: effectiveUid,
+            email: userEmail,
+            name: userName,
+            phone: userPhone,
+            isGuest: effectiveIsGuest,
+          },
+          deliveryObj,
+          existingAddresses
+        );
+        nextRawAddresses = savedResult.savedAddresses;
+        onSaveAddress?.(savedResult.primaryAddress, savedResult.savedAddresses);
+      } else {
+        nextRawAddresses = [
+          ...addresses.map((address: any) => address.raw as DeliveryAddress),
+          deliveryObj
+        ];
+      }
+      localStorage.setItem(profileAddressesStorageKey, JSON.stringify(nextRawAddresses));
+      setAddresses(nextRawAddresses.map((address, index) => toUiAddressEntry(address, index)));
+    } catch (error) {
+      console.error('Could not save delivery address:', error);
+      setProfileToast(error instanceof Error ? error.message : 'Could not save address. Please try again.');
+      setTimeout(() => setProfileToast(null), 3000);
+      return;
     }
 
     setIsAddingAddress(false);
@@ -363,10 +506,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const handleDeleteAddress = async (id: string) => {
     const matched = addresses.find(a => a.id === id);
     const remaining = addresses.filter(a => a.id !== id);
+    const remainingRawAddresses = remaining.map((address: any) => address.raw as DeliveryAddress);
+    try {
+      localStorage.setItem(profileAddressesStorageKey, JSON.stringify(remainingRawAddresses));
+    } catch (error) {
+      console.error('Could not update saved addresses:', error);
+      setProfileToast('Could not update saved addresses on this device.');
+      setTimeout(() => setProfileToast(null), 2500);
+      return;
+    }
     setAddresses(remaining);
     if (effectiveUid && !effectiveIsGuest && remaining.length > 0) {
       const primaryRaw: DeliveryAddress = remaining[0].raw;
-      const remainingRaws: DeliveryAddress[] = remaining.map((r: any) => r.raw);
+      const remainingRaws: DeliveryAddress[] = remainingRawAddresses;
       writeCachedUserAddress(effectiveUid, primaryRaw, remainingRaws);
       onSaveAddress?.(primaryRaw, remainingRaws);
     } else if (effectiveUid && !effectiveIsGuest && remaining.length === 0) {
@@ -533,31 +685,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUserName(profileName);
-    if (effectiveUid && !effectiveIsGuest && profileLocation.trim()) {
-      const parsed = parseAddressToDeliveryAddress({
-        rawAddress: profileLocation.trim(),
-        pinCode: savedDeliveryAddress?.pinCode || userPinCode || '',
-        fullName: profileName.trim(),
-        phone: profilePhone.trim(),
-        existing: savedDeliveryAddress || null,
-      });
-      if (parsed) {
-        const savedResult = await saveUserDeliveryAddress(
-          {
-            uid: effectiveUid,
-            email: profileEmail || userEmail,
-            name: profileName,
-            phone: profilePhone,
-            isGuest: effectiveIsGuest,
-          },
-          parsed,
-          savedAddresses
-        );
-        onSaveAddress?.(savedResult.primaryAddress, savedResult.savedAddresses);
+    setProfileSaveError(null);
+    setIsSavingProfile(true);
+    try {
+      if (onSaveProfile) {
+        await onSaveProfile({
+          name: profileName.trim(),
+          email: profileEmail.trim(),
+          phone: profilePhone.trim(),
+          address: profileLocation.trim()
+        });
+      } else {
+        setUserName(profileName.trim());
       }
+      setProfileToast('Profile changes saved.');
+      setTimeout(() => setProfileToast(null), 2500);
+      setIsProfileModalOpen(false);
+    } catch (error) {
+      setProfileSaveError(error instanceof Error ? error.message : 'Could not save profile changes. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
     }
-    setIsProfileModalOpen(false);
   };
 
   const handleLogout = () => {
@@ -1166,11 +1314,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </button>
                 <button 
                   type="submit"
+                  disabled={isSavingProfile}
                   className="flex-1 py-3 text-xs font-bold text-white bg-[#553BE2] rounded-xl hover:opacity-95 transition-opacity"
                 >
-                  Save Changes
+                  {isSavingProfile ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
+              {profileSaveError && (
+                <p className="text-xs font-medium text-rose-600" role="alert">{profileSaveError}</p>
+              )}
             </form>
           </div>
         </div>
@@ -1207,7 +1359,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <span className="text-[10px] uppercase font-bold text-[#ECE7FF] tracking-wider">
                         {pm.type}
                       </span>
-                      <h4 className="text-sm font-black mt-0.5">{pm.provider}</h4>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <h4 className="text-sm font-black">{pm.provider}</h4>
+                        {pm.type === 'UPI' && <GooglePayMark className="rounded bg-white px-1.5 py-0.5 text-xs" />}
+                      </div>
                     </div>
                     {pm.isDefault && (
                       <span className="bg-white/20 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -1221,7 +1376,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center text-xs text-[#ECE7FF] font-bold">
-                    <span>{pm.cardholder || 'NOVA MEMBER'}</span>
+                    <span>{pm.cardholder || userName}</span>
                     {pm.expiry && <span>EXP: {pm.expiry}</span>}
                   </div>
 
@@ -1256,7 +1411,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   onClick={() => setIsAddingUPI(true)}
                   className="py-2.5 px-3 bg-[#F2EEFF] hover:bg-[#ECE7FF] text-[#553BE2] text-[11px] font-bold rounded-xl flex items-center justify-center gap-1 transition-all"
                 >
-                  <span className="material-symbols-outlined text-sm">g_pay</span> Register UPI
+                  <GooglePayMark className="text-sm" /> Register UPI
                 </button>
               </div>
             )}
@@ -1370,13 +1525,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {addresses.map((addr: any) => (
                 <div 
                   key={addr.id}
-                  className="border border-[#E4DFF5] rounded-2xl p-4 bg-[#F2EEFF] relative hover:border-[#553BE2]/40 transition-colors"
+                  role="radio"
+                  aria-checked={selectedAddressId === addr.id}
+                  aria-label={`${addr.label}, ${addr.name}, ${addr.street}, ${addr.city}`}
+                  tabIndex={0}
+                  onClick={() => handleSelectAddress(addr)}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleSelectAddress(addr);
+                    }
+                  }}
+                  className={`border rounded-2xl p-4 bg-[#F2EEFF] relative transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#553BE2] ${
+                    selectedAddressId === addr.id
+                      ? 'border-[#8D79F5] ring-1 ring-[#8D79F5]/30'
+                      : 'border-[#E4DFF5] hover:border-[#553BE2]/40'
+                  }`}
                 >
-                  <div className="flex items-center gap-2 text-[#553BE2] mb-1.5">
+                  <div className="flex items-center gap-2 pr-8 text-[#553BE2] mb-1.5">
                     <span className="material-symbols-outlined text-lg">{addr.icon}</span>
                     <span className="text-xs font-extrabold uppercase tracking-wide bg-[#F2EEFF] px-2 py-0.5 rounded-full text-[#553BE2]">
                       {addr.label}
                     </span>
+                    {selectedAddressId === addr.id && (
+                      <span className="ml-auto text-[9px] font-bold text-[#553BE2]">{t('profile.selected')}</span>
+                    )}
                   </div>
 
                   <h4 className="text-xs font-black text-[#131426]">{addr.name}</h4>
@@ -1388,7 +1562,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </p>
 
                   <button 
-                    onClick={() => handleDeleteAddress(addr.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteAddress(addr.id);
+                    }}
                     className="absolute right-3 top-3 w-7 h-7 hover:bg-white hover:text-red-500 rounded-xl flex items-center justify-center text-[#8E96AA] transition-colors"
                     title="Delete shipping location"
                   >

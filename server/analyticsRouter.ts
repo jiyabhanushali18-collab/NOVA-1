@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
+import { FieldValue } from 'firebase-admin/firestore';
 import {
   collection,
-  addDoc,
   getDocs,
   getDoc,
   doc,
@@ -9,13 +9,17 @@ import {
   where,
   orderBy,
   limit as firestoreLimit,
-  serverTimestamp,
   Timestamp,
   QueryConstraint
 } from 'firebase/firestore';
+import { adminDb } from './firebaseAdmin';
 import { firestore } from './firebase';
 
 const router = express.Router();
+
+if (!adminDb) {
+  console.warn('[Analytics] Firestore persistence is disabled: configure Firebase Admin credentials; analytics events remain in memory only.');
+}
 
 export type AnalyticsEventType =
   | 'product_impression'
@@ -234,17 +238,16 @@ async function processRawEvent(raw: any): Promise<{ valid: boolean; record?: Ana
     inMemoryEvents.pop();
   }
 
-  // Store asynchronously in Firestore 'analytics_events'
-  try {
-    const eventsCollection = collection(firestore, 'analytics_events');
-    addDoc(eventsCollection, {
+  // Use Admin SDK so server-side analytics writes do not depend on client Firestore rules.
+  if (adminDb) {
+    void adminDb.collection('analytics_events').add({
       ...cleanRecord,
-      createdAt: serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     }).catch((fsErr) => {
-      // Non-blocking warning: in-memory aggregation is authoritative
+      // Non-blocking; in-memory aggregation remains available if persistence fails.
       console.warn('[Analytics] Firestore event write warning:', fsErr?.message || fsErr);
     });
-  } catch {}
+  }
 
   return { valid: true, record: cleanRecord };
 }

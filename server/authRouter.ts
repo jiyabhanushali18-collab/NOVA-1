@@ -285,8 +285,7 @@ const deduplicateSavedAddresses = (
   list: DeliveryAddressPayload[],
   incoming: DeliveryAddressPayload
 ): DeliveryAddressPayload[] => {
-  const targetLabel = (incoming.label || 'Home').toLowerCase().trim();
-  const targetId = incoming.id || `addr_${targetLabel}_default`;
+  const targetId = incoming.id || `addr_${Date.now()}`;
   const normalizedIncoming: DeliveryAddressPayload = {
     ...incoming,
     id: targetId,
@@ -298,13 +297,6 @@ const deduplicateSavedAddresses = (
   const filtered = list.filter((item) => {
     if (!item) return false;
     if (item.id && item.id === targetId) return false;
-    if ((item.label || '').toLowerCase().trim() === targetLabel) return false;
-    if (
-      item.flatNo.trim().toLowerCase() === normalizedIncoming.flatNo.trim().toLowerCase() &&
-      item.pinCode.trim() === normalizedIncoming.pinCode.trim()
-    ) {
-      return false;
-    }
     return true;
   });
 
@@ -1129,7 +1121,7 @@ router.put('/auth/address', async (req: Request, res: Response) => {
     const normalizedAddress: DeliveryAddressPayload = {
       id: typeof deliveryAddress.id === 'string' && deliveryAddress.id.trim()
         ? deliveryAddress.id.trim()
-        : `addr_${label.toLowerCase()}_default`,
+        : `addr_${Date.now()}`,
       label,
       fullName,
       phone,
@@ -1139,7 +1131,7 @@ router.put('/auth/address', async (req: Request, res: Response) => {
       state,
       pinCode,
       country,
-      isDefault: true,
+      isDefault: Boolean(deliveryAddress.isDefault),
       updatedAt: new Date().toISOString()
     };
     normalizedAddress.formattedAddress = formatBackendDeliveryAddress(normalizedAddress);

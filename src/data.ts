@@ -169,30 +169,6 @@ export const initialPreferences: Preference[] = [
 
 export const recentActivity = [];
 
-export const recentScans = [
-  {
-    id: 'sc-1',
-    name: 'Beige Casual',
-    time: '12 May, 11:20 AM',
-    score: 8.5,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUgeGANrOmRNqcfu4jU6dHyOKzUkUmIFcfryWbaQQXJ-iF_6FuhspteyptU86lYM3jORcKT5qGeTsG9Z0PxxNEKOMUBmJfDIKAaAp5d9I1bCnJUGqHDmOLGnkVd3opGydX4vSn9aVNpUJVq8gwWnZFTIdpSijWXTJb71kZqVYWbQlpyEcdc7AwsfKN4XVjmxI0mIRylryRbM7LTx9RWlYvc5rGsaaUKU4Lyns_l-DSURVnRwklLsGzVJ-YazVRI1PMXDt9nq4NTbVa'
-  },
-  {
-    id: 'sc-2',
-    name: 'Lavender Street',
-    time: '11 May, 07:45 PM',
-    score: 9.2,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_DtlozI9DEUdYLQMIYnHfyp_fm3Cw5jsLiTmm4fF-DK-V1b1VUrpdO38t2top6aLDYoPLajt6CK3xvlfTqljQR1ztqY3Vf2-rI5VZ-80yTBizHhkphopu04Kc8tt_0uB8msBmbK_gludZp4Yclk-FLt5VxJnchoilYP_-XyBA2aIViuUjgm9TPfCJyyVzzcyG2f73mJiD0J_DmoLT0s-2WDDrjistvet5C8RPRMNkVXGOjY2H5tO5qZqyMN42Dxto1EwsXVxuC0iF'
-  },
-  {
-    id: 'sc-3',
-    name: 'Denim Vibes',
-    time: '10 May, 04:10 PM',
-    score: 8.8,
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDX9aJol6Krmm5VbrNIBE3Jah-4_TNSdaoEzCEuz1LtgIArYiTiqFhCbHqf7-UKcE9Lkg-S1B3PPHw00ISKzJc9YMfp-NwHR1VRcEUuVuZJkNNQrZgZwW84I1py3NV3z3Dgrf_8X_6bwfbY9m4zfoTPSUhve-7D3y-guULPbmhfu21pUSU0GAUIAFEK1RnlR3g-KW6Y9uCTIyYhepief0uH281I5860GxOLahrZqkZ9bqKqSMOWHGmf-AHEzjEGnCeNihIRFc8sGL9p'
-  }
-];
-
 export const swatchImages: Record<string, string> = {
   'Lavender': 'https://lh3.googleusercontent.com/aida-public/AB6AXuD1DEvlAcsSjIBImBwutloA7GgJIOxP6Zdu4OS6c1dnCSREkV-2jg2jQJv4TALM43lEz2lSonhyKMVHqE-Qa3w1xkhYdiPojPZUoAOibd0p2ppj63LT_koyLp1KdUMA06ZmjYZsFEluXWz39S81MyF0iI4eGFLAO8cwHh_qBOAW-9-aWSRHfMz5Z1ZKVWA-Lvjx1mT9mWZuFyN_Bs5YJFOd8G6PHSo6lqNdJ9L7auhdV08L2L4zTjPkiJ0Vu4CRYOYPx_vnBUF90IKL',
   'Mint Green': 'https://lh3.googleusercontent.com/aida-public/AB6AXuB7_jncP4M8_hhf6hyr35rvURwwRqQWoguDNcL_xsoa6AVmbzYVgzytaJvERR17ssTy3UkLwGmO71OASwjRZ3V9UUu7kbadYvWbRAUZUp19buudkUZW-36JlAOUcMHrKG_IAHPQmnRyVM5UqEsYL5NCDMppxFmJszpFLxzyuhM9_iHJ6rZ4cJDzx2J0huZOf_t5odX7gCKN0TlgGg7a5JgU9P4ordESsraqYsPKayB786KPacFFfDr57cukNhbqZ67mkjyGnW2SBXzf',

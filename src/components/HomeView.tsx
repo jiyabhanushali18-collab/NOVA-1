@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScreenId, ProductItem } from '../types';
 import { analytics } from '../services/analyticsService';
+import { useI18n } from '../i18n';
 
 const ActivityCardImage: React.FC<{
   activity: any;
@@ -142,7 +143,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
   isDarkMode = false,
   products = {}
 }) => {
-  const activityList = recentActivity;
+  const { t } = useI18n();
+  const activityList = recentActivity
+    .filter((activity) => activity.badge === 'AR Try-On' && activity.isSuccessfulTryOn)
+    .slice(0, 6);
 
   useEffect(() => {
     (activityList || []).forEach((activity: any) => {
@@ -162,10 +166,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       }`}>
         <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#ECE7FF]/85 blur-3xl" />
         <h1 className={`relative text-[27px] font-extrabold tracking-[-0.03em] flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
-          Hello, {userName}! <span className="text-[#553BE2]">✨</span>
+          {t('home.greeting', { name: userName })} <span className="text-[#553BE2]">✨</span>
         </h1>
         <p className={`relative mt-2 text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
-          Your AI + AR Fashion Assistant<br />is ready to help you.
+          {t('home.assistantDescription')}
         </p>
       </section>
 
@@ -182,8 +186,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <span className="material-symbols-outlined text-xl">info</span>
           </div>
           <div className="leading-tight text-left">
-            <h4 className={`text-xs font-black uppercase tracking-wide leading-none ${isDarkMode ? 'text-indigo-200' : 'text-[#553BE2]'}`}>NOVA Tour Guide</h4>
-            <span className={`text-[10px] mt-1.5 block font-medium ${isDarkMode ? 'text-indigo-300' : 'text-[#5E667A]'}`}>Replay Splash demo or Onboarding tour at any time!</span>
+            <h4 className={`text-xs font-black uppercase tracking-wide leading-none ${isDarkMode ? 'text-indigo-200' : 'text-[#553BE2]'}`}>{t('home.tourTitle')}</h4>
+            <span className={`text-[10px] mt-1.5 block font-medium ${isDarkMode ? 'text-indigo-300' : 'text-[#5E667A]'}`}>{t('home.tourDescription')}</span>
           </div>
         </div>
         <div className="flex gap-1.5 shrink-0">
@@ -193,13 +197,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
               isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' : 'bg-white hover:bg-[#F2EEFF] text-[#553BE2] border-[#E4DFF5] shadow-xs'
             }`}
           >
-            Splash
+            {t('home.splash')}
           </button>
           <button 
             onClick={() => onNavigate('onboarding')}
             className="nova-interactive bg-[#553BE2] hover:bg-[#462CC9] text-[9px] text-white py-2 px-3 rounded-xl font-black uppercase shadow-sm shadow-[#553BE2]/25 whitespace-nowrap cursor-pointer"
           >
-            Tour
+            {t('home.tour')}
           </button>
         </div>
       </div>
@@ -219,10 +223,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-[#F2EEFF] border-[#E2DBF8]'
               }`}>
                 <span className="material-symbols-outlined text-[#553BE2] text-base leading-none">local_mall</span>
-                <span className="text-xs font-bold text-[#553BE2] tracking-wide uppercase">Explore</span>
+                <span className="text-xs font-bold text-[#553BE2] tracking-wide uppercase">{t('home.explore')}</span>
               </div>
-              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>NOVA Showroom</h2>
-              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Browse all products and drops →</p>
+              <h2 className={`text-2xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.showroom')}</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('home.browseProducts')}</p>
             </div>
             <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center border shadow-sm text-[#553BE2] group-hover:scale-105 transition-transform ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-[#D5CBF7] shadow-[0_6px_16px_rgba(85,59,226,0.08)]'
@@ -238,13 +242,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex justify-between items-end mb-4">
           <h2 className={`text-base font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>
             <span className="material-symbols-outlined text-[#553BE2] mr-2 text-xl leading-none">explore</span>
-            Explore NOVA
+            {t('home.exploreNova')}
           </h2>
           <button 
             onClick={() => onNavigate('profile')}
             className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
           >
-            Shortcuts <span className="material-symbols-outlined text-sm ml-1 leading-none">edit</span>
+            {t('home.shortcuts')} <span className="material-symbols-outlined text-sm ml-1 leading-none">edit</span>
           </button>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -260,8 +264,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             }`}>
               <span className="material-symbols-outlined leading-none">psychology</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AI Assistant</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Get intelligent answers and style guidance.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.aiAssistant')}</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('home.aiAssistantDescription')}</p>
             <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
               isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
@@ -281,8 +285,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             }`}>
               <span className="material-symbols-outlined leading-none">view_in_ar</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>AR Try-On</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Try outfits virtually with AR.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.arTryOn')}</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('home.arTryOnDescription')}</p>
             <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
               isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
@@ -302,8 +306,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             }`}>
               <span className="material-symbols-outlined leading-none">photo_camera</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Camera Scan</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Scan outfits or items in real-time.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.cameraScan')}</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('home.cameraScanDescription')}</p>
             <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
               isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
@@ -323,8 +327,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             }`}>
               <span className="material-symbols-outlined leading-none">checkroom</span>
             </div>
-            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Virtual Wardrobe</h3>
-            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>Build AI garments from scans, prints, and textures.</p>
+            <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.virtualWardrobe')}</h3>
+            <p className={`text-[11px] leading-normal mb-4 ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>{t('home.virtualWardrobeDescription')}</p>
             <div className={`mt-auto w-6 h-6 rounded-full shadow-xs flex items-center justify-center text-[#553BE2] self-end group-hover:bg-[#553BE2] group-hover:text-white transition-colors duration-200 ${
               isDarkMode ? 'bg-slate-800' : 'bg-[#F2EEFF]'
             }`}>
@@ -363,18 +367,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </button>
       </section>
 
-      {/* Recent Activity Section */}
+      {/* Recently Tried On Section */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Recent Activity</h2>
+          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.recentlyTriedOn')}</h2>
           <button 
-            onClick={() => onNavigate('scan-outfit')}
+            onClick={() => onNavigate('ar-tryon')}
             className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
           >
-            View All <span className="material-symbols-outlined text-sm ml-1 leading-none">chevron_right</span>
+            {t('home.tryOnMore')} <span className="material-symbols-outlined text-sm ml-1 leading-none">chevron_right</span>
           </button>
         </div>
         <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
+          {activityList.length === 0 && (
+            <p className={`py-4 text-sm ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+              {t('home.emptyTryOns')}
+            </p>
+          )}
           {activityList.map((activity) => {
             const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
             const isSaved = matched ? wishlist.includes(matched.id) : false;
