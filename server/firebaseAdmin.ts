@@ -122,6 +122,9 @@ try {
         projectId: serviceAccount.project_id,
       });
       initialized = true;
+      try {
+        getFirestore().settings({ preferRest: true });
+      } catch {}
       console.log("✅ Firebase Admin initialized successfully");
     } else {
       console.warn("⚠️ Running Firebase Admin in local fallback mode (no valid service account provided).");

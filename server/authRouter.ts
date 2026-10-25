@@ -93,6 +93,9 @@ let firebaseEnabled = false;
 const initializeFirebaseServices = () => {
   try {
     firestore = getFirestore();
+    try {
+      firestore.settings({ preferRest: true });
+    } catch {}
     auth = getAuth();
     firebaseEnabled = true;
     console.log('Firebase services initialized successfully.');
@@ -371,6 +374,10 @@ const sendOTPEmail = async (
   const senderName = process.env.BREVO_SENDER_NAME?.trim() || "NOVA";
 
   if (!apiKey || !from) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`\n======================================================\n[DEV MODE] Verification OTP code for ${email}: ${otp}\n======================================================\n`);
+      return { ok: true };
+    }
     console.error(
       "[Email] Brevo is not configured; missing BREVO_API_KEY or BREVO_SENDER_EMAIL."
     );
@@ -469,36 +476,52 @@ const otpDocRef = (email: string) => {
 
 const getStoredOtp = async (email: string) => {
   if (firebaseEnabled && firestore) {
-    const doc = await otpDocRef(email)?.get();
-    return doc?.exists ? doc.data() : null;
+    try {
+      const doc = await otpDocRef(email)?.get();
+      return doc?.exists ? doc.data() : null;
+    } catch (e: any) {
+      console.warn('[OTP] Firestore getStoredOtp failed, falling back to memory store:', e?.message || e);
+    }
   }
   return localOtpStore.get(email) ?? null;
 };
 
 const saveStoredOtp = async (email: string, record: OTPRecord) => {
+  localOtpStore.set(email, record);
   if (firebaseEnabled && firestore) {
-    await otpDocRef(email)?.set(record, { merge: true });
+    try {
+      await otpDocRef(email)?.set(record, { merge: true });
+    } catch (e: any) {
+      console.warn('[OTP] Firestore saveStoredOtp failed, preserved in memory store:', e?.message || e);
+    }
     return;
   }
-  localOtpStore.set(email, record);
 };
 
 const deleteStoredOtp = async (email: string) => {
+  localOtpStore.delete(email);
   if (firebaseEnabled && firestore) {
-    await otpDocRef(email)?.delete();
+    try {
+      await otpDocRef(email)?.delete();
+    } catch (e: any) {
+      console.warn('[OTP] Firestore deleteStoredOtp failed:', e?.message || e);
+    }
     return;
   }
-  localOtpStore.delete(email);
 };
 
 const updateStoredOtp = async (email: string, data: Partial<OTPRecord>) => {
-  if (firebaseEnabled && firestore) {
-    await otpDocRef(email)?.update(data);
-    return;
-  }
   const existing = localOtpStore.get(email);
   if (existing) {
     localOtpStore.set(email, { ...existing, ...data });
+  }
+  if (firebaseEnabled && firestore) {
+    try {
+      await otpDocRef(email)?.update(data);
+    } catch (e: any) {
+      console.warn('[OTP] Firestore updateStoredOtp failed:', e?.message || e);
+    }
+    return;
   }
 };
 
