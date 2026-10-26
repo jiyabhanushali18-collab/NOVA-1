@@ -661,13 +661,14 @@ export default function App() {
     }
   };
 
-  const handleProfileSaved = async (profile: { name: string; email: string; phone: string; address: string }) => {
+  const handleProfileSaved = async (profile: { name: string; email: string; phone: string; address: string; profilePhoto?: string }) => {
     const firebaseUser = !isGuestSession ? await waitForFirebaseAuthReady() : null;
     if (!isGuestSession && !firebaseUser) {
       throw new Error('Your sign-in session has expired. Please sign in again, then save your profile.');
     }
 
     const currentUid = activeUid || firebaseUser?.uid || userEmail;
+    const photoToSave = profile.profilePhoto !== undefined ? profile.profilePhoto : (userProfilePhoto || activeAccount?.profilePhoto || '');
     const updatedAccount: NovaAccount = {
       ...activeAccount,
       uid: currentUid,
@@ -678,6 +679,7 @@ export default function App() {
       phone: profile.phone,
       address: profile.address,
       pinCode: userPinCode,
+      profilePhoto: photoToSave || undefined,
       deliveryAddress: userDeliveryAddress || undefined,
       savedAddresses: userSavedAddresses,
       createdAt: activeAccount?.createdAt || Date.now()
@@ -685,7 +687,7 @@ export default function App() {
 
     if (firebaseUser) {
       const userDocumentId = firebaseUser.uid;
-      const profileUpdate = {
+      const profileUpdate: Record<string, any> = {
         uid: firebaseUser.uid,
         name: profile.name,
         contactEmail: profile.email,
@@ -693,8 +695,20 @@ export default function App() {
         address: profile.address,
         updatedAt: serverTimestamp()
       };
+      if (profile.profilePhoto !== undefined) {
+        profileUpdate.profilePhoto = profile.profilePhoto;
+      }
       await setDoc(doc(db, 'users', userDocumentId), profileUpdate, { merge: true });
       await setDoc(doc(db, 'users', userDocumentId, 'profile', 'meta'), profileUpdate, { merge: true });
+    }
+
+    if (profile.profilePhoto !== undefined) {
+      setUserProfilePhoto(profile.profilePhoto);
+      if (profile.profilePhoto) {
+        localStorage.setItem('userProfilePhoto', profile.profilePhoto);
+      } else {
+        localStorage.removeItem('userProfilePhoto');
+      }
     }
 
     localStorage.setItem('userName', profile.name);

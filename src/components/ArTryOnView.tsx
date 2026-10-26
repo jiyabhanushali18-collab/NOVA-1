@@ -18,6 +18,16 @@ import {
   prepareGarmentForLiveTryOn,
 } from '../services/liveTryOnService';
 
+export type ArTryOnState =
+  | 'idle'
+  | 'initializing'
+  | 'camera_ready'
+  | 'processing'
+  | 'success'
+  | 'retryable_error'
+  | 'configuration_error'
+  | 'cancelled';
+
 interface ArTryOnViewProps {
   onNavigate: (screen: ScreenId) => void;
   onBack?: () => void;
@@ -119,6 +129,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   userName,
 }) => {
   const { t } = useI18n();
+  const [connectionState, setConnectionState] = useState<ArTryOnState>('idle');
   const [isSavingLook, setIsSavingLook] = useState(false);
   const [flash, setFlash] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -147,18 +158,28 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const activeModelBg = DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS['Lavender'];
   const activeGarmentObj = garmentsList.find((g) => g.id === selectedGarment) || garmentsList[0];
 
+  // Stable references to eliminate stale closures in async callbacks
+  const selectedGarmentRef = useRef(selectedGarment);
+  selectedGarmentRef.current = selectedGarment;
+  const activeGarmentObjRef = useRef(activeGarmentObj);
+  activeGarmentObjRef.current = activeGarmentObj;
+  const initialGarmentImageRef = useRef(initialGarmentImage);
+  initialGarmentImageRef.current = initialGarmentImage;
+  const garmentsListRef = useRef(garmentsList);
+  garmentsListRef.current = garmentsList;
+
   useEffect(() => {
     if (selectedGarment && activeGarmentObj) {
       analytics.trackProductImpression({ id: selectedGarment, name: activeGarmentObj.name }, 'ar_tryon');
     }
   }, [selectedGarment, activeGarmentObj?.name]);
 
-  // Stop session cleanly
-  const stopLiveSession = useCallback(() => {
+  // Stop session cleanly (can be called by user cancellation or session end)
+  const stopLiveSession = useCallback((isUserCancel = false) => {
     const pendingConnect = pendingConnectControllerRef.current;
     if (pendingConnect) {
       pendingConnect.abort();
-      setStatusText('Cancelling AI connection...');
+      pendingConnectControllerRef.current = null;
     }
     if (sessionRef.current) {
       sessionRef.current.stop();
@@ -172,15 +193,22 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     localPreviewStreamRef.current = null;
     if (isLiveRef.current && sessionStartTimeRef.current) {
       const elapsed = Date.now() - sessionStartTimeRef.current;
-      analytics.trackArTryOnEnded(selectedGarment, elapsed);
+      analytics.trackArTryOnEnded(selectedGarmentRef.current, elapsed);
     }
     isLiveRef.current = false;
     isConnectingRef.current = false;
     setIsCameraActive(false);
     setIsVideoLive(false);
     setIsConnecting(false);
-    if (!pendingConnect) setStatusText('Camera ready');
-  }, [selectedGarment]);
+
+    if (isUserCancel) {
+      setConnectionState('cancelled');
+      setStatusText(t('arTryOn.interrupted'));
+    } else {
+      setConnectionState('idle');
+      setStatusText(t('arTryOn.ready'));
+    }
+  }, [t]);
 
   // Clean up session strictly on unmount
   useEffect(() => {
@@ -197,7 +225,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     };
   }, []);
 
-  // Start live session on-demand
+  // Start live session on-demand (Single-flight connection with lifecycle state management)
   const startLiveSession = useCallback(async () => {
     if (isConnectingRef.current || isLiveRef.current || pendingConnectControllerRef.current) return;
     if (!videoRef.current) return;
@@ -213,11 +241,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     const connectController = new AbortController();
     pendingConnectControllerRef.current = connectController;
     setIsConnecting(true);
-    setStatusText('Connecting AI...');
+    setConnectionState('initializing');
+    setStatusText(t('arTryOn.preparing'));
     sessionStartTimeRef.current = Date.now();
-    analytics.trackArTryOnStarted(selectedGarment, activeGarmentObj?.name, 'ar_tryon');
+    const currentGarment = activeGarmentObjRef.current;
+    const currentGarmentId = selectedGarmentRef.current;
+    analytics.trackArTryOnStarted(currentGarmentId, currentGarment?.name, 'ar_tryon');
 
-    const garmentSource = initialGarmentImage || activeGarmentObj?.file || activeGarmentObj?.img;
+    const garmentSource = initialGarmentImageRef.current || currentGarment?.file || currentGarment?.img;
 
     try {
       const handle = await startLiveTryOnSession({
@@ -228,9 +259,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         onLocalStream: (stream) => {
           localPreviewStreamRef.current = stream;
           setIsCameraActive(true);
-          setStatusText('Camera active - connecting AI...');
+          setConnectionState('camera_ready');
+          setStatusText(t('arTryOn.cameraReady'));
         },
         onStatusChange: (status) => {
+          if (status.includes('Connecting to AI') || status.includes('Applying garment')) {
+            setConnectionState('processing');
+          }
           setStatusText(status);
         },
         onConnected: () => {
@@ -238,22 +273,24 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           isConnectingRef.current = false;
           setIsVideoLive(true);
           setIsConnecting(false);
-          setStatusText('Live AI Active');
+          setConnectionState('success');
+          setStatusText(t('arTryOn.liveActive'));
           const durationMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : undefined;
-          analytics.trackArTryOnSucceeded(selectedGarment, activeGarmentObj?.name, durationMs);
-          if (activeGarmentObj) {
+          analytics.trackArTryOnSucceeded(selectedGarmentRef.current, activeGarmentObjRef.current?.name, durationMs);
+          if (activeGarmentObjRef.current) {
             onTryOnSuccess?.({
-              id: activeGarmentObj.id,
-              name: activeGarmentObj.name,
-              imageUrl: activeGarmentObj.img.startsWith('blob:') ? '' : activeGarmentObj.img
+              id: activeGarmentObjRef.current.id,
+              name: activeGarmentObjRef.current.name,
+              imageUrl: activeGarmentObjRef.current.img.startsWith('blob:') ? '' : activeGarmentObjRef.current.img,
             });
           }
         },
         onError: (err) => {
           console.warn('Live session error:', err);
-          analytics.trackArTryOnFailed(selectedGarment, 'stream_error', activeGarmentObj?.name);
-          stopLiveSession();
-          setStatusText(err.message || 'AI connection lost. Tap Try On Live to retry.');
+          analytics.trackArTryOnFailed(selectedGarmentRef.current, 'stream_error', activeGarmentObjRef.current?.name);
+          stopLiveSession(false);
+          setConnectionState('retryable_error');
+          setStatusText(err.message || t('arTryOn.interrupted'));
         },
       });
 
@@ -264,25 +301,30 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       sessionRef.current = handle;
     } catch (err: any) {
       if (connectController.signal.aborted) {
+        setConnectionState('cancelled');
+        setStatusText(t('arTryOn.interrupted'));
         return;
       }
       console.error('Could not start live session:', err);
-      const errorCategory = err?.name === 'NotAllowedError' ? 'camera_permission_denied' : 'connection_failed';
-      analytics.trackArTryOnFailed(selectedGarment, errorCategory, activeGarmentObj?.name);
+      const isPermissionDenied = err?.name === 'NotAllowedError';
+      const errorCategory = isPermissionDenied ? 'camera_permission_denied' : 'connection_failed';
+      analytics.trackArTryOnFailed(selectedGarmentRef.current, errorCategory, activeGarmentObjRef.current?.name);
       isConnectingRef.current = false;
       setIsConnecting(false);
-      const errorMessage = typeof err?.message === 'string' && err.message.trim()
-        ? err.message.trim()
-        : typeof err?.error?.message === 'string' && err.error.message.trim()
-        ? err.error.message.trim()
-        : 'Unknown connection error';
-      const detail = errorMessage.length > 140 ? `${errorMessage.slice(0, 137)}...` : errorMessage;
-      const isStaleAttempt = err?.name === 'AbortError' || errorMessage.includes('Stale connect attempt');
-      setStatusText(err?.name === 'NotAllowedError'
-        ? 'Camera access denied'
-        : isStaleAttempt
-        ? 'AI connection was interrupted. Tap Try On Live to reconnect.'
-        : `AI connection failed: ${detail}`);
+
+      if (isPermissionDenied) {
+        setConnectionState('configuration_error');
+        setStatusText(t('arTryOn.cameraDenied'));
+      } else {
+        setConnectionState('retryable_error');
+        const errorMessage = typeof err?.message === 'string' && err.message.trim()
+          ? err.message.trim()
+          : typeof err?.error?.message === 'string' && err.error.message.trim()
+          ? err.error.message.trim()
+          : 'Unknown connection error';
+        const detail = errorMessage.length > 90 ? `${errorMessage.slice(0, 87)}...` : errorMessage;
+        setStatusText(`${t('arTryOn.failed')}: ${detail}`);
+      }
     } finally {
       if (pendingConnectControllerRef.current === connectController) {
         pendingConnectControllerRef.current = null;
@@ -290,12 +332,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       if (connectController.signal.aborted) {
         isConnectingRef.current = false;
         setIsConnecting(false);
-        setStatusText('Camera ready');
       }
     }
-  }, [activeGarmentObj, initialGarmentImage, onTryOnSuccess, stopLiveSession]);
+  }, [onTryOnSuccess, stopLiveSession, t]);
 
-  // Garment selection: instant dispatch via cached blob/file
+  // Garment selection: instant dispatch via cached blob/file without tearing down camera stream
   const handleGarmentClick = (item: GarmentItem) => {
     const prev = selectedGarment;
     setSelectedGarment(item.id);
@@ -304,7 +345,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
     if (sessionRef.current && isLiveRef.current) {
       const payload = item.file || item.img;
-      sessionRef.current.setGarment(payload).catch(() => {});
+      sessionRef.current.setGarment(payload).catch((err) => {
+        console.warn('Garment update error:', err);
+      });
     }
   };
 
@@ -339,14 +382,22 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
   };
 
-  // Toggle Live Camera / Fallback Mode
-  const handleToggleCamera = () => {
-    if (isLiveRef.current || isConnectingRef.current) {
-      stopLiveSession();
+  // Primary Action Button (Try On Live / Cancel / Stop Live / Retry)
+  const handlePrimaryAction = () => {
+    if (connectionState === 'initializing' || connectionState === 'processing') {
+      // Cancel in-flight connection
+      stopLiveSession(true);
+    } else if (connectionState === 'success') {
+      // Stop live stream
+      stopLiveSession(false);
     } else {
+      // 'idle', 'camera_ready', 'retryable_error', 'configuration_error', 'cancelled'
       startLiveSession();
     }
   };
+
+  // Backwards compatibility alias
+  const handleToggleCamera = handlePrimaryAction;
 
   // Flip Camera
   const handleFlip = async () => {
@@ -581,12 +632,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           <div className="max-w-[calc(100%-1rem)] bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
             <span
               className={`w-2 h-2 rounded-full ${
-                isVideoLive
+                connectionState === 'success'
                   ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
-                  : isConnecting
+                  : connectionState === 'initializing' || connectionState === 'processing'
                   ? 'bg-amber-400 animate-ping'
-                  : statusText.includes('retry') || statusText.includes('denied') || statusText.includes('failed')
+                  : connectionState === 'retryable_error' || connectionState === 'configuration_error'
                   ? 'bg-rose-400'
+                  : connectionState === 'camera_ready'
+                  ? 'bg-cyan-400'
                   : 'bg-emerald-400'
               }`}
             />
@@ -703,19 +756,36 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       <section className="grid grid-cols-2 gap-3 pt-0.5">
         <button
           type="button"
-          onClick={handleToggleCamera}
-          disabled={isConnecting}
-          className="w-full py-3.5 px-3 rounded-2xl bg-[#5D3DF2] hover:bg-[#4E30E0] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#5D3DF2]/30 transition-all cursor-pointer disabled:opacity-60"
+          onClick={handlePrimaryAction}
+          className={`w-full py-3.5 px-3 rounded-2xl active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
+            connectionState === 'initializing' || connectionState === 'processing'
+              ? 'bg-[#5D3DF2] hover:bg-[#4E30E0] shadow-[#5D3DF2]/30'
+              : connectionState === 'success'
+              ? 'bg-[#E11D48] hover:bg-[#BE123C] shadow-rose-900/30'
+              : connectionState === 'retryable_error'
+              ? 'bg-[#6D28D9] hover:bg-[#5B21B6] shadow-purple-900/30'
+              : 'bg-[#5D3DF2] hover:bg-[#4E30E0] shadow-[#5D3DF2]/30'
+          }`}
         >
-          {isConnecting ? (
+          {connectionState === 'initializing' || connectionState === 'processing' ? (
             <>
               <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              <span>{t('arTryOn.connectingBtn')}</span>
+              <span>{t('arTryOn.connectingBtn')} ({t('arTryOn.cancelBtn')})</span>
+            </>
+          ) : connectionState === 'success' ? (
+            <>
+              <span className="material-symbols-outlined text-lg leading-none">videocam_off</span>
+              <span>{t('arTryOn.stopLive')}</span>
+            </>
+          ) : connectionState === 'retryable_error' ? (
+            <>
+              <span className="material-symbols-outlined text-lg leading-none">refresh</span>
+              <span>{t('arTryOn.retryBtn')}</span>
             </>
           ) : (
             <>
               <span className="material-symbols-outlined text-lg leading-none">videocam</span>
-              <span>{isVideoLive ? t('arTryOn.stopLive') : t('arTryOn.tryOnLive')}</span>
+              <span>{t('arTryOn.tryOnLive')}</span>
             </>
           )}
         </button>

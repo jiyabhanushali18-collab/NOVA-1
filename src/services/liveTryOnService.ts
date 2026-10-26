@@ -22,36 +22,34 @@ export interface LiveTryOnSessionHandle {
 // In-memory cache for processed garment blobs so switching garments is instant
 const garmentCache = new Map<string, Blob | string>();
 const publicAsset = (assetPath: string) => `${import.meta.env.BASE_URL}${assetPath}`;
+
 let liveConnectQueue: Promise<void> = Promise.resolve();
-let queuedLiveConnects = 0;
+let isLiveConnectInProgress = false;
 
 async function runSerializedLiveConnect<T>(
   signal: AbortSignal | undefined,
   onWaiting: () => void,
   connect: () => Promise<T>
 ): Promise<T> {
+  if (signal?.aborted) {
+    throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
+  }
+
   const previousConnect = liveConnectQueue;
   let releaseQueue!: () => void;
   liveConnectQueue = new Promise<void>((resolve) => {
     releaseQueue = resolve;
   });
-  const wasQueued = queuedLiveConnects > 0;
-  queuedLiveConnects += 1;
-  let acquiredQueue = false;
-  let abortListener: (() => void) | undefined;
 
   try {
-    if (wasQueued) {
+    if (isLiveConnectInProgress) {
       onWaiting();
       if (signal) {
-        if (signal.aborted) {
-          throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
-        }
         await Promise.race([
           previousConnect,
           new Promise<void>((_, reject) => {
-            abortListener = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
-            signal.addEventListener('abort', abortListener, { once: true });
+            const onAbort = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
+            signal.addEventListener('abort', onAbort, { once: true });
           }),
         ]);
       } else {
@@ -61,31 +59,34 @@ async function runSerializedLiveConnect<T>(
       await previousConnect;
     }
 
-    acquiredQueue = true;
     if (signal?.aborted) {
       throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
     }
 
+    isLiveConnectInProgress = true;
     return await connect();
   } finally {
-    if (abortListener) signal?.removeEventListener('abort', abortListener);
-    queuedLiveConnects -= 1;
-    if (acquiredQueue) {
-      releaseQueue();
-    } else {
-      void previousConnect.then(releaseQueue);
-    }
+    isLiveConnectInProgress = false;
+    releaseQueue();
   }
 }
 
-// Keep credential metadata for failure feedback, never reuse the client token.
+// Keep credential metadata for failure feedback, and cache freshly minted token
 let activeTokenState: {
   credentialId: string | null;
   feedbackEndpoint: string;
 } | null = null;
 
+let cachedClientToken: {
+  token: string;
+  expiresAt: number;
+} | null = null;
+
+let inFlightTokenPromise: Promise<string> | null = null;
+
 export function invalidateLiveTryOnToken(): void {
   activeTokenState = null;
+  cachedClientToken = null;
 }
 
 function reportSessionFailure(reason: string): void {
@@ -142,81 +143,89 @@ export const DEFAULT_MODELS: Record<string, string> = {
 };
 
 /**
- * Fetch a mint client session token with multi-tier fallback, caching,
- * and retry handling to eliminate "fetch failed" on slow connections or cold starts.
+ * Fetch a mint client session token with single-flight deduplication, caching,
+ * and multi-tier fallback to eliminate duplicate requests and connection hangs.
  */
 export async function getLiveTryOnToken(): Promise<string> {
-  const candidateEndpoints: string[] = [];
-
-  // 1. In browser, local endpoints (and relative URL) first so local server rotation pool is used
-  if (typeof window !== 'undefined') {
-    candidateEndpoints.push('/api/vton/token');
-    const port = window.location.port;
-    if (port && port !== '3000') {
-      candidateEndpoints.push(`http://${window.location.hostname}:3000/api/vton/token`);
-    }
-    candidateEndpoints.push('http://localhost:3000/api/vton/token');
-    candidateEndpoints.push('http://127.0.0.1:3000/api/vton/token');
+  const now = Date.now();
+  if (cachedClientToken && cachedClientToken.expiresAt > now) {
+    return cachedClientToken.token;
   }
 
-  // 2. Configured / platform apiUrl
-  const standardUrl = apiUrl('/api/vton/token');
-  if (standardUrl) candidateEndpoints.push(standardUrl);
+  if (inFlightTokenPromise) {
+    return inFlightTokenPromise;
+  }
 
-  // 3. Production Render cloud backend (always available & has CORS enabled)
-  candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
+  inFlightTokenPromise = (async () => {
+    try {
+      const candidateEndpoints: string[] = [];
+      const primaryUrl = apiUrl('/api/vton/token');
+      if (primaryUrl) candidateEndpoints.push(primaryUrl);
+      if (primaryUrl !== `${PRODUCTION_API_URL}/api/vton/token`) {
+        candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
+      }
 
-  const uniqueEndpoints = Array.from(new Set(candidateEndpoints.filter(Boolean)));
-  let lastError: any = null;
+      let lastError: any = null;
 
-  for (const endpoint of uniqueEndpoints) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutMs = attempt === 0 ? 12000 : 25000;
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+      for (const endpoint of candidateEndpoints) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutMs = attempt === 0 ? 8000 : 12000;
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-        const response = await fetch(endpoint, {
-          signal: controller.signal,
-          headers: { Accept: 'application/json' },
-        });
-        clearTimeout(timer);
+            const response = await fetch(endpoint, {
+              signal: controller.signal,
+              headers: { Accept: 'application/json' },
+            });
+            clearTimeout(timer);
 
-        if (!response.ok) {
-          const errorJson = await response.json().catch(() => ({}));
-          throw new Error(errorJson.error || `Server HTTP ${response.status}`);
-        }
+            if (!response.ok) {
+              const errorJson = await response.json().catch(() => ({}));
+              throw new Error(errorJson.error || `Server HTTP ${response.status}`);
+            }
 
-        const data = await response.json();
-        const token = data.apiKey || data.token;
-        if (!token) {
-          throw new Error('Server returned empty token');
-        }
+            const data = await response.json();
+            const token = data.apiKey || data.token;
+            if (!token) {
+              throw new Error('Server returned empty token');
+            }
 
-        // The SDK calls its provider for every dial; retain only feedback metadata.
-        activeTokenState = {
-          credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
-          feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
-        };
+            activeTokenState = {
+              credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
+              feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
+            };
 
-        return token;
-      } catch (err: any) {
-        lastError = err;
-        if (attempt === 0) {
-          await new Promise((r) => setTimeout(r, 600));
+            // Cache token for 60 seconds (server issues 300s tokens) to deduplicate connects without sending expired tokens
+            cachedClientToken = {
+              token,
+              expiresAt: Date.now() + 60 * 1000,
+            };
+
+            return token;
+          } catch (err: any) {
+            lastError = err;
+            if (attempt === 0) {
+              await new Promise((r) => setTimeout(r, 400));
+            }
+          }
         }
       }
+
+      const friendlyMessage =
+        lastError?.name === 'AbortError'
+          ? 'AI server is warming up. Tap Retry to connect.'
+          : lastError?.message && !lastError.message.includes('fetch')
+          ? lastError.message
+          : 'Unable to connect to AI server. Tap Retry to connect.';
+
+      throw new Error(friendlyMessage);
+    } finally {
+      inFlightTokenPromise = null;
     }
-  }
+  })();
 
-  const friendlyMessage =
-    lastError?.name === 'AbortError'
-      ? 'AI server is warming up. Tap Try On Live to retry.'
-      : lastError?.message && !lastError.message.includes('fetch')
-      ? lastError.message
-      : 'Unable to connect to AI server. Tap to retry.';
-
-  throw new Error(friendlyMessage);
+  return inFlightTokenPromise;
 }
 
 /**
@@ -423,6 +432,9 @@ export function captureVideoFrame(video: HTMLVideoElement): string | null {
 export async function startLiveTryOnSession(
   config: LiveTryOnSessionConfig
 ): Promise<LiveTryOnSessionHandle> {
+  const sessionId = 'ar-' + Math.random().toString(36).slice(2, 8);
+  console.log(`[AR:${sessionId}] Initiating live try-on session...`);
+
   const throwIfAborted = () => {
     if (config.signal?.aborted) {
       throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
@@ -451,6 +463,7 @@ export async function startLiveTryOnSession(
     throwIfAborted();
   }
 
+  console.log(`[AR:${sessionId}] Camera acquired (${currentFacingMode})`);
   config.videoElement.srcObject = localStream;
   config.videoElement.play().catch((err) => {
     console.warn('Camera preview play error:', err);
@@ -469,19 +482,21 @@ export async function startLiveTryOnSession(
   let isDestroyed = false;
   let hasConnected = false;
 
-  // Connect WebRTC stream without a large initial payload; let the SDK retry
-  // transient network and capacity failures using its bounded defaults.
-  let realtimeClient;
+  // Single-flight connection with bounded SDK retry budget.
+  let realtimeClient: any;
   try {
     throwIfAborted();
     const connectionOptions = {
       model,
-      capacityRetryBudgetMs: 30000,
-      onCapacityWait: ({ retryAfterMs }) => {
+      retries: 2,
+      capacityRetryBudgetMs: 15000,
+      onCapacityWait: ({ retryAfterMs }: { retryAfterMs: number }) => {
+        console.warn(`[AR:${sessionId}] Server busy, waiting ${retryAfterMs}ms`);
         config.onStatusChange?.(`AI server busy - retrying in ${Math.ceil(retryAfterMs / 1000)} seconds...`);
       },
       onRemoteStream: (transformedStream: MediaStream) => {
         if (isDestroyed) return;
+        console.log(`[AR:${sessionId}] Received transformed remote stream`);
         if (!hasConnected) {
           hasConnected = true;
           config.onConnected?.();
@@ -492,8 +507,9 @@ export async function startLiveTryOnSession(
         });
         config.onStatusChange?.('Live AI Active');
       },
-      onConnectionChange: (state) => {
+      onConnectionChange: (state: string) => {
         if (isDestroyed) return;
+        console.log(`[AR:${sessionId}] WebRTC state change:`, state);
         if (state === 'connected' || state === 'generating') {
           if (!hasConnected) {
             hasConnected = true;
@@ -517,32 +533,13 @@ export async function startLiveTryOnSession(
         }
       },
     };
-    let connectAttempts = 0;
-    while (!realtimeClient && connectAttempts < 3) {
-      connectAttempts++;
-      try {
-        throwIfAborted();
-        const activeClient = connectAttempts === 1 ? client : createVtonClient({
-          apiKeyProvider: getLiveTryOnToken,
-          logger,
-        });
-        realtimeClient = await runSerializedLiveConnect(
-          config.signal,
-          () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
-          () => activeClient.realtime.connect(localStream, connectionOptions)
-        );
-      } catch (error: any) {
-        if (config.signal?.aborted) throw error;
-        const msg = typeof error?.message === 'string' ? error.message : String(error || '');
-        const isStale = msg.includes('Stale connect attempt') || error?.name === 'AbortError';
-        if (isStale && connectAttempts < 3) {
-          config.onStatusChange?.('AI connection was interrupted - retrying...');
-          await new Promise((resolve) => setTimeout(resolve, 400));
-          continue;
-        }
-        throw error;
-      }
-    }
+
+    realtimeClient = await runSerializedLiveConnect(
+      config.signal,
+      () => config.onStatusChange?.('Waiting for previous AI connection to close...'),
+      () => client.realtime.connect(localStream, connectionOptions)
+    );
+
     if (config.signal?.aborted) {
       realtimeClient?.disconnect();
       localStream.getTracks().forEach((track) => track.stop());
@@ -551,6 +548,7 @@ export async function startLiveTryOnSession(
   } catch (error: any) {
     const errorMsg = typeof error?.message === 'string' ? error.message : String(error || '');
     const isCancelled = config.signal?.aborted || error?.name === 'AbortError' || errorMsg.includes('cancelled');
+    console.error(`[AR:${sessionId}] Connection error (cancelled: ${isCancelled}):`, errorMsg);
     if (isCancelled) {
       localStream.getTracks().forEach((track) => track.stop());
       if (config.videoElement.srcObject === localStream) {
@@ -591,7 +589,7 @@ export async function startLiveTryOnSession(
   let pendingGarment: File | Blob | string | null = null;
 
   const setGarment = async (garment: File | Blob | string | null) => {
-    if (isDestroyed || !realtimeClient.isConnected()) return;
+    if (isDestroyed) return;
 
     pendingGarment = garment;
     if (isUpdatingGarment) {
@@ -600,7 +598,17 @@ export async function startLiveTryOnSession(
 
     isUpdatingGarment = true;
     try {
-      while (pendingGarment !== null && !isDestroyed && realtimeClient.isConnected()) {
+      while (pendingGarment !== null && !isDestroyed) {
+        if (!realtimeClient.isConnected()) {
+          // Wait briefly for connection if it is transitioning
+          for (let i = 0; i < 30 && !realtimeClient.isConnected() && !isDestroyed; i++) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+          if (!realtimeClient.isConnected()) {
+            break;
+          }
+        }
+
         const nextGarment = pendingGarment;
         pendingGarment = null;
 
@@ -614,7 +622,7 @@ export async function startLiveTryOnSession(
         config.onStatusChange?.('Live AI Active');
       }
     } catch (err: any) {
-      console.warn('Error updating garment:', err);
+      console.warn(`[AR:${sessionId}] Error updating garment:`, err);
       config.onStatusChange?.('Live AI Active');
     } finally {
       isUpdatingGarment = false;
@@ -623,11 +631,9 @@ export async function startLiveTryOnSession(
 
   // If a garment was requested at start, send it once WebRTC connection is active
   if (config.garmentImage) {
-    setTimeout(() => {
-      if (!isDestroyed && realtimeClient.isConnected()) {
-        setGarment(config.garmentImage);
-      }
-    }, 250);
+    setGarment(config.garmentImage).catch((err) => {
+      console.warn(`[AR:${sessionId}] Initial garment apply warning:`, err);
+    });
   }
 
   const stop = () => {

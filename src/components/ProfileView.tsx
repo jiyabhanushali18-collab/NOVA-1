@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord, DeliveryAddress, SavedLook } from '../types';
 import { fetchUserSavedLooks, deleteUserSavedLook, saveImageToDeviceGallery, downloadSavedLook } from '../services/savedLooksService';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
@@ -18,7 +18,7 @@ interface ProfileViewProps {
   userName: string;
   setUserName: (name: string) => void;
   userEmail?: string;
-  onSaveProfile?: (profile: { name: string; email: string; phone: string; address: string }) => Promise<void>;
+  onSaveProfile?: (profile: { name: string; email: string; phone: string; address: string; profilePhoto?: string }) => Promise<void>;
   userPhone?: string;
   userAddress?: string;
   userPinCode?: string;
@@ -68,6 +68,35 @@ const GooglePayMark = ({ className = '' }: { className?: string }) => (
     <span className="ml-0.5 text-[#5F6368]">Pay</span>
   </span>
 );
+
+const compressProfileImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 512;
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not process image context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Could not load image file'));
+      img.src = String(reader.result || '');
+    };
+    reader.onerror = () => reject(new Error('Could not read image file'));
+    reader.readAsDataURL(file);
+  });
+};
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
   onNavigate, 
@@ -657,6 +686,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [profileLocation, setProfileLocation] = useState(
     userAddress || (savedDeliveryAddress ? formatDeliveryAddress(savedDeliveryAddress) : '')
   );
+  const [editProfilePhoto, setEditProfilePhoto] = useState<string | undefined>(profilePhoto);
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    setEditProfilePhoto(profilePhoto);
+  }, [profilePhoto]);
 
   // Sync state if user settings change or log in with another account
   React.useEffect(() => {
@@ -693,7 +728,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           name: profileName.trim(),
           email: profileEmail.trim(),
           phone: profilePhone.trim(),
-          address: profileLocation.trim()
+          address: profileLocation.trim(),
+          profilePhoto: editProfilePhoto
         });
       } else {
         setUserName(profileName.trim());
@@ -1261,9 +1297,87 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Edit Profile Modal */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 bg-[#131426]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up">
-            <h3 className="text-lg font-bold text-[#131426]">{t('profile.editProfile.title')}</h3>
+          <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#131426]">{t('profile.editProfile.title')}</h3>
+              <button
+                type="button"
+                onClick={() => setIsProfileModalOpen(false)}
+                className="text-[#5E667A] hover:text-[#131426] p-1 rounded-lg transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-lg leading-none">close</span>
+              </button>
+            </div>
             <form onSubmit={handleSaveProfile} className="space-y-3">
+              {/* Profile Photo Upload & Preview */}
+              <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#553BE2] shadow-md shadow-[#553BE2]/15 bg-[#F2EEFF] relative">
+                    <img 
+                      alt="Avatar preview" 
+                      className="w-full h-full object-cover"
+                      src={editProfilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileName || userName || 'NOVA User')}&background=ECE7FF&color=553BE2&bold=true`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => profilePhotoInputRef.current?.click()}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold cursor-pointer"
+                      aria-label={t('profile.editProfile.changePhoto')}
+                    >
+                      <span className="material-symbols-outlined text-lg mb-0.5">photo_camera</span>
+                      <span>{t('profile.editProfile.changePhoto')}</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => profilePhotoInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 bg-[#553BE2] hover:bg-[#462CC9] text-white p-2 rounded-full shadow border-2 border-white transition-all cursor-pointer hover:scale-110 active:scale-95"
+                    aria-label={t('profile.editProfile.uploadPhoto')}
+                  >
+                    <span className="material-symbols-outlined text-[13px] leading-none">photo_camera</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => profilePhotoInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#F2EEFF] text-[#553BE2] hover:bg-[#E4DFF5] transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm leading-none">upload</span>
+                    <span>{editProfilePhoto ? t('profile.editProfile.changePhoto') : t('profile.editProfile.uploadPhoto')}</span>
+                  </button>
+                  {editProfilePhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setEditProfilePhoto('')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm leading-none">delete</span>
+                      <span>{t('profile.editProfile.removePhoto')}</span>
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  ref={profilePhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const dataUrl = await compressProfileImage(file);
+                      setEditProfilePhoto(dataUrl);
+                    } catch (err) {
+                      console.error('Failed to load image:', err);
+                    }
+                  }}
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.name')}</label>
                 <input 
