@@ -10,6 +10,7 @@ try {
   // undici fallback
 }
 
+import http from 'http';
 import express from 'express';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -70,18 +71,31 @@ async function start() {
     app.use('/api', tryOnScoreRouter);
     app.use('/api', analyticsRouter);
 
-    // Create Vite server for development. HMR is disabled because this server
-    // runs Vite in middleware mode and owns the application port itself.
+    const server = http.createServer(app);
+
+    server.on('clientError', (err: any, socket: any) => {
+      if (err?.code === 'ECONNRESET' || !socket.writable) {
+        return;
+      }
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    });
+
+    // Create Vite server for development with HMR attached to the HTTP server
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
         allowedHosts: ['nova-1-1.onrender.com'],
-        hmr: false
+        hmr: { server }
       }
     });
 
     // Use Vite's connect instance as middleware 
     app.use(vite.middlewares);
+
+    // Serve favicon to prevent browser 404 console errors
+    app.get('/favicon.ico', (req, res) => {
+      res.sendFile(path.resolve(currentDirectory, 'public/favicon.ico'));
+    });
 
     // Fallback to index.html for SPA 
     app.get('/', (req, res) => { 
@@ -90,28 +104,23 @@ async function start() {
 
     // Keep a second local dev process from making startup fail completely.
     const listen = (port: number) => {
-      const server = app.listen(port, () => {
+      server.listen(port, () => {
         console.log(`\n✨ Server running at http://localhost:${port}\n`);
       });
 
       server.once('error', (error: NodeJS.ErrnoException) => {
-        if (error.code !== 'EADDRINUSE') {
+        if (error.code === 'EADDRINUSE') {
+          const fallbackPort = port + 1;
+          console.warn(`Port ${port} is already in use. Retrying on ${fallbackPort}.`);
+          listen(fallbackPort);
+        } else {
           console.error('Server listen error:', error);
           process.exit(1);
         }
       });
-
-      return server;
     };
 
-    const server = listen(PORT);
-    server.once('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EADDRINUSE') {
-        const fallbackPort = PORT + 1;
-        console.warn(`Port ${PORT} is already in use. Retrying on ${fallbackPort}.`);
-        listen(fallbackPort);
-      }
-    });
+    listen(PORT);
   } catch (error) {
     console.error('Server startup error:', error);
     process.exit(1);

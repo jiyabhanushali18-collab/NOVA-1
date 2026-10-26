@@ -125,6 +125,21 @@ export function maskApiKey(key: string): string {
 }
 
 /**
+ * Checks whether an API key is a dummy or template placeholder.
+ */
+export function isPlaceholderKey(val: string): boolean {
+  if (!val || typeof val !== 'string') return true;
+  const lower = val.toLowerCase().trim();
+  return (
+    lower.length < 8 ||
+    lower.startsWith('paste_') ||
+    lower.startsWith('your_') ||
+    lower.includes('placeholder') ||
+    lower === 'replace_me'
+  );
+}
+
+/**
  * Classifies Decart API responses and errors based on official HTTP status codes,
  * SDK error objects, and response message patterns.
  */
@@ -335,20 +350,10 @@ export class DecartKeyPool {
       process.env.VTON_QUOTA_GROUP ||
       'default-quota-group';
 
-    const isPlaceholder = (val: string) => {
-      const lower = val.toLowerCase().trim();
-      return (
-        lower.startsWith('paste_') ||
-        lower.startsWith('your_') ||
-        lower.includes('placeholder') ||
-        lower === 'replace_me'
-      );
-    };
-
     const addKey = (key: string, explicitId?: string, quotaGroup?: string, priority?: number) => {
       if (!key) return;
       const cleanKey = key.trim();
-      if (!cleanKey || isPlaceholder(cleanKey) || discoveredKeys.has(cleanKey)) return;
+      if (!cleanKey || isPlaceholderKey(cleanKey) || discoveredKeys.has(cleanKey)) return;
       discoveredKeys.add(cleanKey);
 
       const id = explicitId || `decart-key-${configs.length + 1}`;
@@ -429,8 +434,8 @@ export class DecartKeyPool {
     this.credentials.clear();
 
     configs.forEach((cfg, index) => {
-      const apiKey = cfg.apiKey.trim();
-      if (!apiKey) return;
+      const apiKey = cfg.apiKey ? cfg.apiKey.trim() : '';
+      if (!apiKey || isPlaceholderKey(apiKey)) return;
 
       const id = cfg.id || `decart-key-${index + 1}`;
       const quotaGroup = cfg.quotaGroup || `account-${index + 1}`;
@@ -575,6 +580,10 @@ export class DecartKeyPool {
     this.roundRobinIndex = (this.roundRobinIndex + 1) % 1000000;
     selected.lastSelectedAt = Date.now();
 
+    console.log(
+      `[DecartKeyPool] Rotation selected credential "${selected.id}" (${selected.maskedKey}, quota: ${selected.quotaGroup}, eligible: ${topTier.length}/${this.credentials.size}).`
+    );
+
     return selected;
   }
 
@@ -635,9 +644,13 @@ export class DecartKeyPool {
       const cred = this.selectEligibleCredential(attemptedQuotaGroups);
 
       if (!cred) {
-        // No remaining eligible credentials in unattempted quota groups
+        console.warn(`[DecartKeyPool] No eligible credentials available for attempt ${attempt + 1}/${maxAttempts}.`);
         break;
       }
+
+      console.log(
+        `[DecartKeyPool] Requesting live try-on token via "${cred.id}" (${cred.maskedKey}) [attempt ${attempt + 1}/${maxAttempts}].`
+      );
 
       try {
         const mintPayload: any = {
@@ -674,6 +687,10 @@ export class DecartKeyPool {
         cred.successCount++;
         cred.lastSuccessAt = Date.now();
 
+        console.log(
+          `[DecartKeyPool] Token successfully minted via "${cred.id}" (${cred.maskedKey}). Total minted by key: ${cred.tokensMinted}.`
+        );
+
         return {
           token,
           credentialId: cred.id,
@@ -690,6 +707,10 @@ export class DecartKeyPool {
         cred.lastFailureAt = Date.now();
         cred.lastErrorCategory = classified.category;
         cred.lastErrorMessage = classified.message;
+
+        console.warn(
+          `[DecartKeyPool] Token generation failed via "${cred.id}" (${cred.maskedKey}). Category: ${classified.category}, Status: ${classified.statusCode}. Action: ${classified.category === 'INVALID_API_KEY' ? 'quarantine' : `cooldown ${Math.round(classified.cooldownMs / 1000)}s`}.`
+        );
 
         if (classified.category === 'INSUFFICIENT_CREDITS') {
           this.setQuotaGroupExhausted(cred.quotaGroup, classified.cooldownMs, classified.message);

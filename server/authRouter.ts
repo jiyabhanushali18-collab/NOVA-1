@@ -374,17 +374,13 @@ const sendOTPEmail = async (
   const senderName = process.env.BREVO_SENDER_NAME?.trim() || "NOVA";
 
   if (!apiKey || !from) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`\n======================================================\n[DEV MODE] Verification OTP code for ${email}: ${otp}\n======================================================\n`);
-      return { ok: true };
-    }
     console.error(
       "[Email] Brevo is not configured; missing BREVO_API_KEY or BREVO_SENDER_EMAIL."
     );
     return {
       ok: false,
       status: 503,
-      error: "Email delivery is not configured. Please contact support."
+      error: "Email delivery service is not configured. Please contact support."
     };
   }
 
@@ -426,17 +422,35 @@ const sendOTPEmail = async (
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
+      let errorDetail = '';
+      try {
+        const errorJson = await response.json();
+        errorDetail = errorJson.message || JSON.stringify(errorJson);
+      } catch {
+        errorDetail = (await response.text()).slice(0, 500);
+      }
+
       console.error("[Email] Brevo rejected the OTP email.", {
         status: response.status,
-        error: errorText.slice(0, 500),
+        error: errorDetail.slice(0, 500),
         recipient: maskEmail(email)
       });
+
+      let userError = "Email delivery failed. Please try again.";
+      if (response.status === 401) {
+        if (errorDetail.includes('unrecognised IP address') || errorDetail.includes('authorised_ips')) {
+          userError = "Email service rejected connection: unrecognised server IP. Please authorise your server IP in Brevo security settings.";
+        } else {
+          userError = "Email service authentication failed. Please verify provider credentials.";
+        }
+      } else if (response.status === 400 && errorDetail.includes('sender')) {
+        userError = "Configured sender email is not verified with the email provider.";
+      }
 
       return {
         ok: false,
         status: response.status,
-        error: "Email delivery failed. Please try again."
+        error: userError
       };
     }
 
@@ -460,11 +474,10 @@ const sendOTPEmail = async (
     return {
       ok: false,
       status: 502,
-      error: "Email delivery failed. Please try again."
+      error: "Email delivery failed due to network error. Please try again."
     };
   }
 };
-
 
 // Helper: get OTP doc ref
 const otpDocRef = (email: string) => {

@@ -80,17 +80,25 @@ function getServiceAccount(): any | null {
 
   // 4. File-based credentials
   const fallbackDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
-  const accountPath = filePath || path.join(fallbackDir, "serviceAccount.json");
+  const candidatePaths = [
+    filePath,
+    path.join(fallbackDir, "serviceAccount.json"),
+    path.join(fallbackDir, "serviceAccountKey.json"),
+    path.join(process.cwd(), "serviceAccount.json"),
+    path.join(process.cwd(), "serviceAccountKey.json"),
+  ].filter(Boolean) as string[];
 
-  if (fs.existsSync(accountPath)) {
-    try {
-      const contents = fs.readFileSync(accountPath, "utf8");
-      const parsed = JSON.parse(contents);
-      if (isValidServiceAccount(parsed)) {
-        return parsed;
+  for (const accountPath of candidatePaths) {
+    if (fs.existsSync(accountPath)) {
+      try {
+        const contents = fs.readFileSync(accountPath, "utf8");
+        const parsed = JSON.parse(contents);
+        if (isValidServiceAccount(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn("⚠️ Failed to read/parse service account file at " + accountPath);
       }
-    } catch (e) {
-      console.warn("⚠️ Failed to read/parse service account file at " + accountPath);
     }
   }
 
@@ -120,10 +128,14 @@ try {
       initializeApp({
         credential: cert(serviceAccount),
         projectId: serviceAccount.project_id,
+        databaseURL: process.env.FIREBASE_DATABASE_URL || "https://nova-26b39-default-rtdb.firebaseio.com",
       });
       initialized = true;
       try {
-        getFirestore().settings({ preferRest: true });
+        getFirestore().settings({
+          preferRest: true,
+          ignoreUndefinedProperties: true
+        });
       } catch {}
       console.log("✅ Firebase Admin initialized successfully");
     } else {

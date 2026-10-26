@@ -240,13 +240,20 @@ async function processRawEvent(raw: any): Promise<{ valid: boolean; record?: Ana
 
   // Use Admin SDK so server-side analytics writes do not depend on client Firestore rules.
   if (adminDb) {
-    void adminDb.collection('analytics_events').add({
-      ...cleanRecord,
-      createdAt: FieldValue.serverTimestamp()
-    }).catch((fsErr) => {
-      // Non-blocking; in-memory aggregation remains available if persistence fails.
-      console.warn('[Analytics] Firestore event write warning:', fsErr?.message || fsErr);
-    });
+    try {
+      const firestorePayload = Object.fromEntries(
+        Object.entries({
+          ...cleanRecord,
+          createdAt: FieldValue.serverTimestamp()
+        }).filter(([_, v]) => v !== undefined)
+      );
+      void adminDb.collection('analytics_events').add(firestorePayload).catch((fsErr) => {
+        // Non-blocking; in-memory aggregation remains available if persistence fails.
+        console.warn('[Analytics] Firestore event write warning:', fsErr?.message || fsErr);
+      });
+    } catch (fsErr) {
+      console.warn('[Analytics] Firestore event write error:', fsErr);
+    }
   }
 
   return { valid: true, record: cleanRecord };

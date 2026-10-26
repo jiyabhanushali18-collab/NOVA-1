@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
 import { products } from './data';
@@ -1099,8 +1099,12 @@ export default function App() {
       } catch (err) {
         console.error('Error processing realtime reviews snapshot:', err);
       }
-    }, (error) => {
-      console.error('Realtime reviews listener error:', error);
+    }, (error: any) => {
+      if (error?.code === 'permission-denied') {
+        console.warn('Realtime reviews listener: Firestore permissions restricted (unauthenticated read denied). Falling back to local reviews.');
+      } else {
+        console.error('Realtime reviews listener error:', error);
+      }
       setReviewListenerError('Reviews could not be loaded. Please try again later.');
     });
 
