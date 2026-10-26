@@ -75,7 +75,7 @@ async function start() {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        allowedHosts: ['nova-1-1.onrender.com'],
+        allowedHosts: ['nova-1-1.onrender.com', 'nova-1-7ec7.onrender.com'],
         hmr: false
       }
     });
