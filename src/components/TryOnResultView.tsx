@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScreenId } from '../types';
 import { swatchImages, swipeModels } from '../data';
 import { getTryOnStyleScore, TryOnStyleScore } from '../services/tryOnScoreService';
+import { useI18n } from '../i18n';
 
 interface TryOnResultViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -26,6 +27,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   garmentName = '',
   isLiveTryOnImage = false
 }) => {
+  const { t } = useI18n();
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
@@ -114,13 +116,13 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
       <section className="pt-2">
         <div className="flex items-start justify-between gap-4">
           <div>
-          <h1 className="text-2xl font-bold text-[#131426] leading-tight">Try-On Result</h1>
+          <h1 className="text-2xl font-bold text-[#131426] leading-tight">{t('tryOnResult.title')}</h1>
           <p className="text-xs text-[#5E667A] mt-1">
-            Here's how you look! You can change color swatches below, inspect material details, or save your curated outfit.
+            {t('tryOnResult.description')}
           </p>
           </div>
           <div className="shrink-0 text-center" aria-live="polite">
-            <span className="block text-[9px] font-bold text-[#5E667A] uppercase tracking-widest mb-1">AI style score</span>
+            <span className="block text-[9px] font-bold text-[#5E667A] uppercase tracking-widest mb-1">{t('tryOnResult.scoreTitle')}</span>
             {styleScore ? (
               <>
                 <div
@@ -143,12 +145,12 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
                   className="block mx-auto mt-1 font-bold text-[#553BE2] underline"
                   onClick={() => setScoreRequest((request) => request + 1)}
                 >
-                  Try again
+                  {t('tryOnResult.retryScore')}
                 </button>
               </div>
             ) : isLiveTryOnImage && capturedImage?.startsWith('data:image/') ? (
               <div className="w-14 h-14 rounded-full border-2 border-[#E4DFF5] flex items-center justify-center text-[9px] text-[#5E667A]">
-                Scoring...
+                {t('tryOnResult.scoreAnalyzing')}
               </div>
             ) : (
               <span className="block max-w-24 text-[10px] text-[#5E667A]">Connect live AI and capture a try-on to get a score.</span>
@@ -201,7 +203,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-bold text-[#131426] flex items-center gap-1.5">
             <span className="material-symbols-outlined text-[#553BE2] text-base leading-none">palette</span>
-            Change Color
+            {t('tryOnResult.selectShade')}
           </h3>
           <button 
             onClick={() => onNavigate('product-details')}
@@ -275,8 +277,8 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
       <section className="rounded-3xl bg-white p-4 shadow-sm border border-[#E4DFF5]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-bold text-[#131426]">Rate your try-on</h3>
-            <p className="text-[11px] text-[#5E667A]">Add a star rating and quick review from your AR experience.</p>
+            <h3 className="text-sm font-bold text-[#131426]">{t('tryOnResult.reviewTitle')}</h3>
+            <p className="text-[11px] text-[#5E667A]">{t('tryOnResult.reviewSubtitle')}</p>
           </div>
           <span className="text-xs font-semibold text-[#5E667A]">{selectedColor}</span>
         </div>
@@ -300,7 +302,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
           value={reviewText}
           onChange={(e) => setReviewText(e.target.value)}
           className="w-full rounded-3xl border border-[#E4DFF5] bg-[#F2EEFF] px-4 py-3 text-sm text-[#131426] placeholder:text-[#5E667A] min-h-[110px] focus:outline-none focus:border-[#553BE2]"
-          placeholder="Write a quick note about fit, color, or comfort..."
+          placeholder={t('tryOnResult.reviewPlaceholder')}
         />
 
         <button
@@ -328,7 +330,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
           disabled={isSubmittingReview}
           className="mt-4 w-full rounded-2xl bg-[#553BE2] text-white py-3 text-sm font-semibold hover:opacity-95 transition-opacity"
         >
-          {isSubmittingReview ? 'Saving Review...' : 'Submit Try-On Review'}
+          {isSubmittingReview ? t('tryOnResult.reviewSubmitting') : t('tryOnResult.reviewSubmit')}
         </button>
       </section>
 
@@ -339,18 +341,18 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
           className="flex-1 py-3 bg-[#F2EEFF] hover:bg-[#ECE7FF] text-[#553BE2] border border-[#E4DFF5] rounded-2xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
         >
           <span className="material-symbols-outlined text-base">share</span>
-          Share
+          {t('tryOnResult.shareLook')}
         </button>
         <button className="flex-1 py-3 rounded-2xl border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] hover:shadow transition-all font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95">
           <span className="material-symbols-outlined text-base">bookmark_border</span>
-          Save
+          {t('common.save')}
         </button>
         <button 
           onClick={() => onNavigate('ar-tryon')}
           className="flex-[1.4] py-3 rounded-2xl bg-[#553BE2] text-white font-bold flex items-center justify-center gap-1.5 text-xs shadow-lg shadow-[#553BE2]/25 hover:opacity-95 transition-opacity active:scale-95 cursor-pointer"
         >
           <span className="material-symbols-outlined text-base">sync</span>
-          Another
+          {t('tryOnResult.retake')}
         </button>
       </section>
     </div>

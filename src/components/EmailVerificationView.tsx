@@ -4,6 +4,7 @@ import { AlertCircle, Check, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { signInWithServerCustomToken } from '../firebase';
 import { apiUrl } from '../services/apiClient';
 import type { LegalConsentRecord, DeliveryAddress } from '../types';
+import { useI18n } from '../i18n';
 
 interface EmailVerificationViewProps {
   email: string;
@@ -33,6 +34,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   onVerificationSuccess,
   onChangeEmail
 }) => {
+  const { t } = useI18n();
   const [otp, setOtp] = useState('');
   const [currentEmail, setCurrentEmail] = useState(email);
   const [editedEmail, setEditedEmail] = useState(email);
@@ -63,7 +65,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== OTP_LENGTH) {
-      setError(`Please enter the full ${OTP_LENGTH}-digit code.`);
+      setError(t('emailVerification.errorFullCode'));
       return;
     }
     setLoading(true);
@@ -92,9 +94,9 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
 
       if (!response.ok || !data.success) {
         const attemptsNote = typeof data.attemptsRemaining === 'number'
-          ? ` ${data.attemptsRemaining} attempt${data.attemptsRemaining !== 1 ? 's' : ''} remaining.`
+          ? t('emailVerification.errorAttempts', { count: data.attemptsRemaining })
           : '';
-        setError((data.error || 'Verification failed. Please try again.') + attemptsNote);
+        setError((data.error || t('emailVerification.errorFailed')) + attemptsNote);
         setLoading(false);
         return;
       }
@@ -131,7 +133,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
       }, 900);
     } catch (err) {
       console.error('OTP verification error:', err);
-      setError('Could not verify the code. Please check your connection and try again.');
+      setError(t('emailVerification.errorConnection'));
       setLoading(false);
     }
   };
@@ -148,7 +150,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
       });
       const data = await response.json() as { success?: boolean; error?: string };
       if (!response.ok || !data.success) {
-        setError(data.error || 'Could not resend the code. Please try again.');
+        setError(data.error || t('emailVerification.errorResend'));
       } else {
         setOtp('');
         setResendCountdown(30);
@@ -164,7 +166,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
   const handleChangeEmail = async () => {
     const normalized = editedEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-      setError('Please enter a valid email address.');
+      setError(t('emailVerification.errorInvalidEmail'));
       return;
     }
     if (normalized === currentEmail.toLowerCase()) {
@@ -213,12 +215,10 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
           {success ? <Check className="h-8 w-8" /> : <Mail className="h-8 w-8" />}
         </div>
         <h1 className="text-2xl font-bold text-[#131426] text-center mb-2">
-          {success ? 'Email Verified' : 'Enter Verification Code'}
+          {success ? t('emailVerification.titleVerified') : t('emailVerification.title')}
         </h1>
         <p className="text-[#5E667A] text-center">
-          {success
-            ? 'Your account is ready. Continuing to profile setup...'
-            : `We sent a 6-digit code to`}
+          {success ? t('emailVerification.successMessage') : t('emailVerification.instructions')}
         </p>
         {!success && (
           <p className="text-[#131426] font-semibold text-center mt-1 break-all">{currentEmail}</p>
@@ -236,7 +236,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
             <form onSubmit={handleVerify} className="mt-6 space-y-4">
               <div>
                 <label htmlFor="otp-input" className="text-xs font-black text-[#5E667A] uppercase tracking-widest block mb-2">
-                  Verification Code
+                  {t('emailVerification.codeLabel')}
                 </label>
                 <input
                   id="otp-input"
@@ -259,14 +259,14 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                 className="w-full py-3 px-4 rounded-2xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-sm font-bold shadow-lg shadow-[#553BE2]/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                {loading ? 'Verifying...' : 'Verify Code'}
+                {loading ? t('emailVerification.verifyingButton') : t('emailVerification.verifyButton')}
               </button>
             </form>
 
             {isEditingEmail ? (
               <div className="mt-6 p-4 bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg">
                 <label htmlFor="verification-email" className="text-xs font-black text-[#5E667A] uppercase tracking-widest block mb-2">
-                  Change Email Address
+                  {t('emailVerification.changeEmail')}
                 </label>
                 <input
                   id="verification-email"
@@ -282,7 +282,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                     disabled={resendLoading}
                     className="flex-1 px-3 py-2 text-sm font-semibold text-white bg-[#553BE2] rounded-lg disabled:opacity-50"
                   >
-                    {resendLoading ? 'Sending...' : 'Send Code'}
+                    {resendLoading ? t('emailVerification.resendingButton') : t('emailVerification.resendButton')}
                   </button>
                   <button
                     onClick={() => {
@@ -291,7 +291,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                     }}
                     className="flex-1 px-3 py-2 text-sm font-semibold text-[#5E667A] bg-white border border-[#E4DFF5] rounded-lg"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -300,7 +300,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
                 onClick={() => setIsEditingEmail(true)}
                 className="w-full mt-6 px-4 py-2.5 text-sm font-semibold text-[#553BE2] bg-[#F2EEFF] border border-[#E4DFF5] rounded-lg"
               >
-                Use Different Email
+                {t('emailVerification.changeEmail')}
               </button>
             )}
 
@@ -313,10 +313,7 @@ export const EmailVerificationView: React.FC<EmailVerificationViewProps> = ({
               >
                 {resendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 {resendLoading
-                  ? 'Sending...'
-                  : resendCountdown > 0
-                    ? `Resend code in 00:${String(resendCountdown).padStart(2, '0')}`
-                    : 'Resend code'}
+                  ? t('emailVerification.resendingButton') : resendCountdown > 0 ? t('emailVerification.resendIn', { seconds: resendCountdown }) : t('emailVerification.resendButton')}
               </button>
             </div>
           </>

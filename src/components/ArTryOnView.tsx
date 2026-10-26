@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { ScreenId } from '../types';
 import { analytics } from '../services/analyticsService';
@@ -117,6 +118,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   userEmail,
   userName,
 }) => {
+  const { t } = useI18n();
   const [isSavingLook, setIsSavingLook] = useState(false);
   const [flash, setFlash] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -601,7 +603,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             type="button"
             onClick={handleFlip}
             disabled={!isVideoLive}
-            title="Flip Camera"
+            title={t('arTryOn.flipCamera')}
             className="w-10 h-10 rounded-full bg-[#111322]/85 hover:bg-[#1C1F36] backdrop-blur-md border border-white/15 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
           >
             <span className="material-symbols-outlined text-base">cameraswitch</span>
@@ -611,7 +613,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           <button
             type="button"
             onClick={handleCapture}
-            title="Take Snapshot"
+            title={t('arTryOn.takeSnapshot')}
             className="w-13 h-13 rounded-full bg-white flex items-center justify-center p-1 border-[3px] border-[#A594FD] shadow-[0_0_20px_rgba(165,148,253,0.6)] active:scale-90 hover:scale-105 transition-all cursor-pointer"
           >
             <div className="w-full h-full rounded-full bg-white shadow-inner" />
@@ -621,7 +623,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           <button
             type="button"
             onClick={() => setLighting(!lighting)}
-            title="Toggle Lighting"
+            title={t('arTryOn.toggleLighting')}
             className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center shadow-lg active:scale-95 transition-all cursor-pointer ${
               lighting
                 ? 'bg-[#553BE2] border-white/40 shadow-[#553BE2]/40 text-amber-300'
@@ -636,13 +638,13 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       {/* 4. Outfit Selection Section */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-base font-bold text-white">Select Outfit</h2>
+          <h2 className="text-base font-bold text-white">{t('arTryOn.selectOutfit')}</h2>
           <button 
             type="button"
             onClick={() => onNavigate('wardrobe')}
             className="text-xs font-semibold text-[#8B6DFD] hover:text-[#A594FD] flex items-center transition-colors cursor-pointer"
           >
-            View All <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
+            {t('arTryOn.viewAll')} <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
           </button>
         </div>
 
@@ -691,7 +693,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
               <span className="material-symbols-outlined text-xl">cloud_upload</span>
             </div>
             <span className="text-[10px] font-semibold text-slate-300 text-center">
-              Upload
+              {t('arTryOn.upload')}
             </span>
           </div>
         </div>
@@ -708,12 +710,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           {isConnecting ? (
             <>
               <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              <span>Connecting...</span>
+              <span>{t('arTryOn.connectingBtn')}</span>
             </>
           ) : (
             <>
               <span className="material-symbols-outlined text-lg leading-none">videocam</span>
-              <span>{isVideoLive ? 'Stop Live AR' : 'Try On Live'}</span>
+              <span>{isVideoLive ? t('arTryOn.stopLive') : t('arTryOn.tryOnLive')}</span>
             </>
           )}
         </button>
@@ -727,12 +729,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           {isSavingLook ? (
             <>
               <span className="w-3.5 h-3.5 rounded-full border-2 border-[#A594FD] border-t-transparent animate-spin" />
-              <span>Saving Look...</span>
+              <span>{t('arTryOn.savingLook')}</span>
             </>
           ) : (
             <>
               <span className="material-symbols-outlined text-lg leading-none text-slate-300">bookmark_border</span>
-              <span>Save Look</span>
+              <span>{t('arTryOn.saveLook')}</span>
             </>
           )}
         </button>
@@ -756,7 +758,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             {/* Title & Message */}
             <div className="space-y-1.5 px-1">
               <h3 className="text-lg font-bold text-white tracking-tight">
-                {savePopup.isError ? 'Save Failed' : 'Look Saved Successfully!'}
+                {savePopup.isError ? t('arTryOn.savedFailTitle') : t('arTryOn.savedSuccessTitle')}
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {savePopup.message}
@@ -785,7 +787,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                     className="w-full py-3 px-4 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#553BE2]/30 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-base">auto_awesome</span>
-                    <span>View Saved Looks</span>
+                    <span>{t('arTryOn.viewInProfile')}</span>
                   </button>
 
                   <button
@@ -793,7 +795,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                     onClick={() => setSavePopup(null)}
                     className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-slate-300 hover:text-white font-semibold text-xs border border-white/10 transition-all cursor-pointer"
                   >
-                    Continue Try-On
+                    {t('arTryOn.keepTrying')}
                   </button>
                 </>
               ) : (

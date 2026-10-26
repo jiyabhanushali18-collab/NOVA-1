@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Sparkles, Check, Smartphone, BarChart3, HelpCircle, ShieldCheck, Heart, Layout, Tag, MessageSquare, Compass, Info, Scale, CheckSquare } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -15,6 +16,7 @@ interface OnboardSlide {
 }
 
 export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
+  const { t } = useI18n();
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Features list of the smart mirror to show around mockups (Slide 1)

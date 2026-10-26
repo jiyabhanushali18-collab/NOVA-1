@@ -1120,13 +1120,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Quick Actions grids */}
       <section className="space-y-3">
-        <h3 className={`text-base font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>Quick Actions</h3>
+        <h3 className={`text-base font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>{t('profile.quickActions')}</h3>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Saved\nLooks', icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true) },
-            { label: 'Try-On\nHistory', icon: 'history', target: 'scan-outfit' },
-            { label: 'My\nScans', icon: 'center_focus_strong', target: 'camera-scan' },
-            { label: 'Coupons\n& Offers', icon: 'local_offer', target: 'cart' }
+            { label: t('profile.qa.savedLooks'), icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true) },
+            { label: t('profile.qa.tryOnHistory'), icon: 'history', target: 'scan-outfit' },
+            { label: t('profile.qa.myScans'), icon: 'center_focus_strong', target: 'camera-scan' },
+            { label: t('profile.qa.coupons'), icon: 'local_offer', target: 'cart' }
           ].map((act) => (
             <button 
               key={act.label}
@@ -1147,13 +1147,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <ul className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-[#E4DFF5]'}`}>
           {[
             { label: t('profile.settings.wishlist'), icon: 'favorite', action: () => setIsWishlistModalOpen(true), extra: wishlist.length > 0 ? `${wishlist.length} Items` : '0' },
-            { label: 'Saved Looks', icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true), extra: savedLooks.length > 0 ? `${savedLooks.length} Look(s)` : '0' },
+            { label: t('profile.settings.savedLooks'), icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true), extra: savedLooks.length > 0 ? `${savedLooks.length} Look(s)` : '0' },
             { label: t('profile.settings.paymentMethods'), icon: 'payment', action: () => setIsPaymentModalOpen(true), extra: `${paymentMethods.filter((p: any) => p.type === 'Credit Card').length} Card(s), ${paymentMethods.filter((p: any) => p.type === 'UPI').length} UPI` },
             { label: t('profile.settings.addresses'), icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
             { label: t('profile.settings.darkMode'), icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
             { label: t('profile.settings.privacy'), icon: 'lock', action: () => setIsPrivacyModalOpen(true) },
-            { label: 'Terms & Conditions', icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
-            { label: 'Privacy Policy', icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
+            { label: t('profile.settings.terms'), icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
+            { label: t('profile.settings.privacyPolicy'), icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
             { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
             { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
@@ -1191,10 +1191,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-[#131426]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up">
-            <h3 className="text-lg font-bold text-[#131426]">Update Measurements</h3>
+            <h3 className="text-lg font-bold text-[#131426]">{t('profile.measurements.title')}</h3>
             <form onSubmit={handleSaveMeasurements} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">HEIGHT (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.height')}</label>
                 <input 
                   type="text" 
                   value={editHeight} 
@@ -1203,7 +1203,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">WEIGHT (kg)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.weight')}</label>
                 <input 
                   type="text" 
                   value={editWeight} 
@@ -1212,7 +1212,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">CHEST (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.chest')}</label>
                 <input 
                   type="text" 
                   value={editChest} 
@@ -1221,7 +1221,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">WAIST (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.waist')}</label>
                 <input 
                   type="text" 
                   value={editWaist} 
@@ -1230,7 +1230,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">INSEAM (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.inseam')}</label>
                 <input 
                   type="text" 
                   value={editInseam} 
@@ -1262,10 +1262,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {isProfileModalOpen && (
         <div className="fixed inset-0 bg-[#131426]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up">
-            <h3 className="text-lg font-bold text-[#131426]">Edit Profile</h3>
+            <h3 className="text-lg font-bold text-[#131426]">{t('profile.editProfile.title')}</h3>
             <form onSubmit={handleSaveProfile} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">FULL NAME</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.name')}</label>
                 <input 
                   type="text" 
                   value={profileName} 
@@ -1275,7 +1275,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">EMAIL ADDRESS</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.email')}</label>
                 <input 
                   type="email" 
                   value={profileEmail} 
@@ -1285,7 +1285,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">PHONE NUMBER</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.phone')}</label>
                 <input 
                   type="text" 
                   value={profilePhone} 
@@ -2072,7 +2072,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className={`flex justify-between items-center pb-3 border-b ${isDarkMode ? 'border-slate-800' : 'border-[#E4DFF5]'}`}>
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#553BE2]">auto_awesome</span>
-                My Saved Looks ({savedLooks.length})
+                {t('profile.savedLooks.title')} ({savedLooks.length})
               </h3>
               <button 
                 onClick={() => setIsSavedLooksModalOpen(false)}
@@ -2087,7 +2087,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-[#F2EEFF] border-[#E4DFF5] text-[#553BE2]'}`}>
                   <span className="material-symbols-outlined text-3xl">checkroom</span>
                 </div>
-                <h4 className="text-sm font-bold">No saved looks yet</h4>
+                <h4 className="text-sm font-bold">{t('profile.savedLooks.empty')}</h4>
                 <p className="text-xs text-slate-400 max-w-[260px] mx-auto">
                   Try on outfits in AR Try-On and tap "Save Look" to save them to your phone gallery and profile.
                 </p>
@@ -2098,7 +2098,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   }}
                   className="bg-[#553BE2] hover:bg-[#4830cb] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer inline-block"
                 >
-                  Go to AR Try-On
+                  {t('profile.savedLooks.goToAr')}
                 </button>
               </div>
             ) : (
@@ -2185,14 +2185,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 className="py-2.5 px-3 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">download</span>
-                <span>Download Image</span>
+                <span>{t('profile.savedLooks.download')}</span>
               </button>
               <button
                 onClick={() => handleDeleteSavedLook(selectedLookPreview.id)}
                 className="py-2.5 px-3 rounded-xl bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">delete</span>
-                <span>Delete Look</span>
+                <span>{t('profile.savedLooks.delete')}</span>
               </button>
             </div>
           </div>

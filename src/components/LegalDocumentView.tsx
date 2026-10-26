@@ -9,8 +9,9 @@ import {
   Scale,
   Shield,
 } from 'lucide-react';
-import { LEGAL_DOCUMENTS } from '../legal/legalDocuments';
+import { getLegalDocument } from '../legal/legalDocuments';
 import { LegalConsentRecord, LegalDocumentType } from '../types';
+import { useI18n } from '../i18n';
 
 interface LegalDocumentViewProps {
   documentType: LegalDocumentType;
@@ -29,7 +30,8 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
   isDarkMode = false,
   consentRecord,
 }) => {
-  const docData = LEGAL_DOCUMENTS[documentType];
+  const { t, locale } = useI18n();
+  const docData = getLegalDocument(documentType, locale);
 
   return (
     <div
@@ -42,7 +44,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
         <button
           type="button"
           onClick={onBack}
-          aria-label={backLabel}
+          aria-label={backLabel === 'Back' ? t('common.back') : backLabel}
           className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold border transition-all active:scale-95 cursor-pointer ${
             isDarkMode
               ? 'bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800'
@@ -50,13 +52,13 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
           }`}
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>{backLabel}</span>
+          <span>{backLabel === 'Back' ? t('common.back') : backLabel}</span>
         </button>
 
         {onSelectDocument && (
           <div
             role="tablist"
-            aria-label="Legal documents"
+            aria-label={t('legal.legalCenter')}
             className={`inline-flex rounded-2xl p-1 border ${
               isDarkMode
                 ? 'bg-slate-900 border-slate-800'
@@ -76,7 +78,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
                   : 'text-[#5E667A] hover:text-[#131426]'
               }`}
             >
-              Terms
+              {t('legal.terms')}
             </button>
             <button
               type="button"
@@ -91,7 +93,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
                   : 'text-[#5E667A] hover:text-[#131426]'
               }`}
             >
-              Privacy
+              {t('legal.privacy')}
             </button>
           </div>
         )}
@@ -119,7 +121,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
               ) : (
                 <Shield className="w-3 h-3" />
               )}
-              <span>NOVA Legal Center</span>
+              <span>{t('legal.legalCenter')}</span>
             </div>
             <h1
               className={`text-xl font-black tracking-tight ${
@@ -168,7 +170,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
               }`}
             >
               <FileText className="w-3 h-3 text-[#553BE2]" />
-              <span>Version</span>
+              <span>{t('legal.version')}</span>
             </div>
             <p
               className={`text-[11px] font-extrabold mt-0.5 ${
@@ -192,7 +194,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
               }`}
             >
               <Calendar className="w-3 h-3 text-[#553BE2]" />
-              <span>Effective</span>
+              <span>{t('legal.effective')}</span>
             </div>
             <p
               className={`text-[11px] font-extrabold mt-0.5 ${
@@ -216,7 +218,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
               }`}
             >
               <Clock className="w-3 h-3 text-[#553BE2]" />
-              <span>Updated</span>
+              <span>{t('legal.updated')}</span>
             </div>
             <p
               className={`text-[11px] font-extrabold mt-0.5 ${
@@ -239,13 +241,15 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-[11px] leading-relaxed">
-              <span className="font-bold">Recorded Account Acceptance: </span>
-              Terms v{consentRecord.termsVersion} &amp; Privacy v
-              {consentRecord.privacyVersion} accepted on{' '}
-              <span className="font-semibold">
-                {new Date(consentRecord.consentedAt).toLocaleString()}
-              </span>
-              . (Read-only audit record)
+              <span className="font-bold">{t('legal.auditRecorded')} </span>
+              {t('legal.auditAcceptedDetails', {
+                termsVersion: consentRecord.termsVersion,
+                privacyVersion: consentRecord.privacyVersion,
+                date: new Date(consentRecord.consentedAt).toLocaleString(
+                  locale === 'hi' ? 'hi-IN' : undefined
+                ),
+              })}{' '}
+              {t('legal.auditReadOnly')}
             </div>
           </div>
         )}
@@ -337,7 +341,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
                 }`}
               >
                 <span className="font-bold text-[#553BE2]">
-                  Pre-Publication Review Item:{' '}
+                  {t('legal.reviewItemPrefix')}
                 </span>
                 {section.reviewNote}
               </div>
@@ -360,7 +364,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
           }`}
         >
           <Info className="w-3.5 h-3.5" />
-          <span>Items Requiring Confirmation Before Commercial Publication</span>
+          <span>{t('legal.unverifiedTitle')}</span>
         </h3>
         <ul className="space-y-1.5">
           {docData.unverifiedItems.map((item, idx) => (
@@ -391,7 +395,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
                 : 'bg-white border-[#E4DFF5] text-[#553BE2] hover:bg-[#F2EEFF]'
             }`}
           >
-            View {documentType === 'terms' ? 'Privacy Policy' : 'Terms & Conditions'}
+            {documentType === 'terms' ? t('legal.viewPrivacy') : t('legal.viewTerms')}
           </button>
         )}
         <button
@@ -399,7 +403,7 @@ export const LegalDocumentView: React.FC<LegalDocumentViewProps> = ({
           onClick={onBack}
           className="flex-1 py-3 px-4 rounded-2xl text-xs font-bold bg-[#553BE2] hover:bg-[#462CC9] text-white shadow-md shadow-[#553BE2]/20 transition-all cursor-pointer active:scale-[0.98]"
         >
-          {backLabel}
+          {backLabel === 'Back' ? t('common.back') : backLabel}
         </button>
       </div>
     </div>

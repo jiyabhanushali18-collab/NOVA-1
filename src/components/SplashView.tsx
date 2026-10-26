@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface SplashViewProps {
   onComplete: () => void;
 }
 
 export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
+  const { t } = useI18n();
   const [progressReady, setProgressReady] = useState(false);
 
   useEffect(() => {
@@ -55,10 +57,10 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
         >
           <div className="flex items-center justify-center gap-2 text-[clamp(16px,2.2vw,20px)] font-semibold text-[#5E667A]">
             <Sparkles className="h-5 w-5 text-[#553BE2]" fill="currentColor" />
-            <span>See the world.</span>
+            <span>{t('splash.tagline')}</span>
           </div>
           <p className="mt-5 text-[clamp(11px,1.5vw,14px)] font-bold uppercase tracking-[0.22em] text-[#5E667A]">
-            Empowered by AI. Guided by NOVA.
+            {t('splash.subtagline')}
           </p>
           <div className="mx-auto mt-8 h-3 w-[min(46vw,280px)] overflow-hidden rounded-full bg-[#ECE7FF]">
             <div

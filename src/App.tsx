@@ -1475,6 +1475,21 @@ export default function App() {
     }
   };
 
+  const handleUpdateCartQuantity = (prodId: string, color: string, size: string, delta: number) => {
+    const isPresentIndex = cartItems.findIndex(
+      (item) =>
+        (item.product.id === prodId || item.product.productId === prodId) &&
+        normalizeColor(item.color) === normalizeColor(color) &&
+        item.size === size
+    );
+
+    if (isPresentIndex > -1) {
+      handleUpdateQuantity(isPresentIndex, delta);
+    } else if (delta > 0) {
+      handleAddToCart(prodId, color, size);
+    }
+  };
+
   const handleUpdateQuantity = (idx: number, dQ: number) => {
     const item = cartItems[idx];
     const updated = [...cartItems];
@@ -1637,6 +1652,9 @@ export default function App() {
             userName={userName}
             userId={userEmail}
             onComplete={handleCompleteProfileAnalysis}
+            onSkip={() => {
+              resetScreenHistory('profile');
+            }}
           />
         );
       case 'product-details':
@@ -1660,6 +1678,8 @@ export default function App() {
             onNavigate={navigate} 
             onSelectProduct={(product) => navigate('product-details', { productId: product.id, product })}
             onAddToCart={handleAddToCart}
+            onUpdateCartQuantity={handleUpdateCartQuantity}
+            cartItems={cartItems}
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
             wishlist={wishlist}
@@ -2235,7 +2255,7 @@ export default function App() {
             <button 
               onClick={() => setIsWishlistOpen(true)}
               className="nova-interactive w-10 h-10 rounded-full bg-white hover:bg-[#F2EEFF] flex items-center justify-center relative border border-[#E4DFF5] shadow-[0_2px_6px_rgba(19,20,38,0.04)]"
-              title="View Wishlist"
+              title={t('header.viewWishlist')}
             >
               <span className="material-symbols-outlined text-rose-500 text-[20px]" style={{ fontVariationSettings: wishlist.length > 0 ? "'FILL' 1" : undefined }}>favorite</span>
               {wishlist.length > 0 && (
@@ -2249,7 +2269,7 @@ export default function App() {
             <button 
               onClick={() => navigate('cart')}
               className="nova-interactive w-10 h-10 rounded-full bg-[#F2EEFF] flex items-center justify-center relative hover:bg-[#ECE7FF] border border-[#E2DBF8] shadow-[0_2px_6px_rgba(19,20,38,0.03)]"
-              title="View Cart"
+              title={t('header.viewCart')}
             >
               <span className="material-symbols-outlined text-[#553BE2] text-[20px]">local_mall</span>
               {countCartTotalItems() > 0 && (
@@ -2265,7 +2285,7 @@ export default function App() {
               className="nova-interactive w-9 h-9 rounded-full overflow-hidden border-2 border-white ring-2 ring-[#ECE7FF] hover:ring-[#553BE2]/40 shadow-[0_4px_12px_rgba(85,59,226,0.14)]"
             >
               <img 
-                alt="Account profile" 
+                alt={t('header.accountProfile')} 
                 className="w-full h-full object-cover" 
                 referrerPolicy="no-referrer"
                 src={userProfilePhoto || activeAccount?.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'NOVA User')}&background=F2EEFF&color=553BE2&bold=true`}
@@ -2288,7 +2308,7 @@ export default function App() {
             }`}
           >
             <div className="text-xs font-extrabold text-[#553BE2]">
-              Updated Terms &amp; Privacy Policy (v{TERMS_VERSION})
+              {t('legal.renewalNoticeTitle', { version: TERMS_VERSION })}
             </div>
             <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
               NOVA&apos;s{' '}
@@ -2315,7 +2335,7 @@ export default function App() {
               onClick={handleAcceptUpdatedTerms}
               className="w-full py-2.5 px-4 rounded-xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-60"
             >
-              {isRenewingConsent ? 'Recording Acceptance...' : 'I Agree to Updated Terms & Privacy Policy'}
+              {isRenewingConsent ? t('legal.recording') : t('legal.agreeButton')}
             </button>
           </div>
         )}
@@ -2330,12 +2350,12 @@ export default function App() {
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#E4DFF5]'
           }`}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('profile.settings.wishlist')} ({wishlist.length})</h3>
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('wishlist.title')} ({wishlist.length})</h3>
               <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-[#5E667A] hover:text-[#131426]'}`}>{t('common.close')}</button>
             </div>
             {wishlist.length === 0 ? (
               <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-                No saved items yet â€” tap the heart on products to save them.
+                {t('wishlist.empty')}
               </div>
             ) : (
               <div className="space-y-3">
@@ -2359,13 +2379,13 @@ export default function App() {
                             handleAddToCart(productId, defaultColor, defaultSize);
                           }}
                           className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold"
-                        >Add</button>
+                        >{t('wishlist.add')}</button>
                         <button
                           onClick={() => {
                             handleToggleWishlist(productId);
                           }}
                           className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100"
-                        >Remove</button>
+                        >{t('wishlist.remove')}</button>
                       </div>
                     </div>
                   );

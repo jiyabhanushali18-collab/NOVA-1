@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { ProductVariant, ScreenId, ProductItem, ProductReview } from '../types';
+import { CartItem, ProductVariant, ScreenId, ProductItem, ProductReview } from '../types';
+import { Minus, Plus } from 'lucide-react';
 import { findColorImages } from '../utils/productVariants';
 import { getRequiredColorHex, isDarkColor, isLightColor, normalizeColorKey } from '../utils/colors';
 import { analytics } from '../services/analyticsService';
+import { useI18n } from '../i18n';
 
 const normalizeColor = normalizeColorKey;
 
@@ -33,6 +35,8 @@ interface ProductDetailsViewProps {
   onNavigate: (screen: ScreenId) => void;
   onSelectProduct?: (product: ProductItem) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
+  onUpdateCartQuantity?: (prodId: string, color: string, size: string, delta: number) => void;
+  cartItems?: CartItem[];
   selectedColor: string;
   setSelectedColor: (color: string) => void;
   wishlist?: string[];
@@ -56,6 +60,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   onNavigate,
   onSelectProduct,
   onAddToCart,
+  onUpdateCartQuantity,
+  cartItems = [],
   selectedColor,
   setSelectedColor,
   wishlist = [],
@@ -71,6 +77,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   currentUserName,
   currentReviewerName
 }) => {
+  const { t } = useI18n();
   const fallbackProduct = Object.values(products)[0] || products['lavender-hoodie'];
   const mainProduct = selectedProductId 
     ? (products[selectedProductId] || Object.values(products).find((p) => p.id === selectedProductId || p.productId === selectedProductId) || fallbackProduct)
@@ -191,9 +198,41 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
   const handleAddToCart = (prodId: string, color: string, size: string) => {
     onAddToCart(prodId, color, size);
-    const productName = products[prodId]?.name || 'Product';
+    const productName = products[prodId]?.name || mainProduct?.name || 'Product';
     setToastMessage(`✓ Added 1x ${productName} (${color}, Size ${size}) to Cart!`);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const matchingCartItem = cartItems.find((item) => {
+    const itemProdId = item.product.id || item.product.productId;
+    const targetProdId = mainProduct?.id || mainProduct?.productId || selectedProductId;
+    const isSameProduct =
+      itemProdId === targetProdId ||
+      item.product.id === selectedProductId ||
+      item.product.productId === selectedProductId;
+    const isSameColor = normalizeColor(item.color) === normalizeColor(selectedColor);
+    const isSameSize = item.size === selectedSize;
+    return isSameProduct && isSameColor && isSameSize;
+  });
+  const currentCartQuantity = matchingCartItem ? matchingCartItem.quantity : 0;
+
+  const handleIncrement = () => {
+    if (currentStock !== undefined && currentCartQuantity >= currentStock) {
+      setToastMessage(`Only ${currentStock} item(s) available in stock.`);
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    if (onUpdateCartQuantity) {
+      onUpdateCartQuantity(mainProduct.id, selectedColor, selectedSize, 1);
+    } else {
+      onAddToCart(mainProduct.id, selectedColor, selectedSize);
+    }
+  };
+
+  const handleDecrement = () => {
+    if (onUpdateCartQuantity) {
+      onUpdateCartQuantity(mainProduct.id, selectedColor, selectedSize, -1);
+    }
   };
 
   const completeLookItems = React.useMemo(() => databaseProducts.filter((product) =>
@@ -354,14 +393,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 : isDarkMode ? 'bg-rose-950/60 text-rose-300' : 'bg-rose-50 text-rose-700'
             }`}>
               <span className="material-symbols-outlined text-sm leading-none">{currentInStock ? 'check_circle' : 'cancel'}</span>
-              {currentInStock ? 'In stock' : 'Out of stock'}
+              {currentInStock ? t('productDetails.inStock') : t('productDetails.outOfStock')}
             </span>
           </div>
 
           <div className="space-y-5">
             <div>
               <div className={`mb-2 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
-                <span>Color</span>
+                <span>{t('productDetails.color')}</span>
                 <span className={`text-xs font-normal ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
                   {getVariantLabel(selectedVariant) || selectedColor}
                 </span>
@@ -400,14 +439,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
             <div>
               <div className={`mb-2 flex items-center justify-between gap-3 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
-                <span>Choose size</span>
+                <span>{t('productDetails.chooseSize')}</span>
                 <button
                   type="button"
-                  onClick={() => alert('Refer to M chest specs: 98cm, sleeve: 62cm.')}
+                  onClick={() => alert(t('productDetails.sizeGuideAlert'))}
                   className="inline-flex items-center gap-1 text-xs font-medium text-[#553BE2] hover:underline"
                 >
                   <span className="material-symbols-outlined text-sm leading-none">straighten</span>
-                  Size guide
+                  {t('productDetails.sizeGuide')}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -436,9 +475,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               </div>
               <div className={`mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
                 {currentStock !== undefined && currentInStock && (
-                  <span className="font-medium text-amber-600">Only {currentStock} left</span>
+                  <span className="font-medium text-amber-600">{t('productDetails.onlyLeft', { count: currentStock })}</span>
                 )}
-                {currentSku && <span className="uppercase tracking-wide">SKU: {currentSku}</span>}
+                {currentSku && <span className="uppercase tracking-wide">{t('productDetails.sku', { sku: currentSku })}</span>}
               </div>
             </div>
           </div>
@@ -447,23 +486,68 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             <button
               type="button"
               onClick={handleLaunchAr}
-              className={`flex min-w-0 items-center justify-center gap-1.5 rounded-xl border py-3 text-xs font-bold transition-colors ${
+              className={`flex min-w-0 h-12 items-center justify-center gap-1.5 rounded-2xl border text-xs font-bold transition-all active:scale-[0.98] cursor-pointer ${
                 isDarkMode
                   ? 'border-indigo-500/60 bg-indigo-950/30 text-indigo-300 hover:bg-indigo-950/60'
                   : 'border-[#553BE2] bg-white text-[#553BE2] hover:bg-[#F2EEFF]'
               }`}
             >
               <span className="material-symbols-outlined text-base">view_in_ar</span>
-              <span className="truncate">Try on</span>
+              <span className="truncate">{t('productDetails.tryOn')}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => handleAddToCart(mainProduct.id, selectedColor, selectedSize)}
-              className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-[#553BE2] py-3 text-xs font-bold text-white shadow-md shadow-[#553BE2]/20 transition-opacity hover:opacity-95"
-            >
-              <span className="material-symbols-outlined text-base">shopping_bag</span>
-              <span className="truncate">Add to Cart</span>
-            </button>
+
+            {currentCartQuantity > 0 ? (
+              <div
+                className="flex min-w-0 h-12 items-center justify-between rounded-2xl bg-[#553BE2] px-2 shadow-md shadow-[#553BE2]/25 transition-all"
+                role="group"
+                aria-label={t('productDetails.quantitySelector')}
+              >
+                <button
+                  type="button"
+                  onClick={handleDecrement}
+                  aria-label={t('productDetails.decreaseQuantity')}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white transition-all hover:bg-black/35 active:scale-95 cursor-pointer shrink-0"
+                >
+                  <Minus className="h-4 w-4 stroke-[2.5]" />
+                </button>
+
+                <span className="h-5 w-[1px] bg-white/20 shrink-0 mx-1" aria-hidden="true" />
+
+                <span
+                  className="flex-1 text-center text-sm font-black text-white tabular-nums select-none tracking-wide px-1"
+                  aria-live="polite"
+                >
+                  {currentCartQuantity}
+                </span>
+
+                <span className="h-5 w-[1px] bg-white/20 shrink-0 mx-1" aria-hidden="true" />
+
+                <button
+                  type="button"
+                  onClick={handleIncrement}
+                  aria-label={t('productDetails.increaseQuantity')}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white transition-all hover:bg-black/35 active:scale-95 cursor-pointer shrink-0"
+                >
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleAddToCart(mainProduct.id, selectedColor, selectedSize)}
+                disabled={!currentInStock}
+                className={`flex min-w-0 h-12 items-center justify-center gap-1.5 rounded-2xl text-xs font-bold transition-all ${
+                  !currentInStock
+                    ? 'bg-slate-400/50 text-slate-200 cursor-not-allowed'
+                    : 'bg-[#553BE2] text-white shadow-md shadow-[#553BE2]/20 hover:bg-[#462CC9] active:scale-[0.98] cursor-pointer'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">shopping_bag</span>
+                <span className="truncate">
+                  {!currentInStock ? t('productDetails.outOfStock') : t('productDetails.addToCart')}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -496,7 +580,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
           <div className={`p-3 text-xs leading-relaxed min-h-[140px] ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
             {activeTab === 'details' && (
               <div className="space-y-3 animate-fade-in">
-                <p>{mainProduct.description || "Stay modern, stylish and extremely snug with NOVA's trademark engineered coordinate wear."}</p>
+                <p>{mainProduct.description || t('productDetails.defaultDesc')}</p>
                 {mainProduct.details && mainProduct.details.length > 0 ? (
                   <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
                     {mainProduct.details.map((detail, idx) => (
@@ -507,10 +591,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   </ul>
                 ) : (
                   <ul className={`grid grid-cols-2 gap-y-1.5 font-semibold pl-1 ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
-                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Premium fabric blend</li>
-                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Relaxed smart silhouette</li>
-                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Reinforced stitching</li>
-                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> Signature hardware</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> {t('productDetails.fabricBlend')}</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> {t('productDetails.relaxedFit')}</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> {t('productDetails.reinforcedStitching')}</li>
+                    <li className="flex items-center gap-1.5"><span className="material-symbols-outlined text-[#553BE2] text-sm">check_circle</span> {t('productDetails.signatureHardware')}</li>
                   </ul>
                 )}
               </div>
@@ -532,12 +616,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Your review</div>
+                        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('productDetails.reviewsTitle')}</div>
                         <div className="text-[11px] text-[#5E667A]">
-                          {currentUserName ? `Signed in as ${currentUserName}` : 'Write a review for this product.'}
+                          {currentUserName ? t('productDetails.signedInAs', { name: currentUserName }) : t('productDetails.writeReviewPrompt')}
                         </div>
                       </div>
-                      <div className="text-xs font-semibold text-[#5E667A]">{reviewCountLabel} reviews · {reviewStars} ★</div>
+                      <div className="text-xs font-semibold text-[#5E667A]">{t('productDetails.reviewsCountRating', { count: reviewCountLabel, rating: reviewStars })}</div>
                     </div>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: 5 }).map((_, index) => {
@@ -557,7 +641,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     <textarea
                       value={reviewComment}
                       onChange={(event) => setReviewComment(event.target.value)}
-                      placeholder="Share your experience..."
+                      placeholder={t('productDetails.reviewPlaceholder')}
                       className={`w-full min-h-[100px] rounded-2xl border p-3 text-xs focus:border-[#553BE2] focus:outline-none focus:ring-2 focus:ring-[#F2EEFF] ${
                         isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-200' : 'border-[#E4DFF5] bg-white text-[#131426]'
                       }`}
@@ -568,7 +652,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                       disabled={isSubmittingReview}
                       className="w-full rounded-2xl bg-[#553BE2] py-3 text-xs font-bold text-white hover:opacity-95 transition-opacity"
                     >
-                      {isSubmittingReview ? 'Saving Review...' : 'Submit Review'}
+                      {isSubmittingReview ? t('productDetails.submittingReview') : t('productDetails.submitReview')}
                     </button>
                     {!isFirebaseAuthenticated && (
                       <p className="text-xs text-amber-700" role="status">
@@ -611,7 +695,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                       <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
                         {reviewCountLabel > 0
                           ? `${reviewCountLabel} ratings are recorded, but their written review details are not available.`
-                          : 'Be the first to share your opinion about this product!'}
+                          : t('productDetails.emptyReviews')}
                       </p>
                     </div>
                   )}
