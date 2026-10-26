@@ -84,6 +84,8 @@ router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, a
       origin: clientOrigin
     });
 
+    console.log(`[VTON Router] Token created successfully via "${result.credentialId}" (fallbackCount: ${result.fallbackCount}).`);
+
     return res.json({
       ...result.token,
       credentialId: result.credentialId,
@@ -128,6 +130,8 @@ router.post(['/vton/session-event', '/decart/session-event'], async (req: Reques
   try {
     const { credentialId, event, reason } = req.body;
     if (credentialId && typeof credentialId === 'string') {
+      const sanitizedReason = String(reason || '').replace(/[\r\n]/g, ' ').slice(0, 120);
+      console.log(`[VTON Router] Client session event: credentialId="${credentialId}", event="${event}", reason="${sanitizedReason}"`);
       decartKeyPool.recordSessionFeedback(credentialId, event, reason);
     }
     return res.json({ ok: true });

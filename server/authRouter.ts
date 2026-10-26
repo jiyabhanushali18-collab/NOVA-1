@@ -93,6 +93,9 @@ let firebaseEnabled = false;
 const initializeFirebaseServices = () => {
   try {
     firestore = getFirestore();
+    try {
+      firestore.settings({ preferRest: true });
+    } catch {}
     auth = getAuth();
     firebaseEnabled = true;
     console.log('Firebase services initialized successfully.');
@@ -377,7 +380,7 @@ const sendOTPEmail = async (
     return {
       ok: false,
       status: 503,
-      error: "Email delivery is not configured. Please contact support."
+      error: "Email delivery service is not configured. Please contact support."
     };
   }
 
@@ -419,6 +422,7 @@ const sendOTPEmail = async (
     );
 
     if (!response.ok) {
+<<<<<<< HEAD
       let errorBody: { code?: string; message?: string } = {};
       const errorText = await response.text();
       try { errorBody = JSON.parse(errorText); } catch { /* non-JSON response */ }
@@ -443,11 +447,37 @@ const sendOTPEmail = async (
           recipient: maskEmail(email)
         });
       }
+=======
+      let errorDetail = '';
+      try {
+        const errorJson = await response.json();
+        errorDetail = errorJson.message || JSON.stringify(errorJson);
+      } catch {
+        errorDetail = (await response.text()).slice(0, 500);
+      }
+
+      console.error("[Email] Brevo rejected the OTP email.", {
+        status: response.status,
+        error: errorDetail.slice(0, 500),
+        recipient: maskEmail(email)
+      });
+>>>>>>> 2bdce85964632332eacd1c65f850965f0fe203d3
+
+      let userError = "Email delivery failed. Please try again.";
+      if (response.status === 401) {
+        if (errorDetail.includes('unrecognised IP address') || errorDetail.includes('authorised_ips')) {
+          userError = "Email service rejected connection: unrecognised server IP. Please authorise your server IP in Brevo security settings.";
+        } else {
+          userError = "Email service authentication failed. Please verify provider credentials.";
+        }
+      } else if (response.status === 400 && errorDetail.includes('sender')) {
+        userError = "Configured sender email is not verified with the email provider.";
+      }
 
       return {
         ok: false,
         status: response.status,
-        error: "Email delivery failed. Please try again."
+        error: userError
       };
     }
 
@@ -471,11 +501,10 @@ const sendOTPEmail = async (
     return {
       ok: false,
       status: 502,
-      error: "Email delivery failed. Please try again."
+      error: "Email delivery failed due to network error. Please try again."
     };
   }
 };
-
 
 // Helper: get OTP doc ref
 const otpDocRef = (email: string) => {
@@ -487,36 +516,52 @@ const otpDocRef = (email: string) => {
 
 const getStoredOtp = async (email: string) => {
   if (firebaseEnabled && firestore) {
-    const doc = await otpDocRef(email)?.get();
-    return doc?.exists ? doc.data() : null;
+    try {
+      const doc = await otpDocRef(email)?.get();
+      return doc?.exists ? doc.data() : null;
+    } catch (e: any) {
+      console.warn('[OTP] Firestore getStoredOtp failed, falling back to memory store:', e?.message || e);
+    }
   }
   return localOtpStore.get(email) ?? null;
 };
 
 const saveStoredOtp = async (email: string, record: OTPRecord) => {
+  localOtpStore.set(email, record);
   if (firebaseEnabled && firestore) {
-    await otpDocRef(email)?.set(record, { merge: true });
+    try {
+      await otpDocRef(email)?.set(record, { merge: true });
+    } catch (e: any) {
+      console.warn('[OTP] Firestore saveStoredOtp failed, preserved in memory store:', e?.message || e);
+    }
     return;
   }
-  localOtpStore.set(email, record);
 };
 
 const deleteStoredOtp = async (email: string) => {
+  localOtpStore.delete(email);
   if (firebaseEnabled && firestore) {
-    await otpDocRef(email)?.delete();
+    try {
+      await otpDocRef(email)?.delete();
+    } catch (e: any) {
+      console.warn('[OTP] Firestore deleteStoredOtp failed:', e?.message || e);
+    }
     return;
   }
-  localOtpStore.delete(email);
 };
 
 const updateStoredOtp = async (email: string, data: Partial<OTPRecord>) => {
-  if (firebaseEnabled && firestore) {
-    await otpDocRef(email)?.update(data);
-    return;
-  }
   const existing = localOtpStore.get(email);
   if (existing) {
     localOtpStore.set(email, { ...existing, ...data });
+  }
+  if (firebaseEnabled && firestore) {
+    try {
+      await otpDocRef(email)?.update(data);
+    } catch (e: any) {
+      console.warn('[OTP] Firestore updateStoredOtp failed:', e?.message || e);
+    }
+    return;
   }
 };
 
