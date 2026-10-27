@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { ScreenId } from '../../types';
+import { useI18n } from '../../i18n';
 
 interface QuickHubModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
   onClose,
   onNavigate
 }) => {
+  const { t } = useI18n();
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -48,9 +50,9 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
   const hubItems: HubItem[] = [
     {
       id: 'ar-fitting',
-      title: 'AR Virtual Fitting',
-      badge: 'REAL-TIME',
-      description: 'Try 3D clothing directly on your camera',
+      title: t('hub.arFitting.title'),
+      badge: t('hub.arFitting.badge'),
+      description: t('hub.arFitting.desc'),
       screen: 'ar-tryon',
       iconBg: 'bg-[#4F46E5]',
       icon: (
@@ -79,9 +81,9 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
     },
     {
       id: 'camera-scan',
-      title: 'Camera Scan',
-      badge: 'AI VISION',
-      description: 'Scan outfit & garments in real-time',
+      title: t('hub.cameraScan.title'),
+      badge: t('hub.cameraScan.badge'),
+      description: t('hub.cameraScan.desc'),
       screen: 'camera-scan',
       iconBg: 'bg-[#4F46E5]',
       icon: (
@@ -102,9 +104,9 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
     },
     {
       id: 'wardrobe',
-      title: 'Virtual Wardrobe',
-      badge: 'CLOSET',
-      description: 'Organize, match and customize looks',
+      title: t('hub.wardrobe.title'),
+      badge: t('hub.wardrobe.badge'),
+      description: t('hub.wardrobe.desc'),
       screen: 'wardrobe',
       iconBg: 'bg-[#9333EA]',
       icon: (
@@ -125,9 +127,9 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
     },
     {
       id: 'stylist',
-      title: 'AI Fashion Stylist',
-      badge: 'GENAI',
-      description: 'Personalized outfit recommendations',
+      title: t('hub.stylist.title'),
+      badge: t('hub.stylist.badge'),
+      description: t('hub.stylist.desc'),
       screen: 'chat',
       iconBg: 'bg-[#059669]',
       icon: (
@@ -154,9 +156,9 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
     },
     {
       id: 'showroom',
-      title: 'NOVA Showroom',
-      badge: 'DROPS',
-      description: 'Explore brand drops and curated collections',
+      title: t('hub.showroom.title'),
+      badge: t('hub.showroom.badge'),
+      description: t('hub.showroom.desc'),
       screen: 'showroom',
       iconBg: 'bg-[#EA580C]',
       icon: (
@@ -206,11 +208,11 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#6045FF] inline-block shadow-[0_0_8px_#6045FF]" />
               <h2 id="nova-hub-heading" className="text-2xl font-black text-white tracking-tight">
-                NOVA Hub
+                {t('hub.title')}
               </h2>
             </div>
             <p className="text-xs text-[#94A3B8] font-medium mt-1">
-              Instant access to camera vision, AR fitting and AI tools
+              {t('hub.subtitle')}
             </p>
           </div>
 
@@ -218,7 +220,7 @@ export const QuickHubModal: React.FC<QuickHubModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close NOVA Hub"
+            aria-label={t('hub.close')}
             className="w-9 h-9 rounded-full bg-[#1E293B]/70 hover:bg-[#334155] border border-white/10 flex items-center justify-center text-[#94A3B8] hover:text-white transition-all cursor-pointer active:scale-90"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

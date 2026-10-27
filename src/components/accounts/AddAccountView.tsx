@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import accountService from '../../services/accountService';
 import { NovaAccount } from '../../types';
 import { saveUserToFirestore } from '../../firebase';
+import { useI18n } from '../../i18n';
 
 interface Props {
   onAdded?: (acc: NovaAccount) => void;
 }
 
 export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -104,14 +106,14 @@ export const AddAccountView: React.FC<Props> = ({ onAdded }) => {
 
   return (
     <div className="space-y-3">
-      <button disabled={loading} onClick={handleGoogle} className="w-full py-2.5 rounded-xl bg-[#553BE2] text-white font-bold disabled:opacity-50 hover:opacity-95 transition-opacity">Continue with Google</button>
+      <button disabled={loading} onClick={handleGoogle} className="w-full py-2.5 rounded-xl bg-[#553BE2] text-white font-bold disabled:opacity-50 hover:opacity-95 transition-opacity">{t('accounts.continueGoogle')}</button>
 
-      <div className="text-center text-[#5E667A] text-sm">or</div>
+      <div className="text-center text-[#5E667A] text-sm">{t('common.or')}</div>
 
       <form onSubmit={handleEmailLogin} className="space-y-2">
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full p-2.5 rounded-xl border border-[#E4DFF5] bg-[#F2EEFF] text-[#131426] placeholder:text-[#5E667A] focus:outline-none focus:border-[#553BE2]" />
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full p-2.5 rounded-xl border border-[#E4DFF5] bg-[#F2EEFF] text-[#131426] placeholder:text-[#5E667A] focus:outline-none focus:border-[#553BE2]" />
-        <button disabled={loading} type="submit" className="w-full py-2.5 rounded-xl bg-white border border-[#E4DFF5] text-[#131426] hover:bg-[#F2EEFF] font-bold transition-colors">Sign in</button>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('accounts.email')} className="w-full p-2.5 rounded-xl border border-[#E4DFF5] bg-[#F2EEFF] text-[#131426] placeholder:text-[#5E667A] focus:outline-none focus:border-[#553BE2]" />
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('accounts.password')} className="w-full p-2.5 rounded-xl border border-[#E4DFF5] bg-[#F2EEFF] text-[#131426] placeholder:text-[#5E667A] focus:outline-none focus:border-[#553BE2]" />
+        <button disabled={loading} type="submit" className="w-full py-2.5 rounded-xl bg-white border border-[#E4DFF5] text-[#131426] hover:bg-[#F2EEFF] font-bold transition-colors">{t('accounts.signIn')}</button>
       </form>
 
       {error && <div className="text-xs text-red-500">{error}</div>}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ScreenId, Measurement, NovaAnalysisProfile, Preference, NovaAccount, ProductItem, LegalConsentRecord, DeliveryAddress, SavedLook } from '../types';
 import { fetchUserSavedLooks, deleteUserSavedLook, saveImageToDeviceGallery, downloadSavedLook } from '../services/savedLooksService';
 import AccountSwitcherModal from './accounts/AccountSwitcherModal';
@@ -18,7 +18,7 @@ interface ProfileViewProps {
   userName: string;
   setUserName: (name: string) => void;
   userEmail?: string;
-  onSaveProfile?: (profile: { name: string; email: string; phone: string; address: string }) => Promise<void>;
+  onSaveProfile?: (profile: { name: string; email: string; phone: string; address: string; profilePhoto?: string }) => Promise<void>;
   userPhone?: string;
   userAddress?: string;
   userPinCode?: string;
@@ -68,6 +68,35 @@ const GooglePayMark = ({ className = '' }: { className?: string }) => (
     <span className="ml-0.5 text-[#5F6368]">Pay</span>
   </span>
 );
+
+const compressProfileImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 512;
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not process image context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Could not load image file'));
+      img.src = String(reader.result || '');
+    };
+    reader.onerror = () => reject(new Error('Could not read image file'));
+    reader.readAsDataURL(file);
+  });
+};
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
   onNavigate, 
@@ -657,6 +686,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [profileLocation, setProfileLocation] = useState(
     userAddress || (savedDeliveryAddress ? formatDeliveryAddress(savedDeliveryAddress) : '')
   );
+  const [editProfilePhoto, setEditProfilePhoto] = useState<string | undefined>(profilePhoto);
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    setEditProfilePhoto(profilePhoto);
+  }, [profilePhoto]);
 
   // Sync state if user settings change or log in with another account
   React.useEffect(() => {
@@ -693,7 +728,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           name: profileName.trim(),
           email: profileEmail.trim(),
           phone: profilePhone.trim(),
-          address: profileLocation.trim()
+          address: profileLocation.trim(),
+          profilePhoto: editProfilePhoto
         });
       } else {
         setUserName(profileName.trim());
@@ -1120,13 +1156,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Quick Actions grids */}
       <section className="space-y-3">
-        <h3 className={`text-base font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>Quick Actions</h3>
+        <h3 className={`text-base font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>{t('profile.quickActions')}</h3>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Saved\nLooks', icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true) },
-            { label: 'Try-On\nHistory', icon: 'history', target: 'scan-outfit' },
-            { label: 'My\nScans', icon: 'center_focus_strong', target: 'camera-scan' },
-            { label: 'Coupons\n& Offers', icon: 'local_offer', target: 'cart' }
+            { label: t('profile.qa.savedLooks'), icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true) },
+            { label: t('profile.qa.tryOnHistory'), icon: 'history', target: 'scan-outfit' },
+            { label: t('profile.qa.myScans'), icon: 'center_focus_strong', target: 'camera-scan' },
+            { label: t('profile.qa.coupons'), icon: 'local_offer', target: 'cart' }
           ].map((act) => (
             <button 
               key={act.label}
@@ -1147,13 +1183,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <ul className={`divide-y ${isDarkMode ? 'divide-slate-700/50' : 'divide-[#E4DFF5]'}`}>
           {[
             { label: t('profile.settings.wishlist'), icon: 'favorite', action: () => setIsWishlistModalOpen(true), extra: wishlist.length > 0 ? `${wishlist.length} Items` : '0' },
-            { label: 'Saved Looks', icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true), extra: savedLooks.length > 0 ? `${savedLooks.length} Look(s)` : '0' },
+            { label: t('profile.settings.savedLooks'), icon: 'auto_awesome', action: () => setIsSavedLooksModalOpen(true), extra: savedLooks.length > 0 ? `${savedLooks.length} Look(s)` : '0' },
             { label: t('profile.settings.paymentMethods'), icon: 'payment', action: () => setIsPaymentModalOpen(true), extra: `${paymentMethods.filter((p: any) => p.type === 'Credit Card').length} Card(s), ${paymentMethods.filter((p: any) => p.type === 'UPI').length} UPI` },
             { label: t('profile.settings.addresses'), icon: 'location_on', action: () => setIsAddressesModalOpen(true), extra: `${addresses.length} Saved` },
             { label: t('profile.settings.darkMode'), icon: isDarkMode ? 'light_mode' : 'dark_mode', action: () => { setIsDarkMode?.(!isDarkMode); localStorage.setItem('isDarkMode', JSON.stringify(!isDarkMode)); }, extra: isDarkMode ? 'ON' : 'OFF' },
             { label: t('profile.settings.privacy'), icon: 'lock', action: () => setIsPrivacyModalOpen(true) },
-            { label: 'Terms & Conditions', icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
-            { label: 'Privacy Policy', icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
+            { label: t('profile.settings.terms'), icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
+            { label: t('profile.settings.privacyPolicy'), icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
             { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
             { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
@@ -1191,10 +1227,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-[#131426]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up">
-            <h3 className="text-lg font-bold text-[#131426]">Update Measurements</h3>
+            <h3 className="text-lg font-bold text-[#131426]">{t('profile.measurements.title')}</h3>
             <form onSubmit={handleSaveMeasurements} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">HEIGHT (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.height')}</label>
                 <input 
                   type="text" 
                   value={editHeight} 
@@ -1203,7 +1239,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">WEIGHT (kg)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.weight')}</label>
                 <input 
                   type="text" 
                   value={editWeight} 
@@ -1212,7 +1248,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">CHEST (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.chest')}</label>
                 <input 
                   type="text" 
                   value={editChest} 
@@ -1221,7 +1257,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">WAIST (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.waist')}</label>
                 <input 
                   type="text" 
                   value={editWaist} 
@@ -1230,7 +1266,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">INSEAM (cm)</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.measurements.inseam')}</label>
                 <input 
                   type="text" 
                   value={editInseam} 
@@ -1261,11 +1297,89 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Edit Profile Modal */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 bg-[#131426]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up">
-            <h3 className="text-lg font-bold text-[#131426]">Edit Profile</h3>
+          <div className="bg-white border border-[#E4DFF5] rounded-3xl p-6 w-full max-w-sm shadow-xl space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#131426]">{t('profile.editProfile.title')}</h3>
+              <button
+                type="button"
+                onClick={() => setIsProfileModalOpen(false)}
+                className="text-[#5E667A] hover:text-[#131426] p-1 rounded-lg transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-lg leading-none">close</span>
+              </button>
+            </div>
             <form onSubmit={handleSaveProfile} className="space-y-3">
+              {/* Profile Photo Upload & Preview */}
+              <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#553BE2] shadow-md shadow-[#553BE2]/15 bg-[#F2EEFF] relative">
+                    <img 
+                      alt="Avatar preview" 
+                      className="w-full h-full object-cover"
+                      src={editProfilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileName || userName || 'NOVA User')}&background=ECE7FF&color=553BE2&bold=true`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => profilePhotoInputRef.current?.click()}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold cursor-pointer"
+                      aria-label={t('profile.editProfile.changePhoto')}
+                    >
+                      <span className="material-symbols-outlined text-lg mb-0.5">photo_camera</span>
+                      <span>{t('profile.editProfile.changePhoto')}</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => profilePhotoInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 bg-[#553BE2] hover:bg-[#462CC9] text-white p-2 rounded-full shadow border-2 border-white transition-all cursor-pointer hover:scale-110 active:scale-95"
+                    aria-label={t('profile.editProfile.uploadPhoto')}
+                  >
+                    <span className="material-symbols-outlined text-[13px] leading-none">photo_camera</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => profilePhotoInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#F2EEFF] text-[#553BE2] hover:bg-[#E4DFF5] transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm leading-none">upload</span>
+                    <span>{editProfilePhoto ? t('profile.editProfile.changePhoto') : t('profile.editProfile.uploadPhoto')}</span>
+                  </button>
+                  {editProfilePhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setEditProfilePhoto('')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm leading-none">delete</span>
+                      <span>{t('profile.editProfile.removePhoto')}</span>
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  ref={profilePhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const dataUrl = await compressProfileImage(file);
+                      setEditProfilePhoto(dataUrl);
+                    } catch (err) {
+                      console.error('Failed to load image:', err);
+                    }
+                  }}
+                />
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">FULL NAME</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.name')}</label>
                 <input 
                   type="text" 
                   value={profileName} 
@@ -1275,7 +1389,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">EMAIL ADDRESS</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.email')}</label>
                 <input 
                   type="email" 
                   value={profileEmail} 
@@ -1285,7 +1399,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">PHONE NUMBER</label>
+                <label className="block text-xs font-bold text-[#5E667A] mb-1 leading-none">{t('profile.editProfile.phone')}</label>
                 <input 
                   type="text" 
                   value={profilePhone} 
@@ -2072,7 +2186,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className={`flex justify-between items-center pb-3 border-b ${isDarkMode ? 'border-slate-800' : 'border-[#E4DFF5]'}`}>
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#553BE2]">auto_awesome</span>
-                My Saved Looks ({savedLooks.length})
+                {t('profile.savedLooks.title')} ({savedLooks.length})
               </h3>
               <button 
                 onClick={() => setIsSavedLooksModalOpen(false)}
@@ -2087,7 +2201,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-[#F2EEFF] border-[#E4DFF5] text-[#553BE2]'}`}>
                   <span className="material-symbols-outlined text-3xl">checkroom</span>
                 </div>
-                <h4 className="text-sm font-bold">No saved looks yet</h4>
+                <h4 className="text-sm font-bold">{t('profile.savedLooks.empty')}</h4>
                 <p className="text-xs text-slate-400 max-w-[260px] mx-auto">
                   Try on outfits in AR Try-On and tap "Save Look" to save them to your phone gallery and profile.
                 </p>
@@ -2098,7 +2212,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   }}
                   className="bg-[#553BE2] hover:bg-[#4830cb] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer inline-block"
                 >
-                  Go to AR Try-On
+                  {t('profile.savedLooks.goToAr')}
                 </button>
               </div>
             ) : (
@@ -2185,14 +2299,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 className="py-2.5 px-3 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">download</span>
-                <span>Download Image</span>
+                <span>{t('profile.savedLooks.download')}</span>
               </button>
               <button
                 onClick={() => handleDeleteSavedLook(selectedLookPreview.id)}
                 className="py-2.5 px-3 rounded-xl bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">delete</span>
-                <span>Delete Look</span>
+                <span>{t('profile.savedLooks.delete')}</span>
               </button>
             </div>
           </div>

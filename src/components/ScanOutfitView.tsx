@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScreenId, OutfitScanRecord } from '../types';
 import { getScanHistory, deleteOutfitScan, clearAllScanHistory } from '../services/scanHistoryService';
+import { useI18n } from '../i18n';
 
 interface ScanOutfitViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string }) => void;
@@ -13,6 +14,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
   isDarkMode = false,
   userId
 }) => {
+  const { t } = useI18n();
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [flashMode, setFlashMode] = useState<'Auto' | 'On' | 'Off'>('Auto');
   const [isFlipped, setIsFlipped] = useState(false);
@@ -39,14 +41,14 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
     if (selectedScan?.id === scanId) {
       setSelectedScan(null);
     }
-    setToastMessage('✓ Scan removed from history');
+    setToastMessage(t('scanOutfit.removed'));
     setTimeout(() => setToastMessage(null), 2500);
   };
 
   const handleClearHistory = () => {
-    if (window.confirm('Are you sure you want to clear your scan history?')) {
+    if (window.confirm(t('scanOutfit.confirmClear'))) {
       clearAllScanHistory(userId);
-      setToastMessage('✓ Scan history cleared');
+      setToastMessage(t('scanOutfit.cleared'));
       setTimeout(() => setToastMessage(null), 2500);
     }
   };
@@ -270,7 +272,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           <h2 className={`text-base font-bold flex items-center gap-2 ${
             isDarkMode ? 'text-white' : 'text-[#131426]'
           }`}>
-            <span>Recent Scans</span>
+            <span>{t('scanOutfit.title')}</span>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#553BE2]/15 text-[#553BE2] border border-[#553BE2]/20">
               {scans.length}
             </span>
@@ -281,7 +283,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
               onClick={() => setIsHistoryModalOpen(true)}
               className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline cursor-pointer group"
             >
-              <span>View All</span>
+              <span>{t('common.viewAll')}</span>
               <span className="material-symbols-outlined text-sm ml-0.5 leading-none group-hover:translate-x-0.5 transition-transform">chevron_right</span>
             </button>
           )}
@@ -294,7 +296,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
             <div className="w-10 h-10 rounded-full bg-[#553BE2]/10 text-[#553BE2] flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-xl">center_focus_strong</span>
             </div>
-            <p className="text-xs font-bold">No outfit scans yet</p>
+            <p className="text-xs font-bold">{t('scanOutfit.empty')}</p>
             <p className="text-[10px] text-slate-400 max-w-[220px] mx-auto">
               Scan any outfit with your camera to analyze styles, palettes, and matching pieces.
             </p>
@@ -398,7 +400,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                   type="text"
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  placeholder="Search scans by name or category..."
+                  placeholder={t('scanOutfit.search')}
                   className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border outline-none transition-all ${
                     isDarkMode 
                       ? 'bg-slate-900 border-white/10 text-white placeholder-slate-500 focus:border-[#553BE2]' 
@@ -415,7 +417,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto text-slate-400">
                     <span className="material-symbols-outlined text-2xl">search_off</span>
                   </div>
-                  <p className="text-xs font-bold">No scans found</p>
+                  <p className="text-xs font-bold">{t('scanOutfit.empty')}</p>
                   <p className="text-[10px] text-slate-400">
                     {historySearchQuery ? 'Try a different search keyword' : 'Start scanning outfits to curate your history.'}
                   </p>
@@ -492,7 +494,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                 className="w-full py-3 px-4 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#553BE2]/30 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">center_focus_strong</span>
-                <span>Scan New Outfit</span>
+                <span>{t('wardrobe.scanNew')}</span>
               </button>
             </div>
           </div>
@@ -561,7 +563,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                 className="w-full py-3 px-4 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#553BE2]/30 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">view_in_ar</span>
-                <span>Try On in AR</span>
+                <span>{t('productDetails.tryOn')}</span>
               </button>
 
               <div className="grid grid-cols-2 gap-2">
@@ -584,7 +586,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                   className="py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-xs border border-rose-500/30 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">delete</span>
-                  <span>Delete Scan</span>
+                  <span>{t('common.delete')}</span>
                 </button>
               </div>
             </div>

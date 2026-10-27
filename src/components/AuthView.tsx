@@ -272,7 +272,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setConsentError(null);
 
     if (mode === 'signup' && !hasAcceptedLegal) {
-      setConsentError("Please read and agree to NOVA's Terms & Conditions and Privacy Policy before creating an account.");
+      setConsentError(t('auth.errorLegalConsent'));
       return;
     }
 
@@ -357,17 +357,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
 
     // Validate inputs
     if (!name.trim()) {
-      setError('Please provide your Full Name.');
+      setError(t('auth.errorNameRequired'));
       return;
     }
 
     if (!email.trim()) {
-      setError('Please provide your email address.');
+      setError(t('auth.errorEmailRequired'));
       return;
     }
 
     if (pinCode.trim() && !/^\d{6}$/.test(pinCode.trim())) {
-      setError('Please enter a valid 6-digit PIN code.');
+      setError(t('auth.errorPinInvalid'));
       return;
     }
 
@@ -375,18 +375,18 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
 
     // Validate email format
     if (!normalizedEmail.includes('@') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setError('Please provide a valid email address.');
+      setError(t('auth.errorEmailInvalid'));
       return;
     }
 
     const cleanPhone = phoneNumber.trim();
     const fullPhone = getFullPhoneNumber(cleanPhone, selectedCountry);
     if (!cleanPhone) {
-      setError('Please provide a phone number for your account.');
+      setError(t('auth.errorPhoneRequired'));
       return;
     }
     if (!isValidPhoneNumber(fullPhone)) {
-      setError(`Please provide a valid phone number for ${selectedCountry.name}.`);
+      setError(t('auth.errorPhoneInvalid', { country: selectedCountry.name }));
       return;
     }
 
@@ -415,11 +415,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        setError(data.error || 'Could not send the verification code. Please try again.');
+        setError(data.error || t('auth.errorSendFailed'));
         setIsSubmitting(false);
         return;
       }
-      setSuccess('A 6-digit verification code was sent to your email.');
+      setSuccess(t('auth.codeSentSuccess'));
       setIsSubmitting(false);
       if (onProceedToEmailVerification) {
         onProceedToEmailVerification(
@@ -434,7 +434,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
       }
     } catch (err) {
       console.error('Error sending OTP:', err);
-      setError('Could not send the verification code. Please check your connection and try again.');
+      setError(t('auth.errorSendNetwork'));
       setIsSubmitting(false);
     }
   };
@@ -721,14 +721,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                     {mode === 'login' ? t('auth.registeredUser') : t('auth.createAccount')}
                   </div>
                   <p className="text-xs text-[#5E667A] leading-relaxed">
-                    {mode === 'login'
-                      ? 'Sign in with your registered email or phone number.'
-                      : 'Create an account to preserve your wardrobe, preferences, and profile.'}
+                    {mode === 'login' ? t('auth.signInSubtitle') : t('auth.signUpSubtitle')}
                   </p>
                 </div>
 
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">Email Address{mode === 'login' ? ' (recommended)' : ''}</label>
+                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">{mode === 'login' ? t('auth.emailLabelRecommended') : t('auth.emailLabel')}</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5E667A]">
                       <ShieldCheck className="w-4.5 h-4.5" />
@@ -747,14 +745,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                 {mode === 'signup' && (
               <>
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">Full Name</label>
+                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">{t('auth.fullNameLabel')}</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5E667A]">
                       <User className="w-4.5 h-4.5" />
                     </div>
                     <input
                       type="text"
-                      placeholder="Arjun Mehta"
+                      placeholder={t('auth.fullNamePlaceholder')}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
@@ -764,11 +762,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                 </div>
 
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">Address</label>
+                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">{t('auth.addressLabel')}</label>
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Street, locality, city"
+                      placeholder={t('auth.addressPlaceholder')}
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="w-full pl-3 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
@@ -777,11 +775,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                 </div>
 
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">PIN Code</label>
+                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">{t('auth.pinCodeLabel')}</label>
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="560038"
+                      placeholder={t('auth.pinCodePlaceholder')}
                       maxLength={6}
                       value={pinCode}
                       onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}

@@ -3,6 +3,7 @@ import { NovaAccount } from '../../types';
 import AddAccountView from './AddAccountView';
 import ManageAccountsView from './ManageAccountsView';
 import accountService from '../../services/accountService';
+import { useI18n } from '../../i18n';
 
 interface Props {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, accounts, activeUid, onSwitch, onAdd, onRemove, onLogout }) => {
+  const { t } = useI18n();
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -58,8 +60,8 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-md mx-auto p-4 pb-6 bg-white rounded-t-3xl border-t border-[#E4DFF5] shadow-2xl">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-bold text-[#131426]">Accounts</h3>
-          <button onClick={onClose} className="text-[#5E667A] hover:text-[#131426] font-semibold text-sm">Close</button>
+          <h3 className="text-lg font-bold text-[#131426]">{t('accounts.title')}</h3>
+          <button onClick={onClose} className="text-[#5E667A] hover:text-[#131426] font-semibold text-sm">{t('common.close')}</button>
         </div>
 
         {toast && <div className="mb-3 text-sm text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200">{toast}</div>}
@@ -70,7 +72,7 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button onClick={() => setShowAdd(true)} disabled={accounts.length >= 5} className={`py-2 rounded-xl ${accounts.length >= 5 ? 'bg-[#ECE7FF] text-[#8E96AA]' : 'bg-[#553BE2] text-white font-bold hover:opacity-95 transition-opacity'}`}>
-                Add Account
+                {t('accounts.addAccount')}
               </button>
               <button
                 onClick={() => {
@@ -81,7 +83,7 @@ export const AccountSwitcherModal: React.FC<Props> = ({ isOpen, onClose, account
                 }}
                 className="py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors"
               >
-                Log Out
+                {t('accounts.logOut')}
               </button>
             </div>
           </>

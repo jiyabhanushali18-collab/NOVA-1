@@ -7,6 +7,7 @@ import accountService from '../services/accountService';
 import aiService from "../services/aiService";
 import { findSimilarProductsByVector, getPairedItem, ProductMatch } from "../services/productMetadataService";
 import { resolveColorHex } from '../utils/colors';
+import { useI18n } from '../i18n';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -185,6 +186,7 @@ const toDataUrl = async (source: string) => {
 };
 
 export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false }) => {
+  const { t } = useI18n();
   const userId = accountService.getUserDocId(userEmail);
   const username = userEmail ? userEmail.split('@')[0] : userId;
   const [profile, setProfile] = useState<WardrobeProfile>(() => {
@@ -542,8 +544,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`text-[10px] font-black uppercase tracking-[0.28em] ${accentText}`}>NOVA</p>
-            <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight">Virtual Wardrobe</h1>
-            <p className={`mt-3 max-w-[250px] text-sm leading-relaxed ${muted}`}>Scan. Store. Style. Your entire wardrobe, digitized with AI.</p>
+            <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight">{t('wardrobe.title')}</h1>
+            <p className={`mt-3 max-w-[250px] text-sm leading-relaxed ${muted}`}>{t('wardrobe.subtitle')}</p>
           </div>
           <button onClick={() => onNavigate('scan-outfit')} className={`h-11 w-11 rounded-2xl ${purpleButton}`}>
             <span className="material-symbols-outlined text-xl leading-10">center_focus_strong</span>
