@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n';
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { ScreenId } from '../types';
+import { ProductItem, ScreenId } from '../types';
 import { analytics } from '../services/analyticsService';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -13,7 +13,6 @@ import {
   startLiveTryOnSession,
   captureVideoFrame,
   LiveTryOnSessionHandle,
-  DEFAULT_GARMENTS,
   DEFAULT_MODELS,
   prepareGarmentForLiveTryOn,
 } from '../services/liveTryOnService';
@@ -34,16 +33,22 @@ interface ArTryOnViewProps {
   selectedGarment: string;
   setSelectedGarment: (garment: string) => void;
   onCaptureImage?: (imageDataUrl: string, isLiveTryOn: boolean) => void;
-  onTryOnSuccess?: (garment: { id: string; name: string; imageUrl: string }) => void;
+  onTryOnSuccess?: (garment: { id: string; productId?: string; name: string; imageUrl: string }) => void;
   initialGarmentImage?: string | null;
   isDarkMode?: boolean;
   userId?: string;
   userEmail?: string;
   userName?: string;
+  products: ProductItem[];
+  productsLoading: boolean;
+  productsError: string | null;
+  wishlist: string[];
+  onToggleWishlist: (productId: string) => void;
 }
 
 interface GarmentItem {
   id: string;
+  productId?: string;
   name: string;
   category: string;
   img: string;
@@ -127,6 +132,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   userId,
   userEmail,
   userName,
+  products,
+  productsLoading,
+  productsError,
+  wishlist,
+  onToggleWishlist,
 }) => {
   const { t } = useI18n();
   const [connectionState, setConnectionState] = useState<ArTryOnState>('idle');
@@ -144,7 +154,18 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     previewUrl?: string;
     isError?: boolean;
   } | null>(null);
-  const [garmentsList, setGarmentsList] = useState<GarmentItem[]>(DEFAULT_GARMENTS);
+  const [uploadedGarments, setUploadedGarments] = useState<GarmentItem[]>([]);
+  const catalogGarments: GarmentItem[] = products
+    .filter((product) => product.imageUrl)
+    .sort((first, second) => Number(wishlist.includes(second.id)) - Number(wishlist.includes(first.id)))
+    .map((product) => ({
+      id: product.id,
+      productId: product.id,
+      name: product.name,
+      category: product.category,
+      img: product.imageUrl,
+    }));
+  const garmentsList = [...catalogGarments, ...uploadedGarments];
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef<LiveTryOnSessionHandle | null>(null);
@@ -157,6 +178,16 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   const activeModelBg = DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS['Lavender'];
   const activeGarmentObj = garmentsList.find((g) => g.id === selectedGarment) || garmentsList[0];
+
+  useEffect(() => {
+    if (
+      !productsLoading
+      && catalogGarments.length > 0
+      && !garmentsList.some((garment) => garment.id === selectedGarment)
+    ) {
+      setSelectedGarment(catalogGarments[0].id);
+    }
+  }, [productsLoading, products, selectedGarment, uploadedGarments, setSelectedGarment]);
 
   // Stable references to eliminate stale closures in async callbacks
   const selectedGarmentRef = useRef(selectedGarment);
@@ -263,7 +294,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           setStatusText(t('arTryOn.cameraReady'));
         },
         onStatusChange: (status) => {
-          if (status.includes('Connecting to AI') || status.includes('Applying garment')) {
+          if (!isLiveRef.current && (status.includes('Connecting to AI') || status.includes('Applying garment'))) {
             setConnectionState('processing');
           }
           setStatusText(status);
@@ -280,6 +311,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           if (activeGarmentObjRef.current) {
             onTryOnSuccess?.({
               id: activeGarmentObjRef.current.id,
+              productId: activeGarmentObjRef.current.productId,
               name: activeGarmentObjRef.current.name,
               imageUrl: activeGarmentObjRef.current.img.startsWith('blob:') ? '' : activeGarmentObjRef.current.img,
             });
@@ -367,7 +399,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       file,
     };
 
-    setGarmentsList((prev) => [newGarment, ...prev]);
+    setUploadedGarments((prev) => [newGarment, ...prev]);
     setSelectedGarment(customId);
 
     // Warm up compression in background
@@ -402,7 +434,20 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   // Flip Camera
   const handleFlip = async () => {
     if (sessionRef.current && isLiveRef.current) {
-      await sessionRef.current.flipCamera();
+      try {
+        await sessionRef.current.flipCamera();
+      } catch (error) {
+        const errorName = error instanceof Error ? error.name : '';
+        const message = errorName === 'CameraUnavailableError'
+          || errorName === 'NotFoundError'
+          || errorName === 'OverconstrainedError'
+          ? 'This device does not have another available camera to switch to.'
+          : errorName === 'NotAllowedError'
+          ? 'Camera access was denied. Allow camera access in your browser settings and try again.'
+          : 'Could not switch cameras. Check camera permissions and try again.';
+        setToastMessage(message);
+        window.setTimeout(() => setToastMessage(null), 3000);
+      }
     }
   };
 
@@ -694,7 +739,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           <h2 className="text-base font-bold text-white">{t('arTryOn.selectOutfit')}</h2>
           <button 
             type="button"
-            onClick={() => onNavigate('wardrobe')}
+            onClick={() => onNavigate('showroom')}
             className="text-xs font-semibold text-[#8B6DFD] hover:text-[#A594FD] flex items-center transition-colors cursor-pointer"
           >
             {t('arTryOn.viewAll')} <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
@@ -705,6 +750,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         <div className="flex gap-2.5 overflow-x-auto hide-scrollbar touch-pan-x snap-x -mx-1 px-1 pb-1">
           {garmentsList.map((g) => {
             const isSelected = selectedGarment === g.id;
+            const productId = g.productId;
+            const isWishlisted = productId ? wishlist.includes(productId) : false;
             return (
               <div
                 key={g.id}
@@ -722,6 +769,25 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover object-top"
                   />
+                  {g.productId && (
+                    <button
+                      type="button"
+                      aria-label={isWishlisted ? t('wishlist.remove') : t('wishlist.add')}
+                      aria-pressed={isWishlisted}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (productId) onToggleWishlist(productId);
+                      }}
+                      className="absolute top-1 left-1 w-6 h-6 rounded-full bg-[#111322]/85 text-rose-400 flex items-center justify-center shadow-md"
+                    >
+                      <span
+                        className="material-symbols-outlined text-sm leading-none"
+                        style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}
+                      >
+                        {isWishlisted ? 'favorite' : 'favorite_border'}
+                      </span>
+                    </button>
+                  )}
                   {isSelected && (
                     <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#6D4AFF] text-white flex items-center justify-center border border-white shadow-sm">
                       <span className="material-symbols-outlined text-[10px] font-bold leading-none">check</span>
@@ -736,6 +802,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
               </div>
             );
           })}
+
+          {garmentsList.length === 0 && (
+            <p className="py-4 text-xs text-slate-400">
+              {productsLoading ? t('common.loading') : productsError || t('showroom.noProducts')}
+            </p>
+          )}
 
           {/* Upload Card */}
           <div

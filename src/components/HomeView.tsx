@@ -27,7 +27,10 @@ const ActivityCardImage: React.FC<{
   }, [candidateUrl]);
 
   if (!candidateUrl || imgError) {
-    const isScan = activity.badge === 'Camera Scan' || activity.badge === 'Scan' || activity.name?.toLowerCase().includes('scan');
+    const isScan = activity.badge === 'Camera Scan'
+      || activity.badge === 'Scan History'
+      || activity.badge === 'Scan'
+      || activity.name?.toLowerCase().includes('scan');
     const isAR = activity.badge === 'AR Try-On' || activity.name?.toLowerCase().includes('try-on') || activity.name?.toLowerCase().includes('fitting');
     const isReward = activity.badge === 'NOVA Rewards' || activity.name?.toLowerCase().includes('reward') || activity.name?.toLowerCase().includes('points');
     const isWardrobe = activity.badge === 'Wardrobe' || activity.name?.toLowerCase().includes('wardrobe');
@@ -144,13 +147,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
   products = {}
 }) => {
   const { t } = useI18n();
-  const activityList = recentActivity
-    .filter((activity) => activity.badge === 'AR Try-On' && activity.isSuccessfulTryOn)
-    .slice(0, 6);
+  const activityList = recentActivity.filter((activity) => activity.badge !== 'AR Try-On' && activity.badge !== 'Camera Scan');
+  const findActivityProduct = (activity: any) => {
+    if (activity.productId) {
+      return products[activity.productId]
+        || Object.values(products).find((product) => product.productId === activity.productId);
+    }
+    if (activity.badge !== 'Viewed') return undefined;
+    return Object.values(products).find((product) => product.name === activity.name);
+  };
 
   useEffect(() => {
     (activityList || []).forEach((activity: any) => {
-      const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+      const matched = findActivityProduct(activity);
       if (matched) {
         analytics.trackProductImpression(matched, 'home_recent_activity');
       }
@@ -367,36 +376,38 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </button>
       </section>
 
-      {/* Recently Tried On Section */}
+      {/* Recent Activity Section */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.recentlyTriedOn')}</h2>
-          <button 
-            onClick={() => onNavigate('ar-tryon')}
-            className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
-          >
-            {t('home.tryOnMore')} <span className="material-symbols-outlined text-sm ml-1 leading-none">chevron_right</span>
-          </button>
+          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.recentActivity')}</h2>
         </div>
-        <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
+        <div className="grid grid-cols-2 gap-4 pb-4">
           {activityList.length === 0 && (
             <p className={`py-4 text-sm ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-              {t('home.emptyTryOns')}
+              {t('home.emptyRecentActivity')}
             </p>
           )}
           {activityList.map((activity) => {
-            const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+            const matched = findActivityProduct(activity);
             const isSaved = matched ? wishlist.includes(matched.id) : false;
+            const isClickable = Boolean(matched) || activity.badge === 'Wardrobe';
             return (
               <div 
                 key={activity.id}
                 onClick={() => {
-                  if (activity.badge === 'AR Try-On') onNavigate('ar-tryon');
-                  else if (activity.badge === 'Camera Scan') onNavigate('camera-scan');
-                  else if (activity.badge === 'Viewed' && matched) onSelectProduct?.(matched.id);
-                  else onNavigate('scan-outfit');
+                  if (matched) onSelectProduct?.(matched.id, matched);
+                  else if (activity.badge === 'Wardrobe') onNavigate('wardrobe');
                 }}
-                className="flex-none w-36 group cursor-pointer"
+                onKeyDown={(event) => {
+                  if (event.target === event.currentTarget && isClickable && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    if (matched) onSelectProduct?.(matched.id, matched);
+                    else if (activity.badge === 'Wardrobe') onNavigate('wardrobe');
+                  }
+                }}
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                className={`min-w-0 group ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <div className={`h-48 rounded-2xl overflow-hidden relative shadow-[0_8px_20px_-4px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)] border border-[#E4DFF5] ${isDarkMode ? 'bg-slate-900' : 'bg-[#0D1527]'} mb-2`}>
                   <ActivityCardImage activity={activity} matchedProduct={matched} isDarkMode={isDarkMode} />

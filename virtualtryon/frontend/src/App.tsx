@@ -7,6 +7,9 @@ function App() {
   const [status, setStatus] = useState<string>('Disconnected');
   const videoRef = useRef<HTMLVideoElement>(null);
   const [clientRef, setClientRef] = useState<RealTimeClient | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   
   const [dressFile, setDressFile] = useState<File | null>(null);
   const [dressPreview, setDressPreview] = useState<string | null>(null);

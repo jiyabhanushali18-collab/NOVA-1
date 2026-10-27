@@ -7,12 +7,14 @@ interface ScanOutfitViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string }) => void;
   isDarkMode?: boolean;
   userId?: string;
+  recentActivity?: Array<Record<string, any>>;
 }
 
 export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({ 
   onNavigate, 
   isDarkMode = false,
-  userId
+  userId,
+  recentActivity = [],
 }) => {
   const { t } = useI18n();
   const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -36,6 +38,30 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
     return () => window.removeEventListener('nova:scan_history_updated', handleUpdate);
   }, [userId]);
 
+  const historyEntries = [
+    ...scans.map((scan) => ({
+      id: scan.id,
+      type: 'scan' as const,
+      name: scan.name,
+      timestamp: scan.timestamp,
+      imageUrl: scan.imageUrl,
+      score: scan.score,
+      scan,
+    })),
+    ...recentActivity
+      .filter((activity) => activity.badge === 'AR Try-On' && activity.isSuccessfulTryOn)
+      .map((activity) => ({
+        id: activity.id,
+        type: 'try-on' as const,
+        name: activity.name,
+        timestamp: Number(activity.timestamp)
+          || Number(String(activity.id).match(/(\d{10,})$/)?.[1])
+          || Date.parse(activity.time || '')
+          || 0,
+        imageUrl: activity.imageUrl,
+      })),
+  ].sort((first, second) => second.timestamp - first.timestamp);
+
   const handleDeleteScan = (scanId: string) => {
     deleteOutfitScan(scanId, userId);
     if (selectedScan?.id === scanId) {
@@ -53,14 +79,18 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
     }
   };
 
-  const filteredScans = scans.filter((s) => {
+  const filteredHistoryEntries = historyEntries.filter((entry) => {
     if (!historySearchQuery.trim()) return true;
-    const q = historySearchQuery.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      (s.category && s.category.toLowerCase().includes(q))
-    );
+    const query = historySearchQuery.toLowerCase();
+    const action = entry.type === 'scan' ? 'scan' : 'ar try-on';
+    const category = entry.type === 'scan' ? entry.scan.category || '' : '';
+    return `${entry.name} ${category} ${action}`.toLowerCase().includes(query);
   });
+  const formatHistoryTimestamp = (timestamp: number) => (
+    Number.isFinite(timestamp) && timestamp > 0
+      ? new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      : 'Time unavailable'
+  );
 
   const toggleFlash = () => {
     setFlashMode((prev) => {
@@ -274,10 +304,10 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           }`}>
             <span>{t('scanOutfit.title')}</span>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#553BE2]/15 text-[#553BE2] border border-[#553BE2]/20">
-              {scans.length}
+              {historyEntries.length}
             </span>
           </h2>
-          {scans.length > 0 && (
+          {historyEntries.length > 0 && (
             <button
               type="button"
               onClick={() => setIsHistoryModalOpen(true)}
@@ -289,7 +319,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           )}
         </div>
 
-        {scans.length === 0 ? (
+        {historyEntries.length === 0 ? (
           <div className={`rounded-2xl p-6 text-center border space-y-2.5 ${
             isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white/80 border-[#E4DFF5]'
           }`}>
@@ -310,11 +340,13 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto hide-scrollbar -mx-4 px-4 pb-2">
-            {scans.map((sc) => (
+            {historyEntries.map((entry) => (
               <div 
-                key={sc.id}
-                onClick={() => setSelectedScan(sc)}
-                className={`min-w-[124px] rounded-xl p-2 flex flex-col gap-2 cursor-pointer transition-all border hover:shadow-md hover:scale-[1.02] group ${
+                key={`${entry.type}-${entry.id}`}
+                onClick={() => {
+                  if (entry.type === 'scan') setSelectedScan(entry.scan);
+                }}
+                className={`min-w-[124px] rounded-xl p-2 flex flex-col gap-2 ${entry.type === 'scan' ? 'cursor-pointer' : 'cursor-default'} transition-all border hover:shadow-md hover:scale-[1.02] group ${
                   isDarkMode 
                     ? 'bg-slate-900/80 border-slate-800 hover:border-[#553BE2]/60' 
                     : 'bg-white border-[#E4DFF5] hover:border-[#553BE2]/60 shadow-sm'
@@ -322,15 +354,18 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
               >
                 <div className="relative rounded-lg overflow-hidden h-32 bg-[#F2EEFF] border border-[#E4DFF5]/60">
                   <img 
-                    alt={sc.name} 
+                    alt={entry.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                     referrerPolicy="no-referrer"
-                    src={sc.imageUrl}
+                    src={entry.imageUrl}
                   />
-                  {sc.score !== undefined && (
+                  <div className="absolute top-1 left-1 rounded-md bg-[#111322]/80 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                    {entry.type === 'scan' ? t('cameraScan.title') : t('cameraScan.arTryOn')}
+                  </div>
+                  {entry.type === 'scan' && entry.score !== undefined && (
                     <div className="absolute top-1 right-1 bg-white/95 backdrop-blur-sm text-[#553BE2] text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm border border-[#E4DFF5] leading-none flex items-center gap-0.5">
                       <span className="material-symbols-outlined text-[10px] text-[#A594FD]">auto_awesome</span>
-                      <span>{sc.score}</span>
+                      <span>{entry.score}</span>
                     </div>
                   )}
                 </div>
@@ -338,12 +373,12 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                   <p className={`text-xs font-bold truncate ${
                     isDarkMode ? 'text-white' : 'text-[#131426]'
                   }`}>
-                    {sc.name}
+                    {entry.name}
                   </p>
                   <p className={`text-[9px] mt-0.5 font-sans ${
                     isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'
                   }`}>
-                    {sc.time}
+                    {formatHistoryTimestamp(entry.timestamp)}
                   </p>
                 </div>
               </div>
@@ -352,7 +387,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
         )}
       </section>
 
-      {/* Full Scan History Modal */}
+      {/* Full Scan & Try-On History Modal */}
       {isHistoryModalOpen && (
         <div className="fixed inset-0 bg-[#0B0C15]/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className={`w-full max-w-md rounded-[28px] p-6 border shadow-2xl space-y-4 max-h-[85vh] flex flex-col ${
@@ -365,8 +400,8 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                   <span className="material-symbols-outlined text-lg">history</span>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Scan History</h3>
-                  <p className="text-[10px] text-slate-400">{scans.length} total outfit scan{scans.length === 1 ? '' : 's'}</p>
+                  <h3 className="text-base font-bold">{t('scanOutfit.title')}</h3>
+                  <p className="text-[10px] text-slate-400">{historyEntries.length} total activit{historyEntries.length === 1 ? 'y' : 'ies'}</p>
                 </div>
               </div>
 
@@ -377,7 +412,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                     onClick={handleClearHistory}
                     className="text-[10px] font-bold text-rose-400 hover:text-rose-300 px-2 py-1 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
                   >
-                    Clear All
+                    {t('scanOutfit.clearScans')}
                   </button>
                 )}
                 <button
@@ -391,7 +426,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
             </div>
 
             {/* Search Input */}
-            {scans.length > 0 && (
+            {historyEntries.length > 0 && (
               <div className="relative shrink-0">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                   search
@@ -412,7 +447,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
 
             {/* Scans List / Grid */}
             <div className="overflow-y-auto space-y-2.5 pr-1 flex-1 min-h-[200px]">
-              {filteredScans.length === 0 ? (
+              {filteredHistoryEntries.length === 0 ? (
                 <div className="py-12 text-center space-y-2">
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto text-slate-400">
                     <span className="material-symbols-outlined text-2xl">search_off</span>
@@ -423,11 +458,13 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                   </p>
                 </div>
               ) : (
-                filteredScans.map((scan) => (
+                filteredHistoryEntries.map((entry) => (
                   <div
-                    key={scan.id}
-                    onClick={() => setSelectedScan(scan)}
-                    className={`rounded-2xl p-2.5 flex items-center gap-3 border transition-all cursor-pointer hover:border-[#553BE2] group ${
+                    key={`${entry.type}-${entry.id}`}
+                    onClick={() => {
+                      if (entry.type === 'scan') setSelectedScan(entry.scan);
+                    }}
+                    className={`rounded-2xl p-2.5 flex items-center gap-3 border transition-all ${entry.type === 'scan' ? 'cursor-pointer hover:border-[#553BE2]' : 'cursor-default'} group ${
                       isDarkMode 
                         ? 'bg-slate-900/70 border-white/10 hover:bg-slate-800/80' 
                         : 'bg-slate-50 border-[#E4DFF5] hover:bg-white'
@@ -436,8 +473,8 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                     {/* Thumbnail */}
                     <div className="w-14 h-18 rounded-xl overflow-hidden bg-black shrink-0 relative border border-white/10">
                       <img
-                        alt={scan.name}
-                        src={scan.imageUrl}
+                        alt={entry.name}
+                        src={entry.imageUrl}
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
                       />
@@ -446,38 +483,40 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
                     {/* Meta */}
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold truncate">{scan.name}</span>
+                        <span className="text-xs font-bold truncate">{entry.name}</span>
                       </div>
-                      <p className="text-[10px] text-slate-400">{scan.category || 'Outfit'}</p>
+                      <p className="text-[10px] text-slate-400">{entry.type === 'scan' ? `Scan · ${entry.scan.category || 'Outfit'}` : t('cameraScan.arTryOn')}</p>
                       
                       <div className="flex items-center gap-2 pt-0.5">
-                        {scan.score !== undefined && (
+                        {entry.type === 'scan' && entry.score !== undefined && (
                           <span className="px-1.5 py-0.5 rounded-md bg-[#553BE2]/20 text-[#A594FD] text-[9px] font-bold border border-[#553BE2]/30 flex items-center gap-0.5">
                             <span className="material-symbols-outlined text-[10px]">auto_awesome</span>
-                            <span>{scan.score}</span>
+                            <span>{entry.score}</span>
                           </span>
                         )}
-                        <span className="text-[9px] text-slate-400">{scan.time}</span>
+                        <span className="text-[9px] text-slate-400">{formatHistoryTimestamp(entry.timestamp)}</span>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-col gap-1 items-end shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteScan(scan.id);
-                        }}
-                        title="Delete scan"
-                        className="w-7 h-7 rounded-full bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
-                      <span className="material-symbols-outlined text-xs text-slate-400 group-hover:text-[#553BE2] group-hover:translate-x-0.5 transition-all">
-                        chevron_right
-                      </span>
-                    </div>
+                    {entry.type === 'scan' && (
+                      <div className="flex flex-col gap-1 items-end shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteScan(entry.scan.id);
+                          }}
+                          title="Delete scan"
+                          className="w-7 h-7 rounded-full bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                        <span className="material-symbols-outlined text-xs text-slate-400 group-hover:text-[#553BE2] group-hover:translate-x-0.5 transition-all">
+                          chevron_right
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -511,7 +550,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-base font-bold leading-tight">{selectedScan.name}</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">{selectedScan.time} • {selectedScan.category || 'Outfit'}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{formatHistoryTimestamp(selectedScan.timestamp)} • {selectedScan.category || 'Outfit'}</p>
               </div>
               <button
                 type="button"

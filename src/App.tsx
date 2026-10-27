@@ -941,7 +941,7 @@ export default function App() {
     return levelThresholds.find((threshold) => threshold > Math.max(points, 100)) ?? levelThresholds[levelThresholds.length - 1];
   };
 
-  const awardNovaPoints = (amount: number, description: string, associatedImage?: string) => {
+  const awardNovaPoints = (amount: number, description: string, associatedImage?: string, productId?: string) => {
     if (amount <= 0) return;
     setNovaPoints((prevPoints) => {
       const nextPoints = Math.max(100, prevPoints + amount);
@@ -953,6 +953,7 @@ export default function App() {
         badge: 'NOVA Rewards',
         icon: 'stars',
         color: 'bg-amber-500/80',
+        productId,
         imageUrl: associatedImage || ''
       });
       return nextPoints;
@@ -1394,8 +1395,11 @@ export default function App() {
     setScreen(to);
   };
 
-  const handleTryOnSuccess = (garment: { id: string; name: string; imageUrl: string }) => {
-    awardNovaPoints(25, `Tried on ${garment.name}`, garment.imageUrl);
+  const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string }) => {
+    const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id;
+    const product = productId ? productsData[productId] || products[productId] : undefined;
+    const productImage = product?.mainImage || product?.imageUrl || product?.imageUrls?.[0] || garment.imageUrl;
+    awardNovaPoints(25, `Tried on ${garment.name}`, productImage, productId);
     addRecentActivity({
       id: `tryon-${garment.id}-${Date.now()}`,
       name: garment.name,
@@ -1403,7 +1407,9 @@ export default function App() {
       badge: 'AR Try-On',
       icon: 'view_in_ar',
       color: 'bg-primary/80',
-      imageUrl: garment.imageUrl,
+      productId,
+      imageUrl: productImage,
+      timestamp: Date.now(),
       isSuccessfulTryOn: true
     });
   };
@@ -1441,22 +1447,11 @@ export default function App() {
   const [capturedTryOnImage, setCapturedTryOnImage] = useState<string | null>(null);
   const [capturedTryOnIsLive, setCapturedTryOnIsLive] = useState(false);
 
-  const handleScannedProductMatched = (product: ProductItem, scanImageUrl?: string) => {
+  const handleScannedProductMatched = (product: ProductItem) => {
     if (!product?.id) return;
     setProductsData((current) => current[product.id] ? current : { ...current, [product.id]: product });
     setSelectedProductId(product.id);
     setSelectedColor(getDefaultProductColor(product));
-
-    const actualImg = scanImageUrl || product.imageUrl || '';
-    addRecentActivity({
-      id: Date.now().toString(),
-      name: `${product.name} Scan`,
-      time: new Date().toLocaleString(),
-      badge: 'Camera Scan',
-      icon: 'photo_camera',
-      color: 'bg-secondary/80',
-      imageUrl: actualImg
-    });
   };
 
   // Interactive Cart Handlers
@@ -1578,6 +1573,11 @@ export default function App() {
             userId={activeUid || userEmail}
             userEmail={userEmail}
             userName={userName}
+            products={Object.values(productsData)}
+            productsLoading={productsLoading}
+            productsError={productsError}
+            wishlist={wishlist}
+            onToggleWishlist={handleToggleWishlist}
           />
         );
       case 'tryon-result':
@@ -1690,6 +1690,12 @@ export default function App() {
             products={allProducts}
             databaseProducts={Object.values(productsData)}
             onNavigate={navigate} 
+            onTryOnProduct={(product) => {
+              setProductsData((current) => ({ ...current, [product.id]: product }));
+              setSelectedProductId(product.id);
+              setSelectedGarment(product.id);
+              navigate('ar-tryon');
+            }}
             onSelectProduct={(product) => navigate('product-details', { productId: product.id, product })}
             onAddToCart={handleAddToCart}
             onUpdateCartQuantity={handleUpdateCartQuantity}
@@ -1738,7 +1744,7 @@ export default function App() {
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} />;
+        return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} recentActivity={recentActivityState} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
       case 'chat':

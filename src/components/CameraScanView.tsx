@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
-import { ProductItem, ScreenId } from '../types';
+import { OutfitScanRecord, ProductItem, ScreenId } from '../types';
 import { CameraScanResult, ScanImageSource, ScanProductResult, runCameraScan } from '../services/cameraScanService';
-import { saveOutfitScan } from '../services/scanHistoryService';
+import { getScanHistory, saveOutfitScan } from '../services/scanHistoryService';
 import { useI18n } from '../i18n';
 
 interface CameraScanViewProps {
@@ -52,10 +52,18 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [isFlashOn, setIsFlashOn] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [scanHistory, setScanHistory] = useState<OutfitScanRecord[]>(() => getScanHistory(userId));
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    const updateScanHistory = () => setScanHistory(getScanHistory(userId));
+    updateScanHistory();
+    window.addEventListener('nova:scan_history_updated', updateScanHistory);
+    return () => window.removeEventListener('nova:scan_history_updated', updateScanHistory);
+  }, [userId]);
 
   useEffect(() => {
     if (!scanResult?.results?.length) {
@@ -787,6 +795,39 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
             </div>
             <p className="text-xs font-bold text-[#553BE2] tracking-wide">{t('cameraScan.chooseImage')}</p>
             <p className="text-[10px] text-[#5E667A]">{t('cameraScan.samePipeline')}</p>
+          </div>
+        )}
+      </section>
+
+      <section className="glass-panel rounded-3xl p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-[#131426]">{t('cameraScan.scanHistory')}</h2>
+            <p className="mt-0.5 text-[11px] text-[#5E667A]">{scanHistory.length} {t('cameraScan.savedScans')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('scan-outfit')}
+            className="shrink-0 text-xs font-semibold text-[#553BE2] hover:underline"
+          >
+            {t('cameraScan.viewScanHistory')}
+          </button>
+        </div>
+        {scanHistory.length === 0 ? (
+          <p className="py-2 text-xs text-[#7A8194]">{t('cameraScan.emptyScanHistory')}</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {scanHistory.slice(0, 3).map((scan) => (
+              <button
+                type="button"
+                key={scan.id}
+                onClick={() => onNavigate('scan-outfit')}
+                className="min-w-0 overflow-hidden rounded-xl border border-[#E4DFF5] bg-white text-left"
+              >
+                <img src={scan.imageUrl} alt={scan.name} className="aspect-square w-full object-cover" loading="lazy" />
+                <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-[#131426]">{scan.name}</span>
+              </button>
+            ))}
           </div>
         )}
       </section>

@@ -422,20 +422,17 @@ const sendOTPEmail = async (
     );
 
     if (!response.ok) {
-<<<<<<< HEAD
       let errorBody: { code?: string; message?: string } = {};
       const errorText = await response.text();
       try { errorBody = JSON.parse(errorText); } catch { /* non-JSON response */ }
+      const errorDetail = (errorBody.message || errorText).slice(0, 500);
 
-      // Detect Brevo IP-restriction rejection so the cause is immediately visible
-      // in logs without manually parsing the raw Brevo error body.
       if (
         response.status === 401 &&
         (errorBody.code === 'unauthorized' || errorBody.message?.includes('unrecognised IP'))
       ) {
         console.error("[Email] Brevo rejected the request: IP address not authorised.", {
           status: response.status,
-          hint: "Add this server's outbound IP to Brevo → Settings → Security → Authorised IPs, or disable the IP restriction in the Brevo dashboard.",
           brevoCode: errorBody.code,
           recipient: maskEmail(email)
         });
@@ -443,25 +440,10 @@ const sendOTPEmail = async (
         console.error("[Email] Brevo rejected the OTP email.", {
           status: response.status,
           code: errorBody.code,
-          error: errorText.slice(0, 500),
+          error: errorDetail,
           recipient: maskEmail(email)
         });
       }
-=======
-      let errorDetail = '';
-      try {
-        const errorJson = await response.json();
-        errorDetail = errorJson.message || JSON.stringify(errorJson);
-      } catch {
-        errorDetail = (await response.text()).slice(0, 500);
-      }
-
-      console.error("[Email] Brevo rejected the OTP email.", {
-        status: response.status,
-        error: errorDetail.slice(0, 500),
-        recipient: maskEmail(email)
-      });
->>>>>>> 2bdce85964632332eacd1c65f850965f0fe203d3
 
       let userError = "Email delivery failed. Please try again.";
       if (response.status === 401) {

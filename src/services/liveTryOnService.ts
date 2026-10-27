@@ -481,6 +481,7 @@ export async function startLiveTryOnSession(
 
   let isDestroyed = false;
   let hasConnected = false;
+  let isFlippingCamera = false;
 
   // Single-flight connection with bounded SDK retry budget.
   let realtimeClient: any;
@@ -657,31 +658,77 @@ export async function startLiveTryOnSession(
   };
 
   const flipCamera = async () => {
-    if (isDestroyed) return;
-    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    if (isDestroyed || isFlippingCamera) return;
+    isFlippingCamera = true;
+    const previousFacingMode = currentFacingMode;
+    const nextFacingMode = previousFacingMode === 'user' ? 'environment' : 'user';
     config.onStatusChange?.('Flipping camera...');
+    let newStream: MediaStream | null = null;
+    let cameraReleased = false;
 
     try {
-      localStream.getVideoTracks().forEach((t) => t.stop());
+      const videoInputs = (await navigator.mediaDevices.enumerateDevices())
+        .filter((device) => device.kind === 'videoinput');
+      if (videoInputs.length === 1) {
+        const error = new Error('This device has only one camera, so it cannot switch cameras.');
+        error.name = 'CameraUnavailableError';
+        throw error;
+      }
 
-      const newStream = await navigator.mediaDevices.getUserMedia({
+      localStream.getTracks().forEach((track) => track.stop());
+      cameraReleased = true;
+      newStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: currentFacingMode,
-          width: model.width || 1280,
-          height: model.height || 720,
-          frameRate: captureFps,
+          facingMode: { exact: nextFacingMode },
+          width: { ideal: model.width || 1280 },
+          height: { ideal: model.height || 720 },
+          frameRate: { ideal: captureFps },
         },
       });
 
       const newTrack = newStream.getVideoTracks()[0];
-      if (newTrack) {
-        await realtimeClient.replaceVideoTrack(newTrack);
-        localStream = newStream;
-        config.onStatusChange?.('Live AI Active');
+      if (!newTrack) {
+        throw new Error('The selected camera did not provide a video track.');
       }
-    } catch (err: any) {
+
+      await realtimeClient.replaceVideoTrack(newTrack);
+      localStream = newStream;
+      currentFacingMode = nextFacingMode;
+      config.onStatusChange?.('Live AI Active');
+    } catch (err) {
+      newStream?.getTracks().forEach((track) => track.stop());
       console.error('Failed to flip camera:', err);
-      config.onError?.(err);
+
+      if (!cameraReleased) {
+        throw err;
+      }
+
+      try {
+        const restoredStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: previousFacingMode },
+            width: { ideal: model.width || 1280 },
+            height: { ideal: model.height || 720 },
+            frameRate: { ideal: captureFps },
+          },
+        });
+        const restoredTrack = restoredStream.getVideoTracks()[0];
+        if (!restoredTrack) {
+          restoredStream.getTracks().forEach((track) => track.stop());
+          throw new Error('The previous camera did not provide a video track.');
+        }
+        await realtimeClient.replaceVideoTrack(restoredTrack);
+        localStream = restoredStream;
+        currentFacingMode = previousFacingMode;
+        config.onStatusChange?.('Could not switch camera. Restored the previous camera.');
+      } catch (restoreError) {
+        console.error('Could not restore the previous camera after a failed flip:', restoreError);
+        config.onStatusChange?.('Camera switch failed. Restart live try-on to reconnect the camera.');
+      }
+
+      throw err;
+    } finally {
+      isFlippingCamera = false;
     }
   };
 

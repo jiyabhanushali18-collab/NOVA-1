@@ -33,6 +33,7 @@ interface ProductDetailsViewProps {
   products: Record<string, ProductItem>;
   databaseProducts?: ProductItem[];
   onNavigate: (screen: ScreenId) => void;
+  onTryOnProduct?: (product: ProductItem) => void;
   onSelectProduct?: (product: ProductItem) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
   onUpdateCartQuantity?: (prodId: string, color: string, size: string, delta: number) => void;
@@ -58,6 +59,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   products,
   databaseProducts = [],
   onNavigate,
+  onTryOnProduct,
   onSelectProduct,
   onAddToCart,
   onUpdateCartQuantity,
@@ -192,6 +194,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const handleLaunchAr = () => {
     if (mainProduct) {
       analytics.trackArTryOnStarted(mainProduct.id, mainProduct.name, 'product_details');
+      if (onTryOnProduct) {
+        onTryOnProduct(mainProduct);
+        return;
+      }
     }
     onNavigate('ar-tryon');
   };
