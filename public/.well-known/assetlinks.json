@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nova.app",
+      "sha256_cert_fingerprints": [
+        "F1:03:87:68:4E:78:C0:C5:7C:80:00:D2:FE:F5:CA:57:4D:5E:1B:54:87:08:C8:D9:D7:D8:77:CF:0F:04:E0:D5"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nova.app.debug",
+      "sha256_cert_fingerprints": [
+        "F1:03:87:68:4E:78:C0:C5:7C:80:00:D2:FE:F5:CA:57:4D:5E:1B:54:87:08:C8:D9:D7:D8:77:CF:0F:04:E0:D5"
+      ]
+    }
+  }
+]

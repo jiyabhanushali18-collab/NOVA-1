@@ -22,7 +22,9 @@ export type ScreenId =
   | 'setup-preferences'
   | 'profile-analysis'
   | 'terms'
-  | 'privacy';
+  | 'privacy'
+  | 'faq'
+  | 'admin-campaigns';
 
 export interface LegalConsentRecord {
   accepted: boolean;

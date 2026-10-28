@@ -1,12 +1,13 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, ChevronDown, LockKeyhole, UserRound, Sparkles, Plus, CalendarDays, Clock3 } from 'lucide-react';
+import { Phone, User, Check, AlertCircle, RefreshCw, ArrowRight, ShieldCheck, ChevronDown, LockKeyhole, UserRound, Sparkles, Plus, CalendarDays, Clock3, MapPin, Loader2 } from 'lucide-react';
 import { apiUrl } from '../services/apiClient';
 import { COUNTRIES, Country } from '../utils/countries';
 import { useI18n } from '../i18n';
 import { LegalConsentRecord, LegalDocumentType } from '../types';
 import { createConsentSnapshot } from '../legal/legalDocuments';
 import { LegalDocumentView } from './LegalDocumentView';
+import { fetchAddressSuggestions, verifyPincode, AddressSuggestion } from '../services/addressAutocompleteService';
 
 interface AuthViewProps {
   onLoginSuccess: (
@@ -92,19 +93,26 @@ const mergeSeedUsers = (users: RegisterUser[]) => {
   return Array.from(byUid.values());
 };
 
-export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestContinue, onProceedToEmailVerification, initialMode = 'login', prefilledName = '', prefilledAddress = '', prefilledPinCode = '' }) => {
+export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestContinue, onProceedToEmailVerification, initialMode = 'login' }) => {
   const { t } = useI18n();
-  // If there are prefilled values, start in signup mode
-  const hasPrefilledData = prefilledName || prefilledAddress || prefilledPinCode;
-  const [mode, setMode] = useState<'login' | 'signup'>(hasPrefilledData ? 'signup' : initialMode);
-  const [entryPath, setEntryPath] = useState<'choice' | 'signin' | 'signup' | 'account-selection'>(hasPrefilledData || initialMode === 'signup' ? 'signup' : 'choice');
+
+
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const [entryPath, setEntryPath] = useState<'choice' | 'signin' | 'signup' | 'account-selection'>(initialMode === 'signup' ? 'signup' : 'choice');
   
   // Form input fields
-  const [name, setName] = useState(prefilledName);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [address, setAddress] = useState(prefilledAddress);
-  const [pinCode, setPinCode] = useState(prefilledPinCode);
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pinCode, setPinCode] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const addressDropdownRef = useRef<HTMLDivElement>(null);
+  const addressLookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]); // Default to India
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
@@ -169,6 +177,20 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setConsentError(null);
   };
 
+  const clearFormFields = () => {
+    setName('');
+    setEmail('');
+    setPhoneNumber('');
+    setAddress('');
+    setCity('');
+    setState('');
+    setPinCode('');
+    setHasAcceptedLegal(false);
+    setConsentError(null);
+    setShowAddressDropdown(false);
+    setAddressSuggestions([]);
+  };
+
   const goToChoice = () => {
     setEntryPath('choice');
     setMode('login');
@@ -176,6 +198,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setMatchingAccounts([]);
     setSelectedAccountUid(null);
     setActiveLegalDoc(null);
+    clearFormFields();
     resetAlerts();
   };
 
@@ -183,6 +206,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setEntryPath('signin');
     setMode('login');
     setActiveLegalDoc(null);
+    clearFormFields();
     resetAlerts();
   };
 
@@ -190,7 +214,65 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
     setEntryPath('signup');
     setMode('signup');
     setActiveLegalDoc(null);
+    clearFormFields();
     resetAlerts();
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (addressDropdownRef.current && !addressDropdownRef.current.contains(event.target as Node)) {
+        setShowAddressDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
+
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    setShowAddressDropdown(true);
+
+    if (addressLookupTimeoutRef.current) {
+      clearTimeout(addressLookupTimeoutRef.current);
+    }
+
+    if (val.trim().length >= 2) {
+      setIsSearchingAddress(true);
+      addressLookupTimeoutRef.current = setTimeout(async () => {
+        try {
+          const suggestions = await fetchAddressSuggestions(val);
+          setAddressSuggestions(suggestions);
+        } catch {
+          setAddressSuggestions([]);
+        } finally {
+          setIsSearchingAddress(false);
+        }
+      }, 250);
+    } else {
+      setAddressSuggestions([]);
+      setIsSearchingAddress(false);
+    }
+  };
+
+  const handleSelectSuggestion = (sug: AddressSuggestion) => {
+    setAddress(sug.formattedAddress || sug.title);
+    if (sug.city) setCity(sug.city);
+    if (sug.state) setState(sug.state);
+    if (sug.pinCode) setPinCode(sug.pinCode);
+    setShowAddressDropdown(false);
+  };
+
+  const handlePinCodeChange = async (val: string) => {
+    setPinCode(val);
+    if (val.length === 6) {
+      const res = await verifyPincode(val);
+      if (res.valid) {
+        if (res.city && !city) setCity(res.city);
+        if (res.state && !state) setState(res.state);
+      }
+    }
   };
 
   const findAccountsByPhone = (phone: string) => {
@@ -425,7 +507,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
         onProceedToEmailVerification(
           normalizedEmail,
           name.trim(),
-          address.trim() || undefined,
+          (() => {
+            const parts = [address.trim()];
+            if (city.trim() && !address.toLowerCase().includes(city.toLowerCase())) parts.push(city.trim());
+            if (state.trim() && !address.toLowerCase().includes(state.toLowerCase())) parts.push(state.trim());
+            return parts.filter(Boolean).join(', ') || undefined;
+          })(),
           pinCode.trim() || undefined,
           fullPhone,
           consentSnapshot,
@@ -518,7 +605,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
           <div className="w-12 h-12 rounded-2xl bg-[#553BE2] flex items-center justify-center text-white font-extrabold shadow-lg shadow-[#553BE2]/25 mb-3 hover:scale-105 transition-transform duration-300">
             N
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-[#131426]">{t('app.novaVisionLabs')}</h2>
+          <h2 className="text-2xl font-black tracking-tight text-[#131426]">NOVA</h2>
           <p className="text-xs font-bold text-[#5E667A] mt-0.5 tracking-wider uppercase font-mono">{t('app.curationEngine')}</p>
         </div>
 
@@ -761,29 +848,130 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess, onGuestConti
                   </div>
                 </div>
 
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">{t('auth.addressLabel')}</label>
+                {/* Delivery Address with Smart Autocomplete */}
+                <div className="space-y-1 text-left relative" ref={addressDropdownRef}>
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest leading-none">
+                      {t('auth.addressLabel')}
+                    </label>
+                    {isSearchingAddress && (
+                      <span className="text-[9px] text-[#553BE2] font-semibold flex items-center gap-1">
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" /> Suggestions...
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5E667A]">
+                      <MapPin className="w-4 h-4" />
+                    </div>
                     <input
                       type="text"
-                      placeholder={t('auth.addressPlaceholder')}
+                      placeholder="House/Flat, Street, Area"
                       value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="w-full pl-3 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      onChange={(e) => handleAddressChange(e.target.value)}
+                      onFocus={() => {
+                        if (addressSuggestions.length > 0) setShowAddressDropdown(true);
+                      }}
+                      className="w-full pl-9 pr-8 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      autoComplete="street-address"
+                    />
+                    {address && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddress('');
+                          setAddressSuggestions([]);
+                          setShowAddressDropdown(false);
+                        }}
+                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[#8E96AA] hover:text-[#5E667A]"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Smart Suggestions Dropdown */}
+                  {showAddressDropdown && addressSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-[#E4DFF5] rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-[#F2EEFF] animate-scale-up max-h-56 overflow-y-auto">
+                      <div className="px-3 py-1.5 bg-[#FAF8FE] border-b border-[#E4DFF5] flex items-center justify-between text-[10px] font-bold text-[#5E667A]">
+                        <span className="flex items-center gap-1 text-[#553BE2]">
+                          <Sparkles className="w-3 h-3" /> Suggested Locations
+                        </span>
+                        <span>Mumbai &amp; India</span>
+                      </div>
+                      {addressSuggestions.map((sug) => (
+                        <button
+                          key={sug.id}
+                          type="button"
+                          onClick={() => handleSelectSuggestion(sug)}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-[#F2EEFF] transition-colors flex items-start gap-2.5 group cursor-pointer"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-[#553BE2] shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#131426] truncate">
+                              {sug.title}
+                            </div>
+                            <div className="text-[10px] text-[#5E667A] truncate">
+                              {sug.subtitle}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Structured City and State fields */}
+                <div className="grid grid-cols-2 gap-2 text-left">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mumbai"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      autoComplete="address-level2"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Maharashtra"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      autoComplete="address-level1"
                     />
                   </div>
                 </div>
 
+                {/* 6-Digit PIN Code */}
                 <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest block ml-1 leading-none">{t('auth.pinCodeLabel')}</label>
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-[10px] font-black text-[#5E667A] uppercase tracking-widest leading-none">
+                      {t('auth.pinCodeLabel')}
+                    </label>
+                    {pinCode.length === 6 && (
+                      <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-0.5">
+                        <Check className="w-3 h-3" /> 6-digit format
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder={t('auth.pinCodePlaceholder')}
+                      placeholder="6-digit PIN code (e.g. 400062)"
                       maxLength={6}
                       value={pinCode}
-                      onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                      className="w-full pl-3 pr-4 py-3 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      onChange={(e) => handlePinCodeChange(e.target.value.replace(/\D/g, ''))}
+                      className="w-full pl-3 pr-4 py-2.5 bg-[#F2EEFF]/70 border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder-[#8E96AA] focus:outline-none focus:border-[#553BE2] focus:bg-white focus:ring-1 focus:ring-[#553BE2] transition-all shadow-sm"
+                      autoComplete="postal-code"
                     />
                   </div>
                 </div>

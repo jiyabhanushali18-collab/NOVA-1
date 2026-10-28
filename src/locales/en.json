@@ -548,5 +548,6 @@
   "productDetails.quantitySelector": "Quantity selector",
   "profile.editProfile.changePhoto": "Change Photo",
   "profile.editProfile.uploadPhoto": "Upload Photo",
-  "profile.editProfile.removePhoto": "Remove Photo"
+  "profile.editProfile.removePhoto": "Remove Photo",
+  "profile.settings.faq": "Frequently Asked Questions"
 }

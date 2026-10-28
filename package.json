@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/camera": "^8.2.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.2.0",
+    "@decartai/sdk": "^0.2.12",
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -33,8 +35,7 @@
     "react-dom": "^19.0.1",
     "sharp": "^0.35.2",
     "vite": "^6.2.3",
-    "xlsx": "^0.18.5",
-    "@decartai/sdk": "^0.2.12"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

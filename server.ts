@@ -55,7 +55,10 @@ async function start() {
       { default: analyticsRouter },
       { default: notificationRouter },
       { default: notificationAdminRouter },
-      { startNotificationScheduler }
+      { default: addressRouter },
+      { default: marketingEmailRouter },
+      { startNotificationScheduler },
+      { startMarketingEmailScheduler }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
       import('./server/chatRouter.ts'),
@@ -66,7 +69,10 @@ async function start() {
       import('./server/analyticsRouter.ts'),
       import('./server/notificationRouter.ts'),
       import('./server/notificationAdminRouter.ts'),
-      import('./server/notificationScheduler.ts')
+      import('./server/addressRouter.ts'),
+      import('./server/marketingEmailRouter.ts'),
+      import('./server/notificationScheduler.ts'),
+      import('./server/marketingEmailScheduler.ts')
     ]);
 
     app.use('/api', authRouter);
@@ -78,7 +84,10 @@ async function start() {
     app.use('/api', analyticsRouter);
     app.use('/api', notificationRouter);
     app.use('/api', notificationAdminRouter);
+    app.use('/api', addressRouter);
+    app.use('/api', marketingEmailRouter);
     startNotificationScheduler();
+    startMarketingEmailScheduler();
 
     const server = http.createServer(app);
 
@@ -100,6 +109,12 @@ async function start() {
 
     // Use Vite's connect instance as middleware 
     app.use(vite.middlewares);
+
+    // Serve Android App Links Digital Asset Links association file
+    app.get('/.well-known/assetlinks.json', (_req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.sendFile(path.resolve(currentDirectory, 'public/.well-known/assetlinks.json'));
+    });
 
     // Serve favicon to prevent browser 404 console errors
     app.get('/favicon.ico', (req, res) => {

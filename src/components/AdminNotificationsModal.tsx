@@ -56,7 +56,7 @@ export const AdminNotificationsModal: React.FC<AdminNotificationsModalProps> = (
   isDarkMode = false
 }) => {
   const [adminKey, setAdminKey] = useState<string>(() => {
-    return localStorage.getItem('nova_admin_key') || 'nova-admin-secret-2026';
+    return localStorage.getItem('nova_admin_key') || '';
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'scheduler' | 'library' | 'test'>('overview');

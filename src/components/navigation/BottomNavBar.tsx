@@ -17,7 +17,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const isHomeActive = currentScreen === 'home';
   const isScanActive = currentScreen === 'scan-outfit' || currentScreen === 'camera-scan' || currentScreen === 'ar-tryon' || currentScreen === 'tryon-result';
   const isStylistActive = currentScreen === 'chat';
-  const isProfileActive = currentScreen === 'profile' || currentScreen === 'terms' || currentScreen === 'privacy';
+  const isProfileActive = currentScreen === 'profile' || currentScreen === 'terms' || currentScreen === 'privacy' || currentScreen === 'faq';
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">

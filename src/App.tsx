@@ -24,8 +24,11 @@ import { SetupPreferencesView } from './components/SetupPreferencesView';
 import { VirtualWardrobeView } from './components/VirtualWardrobeView';
 import { ProfileAnalysisView } from './components/ProfileAnalysisView';
 import { LegalDocumentView } from './components/LegalDocumentView';
+import { FAQView } from './components/FAQView';
+import { AdminNotificationsModal } from './components/AdminNotificationsModal';
 import { BottomNavBar } from './components/navigation/BottomNavBar';
 import { QuickHubModal } from './components/navigation/QuickHubModal';
+import { NotificationPermissionModal } from './components/notifications/NotificationPermissionModal';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
@@ -43,6 +46,8 @@ import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emai
 import { normalizeProductVariants } from './utils/productVariants';
 import { useI18n } from './i18n';
 import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
+import { Capacitor } from '@capacitor/core';
+import { initializeDeepLinkHandler, getNativeAppSchemeUrl, DeepLinkDestination } from './services/deepLinkService';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -433,6 +438,17 @@ export default function App() {
   const { t } = useI18n();
   // Session authorization states loaded from localStorage
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
+  const isNativeApp = Capacitor.isNativePlatform();
+  const pendingDeepLinkRef = useRef<DeepLinkDestination | null>(null);
+  const [showWebAppBanner, setShowWebAppBanner] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const hasDeepLinkParam =
+      window.location.search.includes('screen=') ||
+      window.location.search.includes('utm_source=') ||
+      window.location.search.includes('deepLink=');
+    const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    return hasDeepLinkParam || isMobileBrowser;
+  });
   const [screen, setScreen] = useState<ScreenId>('splash');
   const screenRef = useRef<ScreenId>('splash');
   const screenHistoryRef = useRef<ScreenId[]>(['splash']);
@@ -517,6 +533,20 @@ export default function App() {
       historyStack.length > 0 &&
       (historyStack[historyStack.length - 1] === 'terms' ||
         historyStack[historyStack.length - 1] === 'privacy')
+    ) {
+      historyStack.pop();
+    }
+    const previousScreen = historyStack[historyStack.length - 1] || 'profile';
+    screenHistoryRef.current = historyStack.length > 0 ? historyStack : [previousScreen];
+    screenRef.current = previousScreen;
+    setScreen(previousScreen);
+  };
+
+  const navigateBackFromFaq = () => {
+    const historyStack = [...screenHistoryRef.current];
+    while (
+      historyStack.length > 0 &&
+      historyStack[historyStack.length - 1] === 'faq'
     ) {
       historyStack.pop();
     }
@@ -761,48 +791,47 @@ export default function App() {
     }).catch(() => {});
   }, [isLoggedIn, activeUid, userEmail]);
 
-  // Handle push notification deep links on launch
+  // Unified Deep Link Handler for Android App Links (cold & warm start) and web destinations
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const cleanup = initializeDeepLinkHandler((dest: DeepLinkDestination) => {
+      console.log('[App] Navigating to deep link destination:', dest);
 
-    try {
-      const url = new URL(window.location.href);
-      const deepLink = url.searchParams.get('deepLink') || url.searchParams.get('open') || url.searchParams.get('screen');
-      const campaignId = url.searchParams.get('campaignId');
-      const targetProductId = url.searchParams.get('productId');
-
-      if (campaignId) {
-        trackPushTap(campaignId, deepLink || 'home');
+      if (dest.campaignId) {
+        trackPushTap(dest.campaignId, dest.screen);
       }
 
-      if (deepLink) {
-        if (deepLink === 'ar-tryon') {
-          setScreen('ar-tryon');
-        } else if (deepLink === 'showroom') {
-          setScreen('showroom');
-        } else if (deepLink === 'wishlist') {
-          setScreen('wardrobe');
-        } else if (deepLink === 'stylist') {
-          setScreen('chat');
-        } else if (deepLink === 'product-details' && targetProductId) {
-          setSelectedProductId(targetProductId);
-          setScreen('product-details');
-        } else if (deepLink === 'home') {
-          setScreen('home');
-        }
-
-        // Clean up URL parameters after consuming deep link
-        url.searchParams.delete('deepLink');
-        url.searchParams.delete('open');
-        url.searchParams.delete('screen');
-        url.searchParams.delete('campaignId');
-        url.searchParams.delete('productId');
-        window.history.replaceState({ novaScreen: deepLink }, '', url.pathname + (url.search ? url.search : ''));
+      // If user is currently in unauthenticated auth gate, stash destination to resume after login
+      if (!isLoggedIn) {
+        pendingDeepLinkRef.current = dest;
+        return;
       }
-    } catch (err) {
-      console.warn('[Push Notification] Deep link parsing warning:', err);
-    }
-  }, []);
+
+      if (dest.productId) {
+        setSelectedProductId(dest.productId);
+      }
+
+      setScreen(dest.screen);
+
+      // Clean query parameters from address bar in browser mode without triggering navigation reload
+      if (typeof window !== 'undefined' && window.location.search) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('deepLink');
+        cleanUrl.searchParams.delete('open');
+        cleanUrl.searchParams.delete('screen');
+        cleanUrl.searchParams.delete('tab');
+        cleanUrl.searchParams.delete('campaignId');
+        cleanUrl.searchParams.delete('productId');
+        cleanUrl.searchParams.delete('utm_source');
+        cleanUrl.searchParams.delete('utm_medium');
+        cleanUrl.searchParams.delete('utm_campaign');
+        window.history.replaceState({ novaScreen: dest.screen }, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
+      }
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [isLoggedIn]);
 
   // Persistent measurements state
   const [measurements, setMeasurements] = useState<Measurement[]>(() => {
@@ -943,6 +972,9 @@ export default function App() {
     if (typeof window === 'undefined') return;
 
     window.history.replaceState({ novaScreen: screenRef.current }, '', window.location.href);
+    if (window.location.search.includes('admin=true') || window.location.hash === '#admin') {
+      navigate('admin-campaigns');
+    }
 
     const handleBrowserBack = () => {
       const historyStack = screenHistoryRef.current;
@@ -1700,6 +1732,24 @@ export default function App() {
             consentRecord={userLegalConsent}
           />
         );
+      case 'faq':
+        return (
+          <FAQView
+            onBack={navigateBackFromFaq}
+            onNavigate={navigate}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case 'admin-campaigns':
+        return (
+          <div className="w-full min-h-screen flex flex-col justify-center">
+            <AdminNotificationsModal
+              isOpen={true}
+              onClose={() => navigate('profile')}
+              isDarkMode={isDarkMode}
+            />
+          </div>
+        );
       case 'setup-preferences':
         return (
           <SetupPreferencesView 
@@ -2131,7 +2181,16 @@ export default function App() {
       accountService.setActiveLocalAccount(selectedUid);
       setActiveAccountUid(selectedUid);
     } catch {}
-    resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+    if (pendingDeepLinkRef.current && !isSignUp) {
+      const dest = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      if (dest.productId) {
+        setSelectedProductId(dest.productId);
+      }
+      resetScreenHistory(dest.screen);
+    } else {
+      resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+    }
   };
 
   const handleAcceptUpdatedTerms = async () => {
@@ -2201,7 +2260,16 @@ export default function App() {
       setActiveAccountUid(guestId);
     } catch {}
 
-    resetScreenHistory('home');
+    if (pendingDeepLinkRef.current) {
+      const dest = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      if (dest.productId) {
+        setSelectedProductId(dest.productId);
+      }
+      resetScreenHistory(dest.screen);
+    } else {
+      resetScreenHistory('home');
+    }
   };
 
   const handleLogout = () => {
@@ -2234,7 +2302,7 @@ export default function App() {
     if (tab === 'wardrobe' && screen === 'wardrobe') return true;
     if (tab === 'ar' && (screen === 'ar-tryon' || screen === 'tryon-result')) return true;
     if (tab === 'chat' && screen === 'chat') return true;
-    if (tab === 'profile' && (screen === 'profile' || screen === 'terms' || screen === 'privacy')) return true;
+    if (tab === 'profile' && (screen === 'profile' || screen === 'terms' || screen === 'privacy' || screen === 'faq')) return true;
     if (tab === 'showroom' && (screen === 'showroom' || screen === 'cart')) return true;
     return false;
   };
@@ -2272,14 +2340,46 @@ export default function App() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E4DFF5] text-[#131426]">
+        {!isNativeApp && showWebAppBanner && (
+          <div className="sticky top-0 z-50 bg-[#12162B] text-white border-b border-[#232A4C] px-3.5 py-2 flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-[#553BE2] animate-pulse shrink-0" />
+              <span className="text-[11px] font-medium text-slate-300 truncate">Viewing on NOVA Web</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={getNativeAppSchemeUrl(screen, selectedProductId ? { productId: selectedProductId } : undefined)}
+                className="text-[11px] font-bold bg-[#553BE2] hover:bg-[#472FC9] text-white px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+              >
+                Open in App
+              </a>
+              {import.meta.env.VITE_ANDROID_APK_URL && (
+                <a
+                  href={import.meta.env.VITE_ANDROID_APK_URL}
+                  className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg transition-colors border border-slate-700"
+                >
+                  Install APK
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowWebAppBanner(false)}
+                className="text-slate-400 hover:text-white p-0.5 text-xs font-bold"
+                aria-label="Dismiss banner"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
         <main className="flex-grow relative px-4 py-3 flex flex-col justify-center">
           <AuthView 
             onLoginSuccess={handleLoginSuccess} 
             onGuestContinue={handleGuestContinue}
             onProceedToEmailVerification={handleProceedToEmailVerification}
-            prefilledName={pendingEmailVerification?.name}
-            prefilledAddress={pendingEmailVerification?.address}
-            prefilledPinCode={pendingEmailVerification?.pinCode}
+
+
+
           />
         </main>
       </div>
@@ -2292,6 +2392,39 @@ export default function App() {
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
         : 'bg-[#F2EEFF] nova-page-wash border-x border-[#E4DFF5] text-[#131426]'
     }`}>
+      {/* Web Fallback App Bar for users visiting via browser */}
+      {!isNativeApp && showWebAppBanner && (
+        <div className="sticky top-0 z-50 bg-[#12162B] text-white border-b border-[#232A4C] px-3.5 py-2 flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-[#553BE2] animate-pulse shrink-0" />
+            <span className="text-[11px] font-medium text-slate-300 truncate">Viewing on NOVA Web</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={getNativeAppSchemeUrl(screen, selectedProductId ? { productId: selectedProductId } : undefined)}
+              className="text-[11px] font-bold bg-[#553BE2] hover:bg-[#472FC9] text-white px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+            >
+              Open in App
+            </a>
+            {import.meta.env.VITE_ANDROID_APK_URL && (
+              <a
+                href={import.meta.env.VITE_ANDROID_APK_URL}
+                className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg transition-colors border border-slate-700"
+              >
+                Install APK
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowWebAppBanner(false)}
+              className="text-slate-400 hover:text-white p-0.5 text-xs font-bold"
+              aria-label="Dismiss banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* 1. Header Toolbar (Hidden when immersive AR camera is loaded to mimic device viewport) */}
       {!isImmersiveAR && (
@@ -2467,6 +2600,12 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* 4. First-launch Notification Permission Intro */}
+      <NotificationPermissionModal
+        user={{ uid: activeUid, email: userEmail }}
+        isDarkMode={isDarkMode}
+      />
+
       {/* 3. Bottom persistent device Navigation Tab-Bar & NOVA Hub Modal (Hidden during immersive Tryon filtering) */}
       {!isImmersiveAR && (
         <>
