@@ -64,6 +64,8 @@ interface LiveTryOnViewportProps {
   isVideoLive: boolean;
   lighting: boolean;
   fallbackImg: string;
+  garmentImg?: string;
+  facingMode?: 'user' | 'environment';
 }
 
 const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
@@ -72,12 +74,29 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
   isVideoLive,
   lighting,
   fallbackImg,
+  garmentImg,
+  facingMode = 'user',
 }) => {
   const showVideo = isCameraActive || isVideoLive;
+  const [imgError, setImgError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(fallbackImg);
+
+  useEffect(() => {
+    setCurrentSrc(fallbackImg);
+    setImgError(false);
+  }, [fallbackImg]);
+
+  const handleImgError = () => {
+    if (garmentImg && currentSrc !== garmentImg) {
+      setCurrentSrc(garmentImg);
+    } else {
+      setImgError(true);
+    }
+  };
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden bg-black select-none pointer-events-none"
+      className="absolute inset-0 overflow-hidden bg-slate-950 select-none pointer-events-none"
       style={{
         contain: 'strict',
         isolation: 'isolate',
@@ -90,7 +109,7 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
         playsInline
         muted
         style={{
-          transform: 'translateZ(0)',
+          transform: facingMode === 'user' ? 'scaleX(-1) translateZ(0)' : 'translateZ(0)',
           willChange: 'transform',
           backfaceVisibility: 'hidden',
         }}
@@ -100,13 +119,25 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
       />
 
       {/* High-visibility portrait model when live stream is off */}
-      {!showVideo && (
+      {!showVideo && !imgError && (
         <img
           alt="AR Try-On Portrait Model"
           className="absolute inset-0 w-full h-full object-cover object-top z-0 pointer-events-none"
           referrerPolicy="no-referrer"
-          src={fallbackImg}
+          src={currentSrc}
+          onError={handleImgError}
         />
+      )}
+
+      {/* Fallback stylized mannequin placeholder if static image is unavailable */}
+      {!showVideo && imgError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#161B30] via-[#0F1322] to-[#0A0D18] text-white">
+          <div className="w-16 h-16 rounded-3xl bg-[#5D3DF2]/20 border border-[#5D3DF2]/40 flex items-center justify-center text-[#A594FD] mb-3 shadow-inner">
+            <span className="material-symbols-outlined text-3xl">view_in_ar</span>
+          </div>
+          <span className="text-sm font-bold text-slate-100 tracking-tight">Virtual Fitting Mannequin</span>
+          <span className="text-xs text-slate-400 mt-1">Tap Try On Live to view on camera</span>
+        </div>
       )}
 
       {/* Zero-invalidation hardware-accelerated lighting overlay */}
@@ -175,6 +206,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const pendingConnectControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
+  const lastActionTimeRef = useRef<number>(0);
 
   const activeModelBg = DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS['Lavender'];
   const activeGarmentObj = garmentsList.find((g) => g.id === selectedGarment) || garmentsList[0];
@@ -322,9 +354,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           stopLiveSession(false);
           setConnectionState('retryable_error');
           const errMsg = typeof err?.message === 'string' ? err.message : '';
-          const displayErr = errMsg.includes('Stale connect attempt')
-            ? t('arTryOn.interrupted')
-            : errMsg || t('arTryOn.interrupted');
+          const displayErr = errMsg.toLowerCase().includes('stale connect attempt')
+            ? 'Connection sync delay. Tap Retry.'
+            : errMsg || 'AI session interrupted. Tap Retry to reconnect.';
           setStatusText(displayErr);
         },
       });
@@ -336,7 +368,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       sessionRef.current = handle;
     } catch (err: any) {
       const errorMsg = typeof err?.message === 'string' ? err.message : String(err || '');
-      const isAbort = connectController.signal.aborted || err?.name === 'AbortError' || errorMsg.includes('cancelled');
+      const isExplicitAbort = connectController.signal.aborted;
       const isStale = errorMsg.toLowerCase().includes('stale connect attempt');
 
       // If superseded by a newer connection attempt, let the new attempt continue cleanly
@@ -344,14 +376,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         return;
       }
 
-      if (isAbort || isStale) {
+      if (isExplicitAbort) {
         setConnectionState('cancelled');
         setStatusText(t('arTryOn.interrupted'));
         return;
       }
 
       console.error('Could not start live session:', err);
-      const isPermissionDenied = err?.name === 'NotAllowedError';
+      const isPermissionDenied = err?.name === 'NotAllowedError' || errorMsg.toLowerCase().includes('permission');
       const errorCategory = isPermissionDenied ? 'camera_permission_denied' : 'connection_failed';
       analytics.trackArTryOnFailed(selectedGarmentRef.current, errorCategory, activeGarmentObjRef.current?.name);
 
@@ -365,8 +397,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           : typeof err?.error?.message === 'string' && err.error.message.trim()
           ? err.error.message.trim()
           : 'AI connection error';
-        const sanitized = rawMessage.includes('Stale connect attempt')
-          ? t('arTryOn.interrupted')
+        const sanitized = isStale
+          ? 'Network sync delay. Tap Retry to connect.'
           : rawMessage.length > 90
           ? `${rawMessage.slice(0, 87)}...`
           : rawMessage;
@@ -429,6 +461,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   // Primary Action Button (Try On Live / Cancel / Stop Live / Retry)
   const handlePrimaryAction = () => {
+    const now = Date.now();
+    // Guard against accidental double taps on mobile touchscreens (600ms debounce)
+    if (now - lastActionTimeRef.current < 600) return;
+    lastActionTimeRef.current = now;
+
     if (isConnectingRef.current || isConnecting || connectionState === 'initializing' || connectionState === 'processing') {
       // Cancel in-flight connection
       stopLiveSession(true);
@@ -675,6 +712,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           isVideoLive={isVideoLive}
           lighting={lighting}
           fallbackImg={activeModelBg}
+          garmentImg={activeGarmentObj?.img}
+          facingMode="user"
         />
 
         {/* Target Framing Brackets */}
@@ -698,7 +737,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                   ? 'bg-rose-400'
                   : connectionState === 'camera_ready'
                   ? 'bg-cyan-400'
-                  : 'bg-emerald-400'
+                  : connectionState === 'cancelled'
+                  ? 'bg-amber-400'
+                  : 'bg-slate-400'
               }`}
             />
             <span title={statusText} className="max-w-[70vw] truncate text-[11px] font-semibold text-slate-200 tracking-wide">

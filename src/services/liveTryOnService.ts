@@ -1,4 +1,5 @@
 import { apiUrl, PRODUCTION_API_URL } from './apiClient';
+import { Capacitor } from '@capacitor/core';
 
 export interface LiveTryOnSessionConfig {
   videoElement: HTMLVideoElement;
@@ -171,7 +172,7 @@ export async function getLiveTryOnToken(): Promise<string> {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             const controller = new AbortController();
-            const timeoutMs = attempt === 0 ? 8000 : 12000;
+            const timeoutMs = attempt === 0 ? 15000 : 25000;
             const timer = setTimeout(() => controller.abort(), timeoutMs);
 
             const response = await fetch(endpoint, {
@@ -419,6 +420,85 @@ export function captureVideoFrame(video: HTMLVideoElement): string | null {
 }
 
 /**
+ * Cross-device resilient camera acquisition with native Capacitor permission preflight
+ * and tiered constraint fallbacks for diverse Android/iOS hardware.
+ */
+export async function acquireCameraStream(
+  facingMode: 'user' | 'environment' = 'user',
+  idealFps = 30
+): Promise<MediaStream> {
+  // 1. Android APK native permission preflight via Capacitor Camera
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Camera } = await import('@capacitor/camera');
+      const check = await Camera.checkPermissions();
+      if (check.camera !== 'granted') {
+        const req = await Camera.requestPermissions({ permissions: ['camera'] });
+        if (req.camera !== 'granted') {
+          const permError = new DOMException('Camera permission was denied.', 'NotAllowedError');
+          throw permError;
+        }
+      }
+    } catch (e: any) {
+      if (e?.name === 'NotAllowedError') throw e;
+      console.warn('Native permission check note:', e);
+    }
+  }
+
+  // 2. Progressive constraint tiers to ensure compatibility on all Android & iOS cameras
+  const tiers: MediaStreamConstraints[] = [
+    // Tier 1: Optimal 720p 30fps
+    {
+      video: {
+        facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: idealFps },
+      },
+      audio: false,
+    },
+    // Tier 2: Mobile 480p 24fps
+    {
+      video: {
+        facingMode,
+        width: { ideal: 720 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 24 },
+      },
+      audio: false,
+    },
+    // Tier 3: Facing mode only (browser picks best available)
+    {
+      video: { facingMode },
+      audio: false,
+    },
+    // Tier 4: Minimal video capture fallback
+    {
+      video: true,
+      audio: false,
+    },
+  ];
+
+  let lastErr: any = null;
+  for (const constraints of tiers) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (stream && stream.getVideoTracks().length > 0) {
+        return stream;
+      }
+    } catch (err: any) {
+      lastErr = err;
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        throw err;
+      }
+      console.warn('Camera tier constraints rejected, trying next tier:', err?.name || err?.message);
+    }
+  }
+
+  throw lastErr || new Error('Could not access device camera');
+}
+
+/**
  * Start a real-time Virtual Try-On session.
  * Connects WebRTC FIRST with zero payload to prevent handshake timeouts.
  * Sends garment asynchronously once the channel is established.
@@ -443,15 +523,8 @@ export async function startLiveTryOnSession(
   const model = models.realtime('lucy-vton-latest');
   const captureFps = typeof model.fps === 'number' ? model.fps : (model.fps?.ideal || 30);
 
-  // Match model dimensions with ideal constraints for cross-device support
-  let localStream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: currentFacingMode,
-      width: { ideal: model.width || 1280 },
-      height: { ideal: model.height || 720 },
-      frameRate: { ideal: captureFps },
-    },
-  });
+  // Cross-device resilient camera acquisition
+  let localStream = await acquireCameraStream(currentFacingMode, captureFps);
   if (config.signal?.aborted) {
     localStream.getTracks().forEach((track) => track.stop());
     throwIfAborted();
@@ -483,8 +556,10 @@ export async function startLiveTryOnSession(
     throwIfAborted();
     const connectionOptions = {
       model,
-      retries: 2,
-      capacityRetryBudgetMs: 15000,
+      retries: 3,
+      // Disable client-side MediaStreamTrackProcessor/VideoFrame transform pump which crashes in mobile WebViews.
+      mirror: false,
+      capacityRetryBudgetMs: 30000,
       onCapacityWait: ({ retryAfterMs }: { retryAfterMs: number }) => {
         console.warn(`[AR:${sessionId}] Server busy, waiting ${retryAfterMs}ms`);
         config.onStatusChange?.(`AI server busy - retrying in ${Math.ceil(retryAfterMs / 1000)} seconds...`);
@@ -530,7 +605,7 @@ export async function startLiveTryOnSession(
     };
 
     let connectAttempts = 0;
-    while (!realtimeClient && connectAttempts < 2) {
+    while (!realtimeClient && connectAttempts < 3) {
       connectAttempts++;
       try {
         throwIfAborted();
@@ -542,10 +617,11 @@ export async function startLiveTryOnSession(
       } catch (err: any) {
         const msg = typeof err?.message === 'string' ? err.message : String(err || '');
         const isStale = msg.toLowerCase().includes('stale connect attempt');
-        if (isStale && !config.signal?.aborted && connectAttempts < 2) {
+        if (isStale && !config.signal?.aborted && connectAttempts < 3) {
           console.warn(`[AR:${sessionId}] Stale connect attempt detected; auto-retrying with fresh session...`);
-          config.onStatusChange?.('Connecting to AI...');
-          await new Promise((r) => setTimeout(r, 400));
+          config.onStatusChange?.('Connecting to AI (re-syncing)...');
+          invalidateLiveTryOnToken();
+          await new Promise((r) => setTimeout(r, 500));
           continue;
         }
         throw err;
@@ -559,10 +635,9 @@ export async function startLiveTryOnSession(
     }
   } catch (error: any) {
     const errorMsg = typeof error?.message === 'string' ? error.message : String(error || '');
-    const isStale = errorMsg.toLowerCase().includes('stale connect attempt');
-    const isCancelled = config.signal?.aborted || error?.name === 'AbortError' || errorMsg.includes('cancelled') || isStale;
-    console.error(`[AR:${sessionId}] Connection error (cancelled: ${isCancelled}):`, errorMsg);
-    if (isCancelled) {
+    const isExplicitAbort = config.signal?.aborted;
+    console.error(`[AR:${sessionId}] Connection error (aborted: ${isExplicitAbort}):`, errorMsg);
+    if (isExplicitAbort) {
       localStream.getTracks().forEach((track) => track.stop());
       if (config.videoElement.srcObject === localStream) {
         config.videoElement.srcObject = null;
@@ -689,14 +764,7 @@ export async function startLiveTryOnSession(
 
       localStream.getTracks().forEach((track) => track.stop());
       cameraReleased = true;
-      newStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { exact: nextFacingMode },
-          width: { ideal: model.width || 1280 },
-          height: { ideal: model.height || 720 },
-          frameRate: { ideal: captureFps },
-        },
-      });
+      newStream = await acquireCameraStream(nextFacingMode, captureFps);
 
       const newTrack = newStream.getVideoTracks()[0];
       if (!newTrack) {
@@ -716,14 +784,7 @@ export async function startLiveTryOnSession(
       }
 
       try {
-        const restoredStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { exact: previousFacingMode },
-            width: { ideal: model.width || 1280 },
-            height: { ideal: model.height || 720 },
-            frameRate: { ideal: captureFps },
-          },
-        });
+        const restoredStream = await acquireCameraStream(previousFacingMode, captureFps);
         const restoredTrack = restoredStream.getVideoTracks()[0];
         if (!restoredTrack) {
           restoredStream.getTracks().forEach((track) => track.stop());
