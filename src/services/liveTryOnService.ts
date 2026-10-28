@@ -64,29 +64,33 @@ async function runSerializedLiveConnect<T>(
     }
 
     isLiveConnectInProgress = true;
-    return await connect();
+    if (signal) {
+      return await Promise.race([
+        connect(),
+        new Promise<T>((_, reject) => {
+          const onAbort = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
+          signal.addEventListener('abort', onAbort, { once: true });
+        }),
+      ]);
+    } else {
+      return await connect();
+    }
   } finally {
     isLiveConnectInProgress = false;
     releaseQueue();
   }
 }
 
-// Keep credential metadata for failure feedback, and cache freshly minted token
+// Keep credential metadata for failure feedback
 let activeTokenState: {
   credentialId: string | null;
   feedbackEndpoint: string;
-} | null = null;
-
-let cachedClientToken: {
-  token: string;
-  expiresAt: number;
 } | null = null;
 
 let inFlightTokenPromise: Promise<string> | null = null;
 
 export function invalidateLiveTryOnToken(): void {
   activeTokenState = null;
-  cachedClientToken = null;
 }
 
 function reportSessionFailure(reason: string): void {
@@ -143,15 +147,11 @@ export const DEFAULT_MODELS: Record<string, string> = {
 };
 
 /**
- * Fetch a mint client session token with single-flight deduplication, caching,
+ * Fetch a fresh mint client session token with single-flight deduplication
  * and multi-tier fallback to eliminate duplicate requests and connection hangs.
+ * A fresh token is minted per connection attempt as required by Decart WebRTC.
  */
 export async function getLiveTryOnToken(): Promise<string> {
-  const now = Date.now();
-  if (cachedClientToken && cachedClientToken.expiresAt > now) {
-    return cachedClientToken.token;
-  }
-
   if (inFlightTokenPromise) {
     return inFlightTokenPromise;
   }
@@ -194,12 +194,6 @@ export async function getLiveTryOnToken(): Promise<string> {
             activeTokenState = {
               credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
               feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
-            };
-
-            // Cache token for 60 seconds (server issues 300s tokens) to deduplicate connects without sending expired tokens
-            cachedClientToken = {
-              token,
-              expiresAt: Date.now() + 60 * 1000,
             };
 
             return token;
@@ -449,13 +443,13 @@ export async function startLiveTryOnSession(
   const model = models.realtime('lucy-vton-latest');
   const captureFps = typeof model.fps === 'number' ? model.fps : (model.fps?.ideal || 30);
 
-  // Match model dimensions
+  // Match model dimensions with ideal constraints for cross-device support
   let localStream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: currentFacingMode,
-      width: model.width || 1280,
-      height: model.height || 720,
-      frameRate: captureFps,
+      width: { ideal: model.width || 1280 },
+      height: { ideal: model.height || 720 },
+      frameRate: { ideal: captureFps },
     },
   });
   if (config.signal?.aborted) {
@@ -535,11 +529,28 @@ export async function startLiveTryOnSession(
       },
     };
 
-    realtimeClient = await runSerializedLiveConnect(
-      config.signal,
-      () => config.onStatusChange?.('Waiting for previous AI connection to close...'),
-      () => client.realtime.connect(localStream, connectionOptions)
-    );
+    let connectAttempts = 0;
+    while (!realtimeClient && connectAttempts < 2) {
+      connectAttempts++;
+      try {
+        throwIfAborted();
+        realtimeClient = await runSerializedLiveConnect(
+          config.signal,
+          () => config.onStatusChange?.('Waiting for previous AI connection to close...'),
+          () => client.realtime.connect(localStream, connectionOptions)
+        );
+      } catch (err: any) {
+        const msg = typeof err?.message === 'string' ? err.message : String(err || '');
+        const isStale = msg.toLowerCase().includes('stale connect attempt');
+        if (isStale && !config.signal?.aborted && connectAttempts < 2) {
+          console.warn(`[AR:${sessionId}] Stale connect attempt detected; auto-retrying with fresh session...`);
+          config.onStatusChange?.('Connecting to AI...');
+          await new Promise((r) => setTimeout(r, 400));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     if (config.signal?.aborted) {
       realtimeClient?.disconnect();
@@ -548,7 +559,8 @@ export async function startLiveTryOnSession(
     }
   } catch (error: any) {
     const errorMsg = typeof error?.message === 'string' ? error.message : String(error || '');
-    const isCancelled = config.signal?.aborted || error?.name === 'AbortError' || errorMsg.includes('cancelled');
+    const isStale = errorMsg.toLowerCase().includes('stale connect attempt');
+    const isCancelled = config.signal?.aborted || error?.name === 'AbortError' || errorMsg.includes('cancelled') || isStale;
     console.error(`[AR:${sessionId}] Connection error (cancelled: ${isCancelled}):`, errorMsg);
     if (isCancelled) {
       localStream.getTracks().forEach((track) => track.stop());

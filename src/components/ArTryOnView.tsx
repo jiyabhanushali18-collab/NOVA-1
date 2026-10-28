@@ -290,11 +290,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         onLocalStream: (stream) => {
           localPreviewStreamRef.current = stream;
           setIsCameraActive(true);
-          setConnectionState('camera_ready');
           setStatusText(t('arTryOn.cameraReady'));
         },
         onStatusChange: (status) => {
-          if (!isLiveRef.current && (status.includes('Connecting to AI') || status.includes('Applying garment'))) {
+          if (!isLiveRef.current && (status.includes('Connecting to AI') || status.includes('Applying garment') || status.includes('session'))) {
             setConnectionState('processing');
           }
           setStatusText(status);
@@ -322,7 +321,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           analytics.trackArTryOnFailed(selectedGarmentRef.current, 'stream_error', activeGarmentObjRef.current?.name);
           stopLiveSession(false);
           setConnectionState('retryable_error');
-          setStatusText(err.message || t('arTryOn.interrupted'));
+          const errMsg = typeof err?.message === 'string' ? err.message : '';
+          const displayErr = errMsg.includes('Stale connect attempt')
+            ? t('arTryOn.interrupted')
+            : errMsg || t('arTryOn.interrupted');
+          setStatusText(displayErr);
         },
       });
 
@@ -332,39 +335,49 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       }
       sessionRef.current = handle;
     } catch (err: any) {
-      if (connectController.signal.aborted) {
+      const errorMsg = typeof err?.message === 'string' ? err.message : String(err || '');
+      const isAbort = connectController.signal.aborted || err?.name === 'AbortError' || errorMsg.includes('cancelled');
+      const isStale = errorMsg.toLowerCase().includes('stale connect attempt');
+
+      // If superseded by a newer connection attempt, let the new attempt continue cleanly
+      if (pendingConnectControllerRef.current && pendingConnectControllerRef.current !== connectController) {
+        return;
+      }
+
+      if (isAbort || isStale) {
         setConnectionState('cancelled');
         setStatusText(t('arTryOn.interrupted'));
         return;
       }
+
       console.error('Could not start live session:', err);
       const isPermissionDenied = err?.name === 'NotAllowedError';
       const errorCategory = isPermissionDenied ? 'camera_permission_denied' : 'connection_failed';
       analytics.trackArTryOnFailed(selectedGarmentRef.current, errorCategory, activeGarmentObjRef.current?.name);
-      isConnectingRef.current = false;
-      setIsConnecting(false);
 
       if (isPermissionDenied) {
         setConnectionState('configuration_error');
         setStatusText(t('arTryOn.cameraDenied'));
       } else {
         setConnectionState('retryable_error');
-        const errorMessage = typeof err?.message === 'string' && err.message.trim()
+        const rawMessage = typeof err?.message === 'string' && err.message.trim()
           ? err.message.trim()
           : typeof err?.error?.message === 'string' && err.error.message.trim()
           ? err.error.message.trim()
-          : 'Unknown connection error';
-        const detail = errorMessage.length > 90 ? `${errorMessage.slice(0, 87)}...` : errorMessage;
-        setStatusText(`${t('arTryOn.failed')}: ${detail}`);
+          : 'AI connection error';
+        const sanitized = rawMessage.includes('Stale connect attempt')
+          ? t('arTryOn.interrupted')
+          : rawMessage.length > 90
+          ? `${rawMessage.slice(0, 87)}...`
+          : rawMessage;
+        setStatusText(`${t('arTryOn.failed')}: ${sanitized}`);
       }
     } finally {
       if (pendingConnectControllerRef.current === connectController) {
         pendingConnectControllerRef.current = null;
       }
-      if (connectController.signal.aborted) {
-        isConnectingRef.current = false;
-        setIsConnecting(false);
-      }
+      isConnectingRef.current = false;
+      setIsConnecting(false);
     }
   }, [onTryOnSuccess, stopLiveSession, t]);
 
@@ -416,7 +429,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
   // Primary Action Button (Try On Live / Cancel / Stop Live / Retry)
   const handlePrimaryAction = () => {
-    if (connectionState === 'initializing' || connectionState === 'processing') {
+    if (isConnectingRef.current || isConnecting || connectionState === 'initializing' || connectionState === 'processing') {
       // Cancel in-flight connection
       stopLiveSession(true);
     } else if (connectionState === 'success') {
