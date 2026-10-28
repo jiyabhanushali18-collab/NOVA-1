@@ -23,7 +23,7 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors({
   origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'x-admin-key']
 }));
 app.use(express.json({ limit: '6mb' }));
 
@@ -52,7 +52,10 @@ async function start() {
       { default: productRouter },
       { default: vtonRouter },
       { default: tryOnScoreRouter },
-      { default: analyticsRouter }
+      { default: analyticsRouter },
+      { default: notificationRouter },
+      { default: notificationAdminRouter },
+      { startNotificationScheduler }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
       import('./server/chatRouter.ts'),
@@ -60,7 +63,10 @@ async function start() {
       import('./server/productRouter.ts'),
       import('./server/vtonRouter.ts'),
       import('./server/tryOnScoreRouter.ts'),
-      import('./server/analyticsRouter.ts')
+      import('./server/analyticsRouter.ts'),
+      import('./server/notificationRouter.ts'),
+      import('./server/notificationAdminRouter.ts'),
+      import('./server/notificationScheduler.ts')
     ]);
 
     app.use('/api', authRouter);
@@ -70,6 +76,9 @@ async function start() {
     app.use('/api', vtonRouter);
     app.use('/api', tryOnScoreRouter);
     app.use('/api', analyticsRouter);
+    app.use('/api', notificationRouter);
+    app.use('/api', notificationAdminRouter);
+    startNotificationScheduler();
 
     const server = http.createServer(app);
 

@@ -42,6 +42,7 @@ import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emailLinkAuth';
 import { normalizeProductVariants } from './utils/productVariants';
 import { useI18n } from './i18n';
+import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -608,7 +609,7 @@ export default function App() {
     };
   }, [isLoggedIn, activeUid, userEmail, isGuestSession]);
 
-  const handleAddressSaved = (updatedAddress: DeliveryAddress, allAddresses?: DeliveryAddress[]) => {
+    const handleAddressSaved = (updatedAddress: DeliveryAddress, allAddresses?: DeliveryAddress[]) => {
     const hasValidAddress = Boolean(
       updatedAddress && (updatedAddress.flatNo || updatedAddress.city || updatedAddress.pinCode)
     );
@@ -751,6 +752,57 @@ export default function App() {
       cancelled = true;
     };
   }, [isLoggedIn, activeUid, userEmail, isGuestSession]);
+
+  // Sync push notification registration token with backend for automated marketing & style alerts
+  useEffect(() => {
+    syncPushTokenWithBackend({
+      uid: activeUid || undefined,
+      email: userEmail || undefined
+    }).catch(() => {});
+  }, [isLoggedIn, activeUid, userEmail]);
+
+  // Handle push notification deep links on launch
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const url = new URL(window.location.href);
+      const deepLink = url.searchParams.get('deepLink') || url.searchParams.get('open') || url.searchParams.get('screen');
+      const campaignId = url.searchParams.get('campaignId');
+      const targetProductId = url.searchParams.get('productId');
+
+      if (campaignId) {
+        trackPushTap(campaignId, deepLink || 'home');
+      }
+
+      if (deepLink) {
+        if (deepLink === 'ar-tryon') {
+          setScreen('ar-tryon');
+        } else if (deepLink === 'showroom') {
+          setScreen('showroom');
+        } else if (deepLink === 'wishlist') {
+          setScreen('wardrobe');
+        } else if (deepLink === 'stylist') {
+          setScreen('chat');
+        } else if (deepLink === 'product-details' && targetProductId) {
+          setSelectedProductId(targetProductId);
+          setScreen('product-details');
+        } else if (deepLink === 'home') {
+          setScreen('home');
+        }
+
+        // Clean up URL parameters after consuming deep link
+        url.searchParams.delete('deepLink');
+        url.searchParams.delete('open');
+        url.searchParams.delete('screen');
+        url.searchParams.delete('campaignId');
+        url.searchParams.delete('productId');
+        window.history.replaceState({ novaScreen: deepLink }, '', url.pathname + (url.search ? url.search : ''));
+      }
+    } catch (err) {
+      console.warn('[Push Notification] Deep link parsing warning:', err);
+    }
+  }, []);
 
   // Persistent measurements state
   const [measurements, setMeasurements] = useState<Measurement[]>(() => {

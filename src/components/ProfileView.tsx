@@ -11,6 +11,8 @@ import {
   saveUserDeliveryAddress,
   writeCachedUserAddress
 } from '../services/addressService';
+import { syncPreferencesUpdate, requestPushNotificationPermission } from '../services/notificationClientService';
+import { AdminNotificationsModal } from './AdminNotificationsModal';
 
 interface ProfileViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -154,6 +156,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isWishlistModalOpen, setIsWishlistModalOpen] = useState(false);
   const [isSavedLooksModalOpen, setIsSavedLooksModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
   const [isLoadingSavedLooks, setIsLoadingSavedLooks] = useState(false);
   const [selectedLookPreview, setSelectedLookPreview] = useState<SavedLook | null>(null);
@@ -625,7 +628,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   React.useEffect(() => {
     localStorage.setItem('notifications_settings', JSON.stringify(notificationsSettings));
-  }, [notificationsSettings]);
+    syncPreferencesUpdate({
+      marketingOptIn: Boolean(notificationsSettings.marketingReminders ?? true),
+      priceDrops: Boolean(notificationsSettings.priceDrops),
+      newArrivals: Boolean(notificationsSettings.newArrivals),
+      stylistReminders: Boolean(notificationsSettings.stylistReminders),
+      orderUpdates: Boolean(notificationsSettings.orderUpdates)
+    }, effectiveUid);
+  }, [notificationsSettings, effectiveUid]);
 
   const toggleNotificationField = (field: keyof typeof notificationsSettings, label: string) => {
     const updated = { ...notificationsSettings, [field]: !notificationsSettings[field] };
@@ -1191,6 +1201,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             { label: t('profile.settings.terms'), icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
             { label: t('profile.settings.privacyPolicy'), icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
             { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
+            { label: 'Marketing Push Controls', icon: 'campaign', action: () => setIsAdminModalOpen(true), extra: 'Admin' },
             { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
             <li key={item.label}>
@@ -2007,6 +2018,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <span className={`w-4.5 h-4.5 bg-white rounded-full shadow-md transform transition-transform ${notificationsSettings.orderUpdates ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
+
+              {/* Daily Style Drops (Marketing Push) */}
+              <div className="flex justify-between items-center pt-3.5">
+                <div className="space-y-0.5 max-w-[70%]">
+                  <h4 className="text-xs font-black text-[#131426] flex items-center gap-1">
+                    Daily Style & AR Drops 💅
+                  </h4>
+                  <p className="text-[10px] text-[#5E667A] leading-normal">
+                    Witty styling alerts, AR Try-On reminders & secret drops (10 AM & 7 PM).
+                  </p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    toggleNotificationField('marketingReminders', 'Daily Style Drops');
+                    if (!notificationsSettings.marketingReminders) {
+                      requestPushNotificationPermission().catch(() => {});
+                    }
+                  }}
+                  className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-1 cursor-pointer select-none ${notificationsSettings.marketingReminders ? 'bg-[#553BE2]' : 'bg-[#E4DFF5]'}`}
+                >
+                  <span className={`w-4.5 h-4.5 bg-white rounded-full shadow-md transform transition-transform ${notificationsSettings.marketingReminders ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
             </div>
 
             <button 
@@ -2312,6 +2347,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
       )}
+      {/* Admin Marketing Push Notifications Modal */}
+      <AdminNotificationsModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
