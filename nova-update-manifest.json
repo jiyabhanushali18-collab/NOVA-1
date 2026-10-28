@@ -1,0 +1,13 @@
+{
+  "versionName": "1.0.1",
+  "versionCode": 2,
+  "minimumSupportedVersionCode": 1,
+  "apkUrl": "https://github.com/jiyabhanushali18-collab/NOVA-1/releases/download/v1.0.1/NOVA-v1.0.1.apk",
+  "releaseNotes": [
+    "Performance improvements",
+    "Bug fixes and stability updates",
+    "Updated Android release metadata"
+  ],
+  "releaseDate": "2026-10-28T08:33:23.733Z",
+  "mandatory": false
+}
