@@ -381,7 +381,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex justify-between items-end mb-4">
           <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.recentActivity')}</h2>
         </div>
-        <div className="grid grid-cols-2 gap-4 pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {activityList.length === 0 && (
             <p className={`py-4 text-sm ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
               {t('home.emptyRecentActivity')}
@@ -407,7 +407,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 }}
                 role={isClickable ? 'button' : undefined}
                 tabIndex={isClickable ? 0 : undefined}
-                className={`min-w-0 group ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
+                className={`group snap-start shrink-0 w-[78%] sm:w-[48%] ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <div className={`h-48 rounded-2xl overflow-hidden relative shadow-[0_8px_20px_-4px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)] border border-[#E4DFF5] ${isDarkMode ? 'bg-slate-900' : 'bg-[#0D1527]'} mb-2`}>
                   <ActivityCardImage activity={activity} matchedProduct={matched} isDarkMode={isDarkMode} />
