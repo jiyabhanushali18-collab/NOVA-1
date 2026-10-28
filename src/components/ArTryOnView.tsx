@@ -15,7 +15,15 @@ import {
   LiveTryOnSessionHandle,
   DEFAULT_MODELS,
   prepareGarmentForLiveTryOn,
+  acquireCameraStream,
+  applyTrackExposure,
+  isHardwareExposureSupported,
+  getCameraDevices,
 } from '../services/liveTryOnService';
+import {
+  PersonDetectionResult,
+  startPersonDetection,
+} from '../services/personDetectionService';
 
 export type ArTryOnState =
   | 'idle'
@@ -66,6 +74,9 @@ interface LiveTryOnViewportProps {
   fallbackImg: string;
   garmentImg?: string;
   facingMode?: 'user' | 'environment';
+  brightness?: number;
+  isFlipping?: boolean;
+  personDetection?: PersonDetectionResult | null;
 }
 
 const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
@@ -76,6 +87,9 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
   fallbackImg,
   garmentImg,
   facingMode = 'user',
+  brightness = 0,
+  isFlipping = false,
+  personDetection,
 }) => {
   const showVideo = isCameraActive || isVideoLive;
   const [imgError, setImgError] = useState(false);
@@ -94,6 +108,9 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
     }
   };
 
+  const effectiveBrightness = 100 + brightness;
+  const effectiveContrast = 100 + Math.round(Math.abs(brightness) * 0.15);
+
   return (
     <div
       className="absolute inset-0 overflow-hidden bg-slate-950 select-none pointer-events-none"
@@ -110,8 +127,11 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
         muted
         style={{
           transform: facingMode === 'user' ? 'scaleX(-1) translateZ(0)' : 'translateZ(0)',
-          willChange: 'transform',
+          filter: `brightness(${effectiveBrightness}%) contrast(${effectiveContrast}%)`,
+          willChange: 'transform, filter',
           backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          transition: 'filter 0.25s ease-out',
         }}
         className={`absolute inset-0 w-full h-full object-cover object-top pointer-events-none transition-opacity duration-200 ${
           showVideo ? 'opacity-100 z-10' : 'opacity-0 z-0'
@@ -137,6 +157,60 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
           </div>
           <span className="text-sm font-bold text-slate-100 tracking-tight">Virtual Fitting Mannequin</span>
           <span className="text-xs text-slate-400 mt-1">Tap Try On Live to view on camera</span>
+        </div>
+      )}
+
+      {/* Dynamic Person Framing Reticle Indicator */}
+      {showVideo && (
+        <div className="absolute inset-3 rounded-2xl pointer-events-none z-20">
+          <div
+            className={`absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 rounded-tl-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+          <div
+            className={`absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 rounded-tr-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 rounded-bl-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 rounded-br-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+        </div>
+      )}
+
+      {/* Person Detection Real-Time Guidance Pill */}
+      {showVideo && personDetection && (
+        <div className="absolute top-11 inset-x-0 flex justify-center z-25 pointer-events-none">
+          <div
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 backdrop-blur-md border shadow-sm transition-all duration-300 ${
+              personDetection.detected
+                ? 'bg-emerald-950/85 border-emerald-400/40 text-emerald-300'
+                : 'bg-[#111322]/85 border-white/15 text-slate-300'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                personDetection.detected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+            <span>{personDetection.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Switching Spinner Overlay */}
+      {isFlipping && (
+        <div className="absolute inset-0 bg-[#0B0C15]/75 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2 pointer-events-none">
+          <span className="material-symbols-outlined text-3xl text-[#A594FD] animate-spin">sync</span>
+          <span className="text-xs font-semibold text-slate-200">Switching camera...</span>
         </div>
       )}
 
@@ -178,6 +252,18 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const [statusText, setStatusText] = useState('Camera ready');
   const [lighting, setLighting] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const facingModeRef = useRef(facingMode);
+  facingModeRef.current = facingMode;
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [showLightingPanel, setShowLightingPanel] = useState(false);
+  const [brightness, setBrightness] = useState(0);
+  const [isAutoLighting, setIsAutoLighting] = useState(false);
+  const isAutoLightingRef = useRef(false);
+  isAutoLightingRef.current = isAutoLighting;
+  const [isHardwareExposure, setIsHardwareExposure] = useState(false);
+  const [personDetection, setPersonDetection] = useState<PersonDetectionResult | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<{ front: number; rear: number; total: number }>({ front: 1, rear: 1, total: 2 });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [savePopup, setSavePopup] = useState<{
     isOpen: boolean;
@@ -288,6 +374,66 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     };
   }, []);
 
+  // Initialize camera preview stream on demand or on mount
+  const initCameraPreview = useCallback(async (targetFacing: 'user' | 'environment') => {
+    if (isLiveRef.current || isConnectingRef.current) return;
+    try {
+      if (localPreviewStreamRef.current) {
+        localPreviewStreamRef.current.getTracks().forEach((track) => track.stop());
+        localPreviewStreamRef.current = null;
+      }
+      const stream = await acquireCameraStream(targetFacing, 30);
+      localPreviewStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((playErr) => console.warn('Preview play error:', playErr));
+      }
+      setIsCameraActive(true);
+      setFacingMode(targetFacing);
+      setStatusText(t('arTryOn.cameraReady'));
+      const videoTrack = stream.getVideoTracks()[0];
+      setIsHardwareExposure(isHardwareExposureSupported(videoTrack));
+    } catch (err: any) {
+      console.warn('Camera preview init error:', err);
+      setIsCameraActive(false);
+      if (err?.name === 'NotAllowedError') {
+        setStatusText(t('arTryOn.cameraDenied'));
+      }
+    }
+  }, [t]);
+
+  // Initialize camera preview immediately when AR Try-On screen opens
+  useEffect(() => {
+    initCameraPreview('user');
+    getCameraDevices().then((info) => {
+      setAvailableCameras({ front: info.frontCameras.length, rear: info.rearCameras.length, total: info.total });
+    });
+  }, [initCameraPreview]);
+
+  // Dynamic real-time person detection loop
+  useEffect(() => {
+    if (!videoRef.current || (!isCameraActive && !isVideoLive)) {
+      setPersonDetection(null);
+      return;
+    }
+
+    const unbind = startPersonDetection(videoRef.current, facingMode, (result) => {
+      setPersonDetection(result);
+      // Auto-lighting adjustment if active
+      if (isAutoLightingRef.current) {
+        if (result.averageLuma < 70) {
+          setBrightness((prev) => Math.min(30, prev + 2));
+        } else if (result.averageLuma > 185) {
+          setBrightness((prev) => Math.max(-25, prev - 2));
+        }
+      }
+    });
+
+    return () => {
+      unbind();
+    };
+  }, [facingMode, isCameraActive, isVideoLive]);
+
   // Start live session on-demand (Single-flight connection with lifecycle state management)
   const startLiveSession = useCallback(async () => {
     if (isConnectingRef.current || isLiveRef.current || pendingConnectControllerRef.current) return;
@@ -317,12 +463,17 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       const handle = await startLiveTryOnSession({
         videoElement: videoRef.current,
         garmentImage: garmentSource,
-        facingMode: 'user',
+        facingMode: facingModeRef.current,
         signal: connectController.signal,
         onLocalStream: (stream) => {
           localPreviewStreamRef.current = stream;
           setIsCameraActive(true);
           setStatusText(t('arTryOn.cameraReady'));
+          const videoTrack = stream.getVideoTracks()[0];
+          setIsHardwareExposure(isHardwareExposureSupported(videoTrack));
+        },
+        onFacingModeChange: (newFacing) => {
+          setFacingMode(newFacing);
         },
         onStatusChange: (status) => {
           if (!isLiveRef.current && (status.includes('Connecting to AI') || status.includes('Applying garment') || status.includes('session'))) {
@@ -481,23 +632,62 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   // Backwards compatibility alias
   const handleToggleCamera = handlePrimaryAction;
 
-  // Flip Camera
+  // Flip Camera - front and rear switching for both preview and live session
   const handleFlip = async () => {
-    if (sessionRef.current && isLiveRef.current) {
-      try {
+    if (isFlipping) return;
+    setIsFlipping(true);
+
+    const nextFacing = facingMode === 'user' ? 'environment' : 'user';
+    setToastMessage(nextFacing === 'environment' ? 'Switching to rear camera...' : 'Switching to front camera...');
+
+    try {
+      if (sessionRef.current && isLiveRef.current) {
         await sessionRef.current.flipCamera();
-      } catch (error) {
-        const errorName = error instanceof Error ? error.name : '';
-        const message = errorName === 'CameraUnavailableError'
-          || errorName === 'NotFoundError'
-          || errorName === 'OverconstrainedError'
-          ? 'This device does not have another available camera to switch to.'
-          : errorName === 'NotAllowedError'
-          ? 'Camera access was denied. Allow camera access in your browser settings and try again.'
-          : 'Could not switch cameras. Check camera permissions and try again.';
-        setToastMessage(message);
-        window.setTimeout(() => setToastMessage(null), 3000);
+        setFacingMode(nextFacing);
+      } else {
+        await initCameraPreview(nextFacing);
       }
+
+      setToastMessage(
+        nextFacing === 'environment'
+          ? 'Switched to rear camera (point at person)'
+          : 'Switched to front camera (selfie)'
+      );
+      setTimeout(() => setToastMessage(null), 2500);
+    } catch (error: any) {
+      console.error('Camera flip error:', error);
+      const errorName = error instanceof Error ? error.name : '';
+      const message = errorName === 'CameraUnavailableError'
+        || errorName === 'NotFoundError'
+        || errorName === 'OverconstrainedError'
+        ? 'This device does not have another available camera to switch to.'
+        : errorName === 'NotAllowedError'
+        ? 'Camera access was denied. Allow camera access in your browser settings and try again.'
+        : 'Could not switch cameras. Check camera permissions and try again.';
+      setToastMessage(message);
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setIsFlipping(false);
+    }
+  };
+
+  // Adjust display brightness & native hardware exposure
+  const handleBrightnessChange = (val: number) => {
+    setBrightness(val);
+    setIsAutoLighting(false);
+    const track = (localPreviewStreamRef.current || sessionRef.current?.localStream)?.getVideoTracks()[0];
+    if (track && isHardwareExposure) {
+      applyTrackExposure(track, val / 20).catch(() => {});
+    }
+  };
+
+  // Reset brightness & exposure to default
+  const handleResetLighting = () => {
+    setBrightness(0);
+    setIsAutoLighting(false);
+    const track = (localPreviewStreamRef.current || sessionRef.current?.localStream)?.getVideoTracks()[0];
+    if (track && isHardwareExposure) {
+      applyTrackExposure(track, 0).catch(() => {});
     }
   };
 
@@ -713,15 +903,34 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           lighting={lighting}
           fallbackImg={activeModelBg}
           garmentImg={activeGarmentObj?.img}
-          facingMode="user"
+          facingMode={facingMode}
+          brightness={brightness}
+          isFlipping={isFlipping}
+          personDetection={personDetection}
         />
 
         {/* Target Framing Brackets */}
         <div className="absolute inset-3 rounded-2xl pointer-events-none z-20">
-          <div className="absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 border-white rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 border-white rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 border-white rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 border-white rounded-br-xl" />
+          <div
+            className={`absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 rounded-tl-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
+          <div
+            className={`absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 rounded-tr-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 rounded-bl-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 rounded-br-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
         </div>
 
         {/* Top Status Pill: Camera ready / Live status */}
@@ -748,17 +957,100 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           </div>
         </div>
 
+        {/* Interactive Lighting & Exposure Adjustment Panel */}
+        {showLightingPanel && (
+          <div className="absolute bottom-18 left-3 right-3 bg-[#111322]/95 backdrop-blur-xl border border-white/20 rounded-2xl p-3.5 shadow-2xl z-40 animate-in fade-in slide-in-from-bottom-2">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[#FBBF24] text-base">lightbulb</span>
+                <span className="text-xs font-bold text-white tracking-wide">
+                  {t('arTryOn.adjustLighting') || 'Adjust Lighting'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#553BE2]/30 text-[#C4B5FD] border border-[#553BE2]/40">
+                  {isHardwareExposure ? '⚡ Native Exposure' : '✨ Display Brightness'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowLightingPanel(false)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded-lg active:scale-95 cursor-pointer"
+                  title="Close"
+                  aria-label="Close lighting panel"
+                >
+                  <span className="material-symbols-outlined text-sm leading-none">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Brightness / Exposure Slider */}
+            <div className="flex items-center gap-2.5 my-1.5">
+              <span className="material-symbols-outlined text-xs text-slate-400">brightness_low</span>
+              <input
+                type="range"
+                min={-40}
+                max={40}
+                step={1}
+                value={brightness}
+                onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+                className="flex-1 accent-[#553BE2] h-1.5 bg-slate-700/80 rounded-lg cursor-pointer"
+                aria-label={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
+              />
+              <span className="material-symbols-outlined text-xs text-slate-300">brightness_high</span>
+              <span className="text-[11px] font-bold text-white min-w-[42px] text-right">
+                {brightness === 0 ? 'Normal' : `${brightness > 0 ? '+' : ''}${brightness}`}
+              </span>
+            </div>
+
+            {/* Quick Action Controls: Reset & Auto Mode */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-2 text-[11px]">
+              <button
+                type="button"
+                onClick={handleResetLighting}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                title={t('arTryOn.resetLighting') || 'Reset Lighting'}
+              >
+                <span className="material-symbols-outlined text-[13px]">restart_alt</span>
+                <span>{t('arTryOn.resetLighting') || 'Reset'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAutoLighting(!isAutoLighting)}
+                className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                  isAutoLighting
+                    ? 'bg-[#553BE2] text-white shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white'
+                }`}
+                title={t('arTryOn.autoLighting') || 'Auto Lighting'}
+              >
+                <span className="material-symbols-outlined text-[13px]">auto_fix_high</span>
+                <span>Auto {isAutoLighting ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* In-Camera Floating Bottom Controls: Flip, Shutter, Light */}
         <div className="absolute bottom-3.5 inset-x-0 flex justify-center items-center gap-5 z-30 px-4 pointer-events-auto">
           {/* Flip Camera */}
           <button
             type="button"
             onClick={handleFlip}
-            disabled={!isVideoLive}
+            disabled={isFlipping}
             title={t('arTryOn.flipCamera')}
-            className="w-10 h-10 rounded-full bg-[#111322]/85 hover:bg-[#1C1F36] backdrop-blur-md border border-white/15 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+            aria-label={t('arTryOn.flipCamera')}
+            className="w-10 h-10 rounded-full bg-[#111322]/85 hover:bg-[#1C1F36] backdrop-blur-md border border-white/15 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all disabled:opacity-40 cursor-pointer relative"
           >
-            <span className="material-symbols-outlined text-base">cameraswitch</span>
+            <span className={`material-symbols-outlined text-base ${isFlipping ? 'animate-spin' : ''}`}>
+              cameraswitch
+            </span>
+            {facingMode === 'environment' && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#553BE2] border border-white text-[8px] font-black flex items-center justify-center text-white shadow-sm">
+                R
+              </span>
+            )}
           </button>
 
           {/* Center Large Shutter Button */}
@@ -766,18 +1058,20 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             type="button"
             onClick={handleCapture}
             title={t('arTryOn.takeSnapshot')}
+            aria-label={t('arTryOn.takeSnapshot')}
             className="w-13 h-13 rounded-full bg-white flex items-center justify-center p-1 border-[3px] border-[#A594FD] shadow-[0_0_20px_rgba(165,148,253,0.6)] active:scale-90 hover:scale-105 transition-all cursor-pointer"
           >
             <div className="w-full h-full rounded-full bg-white shadow-inner" />
           </button>
 
-          {/* Lighting Toggle */}
+          {/* Lighting Toggle / Slider Panel Opener */}
           <button
             type="button"
-            onClick={() => setLighting(!lighting)}
-            title={t('arTryOn.toggleLighting')}
+            onClick={() => setShowLightingPanel((prev) => !prev)}
+            title={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
+            aria-label={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
             className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center shadow-lg active:scale-95 transition-all cursor-pointer ${
-              lighting
+              showLightingPanel || brightness !== 0 || isAutoLighting
                 ? 'bg-[#553BE2] border-white/40 shadow-[#553BE2]/40 text-amber-300'
                 : 'bg-[#111322]/85 hover:bg-[#1C1F36] border-white/15 text-white'
             }`}

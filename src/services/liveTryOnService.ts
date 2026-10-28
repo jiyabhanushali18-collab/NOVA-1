@@ -7,6 +7,7 @@ export interface LiveTryOnSessionConfig {
   facingMode?: 'user' | 'environment';
   onStatusChange?: (status: string) => void;
   onLocalStream?: (stream: MediaStream) => void;
+  onFacingModeChange?: (facingMode: 'user' | 'environment') => void;
   onError?: (error: Error) => void;
   onConnected?: () => void;
   signal?: AbortSignal;
@@ -17,7 +18,10 @@ export interface LiveTryOnSessionHandle {
   localStream: MediaStream;
   stop: () => void;
   setGarment: (garment: File | Blob | string | null) => Promise<void>;
-  flipCamera: () => Promise<void>;
+  flipCamera: () => Promise<'user' | 'environment'>;
+  getFacingMode: () => 'user' | 'environment';
+  applyExposure: (exposureBias: number) => Promise<boolean>;
+  isHardwareExposureSupported: () => boolean;
 }
 
 // In-memory cache for processed garment blobs so switching garments is instant
@@ -420,6 +424,62 @@ export function captureVideoFrame(video: HTMLVideoElement): string | null {
 }
 
 /**
+ * Test whether the current video track supports hardware exposure compensation.
+ */
+export function isHardwareExposureSupported(track?: MediaStreamTrack | null): boolean {
+  if (!track || typeof (track as any).getCapabilities !== 'function') return false;
+  try {
+    const caps: any = (track as any).getCapabilities();
+    return Boolean(caps && 'exposureCompensation' in caps);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Apply hardware exposure compensation (EV bias) to the video track if supported.
+ */
+export async function applyTrackExposure(track: MediaStreamTrack, exposureBias: number): Promise<boolean> {
+  try {
+    if (!isHardwareExposureSupported(track)) return false;
+    const caps: any = (track as any).getCapabilities();
+    const min = caps.exposureCompensation.min ?? -2;
+    const max = caps.exposureCompensation.max ?? 2;
+    const step = caps.exposureCompensation.step ?? 0.1;
+    const clamped = Math.max(min, Math.min(max, Math.round(exposureBias / step) * step));
+    await track.applyConstraints({
+      advanced: [{ exposureCompensation: clamped } as any],
+    });
+    return true;
+  } catch (err) {
+    console.warn('Track exposure apply error:', err);
+    return false;
+  }
+}
+
+/**
+ * Enumerate available video input cameras on the device.
+ */
+export async function getCameraDevices(): Promise<{
+  frontCameras: MediaDeviceInfo[];
+  rearCameras: MediaDeviceInfo[];
+  total: number;
+}> {
+  try {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      return { frontCameras: [], rearCameras: [], total: 0 };
+    }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+    const frontCameras = videoInputs.filter((d) => /front|user|selfie/i.test(d.label));
+    const rearCameras = videoInputs.filter((d) => /back|rear|environment/i.test(d.label));
+    return { frontCameras, rearCameras, total: videoInputs.length };
+  } catch {
+    return { frontCameras: [], rearCameras: [], total: 0 };
+  }
+}
+
+/**
  * Cross-device resilient camera acquisition with native Capacitor permission preflight
  * and tiered constraint fallbacks for diverse Android/iOS hardware.
  */
@@ -447,32 +507,39 @@ export async function acquireCameraStream(
 
   // 2. Progressive constraint tiers to ensure compatibility on all Android & iOS cameras
   const tiers: MediaStreamConstraints[] = [
-    // Tier 1: Optimal 720p 30fps
+    // Tier 1: Optimal 720p 30fps with ideal facingMode
     {
       video: {
-        facingMode,
+        facingMode: { ideal: facingMode },
         width: { ideal: 1280 },
         height: { ideal: 720 },
         frameRate: { ideal: idealFps },
       },
       audio: false,
     },
-    // Tier 2: Mobile 480p 24fps
+    // Tier 2: Mobile 480p 24fps with ideal facingMode
     {
       video: {
-        facingMode,
+        facingMode: { ideal: facingMode },
         width: { ideal: 720 },
         height: { ideal: 480 },
         frameRate: { ideal: 24 },
       },
       audio: false,
     },
-    // Tier 3: Facing mode only (browser picks best available)
+    // Tier 3: Facing mode exact (for devices strictly indexing front/back)
+    {
+      video: {
+        facingMode: { exact: facingMode },
+      },
+      audio: false,
+    },
+    // Tier 4: Facing mode direct string fallback
     {
       video: { facingMode },
       audio: false,
     },
-    // Tier 4: Minimal video capture fallback
+    // Tier 5: Minimal video capture fallback (when facingMode unsupported or single camera)
     {
       video: true,
       audio: false,
@@ -744,19 +811,19 @@ export async function startLiveTryOnSession(
     config.onStatusChange?.('Camera ready');
   };
 
-  const flipCamera = async () => {
-    if (isDestroyed || isFlippingCamera) return;
+  const flipCamera = async (): Promise<'user' | 'environment'> => {
+    if (isDestroyed || isFlippingCamera) return currentFacingMode;
     isFlippingCamera = true;
     const previousFacingMode = currentFacingMode;
     const nextFacingMode = previousFacingMode === 'user' ? 'environment' : 'user';
-    config.onStatusChange?.('Flipping camera...');
+    config.onStatusChange?.(`Switching to ${nextFacingMode === 'environment' ? 'rear' : 'front'} camera...`);
     let newStream: MediaStream | null = null;
     let cameraReleased = false;
 
     try {
-      const videoInputs = (await navigator.mediaDevices.enumerateDevices())
-        .filter((device) => device.kind === 'videoinput');
-      if (videoInputs.length === 1) {
+      const devices = await navigator.mediaDevices?.enumerateDevices?.().catch(() => []) || [];
+      const videoInputs = devices.filter((device) => device.kind === 'videoinput');
+      if (videoInputs.length === 1 && videoInputs[0].label) {
         const error = new Error('This device has only one camera, so it cannot switch cameras.');
         error.name = 'CameraUnavailableError';
         throw error;
@@ -771,10 +838,23 @@ export async function startLiveTryOnSession(
         throw new Error('The selected camera did not provide a video track.');
       }
 
-      await realtimeClient.replaceVideoTrack(newTrack);
+      if (realtimeClient && typeof realtimeClient.replaceVideoTrack === 'function') {
+        await realtimeClient.replaceVideoTrack(newTrack);
+      }
       localStream = newStream;
       currentFacingMode = nextFacingMode;
+
+      // Update the video element display if showing local preview or if remote stream is pending
+      if (!hasConnected || config.videoElement.srcObject === null) {
+        config.videoElement.srcObject = newStream;
+        config.videoElement.play().catch((playErr) => console.warn('Preview play error on flip:', playErr));
+      }
+
+      config.onLocalStream?.(newStream);
+      config.onFacingModeChange?.(nextFacingMode);
       config.onStatusChange?.('Live AI Active');
+
+      return nextFacingMode;
     } catch (err) {
       newStream?.getTracks().forEach((track) => track.stop());
       console.error('Failed to flip camera:', err);
@@ -790,9 +870,17 @@ export async function startLiveTryOnSession(
           restoredStream.getTracks().forEach((track) => track.stop());
           throw new Error('The previous camera did not provide a video track.');
         }
-        await realtimeClient.replaceVideoTrack(restoredTrack);
+        if (realtimeClient && typeof realtimeClient.replaceVideoTrack === 'function') {
+          await realtimeClient.replaceVideoTrack(restoredTrack);
+        }
         localStream = restoredStream;
         currentFacingMode = previousFacingMode;
+        if (!hasConnected) {
+          config.videoElement.srcObject = restoredStream;
+          config.videoElement.play().catch(() => {});
+        }
+        config.onLocalStream?.(restoredStream);
+        config.onFacingModeChange?.(previousFacingMode);
         config.onStatusChange?.('Could not switch camera. Restored the previous camera.');
       } catch (restoreError) {
         console.error('Could not restore the previous camera after a failed flip:', restoreError);
@@ -811,5 +899,14 @@ export async function startLiveTryOnSession(
     stop,
     setGarment,
     flipCamera,
+    getFacingMode: () => currentFacingMode,
+    applyExposure: async (exposureBias: number) => {
+      const track = localStream.getVideoTracks()[0];
+      return track ? applyTrackExposure(track, exposureBias) : false;
+    },
+    isHardwareExposureSupported: () => {
+      const track = localStream.getVideoTracks()[0];
+      return isHardwareExposureSupported(track);
+    },
   };
 }
