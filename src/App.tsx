@@ -1881,15 +1881,7 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    if (!tutorialService.hasCompletedOnboardingWelcome()) {
-      replaceScreen('onboarding');
-    } else {
-      if (!isLoggedIn) {
-        replaceScreen('login');
-      } else {
-        resetScreenHistory('home');
-      }
-    }
+    replaceScreen('onboarding');
   };
 
   const handleOnboardingComplete = () => {
@@ -2326,31 +2318,9 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  // Interactive Onboarding Experience Guard
+  // Onboarding Slides Guard (Intro)
   if (screen === 'onboarding') {
-    return (
-      <TutorialProvider currentScreen={screen} onNavigate={navigate}>
-        <OnboardingWelcome
-          fullscreen
-          onStartTour={(featureId: TutorialFeatureId) => {
-            if (!isLoggedIn) {
-              handleGuestContinue();
-            }
-            resetScreenHistory('home');
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('nova:start_tutorial', { detail: { featureId } }));
-            }, 100);
-          }}
-          onDismiss={() => {
-            if (!isLoggedIn) {
-              replaceScreen('login');
-            } else {
-              resetScreenHistory('home');
-            }
-          }}
-        />
-      </TutorialProvider>
-    );
+    return <OnboardingView onComplete={handleOnboardingComplete} />;
   }
 
   // Email Verification Screen Guard
@@ -2370,7 +2340,8 @@ export default function App() {
     );
   }
 
-  if (!isLoggedIn) {
+  // Authentication / Login / Sign-up Guard
+  if (screen === 'login' || screen === 'signup' || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E4DFF5] text-[#131426]">
         {!isNativeApp && showWebAppBanner && (
@@ -2410,9 +2381,10 @@ export default function App() {
             onLoginSuccess={handleLoginSuccess} 
             onGuestContinue={handleGuestContinue}
             onProceedToEmailVerification={handleProceedToEmailVerification}
-
-
-
+            prefilledName={pendingEmailVerification?.name}
+            prefilledAddress={pendingEmailVerification?.address}
+            prefilledPinCode={pendingEmailVerification?.pinCode}
+            initialMode={screen === 'signup' ? 'signup' : 'login'}
           />
         </main>
       </div>
