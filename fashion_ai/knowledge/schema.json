@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NOVAFashionReferenceEntry",
+  "type": "object",
+  "required": [
+    "id",
+    "aesthetic",
+    "target_wearer",
+    "occasion",
+    "climate",
+    "garments",
+    "silhouette_proportions",
+    "fabric_texture_dialogue",
+    "color_palette",
+    "footwear_and_accessories",
+    "styling_instructions",
+    "why_it_works",
+    "common_mistakes_to_avoid",
+    "trend_nature"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "aesthetic": { "type": "string" },
+    "target_wearer": {
+      "type": "string",
+      "enum": ["men", "women", "androgynous", "gender_neutral", "non_conventional", "universal"]
+    },
+    "occasion": { "type": "string" },
+    "climate": { "type": "string" },
+    "budget_tier": {
+      "type": "string",
+      "enum": ["accessible_thrift", "contemporary_entry", "mid_market", "elevated_luxury"]
+    },
+    "garments": {
+      "type": "object",
+      "required": ["top", "bottom"],
+      "properties": {
+        "base_layer": { "type": "string" },
+        "top": { "type": "string" },
+        "outerwear": { "type": "string" },
+        "bottom": { "type": "string" },
+        "one_piece": { "type": "string" }
+      }
+    },
+    "silhouette_proportions": {
+      "type": "object",
+      "required": ["ratio_rule", "top_volume", "bottom_volume", "visual_balance"],
+      "properties": {
+        "ratio_rule": { "type": "string" },
+        "top_volume": { "type": "string" },
+        "bottom_volume": { "type": "string" },
+        "visual_balance": { "type": "string" }
+      }
+    },
+    "fabric_texture_dialogue": {
+      "type": "object",
+      "required": ["primary_fabrics", "texture_contrast_explanation"],
+      "properties": {
+        "primary_fabrics": { "type": "array", "items": { "type": "string" } },
+        "texture_contrast_explanation": { "type": "string" }
+      }
+    },
+    "color_palette": {
+      "type": "object",
+      "required": ["dominant_60", "secondary_30", "accent_10", "harmony_type", "rationale"],
+      "properties": {
+        "dominant_60": { "type": "string" },
+        "secondary_30": { "type": "string" },
+        "accent_10": { "type": "string" },
+        "harmony_type": { "type": "string" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "footwear_and_accessories": {
+      "type": "object",
+      "required": ["footwear", "accessories", "hardware_finish"],
+      "properties": {
+        "footwear": { "type": "string" },
+        "accessories": { "type": "array", "items": { "type": "string" } },
+        "hardware_finish": { "type": "string", "enum": ["gold", "silver", "matte_black", "gunmetal", "mixed_intentional", "none"] }
+      }
+    },
+    "styling_instructions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "why_it_works": {
+      "type": "string",
+      "description": "Deep sartorial explanation of why silhouette, textures, and colors complement each other."
+    },
+    "common_mistakes_to_avoid": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "trend_nature": {
+      "type": "object",
+      "required": ["classification"],
+      "properties": {
+        "classification": { "type": "string", "enum": ["enduring_classic", "macro_trend", "seasonal_micro_trend"] },
+        "provenance_date": { "type": "string" },
+        "verification_status": { "type": "string" }
+      }
+    }
+  }
+}

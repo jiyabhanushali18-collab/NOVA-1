@@ -75,6 +75,11 @@ const CURRENT_PRIVACY_VERSION = '2026.10.1';
 const getRequiredSecret = (name: string): string => {
   const secret = process.env[name]?.trim();
   if (!secret || Buffer.byteLength(secret) < 32) {
+    if (process.env.NODE_ENV !== 'production') {
+      const fallback = `nova-dev-${name.toLowerCase().replace(/_/g, '-')}-min-32-bytes!`;
+      console.warn(`[Config] ${name} is not configured in .env. Using safe local development fallback.`);
+      return fallback;
+    }
     throw new Error(`${name} must be configured with at least 32 bytes of random data.`);
   }
   return secret;
@@ -422,10 +427,10 @@ const sendOTPEmail = async (
     );
 
     if (!response.ok) {
-<<<<<<< HEAD
       let errorBody: { code?: string; message?: string } = {};
       const errorText = await response.text();
       try { errorBody = JSON.parse(errorText); } catch { /* non-JSON response */ }
+      const errorDetail = errorBody.message || errorText.slice(0, 500);
 
       // Detect Brevo IP-restriction rejection so the cause is immediately visible
       // in logs without manually parsing the raw Brevo error body.
@@ -443,25 +448,10 @@ const sendOTPEmail = async (
         console.error("[Email] Brevo rejected the OTP email.", {
           status: response.status,
           code: errorBody.code,
-          error: errorText.slice(0, 500),
+          error: errorDetail,
           recipient: maskEmail(email)
         });
       }
-=======
-      let errorDetail = '';
-      try {
-        const errorJson = await response.json();
-        errorDetail = errorJson.message || JSON.stringify(errorJson);
-      } catch {
-        errorDetail = (await response.text()).slice(0, 500);
-      }
-
-      console.error("[Email] Brevo rejected the OTP email.", {
-        status: response.status,
-        error: errorDetail.slice(0, 500),
-        recipient: maskEmail(email)
-      });
->>>>>>> 2bdce85964632332eacd1c65f850965f0fe203d3
 
       let userError = "Email delivery failed. Please try again.";
       if (response.status === 401) {

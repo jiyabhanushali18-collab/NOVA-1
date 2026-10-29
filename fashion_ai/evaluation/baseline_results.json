@@ -1,0 +1,927 @@
+{
+  "model_name": "nova-fashion",
+  "evaluated_at": "2026-10-26 21:04:14",
+  "total_prompts": 32,
+  "failure_count": 0,
+  "failure_rate_pct": 0.0,
+  "dimension_means": {
+    "coherence": 3.8,
+    "palette_consistency": 3.59,
+    "accessories_coordination": 4.14,
+    "fit_and_silhouette": 4.22,
+    "aesthetic_relevance": 4.23,
+    "constraint_compliance": 3.95,
+    "diversity_and_structure": 3.58,
+    "practicality": 4.38,
+    "trend_reliability": 4.86,
+    "gender_compliance": 4.12
+  },
+  "overall_mean_score": 4.09,
+  "options": null,
+  "system_prompt": null,
+  "results": [
+    {
+      "prompt_id": "p01",
+      "category": "clean_girl",
+      "prompt": "Style a woman for a weekend farmers market in clean-girl aesthetic. She wants a relaxed yet polished look in cream and sage green.",
+      "target_gender": "women",
+      "aesthetic": "clean_girl",
+      "response": "To achieve the desired stylish and comfortable summer outfit for the weekend at the farmers market, here are some tips:\n\n1. Start by choosing a lightweight blouse or dress in a neutral color like pastel red or baby blue. This will keep things simple while adding a touch of femininity to your look.\n\n2. Opt for a pair of high-waisted trousers in cream or light olive green. Look for ones with slight gathers to add a subtle elegance to the outfit.\n\n3. Wear a loose, flowy skirt in a contrasting color like royal blue or navy. This will balance out the overall look and make it easier to move around without getting too tight.\n\n4. Add a touch of glamour by choosing a pair of statement earrings in a metallic or silver finish. This will accentuate your features while adding a modern touch to the outfit.\n\n5. Layer some delicate necklaces with delicate beads to create a layered effect. Opt for one with a pendant or small charm to add a personal touch and make the necklace more attention-grabbing.\n\n6. Finish off the look with a pair of high-heeled sandals in a neutral color like black or brown. This will provide a comfortable yet stylish option for the summer.\n\n7. For an added layer, choose some light-colored t-shirts with subtle patterns to add a pop of interest and make the overall look more dynamic.\n\nBy focusing on these aspects, you'll create a stylish and comfortable outfit that showcases your femininity while staying organized throughout the weekend at the farmers market.",
+      "latency_sec": 7.66,
+      "eval_count": 304,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 3.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.25,
+      "diagnostics": [],
+      "error": null
+    },
+    {
+      "prompt_id": "p02",
+      "category": "clean_girl",
+      "prompt": "Create a Pinterest-inspired clean-girl everyday work-from-home outfit for a woman who needs to jump on video calls and run errands.",
+      "target_gender": "women",
+      "aesthetic": "clean_girl",
+      "response": "Outfit 1:\n- Top: A basic, fitted blouse in a solid color like black or navy.\n- Bottom: A pair of high-waisted, wide-leg trousers in a light wash.\n- Shoes: Black pointed-toe boots with a slim fit.\n- Accessories: A statement belt to accentuate the waistline and a sleek watch.\n\nOutfit 2:\n- Top: A fitted, lightweight blouse in a vibrant shade like coral or turquoise.\n- Bottom: High-waisted skinny jeans in a neutral color like gray or beige.\n- Shoes: Pointed-toe sandals in a complementary color like tan or olive green.\n- Accessories: Layered delicate necklaces and a wide belt to add some height.\n\nOutfit 3:\n- Top: A fitted, button-down shirt with a subtle design like a heart or star on the back.\n- Bottom: Slim-fitting, high-waisted pants in a solid color like black or navy.\n- Shoes: White sneakers for a modern look.\n- Accessories: A crossbody bag in a metallic finish and a statement clutch.\n\nOutfit 4:\n- Top: A lightweight, loose-fitting dress with a tailored fit.\n- Bottom: Wide-leg trousers in a bold print like polka dots or floral patterns.\n- Shoes: Pointed-toe flats in a coordinating color like red or emerald green.\n- Accessories: A structured, leather belt to define the waistline and oversized sunglasses.\n\nOutfit 5:\n- Top: A fitted, sleeveless top with a sweetheart neckline.\n- Bottom: Wide-leg trousers in a solid color like charcoal or charcoal gray.\n- Shoes: Black block-heeled pumps for a trendy twist.\n- Accessories: Layered bracelets and a structured handbag.",
+      "latency_sec": 11.223,
+      "eval_count": 355,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 2.0,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.3,
+      "diagnostics": [
+        "Lacks structured bullet points or clean section formatting",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p03",
+      "category": "clean_girl",
+      "prompt": "I love the clean-girl aesthetic but I live in a humid tropical city (30\u00b0C). Suggest an outfit for a woman that stays crisp and sweat-free.",
+      "target_gender": "women",
+      "aesthetic": "clean_girl",
+      "response": "Outfit combination 1:\n- Top: A simple, off-the-shoulder blouse with a touch of color in a neutral tone like white or light gray.\n- Bottom: High-waisted black leggings with a belt at the ankle to keep you comfortable during outdoor activities.\n- Shoes: Black ankle boots with a chunky heel for added comfort and stability.\n- Accessories: A statement gold necklace with delicate beads and a silver pendant. Add some structured earrings in a metallic shade like bronze.\n\nOutfit combination 2:\n- Top: A fitted sleeveless top in a vibrant color, such as red or orange.\n- Bottom: Dark-wash leggings that offer both comfort and style for a relaxed yet professional look.\n- Shoes: Black pointed-toe sandals with a chunky sole to provide additional support.\n- Accessories: A statement belt in a contrasting color like black or navy to add visual interest. Finish the outfit with a pair of oversized sunglasses.\n\nOutfit combination 3:\n- Top: A fitted, sleeveless bodysuit in a neutral color like white or light gray.\n- Bottom: High-waisted denim jeans for a relaxed and comfortable look.\n- Shoes: Black leather sneakers with some padding at the sides for added comfort during outdoor activities.\n- Accessories: Layered delicate necklaces of different sizes to create visual interest. Finish off with a structured straw hat in a complementary color.\n\nOutfit combination 4:\n- Top: A fitted blouse in a light shade like blush or peach, paired with a simple wrap skirt in a solid color for comfort and style.\n- Bottom: Wide-leg pants in a dark wash that offer both functionality and elegance.\n- Shoes: Strappy sandals with a chunky heel to provide extra support during outdoor activities.\n- Accessories: Layered delicate bracelets of different sizes and colors. Add a straw hat in a contrasting color for a touch of sophistication.\n\nOutfit combination 5:\n- Top: A lightweight, breathable t-shirt that provides comfort while also looking stylish.\n- Bottom: High-waisted denim shorts with a distressed edge to add character to the outfit.\n- Shoes: Black high-top sneakers with some cushioning for added support and comfort.\n- Accessories: Wear a statement belt in a contrasting color to create visual interest. Finish off with a black leather backpack for a modern touch.",
+      "latency_sec": 16.571,
+      "eval_count": 469,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.5,
+        "diversity_and_structure": 2.0,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.2,
+      "diagnostics": [
+        "Only partially matched requested palette (1/4)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Lacks structured bullet points or clean section formatting",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p04",
+      "category": "minimalist",
+      "prompt": "Curate a minimalist capsule outfit for a man attending an architecture exhibition. Focus on clean lines, monochrome charcoal, and tailored proportions.",
+      "target_gender": "men",
+      "aesthetic": "minimalist",
+      "response": "Outfit #1:\n- Top: A fitted white button-down shirt with a subtle pattern.\n- Bottom: Black trousers with a slim-fit option to highlight the silhouette.\n- Shoes: White leather sneakers for a modern touch.\n- Accessories: A black leather belt to accentuate the waist, and a statement watch.\n\nOutfit #2:\n- Top: Dark charcoal gray polo shirt.\n- Bottom: Gray chinos with khaki detailing.\n- Shoes: Black leather loafers.\n- Accessories: A dark brown leather jacket for added sophistication, and a silver chain watch.\n\nOutfit #3:\n- Top: Light grey sweater with a subtle pattern on the front.\n- Bottom: Dark wash trousers in a slim-fit style to create a balanced look.\n- Shoes: White suede boots.\n- Accessories: A light brown leather belt with a decorative buckle, and a minimalist black case bag.\n\nOutfit #4:\n- Top: Light gray button-down shirt with a subtle design.\n- Bottom: Navy blue jeans for a comfortable yet stylish option.\n- Shoes: Black leather loafers.\n- Accessories: A light gray leather belt to add interest, and a silver watch chain.\n\nOutfit #5:\n- Top: Dark charcoal gray t-shirt with a detailed print on the back.\n- Bottom: Light gray knitted trousers.\n- Shoes: Brown leather mules.\n- Accessories: A brown leather jacket with a patterned pocket, and a black leather crossbody bag.",
+      "latency_sec": 10.801,
+      "eval_count": 294,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 2.5,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 2.0,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.05,
+      "diagnostics": [
+        "Lacks structured bullet points or clean section formatting",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p05",
+      "category": "minimalist",
+      "prompt": "Recommend a minimalist everyday outfit for a woman using only 4 core items. Palette must strictly be ivory and navy.",
+      "target_gender": "women",
+      "aesthetic": "minimalist",
+      "response": "Outfit Combination:\n1. Wear a simple black t-shirt with white patterns to create a clean look.\n2. Pair the t-shirt with a pair of white trousers for a timeless and stylish outfit.\n3. Opt for a pair of brown leather shoes to add a touch of elegance to your outfit.\n4. Finish off the look with a black leather belt to cinch in your waistline and maintain a sleek silhouette.\n\nPersonalization Tip:\n- Choose a neutral color like beige or grey instead of ivory and navy as it will create a more balanced look.\n- Add a statement watch to add some sophistication to your outfit.\n- Consider adding a pair of silver earrings to elongate the arms and complete the minimalist look.",
+      "latency_sec": 6.11,
+      "eval_count": 144,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 3.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.45,
+      "diagnostics": [],
+      "error": null
+    },
+    {
+      "prompt_id": "p06",
+      "category": "minimalist",
+      "prompt": "Design a gender-neutral minimalist commute outfit for rainy 12\u00b0C autumn weather. Practical, understated, and waterproof.",
+      "target_gender": "androgynous",
+      "aesthetic": "minimalist",
+      "response": "For a gender-neutral and minimalist commute outfit that suits the autumn weather of 12\u00b0C, follow these steps:\n\nOutfit Details:\n- Layered cardigan: A tailored long-sleeved cardigan will keep you warm while adding a feminine touch.\n- Wide-legged t-shirt: Pair it with a wide-legged t-shirt to add comfort and style.\n- Canvas baggy trousers: Opt for a pair of canvas trousers in a neutral color like brown or beige. This choice will provide insulation and make the outfit stylish.\n- Sleek blazer: Choose a sleek and slim-fit blazer that can complement the overall look. It's designed to be lightweight yet sturdy.\n\nOutfit Tips:\n1. Layering elements: Layer your cardigan, t-shirt, trousers, and blazer in a way that creates balance and coordination. For example, layer the t-shirt on top of the cardigan and the trousers below it.\n2. Select colors: Opt for neutral shades like light gray or olive green to create a cohesive look. This will make the outfit both stylish and comfortable.\n3. Personalization: Add some personal touches by printing your name on the blazer or using the t-shirt to personalize the overall silhouette.\n\nIn conclusion, this ensemble offers comfort, style, and functionality for a rainy 12\u00b0C autumn commute. The combination of a lightweight cardigan, wide-legged trousers, canvas pants, and a sleek blazer creates a versatile and stylish outfit that will keep you looking good regardless of whether it's hot or cold outside.",
+      "latency_sec": 12.652,
+      "eval_count": 309,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 3.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.0,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: footwear)",
+        "Failed to feature requested palette colors: ['slate grey', 'black', 'navy', 'taupe']"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p07",
+      "category": "streetwear",
+      "prompt": "Put together a modern Gen Z streetwear outfit for a young man going to a weekend skate park meetup. Include boxy silhouettes and earth tones.",
+      "target_gender": "men",
+      "aesthetic": "streetwear",
+      "response": "Outfit Plan:\n1. Layering:\n- Pair the top with a loose-fit, off-the-shoulder blouse in a bold color like neon green or red.\n- Wear a pair of skinny jeans with a wide-legged cut to create a relaxed and casual look.\n- Opt for a pair of high-waisted khaki pants to add some height and emphasize your lower body.\n\n2. Accessories:\n- Add a statement belt buckle necklace in a metallic tone, like silver or gold.\n- Style the outfit with oversized sunglasses that frame your eyes and make you appear more confident.\n- Wear a simple but stylish watch with a colorful bezel for an extra touch of style.\n\n3. Shoes:\n- Opt for a pair of canvas sneakers with a bold print in a neutral color like navy or brown.\n- Choose shoes that are comfortable to wear while skateboarding, such as a pair of block heel sandals.\n- Keep it simple and stylish by opting for a casual loafernie or a pair of sneakers.\n\n4. Clothing elements:\n- Wear a loose-fitting button-down shirt in a dark wash to add some interest and style.\n- Opt for a pair of distressed denim shorts in a solid color like olive green.\n- Layer the outfit with chunky black boots for a comfortable yet stylish look.\n\n5. Final touches:\n- Keep it casual by opting for a classic tee that shows off your personality without compromising on comfort or quality.\n- Finish it off with a statement belt to add some interest and style to the outfit.\n\nBy following these steps, you'll create a modern and stylish outfit for a weekend skate park meetup. Stay true to yourself and experiment with different combinations of clothing to find what suits you best.",
+      "latency_sec": 12.299,
+      "eval_count": 343,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 4.15,
+      "diagnostics": [
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Overly rambling list without clear grouping",
+        "Recommended conventional women's items for explicit men's prompt: {'blouse'}"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p08",
+      "category": "streetwear",
+      "prompt": "Style a woman in contemporary Y2K-influenced streetwear for a rap concert. She wants wide-leg cargo pants and metallic accents.",
+      "target_gender": "women",
+      "aesthetic": "streetwear",
+      "response": "In this scenario, we'll focus on combining the wide-leg cargo pants with metallic accents to create a stylish and versatile outfit for a rap concert.\nOutfit Plan:\n1. Layer the metallic gold wide-leg cargo pants over the black and white graphic T-shirt.\n2. Pair the metallic gold outfit with the red and blue patterned streetwear jacket.\n3. Add a pair of brown leather sneakers to add some style and comfort.\n4. Wear the metallic gold dress shoes for an elegant touch.\n5. Choose a light green sweatshirt as a tie or belt accessory.\n6. Keep the overall look sleek and modern by opting for a black and white graphic hoodie.\n\nPersonalization:\n- Opt for a tailored black leather jacket to add a bit of style.\n- Add a statement watch with a metallic buckle for a touch of sophistication.\n- Wear a pair of metallic gold converse sneakers for added style.\n\nStyle Tips:\n1. Keep the overall balance by using a balanced palette of colors and textures.\n2. Experiment with different outfit combinations like a wide-leg cargo pants, streetwear jacket, and sweatshirt in black and white.\n3. Add some personality to your look by adding accessories like a brown leather jacket or a metallic print t-shirt for a unique touch.\n4. Finish off the look with statement earrings and a simple belt to enhance the overall appearance.",
+      "latency_sec": 11.359,
+      "eval_count": 271,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.35,
+      "diagnostics": [
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p09",
+      "category": "streetwear",
+      "prompt": "Give me an androgynous Gen Z streetwear look centered around an oversized graphic hoodie and chunky footwear.",
+      "target_gender": "androgynous",
+      "aesthetic": "streetwear",
+      "response": "For a androgynous and stylish look that balances street style with modern influences, here are some outfit ideas for an oversized graphic hoodie and chunky sneakers:\n1. Outfit Combination: \n- Top: A flowy crop top with a bold graphic print or text.\n- Bottom: A pair of high-waisted pants in a neutral color like black or gray.\n- Shoe: A pair of ankle boots in a solid color such as navy or burgundy.\n- Accessories: Layered gold\u94fe necklace, delicate silver hoop earrings, and a statement belt to accentuate your waist.\n\n2. Outfit Combination:\n- Top: An oversized graphic hoodie with vibrant colors.\n- Bottom: High-waisted skinny jeans for an effortless look.\n- Shoe: A pair of white sneakers with a chunky heel.\n- Accessories: Layered delicate gold bracelets, a statement belt to define the silhouette, and a stack of vintage-inspired earrings.\n\n3. Outfit Combination:\n- Top: An oversized graphic hoodie paired with a loose-fitting sweater in a dark color.\n- Bottom: High-waisted trousers in a neutral color like beige or tan.\n- Shoe: A pair of white sneakers with a chunky sole for comfort and style.\n- Accessories: Layered silver hoop earrings, a black sweatshirt to add some texture, and a statement belt to cinch the waist.\n\n4. Outfit Combination:\n- Top: An oversized graphic hoodie featuring a bold pattern or color.\n- Bottom: High-waisted shorts in a contrasting color like red or mustard yellow.\n- Shoe: A pair of ankle boots with chunky soles in black or navy blue.\n- Accessories: Layered gold statement rings, a wide-brimmed hat for a touch of style, and a straw fedora hat to add some comfort.\n\n5. Outfit Combination:\n- Top: An oversized graphic hoodie featuring a simple yet stylish design.\n- Bottom: High-waisted tailored jeans in a solid color like black or gray.\n- Shoe: A pair of chunky platform sneakers with a colorful print.\n- Accessories: Layered silver hoop earrings, a woven belt for an element of adventure, and a small crossbody bag to add some street style without the bulky appearance.",
+      "latency_sec": 20.435,
+      "eval_count": 453,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.2,
+      "diagnostics": [
+        "Failed to feature requested palette colors: ['charcoal', 'off-white', 'vintage washed tones']",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p10",
+      "category": "elevated_casual",
+      "prompt": "Recommend an elevated casual dinner outfit for a man taking a client to an upscale rooftop bistro. Smart, relaxed, no full suit.",
+      "target_gender": "men",
+      "aesthetic": "elevated_casual",
+      "response": "For an elevated and stylish casual evening, here\u2019s how I would advise the combination of smart, relaxed attire:\n\n1. **Outfit 1:**\n   - Layered black leather jackets with silver trim.\n   - Pair them with a tailored white button-down shirt in a bold color like burgundy or emerald green.\n   - Opt for a slim-fit white dress pants with a tie-in belt to create length and balance.\n   - Wear an oversized navy blue blazer with a subtle pattern on the front, adding a touch of sophistication.\n\n2. **Outfit 2:**\n   - Wear a pair of dark-colored leather trousers with stripes or bold prints.\n   - Pair them with a black leather jacket with a subtle print like a floral or checkerboard design.\n   - Choose a slim-fit navy blue dress shirt and wear it in a crisp white button-down neckerchief.\n   - Opt for a black dress pants and a tailored white blazer to create balance.\n\n3. **Outfit 3:**\n   - Wear a pair of dark brown leather trousers with a chunky waistline.\n   - Pair them with a black leather jacket with an embossed design or a pattern.\n   - Choose a slim-fit navy blue dress shirt with a tie-in belt and a crisp white blazer for added height.\n   - Opt for a black dress pants and a tailored white blazer to create a sophisticated look.\n\n4. **Outfit 4:**\n   - Wear a pair of dark brown leather trousers with a slightly oversized fit.\n   - Pair them with a black leather jacket in a vibrant print like floral or abstract.\n   - Choose a slim-fit navy blue dress shirt and wear it in a crisp white button-down blouse for added volume.\n   - Opt for a black dress pants and a tailored white blazer to create balance.\n\n5. **Outfit 5:**\n   - Wear a pair of dark brown leather trousers with a chunky waistline.\n   - Pair them with a black leather jacket with a subtle pattern or texture.\n   - Choose a slim-fit navy blue dress shirt with a tie-in belt and wear it in a crisp white blazer for added sophistication.\n   - Opt for a black dress pants and a tailored white blazer to create an overall polished look.\n\nRemember, the key is to highlight your personality without being too bold. Play around with colors, textures, silhouettes, and accessories to achieve the perfect outfit that suits your style and complements the atmosphere of the occasion.",
+      "latency_sec": 19.956,
+      "eval_count": 507,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 4.0,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: footwear)",
+        "Overly rambling list without clear grouping",
+        "Recommended conventional women's items for explicit men's prompt: {'blouse', 'dress'}"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p11",
+      "category": "elevated_casual",
+      "prompt": "Curate an elevated casual Sunday brunch look for a woman. She wants tailored knitwear, polished loafers, and warm neutral tones.",
+      "target_gender": "women",
+      "aesthetic": "elevated_casual",
+      "response": "Outfit combination:\n1. Top: A fitted, sleeveless blouse in a bold color or a vibrant print to create interest.\n2. Bottom: High-waisted pencil skirt with a structured fit in a neutral tone like linen or chiffon for comfort.\n3. Shoes: Pointed-toe pumps in a matching color to the top and skirt for added style.\n4. Accessories: Layered delicate necklaces, statement belt bags, and a small crossbody bag for a polished finish.\n\nThis outfit combination will create an elevated casual look that highlights your individuality while maintaining a comfortable and stylishly tailored silhouette.",
+      "latency_sec": 5.99,
+      "eval_count": 124,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.15,
+      "diagnostics": [
+        "Failed to feature requested palette colors: ['warm neutrals', 'camel', 'cream', 'caramel', 'tan']"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p12",
+      "category": "elevated_casual",
+      "prompt": "Style an androgynous elevated casual look for an art curator attending an afternoon gallery reception.",
+      "target_gender": "androgynous",
+      "aesthetic": "elevated_casual",
+      "response": "For this androgynous elevated casual look that fits well into the atmosphere of an art curator's afternoon gallery reception, I'll recommend:\n1. Wear a fitted black turtleneck sweater with a crisp white collar.\n2. Opt for a loose-fitting navy blue blazer paired with a light brown leather belt.\n3. Layer a pair of oversized white canvas pants with tailored hemmed details to emphasize your waist and create an elevated look.\n4. Add a touch of color by pairing the black turtleneck with a metallic or silver chain necklace.\n5. Finish off the outfit with a white leather jacket that accentuates your shoulders.\n6. Keep it casual yet stylish with a pair of brown suede boots for a polished finish.\n7. Add a subtle statement belt to define your waist while maintaining the elevated look.\n8. Consider adding some accessories like a leather tote bag, small watch, and a statement bracelet in silver or gold.\n9. Opt for a loose-fitting black turtleneck blazer with a slight stretch to create movement.\n10. Wear this outfit as a casual yet sophisticated choice by pairing it with a pair of sleek leather gloves for an elegant touch.\n\nRemember, the key to this outfit is maintaining the elevated look while still being comfortable and stylish. Experiment with different combinations until you find what best suits your personal style.",
+      "latency_sec": 11.584,
+      "eval_count": 271,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.3,
+      "diagnostics": [
+        "Only partially matched requested palette (1/4)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p13",
+      "category": "gender_specific_men",
+      "prompt": "Style a man for a casual college day. Keep it comfortable, youthful, and practical for carrying a backpack.",
+      "target_gender": "men",
+      "aesthetic": "casual",
+      "response": "For a casual college day, here are some style tips that will keep the outfit comfortable, youthful, and practical:\n\n1. **Classic Blazers:**\n   - Choose a pair of classic black and white blazers from a well-known brand.\n   - Pair them with a pair of neutral brown leather shoes.\n   - Opt for a simple gray button-down shirt to maintain casualness.\n\n2. **Short Denneks:**\n   - Choose a medium-length denim skirt in a solid color like navy or burgundy.\n   - Wear a pair of brown leather boots for added comfort and practicality.\n   - Keep the outfit light by adding some accessories, such as straw hats and sunglasses.\n\n3. **Shorts and T-Shirts:**\n   - Opt for a pair of slim-fit shorts in a neutral color like black or white.\n   - Pair them with a simple t-shirt in a solid color.\n   - Finish off the look with a leather belt to maintain style.\n\n4. **Casual Blazers with Accessories:**\n   - Choose a pair of classic red and white blazers from a well-known brand.\n   - Wear them with a pair of brown leather shoes for an extra touch of comfort.\n   - Opt for a simple gray button-down shirt to keep the look casual.\n\n5. **Long-Short Dress:**\n   - Choose a long-sleeved long-suit dress in a solid color like charcoal or deep burgundy.\n   - Wear it with a pair of brown leather shoes.\n   - Keep the outfit comfortable by adding some accessories, such as a leather belt and a simple black t-shirt.\n\nRemember to balance your style with comfort and youthfulness. Keep in mind that casual days often call for a relaxed look. Enjoy your day!",
+      "latency_sec": 11.641,
+      "eval_count": 353,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 4.0,
+      "diagnostics": [
+        "Overly rambling list without clear grouping",
+        "Recommended conventional women's items for explicit men's prompt: {'skirt', 'dress'}"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p14",
+      "category": "gender_specific_men",
+      "prompt": "Recommend a summer outdoor wedding guest outfit for a man. Dress code is semi-formal coastal. Light linen or cotton textures.",
+      "target_gender": "men",
+      "aesthetic": "semi_formal",
+      "response": "For a semi-formal beach-style wedding gown with light linen or cotton textures, here are some style tips and outfit ideas to help you look summery while being stylishly dressed:\n\n1. Overskirt: Opt for a long-sleeved, lightweight overskirt in a soft blush or coral hue. This will give you the silhouette you want without overwhelming.\n2. Flared Heels: Pair your oversized skirt with some flared heeled sandals in a neutral color like white or beige. This will create an elegant and chic look.\n3. Sunscreen: Keep it simple with a high-top sunglasses to protect from the sun while still looking stylish.\n4. Beach Towel: Add a beach towel for a touch of naturalness and keep your hands free for a relaxed vibe.\n5. Statement Buckle: Complete the look with some statement buckles in a metallic or silver tone, such as gold or silver.\n\n6. Loose Shirt: Wear a loose, lightweight shirt in a neutral color like off-white or light gray to create a casual and comfortable outfit.\n7. Flared Boots: Finish off the look with some flared boots in a solid color like brown or black. This will add a touch of sophistication without overwhelming your ensemble.\n\nRemember to balance the details with a clean, simple style that highlights the man's features while still looking summery.",
+      "latency_sec": 11.672,
+      "eval_count": 274,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 3.85,
+      "diagnostics": [
+        "Only partially matched requested palette (1/4)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Recommended conventional women's items for explicit men's prompt: {'skirt', 'heels'}"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p15",
+      "category": "gender_specific_women",
+      "prompt": "Style a woman for a casual college day with lectures and study sessions in the library.",
+      "target_gender": "women",
+      "aesthetic": "casual",
+      "response": "For a casual college style on a sunny day at the library, here are some outfit ideas that combine comfortably with studying:\n1. Layered flow dresses: Choose a flowy, lightweight dress in a neutral color like white or gray.\n2. Cropped blouses: Style your blouse in a cropped version for a sleek look.\n3. Oversized khaki pants: Opt for a pair of oversized khaki pants to add some style and comfort.\n\n4. Oversize t-shirts: Pair the t-shirt with a long-sleeved tee shirt for a stylish touch.\n\n5. Loose fit skirts: Wear loose, fitted skirts in a neutral color like black or navy.\n6. Layered oversized jackets: Add a layer of layered oversized jackets to give your outfit a relaxed vibe.\n\n7. Flared pants: Pair the flared jeans or shorts with a sleek and minimalistic outfit.\n\n8. Cropped dress shoes: Opt for cropped dress shoes in a neutral color like olive green or black for a modern touch.\n9. Statement earrings: Add some statement earrings in a metallic tone to complete your look.\n10. Loose blazer: Wear a loose, tailored blazer with a simple tie to create a casual yet stylish outfit.\n\nRemember to keep the overall balance of clothing and accessories to maintain a cohesive and comfortable appearance.",
+      "latency_sec": 11.4,
+      "eval_count": 267,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.35,
+      "diagnostics": [
+        "Only partially matched requested palette (1/4)"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p16",
+      "category": "gender_specific_women",
+      "prompt": "Recommend a chic evening gallery opening outfit for a woman who prefers tailored trousers over dresses. Black and wine burgundy palette.",
+      "target_gender": "women",
+      "aesthetic": "tailored_chic",
+      "response": "Here's a style-curation strategy that combines the tailored trousers with black and wine burgundy tones to create a sophisticated and feminine look:\n\n1. **Outfit 1:**\n   - Top: A fitted, sleeveless blouse in a light wash.\n   - Bottom: A pair of high-waisted narrow-leg trousers in a solid color like navy or gray.\n   - Shoes: Pair the outfit with black ankle strap sandals for an effortless yet chic touch.\n   - Accessories: Add a statement necklace and oversized sunglasses to complete the look.\n\n2. **Outfit 2:**\n   - Top: Choose a loose-fitting, button-down shirt in a bold color like red or royal blue.\n   - Bottom: Opt for a pair of straight-leg trousers in a solid color like deep navy.\n   - Shoes: Go for a pair of black leather loafers to add a touch of elegance and sophistication.\n   - Accessories: Add a simple silver belt to define the waistline, and finish off with a woven scarf for added texture.\n\n3. **Outfit 3:**\n   - Top: Select a fitted, sleeveless tunic in a bold print like polka dots or abstract graphics.\n   - Bottom: Choose a pair of high-waisted tailored trousers in a solid color like olive green or mint green.\n   - Shoes: Opt for a pair of ankle boots with a sleek design and a touch of silver to add a pop of glam.\n   - Accessories: Add a statement belt that cascades over the shoulders, paired with a stack of gold bracelets.\n\n4. **Outfit 4:**\n   - Top: Go for a tailored blazer in a neutral color like gray or beige.\n   - Bottom: Choose a pair of wide-leg trousers in a dark wash and a solid print like black or white.\n   - Shoes: Wear a pair of classic black heels to maintain the style but with a touch of elegance.\n   - Accessories: Layered delicate necklaces, stackable bracelets, and a silver watch for a polished yet stylish look.\n\n5. **Outfit 5:**\n   - Top: Opt for a fitted, sleeveless turtleneck in a solid color like black or navy.\n   - Bottom: Choose a pair of tailored trousers in a light wash with bold prints like polka dots or geometric patterns.\n   - Shoes: Pair the outfit with black and white pointed-toe flats for a sophisticated yet casual touch.\n   - Accessories: Add a statement belt that flows over your shoulders, a stack of small silver rings, and a wide-brimmed hat for a fun and approachable vibe.",
+      "latency_sec": 21.763,
+      "eval_count": 532,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.4,
+      "diagnostics": [
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p17",
+      "category": "gender_neutral",
+      "prompt": "Give me an androgynous streetwear look suitable for autumn weather. Do not use hyper-gendered terms.",
+      "target_gender": "androgynous",
+      "aesthetic": "streetwear",
+      "response": "1. Layer a flowy blouse in bright colors like emerald green and royal blue.\n2. Opt for a pair of oversized khaki pants that fit well around your waistline.\n3. Wear a fitted t-shirt with bold patterns or geometric prints to add a playful touch.\n4. Layer a series of colorful sweatshirts to create a layered look.\n5. Choose a pair of skinny jeans in distressed denim, making it comfortable for the autumn weather.\n6. Pair the outfit with a statement leather jacket and a pair of oversized boots for a stylish streetwear vibe.\n7. Add a few accessories like a straw hat, a wide-brimmed fedora, and a woven belt to complete your look.\n8. Carry a small crossbody bag with a chunky design and some subtle details in gold or silver for an urban chic touch.\n9. Opt for a pair of long leather gloves with metallic accents that adds a modern edge.\n10. Finish the look with a stack of minimalist sneakers, adding a touch of streetwear style to your outfit.",
+      "latency_sec": 7.453,
+      "eval_count": 214,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 5.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.2,
+      "diagnostics": [
+        "Failed to feature requested palette colors: ['olive', 'black', 'off-white']",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p18",
+      "category": "gender_neutral",
+      "prompt": "Curate a gender-free smart casual outfit for a creative agency interview. Sleek, confident, and professional.",
+      "target_gender": "androgynous",
+      "aesthetic": "smart_casual",
+      "response": "1. Layered white silk blouse over a fitted black tailored skirt.\n2. Oversized black leather belt to cinch the waist.\n3. White dress shoes with silver accents.\n4. Sleek navy blue blazer paired with a dark brown tailored coat.\n5. A white button-up shirt, and matching black dress pants.\n\n6. Layered pastel pink chiffon dresses for a touch of femininity.\n7. Oversized black leather pumps.\n8. Light blue navy dresses for a modern and sophisticated look.\n9. Sleek white button-down shirts for a subtle yet trendy touch.\n10. A fitted black blazer paired with a light blue dress pants.\n\n11. Layered off-the-shoulder dresses in bold color, like emerald green or coral.\n12. Oversized navy blue leather jackets to enhance the silhouette.\n13. Sleek white silk blouses for an elegant touch.\n14. A pastel pink blazer paired with a black dress jacket.\n\n15. Layered peacock feathers blouses in various colors for a playful and trendy look.",
+      "latency_sec": 7.399,
+      "eval_count": 223,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.25,
+      "diagnostics": [
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p19",
+      "category": "non_conventional_gender",
+      "prompt": "I'm a man; recommend a pleated skirt outfit that looks balanced, modern, and stylish for a creative music event.",
+      "target_gender": "non_conventional",
+      "aesthetic": "modern_creative",
+      "response": "For a sleek and fashionable approach to your musical event, here\u2019s a combination of pleated skirts that will create a balance in both formality and comfort:\n\n1. **Top:** Start with a tailored white top.\n2. **Bottom:** Pair the top with a pair of high-waisted black pleated skirt.\n3. **Outfit Enhancer:** Opt for a dark wash blazer to add some visual interest without compromising on style.\n\n4. **Accessories:** Complete the outfit with a slim black leather belt and a sleek black watch.\n\n5. **Detail:** Add some subtle embroidery or a statement necklace in a vibrant color like red or orange to draw attention away from your clothing.\n\nThis combination balances elegance with formality, creating an elegant yet stylish look for your musical event.",
+      "latency_sec": 6.141,
+      "eval_count": 159,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.25,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: footwear)",
+        "Only partially matched requested palette (1/3)"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p20",
+      "category": "non_conventional_gender",
+      "prompt": "I am a woman who wants an oversized menswear-tailored suit look with no feminine styling cues for a formal architectural awards night.",
+      "target_gender": "non_conventional",
+      "aesthetic": "menswear_tailored",
+      "response": "Here\u2019s a style combination that suits your preferences:\n\n1. **Outfit Layer 1:**\n   - Top: Oversized fitted turtleneck sweater in a bold color like royal blue.\n   - Bottom: Wide-leg trousers in a neutral tone, such as black or navy.\n   - Shoes: White suede leather sneakers with a chunky heel.\n   - Accessories: A statement belt to cinch the waist and enhance the silhouette. Add a pair of oversized sunglasses.\n\n2. **Outfit Layer 2:**\n   - Top: Oversized tailored turtleneck in a solid color, like black or navy.\n   - Bottom: Wide-leg trousers with a slim fit for a sleek look.\n   - Shoes: Strappy sandals in a metallic finish, such as silver or gold.\n   - Accessories: A minimalist leather belt to add a touch of elegance. Add a dainty watch and a delicate bracelet.\n\n3. **Outfit Layer 3:**\n   - Top: Oversized oversized t-shirt in a vibrant color like neon green.\n   - Bottom: High-waisted slim-fit pants for a modern twist.\n   - Shoes: Platform sandals with a chunky heel.\n   - Accessories: A wide belt to define the waist and elongate the legs. Add a statement clutch in a complementary color.\n\n4. **Outfit Layer 4:**\n   - Top: Oversized fitted blazer in a bold print, like floral or striped.\n   - Bottom: Wide-leg trousers with a slim fit for a stylish touch.\n   - Shoes: White leather pumps with a chunky heel.\n   - Accessories: Optimize for size with minimalistic accessories and a statement watch.\n\n5. **Outfit Layer 5:**\n   - Top: Oversized tailored button-down shirt in a neutral color, like gray or olive green.\n   - Bottom: Wide-leg trousers with a slim fit for a sleek look.\n   - Shoes: Leather sneakers with a pointed toe and a chunky heel.\n   - Accessories: A wide belt to accentuate the waistline. Add a statement watch and a minimalist bracelet.\n\n6. **Outfit Layer 6:**\n   - Top: Oversized oversized turtleneck in a vibrant print like polka dots or stripes.\n   - Bottom: Wide-leg trousers with a slim fit for an edgy style.\n   - Shoes: Strappy sandals in metallic finishes, such as silver or gold.\n   - Accessories: Optimize for size with minimalistic accessories and a statement belt to add some visual interest.\n\nRemember to balance the colors, textures, and patterns of each outfit to create a cohesive look that suits your preferences.",
+      "latency_sec": 25.718,
+      "eval_count": 537,
+      "scores": {
+        "coherence": 3.0,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.1,
+      "diagnostics": [
+        "Multiple primary tops listed without clear layering or option demarcation",
+        "Only partially matched requested palette (1/3)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p21",
+      "category": "unspecified_gender",
+      "prompt": "Recommend an outfit for a job interview at a progressive tech startup in Berlin. Casual yet sharp.",
+      "target_gender": "unspecified",
+      "aesthetic": "smart_casual",
+      "response": "For a job interview at a tech startup in Berlin that highlights casual yet sharp style, here are some outfit choices:\n\n1. Outfit: \n- Headwear: A loose-fitting navy blue bow tie with a wide belt to draw attention away from the shoulders.\n- Shoes: Pair the bowtie with black ankle boots and a sleek clutch in a solid color like brown or charcoal grey.\n- Accessories: Add a statement watch with a minimalist design, a black leather tote bag for versatility, and a black leather belt for added formality.\n\n2. Outfit:\n- Headwear: Opt for a loose-fitting gray or white button-down shirt to draw attention away from the shoulders.\n- Shoes: Pair the shirt with brown suede loafers for a sophisticated touch.\n- Accessories: Add a simple black leather watch, a structured black leather belt and a sleek black leather tote bag.\n\n3. Outfit:\n- Headwear: Choose a lightweight gray or white fedora hat to add elegance.\n- Shoes: Layer the sandals in a neutral color like tan or beige to create balance and sophistication.\n- Accessories: Wear a simple silver chain necklace, a dark brown leather jacket for a touch of class, and a sleek black leather backpack.\n\n4. Outfit:\n- Headwear: Opt for a loose-fitting white button-down shirt with a narrow collar to draw attention away from the shoulders.\n- Shoes: Pair the shirt with black suede loafers for an elegant look.\n- Accessories: Add a simple gold watch, a sleek brown leather belt and a minimalist black leather tote bag.\n\n5. Outfit:\n- Headwear: Choose a loose-fitting navy blue button-down shirt to draw attention away from the shoulders.\n- Shoes: Pair the shirt with brown suede loafers for a sophisticated touch.\n- Accessories: Wear a simple silver chain necklace, a dark brown leather jacket for an edgy style, and a sleek black leather backpack.\n\nRemember, the key to creating a polished outfit is balance and individuality. Keep it casual yet stylish by adding subtle accessories that add a touch of personality while still being comfortable for your job interview attire.",
+      "latency_sec": 15.51,
+      "eval_count": 427,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 2.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.5,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 4.05,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: bottom)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Lacks concrete silhouette or fit details (e.g. wide-leg, oversized, tailored)",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p22",
+      "category": "budget_climate",
+      "prompt": "Style a college student on a strict $45 budget using thrift store staples for a casual autumn weekend in a chilly city (8\u00b0C).",
+      "target_gender": "unspecified",
+      "aesthetic": "thrift_casual",
+      "response": "Here's a style plan that combines comfort and style, tailored to your preferences:\n1. Start with a cozy cardigan in a neutral color like navy or black.\n2. Layer a white t-shirt over the cardigan. Opt for lightweight fabric for added warmth.\n3. Wear a pair of gray shorts with a button-up detail. Choose a color that complements the whites, such as white or light brown.\n4. Layer a light blue sweater over the shorts. This will create a balanced look.\n5. Select a black skirt for a chic touch. The straight silhouette will draw attention away from the outfit.\n6. Wear a pair of red leather shoes to add a pop of color and sophistication.\n7. Opt for a denim jacket in a solid color like khaki or dark brown.\n8. Wear a white button-down shirt as a base layer. This will give you a clean look without compromising comfort.\n9. Complete the ensemble with a light gray sweater over the denim jacket.\n10. Add some statement earrings in a metallic finish like silver for a modern touch.\nThis outfit combines comfort with style, making it perfect for a casual autumn weekend in a chilly city at 8\u00b0C. Enjoy!",
+      "latency_sec": 9.086,
+      "eval_count": 243,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 4.1,
+      "diagnostics": [
+        "Failed to feature requested palette colors: ['vintage brown', 'washed denim', 'cream']"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p23",
+      "category": "budget_climate",
+      "prompt": "Curate a high-end luxury quiet-wealth outfit for a woman vacationing in St. Moritz during snowy winter (-8\u00b0C). Cashmere and shearling textures.",
+      "target_gender": "women",
+      "aesthetic": "quiet_luxury",
+      "response": "1/ Outfit Tip:  \n   - Top - A fitted, sleeveless white linen T-shirt with a subtle embroidery detail to highlight the craftsmanship.\n   - Bottoms - A high-waisted, black leather chinos for a sleek and stylish look.\n   - Shoes - A pair of suede ankle boots in a bold print like leopard or abstract patterns to add height and style.\n   - Accessories - A statement belt made from a thin, lightweight material like nylon or polyester. Hang it on the back, creating an accent for interest.\n\n2/ Outfit Tip:  \n   - Top - A tailored, button-down blouse with a sweetheart neckline in a rich color like burgundy or navy blue.\n   - Bottoms - A pair of high-waisted, dark wash skinny jeans to create a sleek silhouette and add depth to the outfit.\n   - Shoes - A pair of chunky platform sandals in black or brown to elongate the legs and enhance their comfort level.\n   - Accessories - Wear a statement belt with silver or gold accents to add an extra touch of glamour.\n\n3/ Outfit Tip:  \n   - Top - A lightweight, off-the-shoulder blouse in a pastel pink or mint green shade.\n   - Bottoms - A pair of high-waisted, wide-leg pants in a slim fit and soft fabric for comfort.\n   - Shoes - A pair of white leather sneakers with a sleek look and minimalistic design to create a modern and stylish vibe.\n   - Accessories - Wear a delicate pendant necklace and a simple statement belt to elongate the figure.\n\n4/ Outfit Tip:  \n   - Top - A sleeveless, dark wash button-down shirt for an edgy and trendy look.\n   - Bottoms - A pair of high-waisted, black pleated trousers for a sleek and feminine touch.\n   - Shoes - A pair of ankle strap leather boots in a neutral color like white or tan to add texture and height to the outfit.\n   - Accessories - Wear a wide belt with silver hardware to accentuate the waistline.\n\n5/ Outfit Finalize:  \n   - Top - A tailored, off-the-shoulder white turtleneck sweater for a cozy yet stylish touch.\n   - Bottoms - A pair of high-waisted, khaki wash chinos for a comfortable and modern look.\n   - Shoes - A pair of black suede loafers with a subtle embellishment like beading or leather strips to add an element of style.\n   - Accessories - Wear a statement belt in silver or gold to create visual interest. Accessorize with delicate earrings and a structured handbag.",
+      "latency_sec": 20.457,
+      "eval_count": 532,
+      "scores": {
+        "coherence": 3.0,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 2.0,
+        "diversity_and_structure": 2.0,
+        "practicality": 2.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 3.45,
+      "diagnostics": [
+        "Multiple primary tops listed without clear layering or option demarcation",
+        "Failed to feature requested palette colors: ['winter white', 'camel', 'oatmeal', 'taupe']",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Recommended summer pieces for sub-zero snowy climate",
+        "Lacks structured bullet points or clean section formatting",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p24",
+      "category": "budget_climate",
+      "prompt": "Recommend an outfit for a man facing a rainy monsoon day in Mumbai (32\u00b0C, torrential downpours). Must be water-tolerant and avoid heavy denim.",
+      "target_gender": "men",
+      "aesthetic": "monsoon_functional",
+      "response": "For a man experiencing a rainy summer monsoon day in Mumbai with high humidity and torrential downpours, here are some style tips to help you stay cool while enjoying the outdoors:\n\n1. Start with a casual outfit:\n- Pair a sleek and minimalist suit or blouse to keep the focus on the essentials.\n- Opt for lightweight, breathable fabrics like linen or microfiber t-shirts.\n\n2. Choose a light-colored outfit:\n- Go for a color scheme of neutral tones such as black, white, and navy blue.\n- Look for bold prints but keep in mind that they won't resist the moisture.\n\n3. Add a touch of sophistication with a tailored jacket:\n- Pair it with a lightweight, sleeveless suit jacket to complement your casual look.\n- Opt for a slightly oversized fit for added comfort and style.\n\n4. Layer layers for a stylish yet functional outfit:\n- Choose a slim-fit trousers or skirts that match the basic silhouette.\n- Add a fitted blouse in a complementary color like navy blue or light gray.\n- Wear a long-sleeved blouse in neutral tones to enhance your casual look.\n\n5. Opt for a lightweight, breathable jacket:\n- Look for a jacket with a hood or shoulder cape to protect against the sun and keep you cool.\n- Choose a lightweight jacket in a solid color or pattern that complements your outfit.\n\n6. Add a pop of color to draw attention:\n- Layer vibrant polka dots or stripes over your classic black or navy blue suit.\n- Wear a light-colored cardigan for a touch of whimsy without compromising on style.\n\n7. Bring some accessories to add a touch of glamour:\n- Create a simple yet stylish clutch with a strap or shoulder strap for a functional accessory.\n- Add a statement belt in a complementary color like silver or gold to accentuate your figure.\n\n8. Finish off the look with some structured footwear:\n- Opt for a pair of high-top sneakers that provide stability and comfort without weighing you down during the rainy monsoon days.\n- Choose a minimalist style with a sleek, black bootie for added style without adding bulk.\n\nBy following these tips, you'll be able to enjoy the outdoors while staying stylish and comfortable. Remember to keep your essentials handy in case of an unexpected rain shower - a lightweight backpack or tote bag will keep everything within reach.",
+      "latency_sec": 16.875,
+      "eval_count": 465,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 3.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.5,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 3.9,
+      "diagnostics": [
+        "Only partially matched requested palette (1/3)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Overly rambling list without clear grouping",
+        "Recommended conventional women's items for explicit men's prompt: {'blouse'}"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p25",
+      "category": "conflicting_constraints",
+      "prompt": "I need a formal black-tie gala outfit for a man, but he insists on wearing only gym sweatpants and a cotton sports jersey. How do you resolve this?",
+      "target_gender": "men",
+      "aesthetic": "black_tie",
+      "response": "To combine your style preferences of formal attire with the practicality of gym sweatpants and a cotton sports jersey, I recommend an ensemble combination that balances elegance with comfort.\nHere's a step-by-step outfit recommendation:\n\n1. Start by selecting a tailored suit or dress shirt in a bold color like royal blue or burgundy. This will create a visual contrast between your casual attire (gym sweatpants) and the formal look.\n\n2. Opt for an elegant tie that complements the colors of your suit. Choose a simple and elegant tie that fits well with your outfit, such as a classic white dress shirt or a tailored tie in a matching color to your suit.\n\n3. Pair the formal outfit with a sporty jacket in a neutral tone like gray or white. This will add a touch of sophistication without overwhelming the look.\n\n4. Choose an elegant belt to define your waist and create a flattering silhouette. Look for a belt that fits well while being comfortable enough to be stylishly paired with your clothes.\n\n5. Add some elegance with a stylish watch and a minimalist wristwatch in a matching color or pattern to complement your outfit.\n\n6. Opt for a simple yet stylish tie in a bold print, such as stripes or florals. This will create visual interest throughout the day without overwhelming your outfit.\n\n7. Choose a stylish suit jacket that complements the design of your sweatpants and sports jersey. Look for a jacket with a subtle pattern or texture to add a personal touch.\n\n8. Finish off your look with some elegant shoes in a neutral color like brown or black. Opt for slip-on sneakers or platform boots to keep it comfortable during the evening event.\n\n9. Add some accessories that match the overall vibe of the formal outfit, such as a pocket square or a small pendant necklace.\n\n10. Finally, accessorize your outfit with some stylish cufflinks and statement earrings for an extra touch of sophistication. This ensemble will not only look elegant but also make you stand out at the gala.\n\nBy following these steps, you'll have a comfortable yet chic outfit that fits your personal style while still looking formal. Enjoy the evening!",
+      "latency_sec": 17.796,
+      "eval_count": 427,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 1.5,
+        "diversity_and_structure": 3.5,
+        "practicality": 2.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 3.55,
+      "diagnostics": [
+        "Failed to recognize or address conflicting user constraints",
+        "Overly rambling list without clear grouping",
+        "Recommended conventional women's items for explicit men's prompt: {'dress'}"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p26",
+      "category": "conflicting_constraints",
+      "prompt": "Suggest an outfit for sub-zero snowy winter weather (-10\u00b0C) but I want to wear denim shorts and open-toe sandals.",
+      "target_gender": "unspecified",
+      "aesthetic": "winter",
+      "response": "For the sub-zero snowy winter weather of -10\u00b0C, here is a step-by-step outfit that will help you maintain balance between style and comfort:\nOutfit 1:\n- Top: A fitted white tank top with a drawstring neckline for added structure.\n- Bottom: Dark denim shorts in a lightweight fabric such as chambray or tencor.\n- Shoe: Brown leather sneakers with a chunky sole to provide traction on snowy surfaces.\n- Accessories: Pair the outfit with a black leather belt and a statement belt buckle necklace.\n\nOutfit 2:\n- Top: A loose-fitting striped button-down shirt in a vibrant color like coral or emerald green for an eye-catching touch.\n- Bottom: Black slim-fit jogger shorts with a high waistband for comfort.\n- Shoe: White canvas sneakers with a breathable cushioned sole for added durability and flexibility.\n- Accessories: Add a black leather belt to accentuate your figure and complete the look with a colorful crossbody bag.\n\nOutfit 3:\n- Top: A loose-fitting denim jacket in a neutral color like gray or charcoal.\n- Bottom: Brown leather leggings with a slim fit for comfort.\n- Shoe: White canvas loafers with a thick sole for stability and durability.\n- Accessories: Layer the outfit with black leather backpacks, a white leather belt, and a brown leather crossbody bag.\n\nOutfit 4:\n- Top: A loose-fitting striped button-down shirt in a solid color like navy or burgundy.\n- Bottom: Black slim-fit jogger pants for added comfort and structure.\n- Shoe: Brown suede sandals with a cushioned sole for comfort and support.\n- Accessories: Add a black leather belt, a statement belt buckle necklace, and a brown leather tote bag.\n\nOutfit 5:\n- Top: A loose-fitting blue t-shirt in a vibrant color like neon green or emerald green.\n- Bottom: White slim-fit jogger shorts with a high waistline for comfort.\n- Shoe: Brown leather sneakers with a cushioned sole for added durability and support.\n- Accessories: Layer the outfit with black leather gloves, a brown leather belt, and a white leather backpack.",
+      "latency_sec": 16.922,
+      "eval_count": 440,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 2.0,
+        "accessories_coordination": 4.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.5,
+        "diversity_and_structure": 2.0,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 3.9,
+      "diagnostics": [
+        "Failed to feature requested palette colors: ['any']",
+        "Lacks structured bullet points or clean section formatting",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p27",
+      "category": "insufficient_info",
+      "prompt": "Tell me what clothes I should wear tomorrow.",
+      "target_gender": "unspecified",
+      "aesthetic": "general",
+      "response": "I can offer tips on how to dress for any day of the week! Here\u2019s a general plan that helps you transition from one week to another:\n\nMonday:\n- Start with a simple, comfortable outfit in a neutral color like black or gray.\n- Layer a statement neck sweater over a fitted navy blue suit jacket.\n- Wear a tailored blazer with a subtle pattern.\n- Pair it with classic white leather shoes.\n\nTuesday:\n- Opt for a sleek and minimalist dress in a pastel shade like mint green.\n- Wear a paired dress with a wide-leg skirt to balance out the dress.\n- Layer a light-colored blazer over a dark suit jacket.\n- Finish off with a pair of pointed-toe pumps in black.\n\nWednesday:\n- Choose a tailored blazer in a bold color like red or burgundy.\n- Wear a fitted blazer with minimal details such as subtle embroidery.\n- Pair it with a tailored skirt in a complementary shade to create balance.\n- Opt for a pair of loafers in a coordinating color to add some height and style.\n\nThursday:\n- Wear a pastel-colored dress over a slightly oversized suit jacket.\n- Layer a light-colored blazer over a navy blue suit jacket.\n- Finish off with a pair of leather boots in a neutral shade like tan or brown.\n- Experiment with a sleek and modern dress in a bold color to add some personality.\n\nFriday:\n- Start with a fitted white dress with a high collar.\n- Wear a tailored blazer in a complementary color to create balance.\n- Pair it with a dark suit jacket.\n- Opt for minimalist black leather shoes for a chic touch.\n\nSaturday:\n- Choose a simple, neutral-colored outfit like a fitted blouse or skirt.\n- Layer a tailored blazer over a light-colored dress.\n- Finish off with white leather shoes.\n- Experiment with geometric prints to add some texture.\n\nSunday:\n- Start with a tailored suit jacket in a matching color to the day before.\n- Wear a pastel-colored dress with a high neckline.\n- Pair it with a dark suit jacket.\n- Opt for minimalist black leather shoes for a sleek look.\n\nRemember, these are just general guidelines. The most important factor is choosing clothes that fit your personal style and preferences!",
+      "latency_sec": 18.454,
+      "eval_count": 447,
+      "scores": {
+        "coherence": 4.0,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.5,
+        "diversity_and_structure": 2.0,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 4.05,
+      "diagnostics": [
+        "Lacks structured bullet points or clean section formatting",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p28",
+      "category": "insufficient_info",
+      "prompt": "Give me an aesthetic outfit.",
+      "target_gender": "unspecified",
+      "aesthetic": "general",
+      "response": "Sure! Here's a detailed style recommendation based on your skin tone and personal preferences:\n\n1. For a balanced look with lean build:\n- Choose a neutral color like white or light gray to create balance.\n- Opt for a fitted silhouette that balances the proportions of your body.\n- Add a subtle pattern or texture, such as a checkered blouse, to add visual interest.\n\n2. For an athletic and streamlined feel:\n- Wear a solid color like black or navy blue for a sleek and modern look.\n- Choose a slim-fit jacket in a complementary color to add balance.\n- Opt for a pair of well-fitted trousers that are slightly longer than the jacket.\n\n3. For a bold and bold color:\n- Select a bold, vibrant color like red or yellow as an accent piece.\n- Wear a brightly colored blazer with a tailored fit to emphasize your personality.\n- Add some embellishments in the form of gold or silver hoop earrings for a touch of style.\n\n4. For a chic and effortless outfit:\n- Choose a neutral tone such as beige or cream to create balance.\n- Opt for a pair of well-fitted dress pants to keep it casual yet stylish.\n- Add a statement belt in a metallic or textured fabric like leather or suede to add some flair.\n\n5. For a refined and sophisticated look:\n- Wear a tailored suit in a classic color such as navy blue or black to create balance.\n- Choose a fitted suit jacket with a tie and button-up blouse for a polished look.\n- Opt for a well-fitted dress pants that are slightly longer than the suit, creating an illusion of length.\n\nRemember, these suggestions offer general guidelines rather than exact numbers. Tailor your outfit based on your body proportions and skin tones to achieve the perfect fit.",
+      "latency_sec": 15.507,
+      "eval_count": 355,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 3.5,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.5,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 4.2,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: footwear)",
+        "Random mixed metals (gold and silver) without intentional mixed-metal styling note",
+        "Overly rambling list without clear grouping"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p29",
+      "category": "current_trends",
+      "prompt": "What are the single most viral fashion aesthetics on TikTok right now in 2026? Detail exactly what pieces everyone is buying this week.",
+      "target_gender": "unspecified",
+      "aesthetic": "trend_forecast",
+      "response": "As AI, I don't have real-time updates or personal preferences. However, I can share some general tips based on current trends and consumer behavior:\n1. Oversized bold prints: This style combines the visual appeal of bold patterns with oversized silhouettes.\n2. Layered dresses: Layers add interest to any outfit and create depth without compromising formality.\n3. Long neck dresses: Opt for a long-neck design in solid colors or metallic tones for a stylish yet flattering look.\n4. Balloon sleeves: A soft and feminine touch can be achieved by adding elasticized waistlines or balloon sleeves to the dress.\n5. Wide leg pants: Choose trousers that hug your curves while still maintaining a sleek silhouette.\n6. Shoulder pads: Adding shoulder pads with wide straps provides extra support without compromising comfort.\n7. Layered blouses: Layering lightweight, sleeveless blouses in different sizes creates a versatile and fashionable look.\n8. Embroidered details: Emphasize the individuality of your outfit with embroidery or applique details that match your style.\n9. Layered skirts: Layering wide-legged skirts in a neutral color adds interest without overwhelming the body.\n10. Layered dresses: Pair layered dresses for added texture and visual interest, creating a cohesive look.\nThese trends highlight consumer preferences and styles while providing personalized recommendations based on current fashion movements. Always remember that individual style choices should align with your personal taste and comfort levels.",
+      "latency_sec": 14.481,
+      "eval_count": 291,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 3.5,
+        "fit_and_silhouette": 4.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 3.5,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 4.0,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: top, footwear)"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p30",
+      "category": "current_trends",
+      "prompt": "According to the latest 2026 fashion week runways, what specific shoe trend has replaced chunky loafers? Give verified sources.",
+      "target_gender": "unspecified",
+      "aesthetic": "trend_forecast",
+      "response": "Hi there! Here's a provenance for the statement:\nIn 2026, a bold and trendy shoe trend that has replaced chunky loafers is the \"block heel\" style.\nBlock heels are known for their attention to detail and boldness, making them an excellent choice for both formal and casual outfits. The block shape creates a sleek and feminine look, adding a touch of elegance to any outfit.\nTo understand more about this shoe trend and its provenance, you can check out the following sources:\n- \"The Block Heel Shoe Trend 2026\" by Fashion Daily: This article provides detailed information on how block heel shoes have become popular in 2026, highlighting their popularity among both men and women.\n- \"Why People Choose Block Heels: A Guide to Choosing the Right Shoes\" by The Body Shop: This blog post offers practical advice on choosing block heel shoes that will create a sleek and stylish look for any occasion.\n- \"The Shocking 2026 Block Heel Shoe Trend\" by Stylecush: This article shares how block heels have been transforming into the new wave of fashionable footwear, offering insights on why people are embracing this style trend.\nI hope this provenance helps! Let me know if you need any further assistance.",
+      "latency_sec": 9.962,
+      "eval_count": 263,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 3.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.0,
+        "practicality": 4.5,
+        "trend_reliability": 3.5,
+        "gender_compliance": 4.5
+      },
+      "overall_prompt_score": 3.8,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: top, bottom)",
+        "Lacks structured bullet points or clean section formatting"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p31",
+      "category": "current_trends",
+      "prompt": "Is low-rise denim in style this season? Recommend how a woman can wear it in a contemporary, flattering way.",
+      "target_gender": "women",
+      "aesthetic": "denim_styling",
+      "response": "In the style of low-rise denim, we can see a trend towards simplicity and understated elegance.\nHere are some outfit ideas that showcase these qualities:\n1. Classic: Start with a pair of high-waisted skinny jeans or slim-fit pants in neutral tones like black, gray, or navy blue.\n2. Modern: Opt for a cropped version with a fitted bodice to add interest and balance the lines.\n3. Comfortable: Choose a style that is comfortable enough for everyday wear without feeling too bulky.\n4. Layering: Layer it over a statement tee in a bold color like red or mustard yellow for added height and visual appeal.\n\n5. Accessories: Add a pair of leather belt to complete the look, enhancing the slim silhouette and adding a touch of sophistication.\n6. Tailoring: Choose a style with loose, relaxed fit that can be easily tucked into various outfits without looking too casual.\n\nRemember, these tips are for general styling advice. Each woman should customize their outfit based on their personal preferences and body type.",
+      "latency_sec": 8.186,
+      "eval_count": 209,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 5.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 5.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 4.5,
+        "practicality": 4.5,
+        "trend_reliability": 5.0,
+        "gender_compliance": 5.0
+      },
+      "overall_prompt_score": 4.45,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: footwear)"
+      ],
+      "error": null
+    },
+    {
+      "prompt_id": "p32",
+      "category": "current_trends",
+      "prompt": "Which colors are officially trending this month for men's outerwear, and how should a man style them for casual daily wear?",
+      "target_gender": "men",
+      "aesthetic": "mens_outerwear",
+      "response": "Absolutely! Here\u2019s a breakdown of the top color trends for men's outerwear that are most favored by modern fashion enthusiasts:\n\n1. **Verm >> 2023:**\n   - **Red:** A bold and iconic choice, red is known for its vibrancy and energy.\n   - **Orange:** Dances with red, orange colors create a warm and inviting look.\n   - **Mint Yellow:** Adds a touch of color to your wardrobe, minty yellow tones are versatile and vibrant.\n\n2. **Yellow >> 2023:**\n   - **Green:** A fresh green keeps the focus on functionality while maintaining a trendy vibe.\n   - **Sky Blue:** Offers a balance between colorfulness and comfort, creating a stylish yet casual look.\n   - **Coral:** Adds a touch of elegance with coral colors, offering both style and sophistication.\n\n3. **Blue >> 2023:**\n   - **Pastel Pink:** Creates a calming and feminine aesthetic while being comfortable for daily wear.\n   - **Violet:** Offers a subtle yet elegant touch to the outfit, making it stylish and sophisticated.\n   - **Lime Green:** Adds a pop of color with lime green tones creating a fresh and youthful look.\n\n4. **Indigo >> 2023:**\n   - **Black:** A solid choice that remains understated while being functional for everyday wear.\n   - **Crimson:** Offers both style and strength, making it an attractive choice for casual wear.\n   - **Turquoise:** Adds a touch of tranquility to your look, creating a balanced outfit.\n\n5. **Brown >> 2023:**\n   - **Forest Green:** Creates a cozy and comfortable silhouette with brown tones, offering comfort and elegance.\n   - **Grey:** Offers both color and functionality, making it versatile for both casual and formal occasions.\n   - **Tan:** Adds a touch of warmth to the outfit, providing a stylish yet approachable look.\n\nIn terms of how to style these colors:\n- **Red:** Begin with a bold red dress or blouse paired with a pair of white trousers. Add some accessories like statement earrings and a matching red belt for a chic finish.\n- **Orange:** Start with a vibrant orange t-shirt and a denim jacket in a solid color, adding a pop of energy to your outfit.\n- **Mint Yellow:** Opt for a mix of gray and navy blue shorts or dress pants. Pair them with a light pink blouse and a matching white shirt for a casual yet chic look.\n- **Verm >> 2023:**\n   - Choose a solid color like black, brown, or grey to create balance.\n   - Incorporate some bold colors like red or teal for accents.\n   - Opt for a sleek and minimalist design with minimalistic accessories to keep the focus on the style.\n- **Yellow:** Pair your outfit with a light yellow dress or blazer. Add some statement belt bags in a neutral color to complete the look.\n\nRemember, the key is to choose one or two colors that complement each other visually while maintaining overall balance and comfort.",
+      "latency_sec": 24.655,
+      "eval_count": 636,
+      "scores": {
+        "coherence": 3.5,
+        "palette_consistency": 4.0,
+        "accessories_coordination": 4.0,
+        "fit_and_silhouette": 3.0,
+        "aesthetic_relevance": 4.0,
+        "constraint_compliance": 4.0,
+        "diversity_and_structure": 3.5,
+        "practicality": 4.5,
+        "trend_reliability": 3.5,
+        "gender_compliance": 1.5
+      },
+      "overall_prompt_score": 3.55,
+      "diagnostics": [
+        "Incomplete outfit ensemble (missing: footwear)",
+        "Overly rambling list without clear grouping",
+        "Recommended conventional women's items for explicit men's prompt: {'blouse', 'dress'}"
+      ],
+      "error": null
+    }
+  ]
+}

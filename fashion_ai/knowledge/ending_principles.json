@@ -1,0 +1,62 @@
+{
+  "system_title": "NOVA Enduring Fashion Principles & Styling Mechanics",
+  "version": "1.0",
+  "principles": [
+    {
+      "id": "PRIN-01",
+      "name": "The Rule of Thirds (Proportion Balancing)",
+      "rule": "Never divide the human figure into 1:1 equal halves (e.g. a tunic ending right at the knees dividing torso and legs equally). Aim for a 1:2 or 2:1 visual ratio.",
+      "application": "Pair high-waisted trousers or skirts with a tucked or cropped top to dedicate 1/3 of visual height to the upper torso and 2/3 to the leg line, creating an elongated, elegant silhouette.",
+      "failure_mode": "Long untucked t-shirt over low-rise baggy jeans cuts height visually and distorts body proportions."
+    },
+    {
+      "id": "PRIN-02",
+      "name": "Volume Balance (Tight-on-Top / Loose-on-Bottom or Vice-Versa)",
+      "rule": "Contrast garment volumes to create intentional shape and prevent looking either entirely constricting or shapeless.",
+      "application": "Combine an oversized, boxy chore jacket or blazer with tailored, straight-leg trousers, or an oversized wide-leg pleated pant with a fitted ribbed knit tank or baby tee.",
+      "failure_mode": "Skinny jeans paired with a skin-tight muscle tee feels dated; head-to-toe oversized garments without defined shoulder or ankle anchor creates an unkempt tent effect."
+    },
+    {
+      "id": "PRIN-03",
+      "name": "The Sandwich Rule (Visual Framing)",
+      "rule": "Coordinate the color or weight of your top layer with your footwear to bookend and anchor the outfit.",
+      "application": "Wearing a cream knit cardigan with medium-wash blue denim and cream leather sneakers balances color top-and-bottom, making the denim the intentional middle layer.",
+      "failure_mode": "Wearing bright neon shoes with an all-black top, black pants, and a black coat draws the entire visual weight to the feet."
+    },
+    {
+      "id": "PRIN-04",
+      "name": "Fabric Texture Dialogue (Material Tension)",
+      "rule": "Monochrome and tonal outfits succeed or fail based on texture variance. Combine at least two distinct tactile surfaces.",
+      "application": "Pair smooth poplin cotton with heavy ribbed wool, or matte brushed suede with crisp raw denim, or liquid satin with structured tailoring.",
+      "failure_mode": "Head-to-toe flat jersey cotton (t-shirt + cotton sweatpants + canvas sneakers) looks like loungewear or sleepwear, lacking sartorial depth."
+    },
+    {
+      "id": "PRIN-05",
+      "name": "The 60-30-10 Color Harmonization Rule",
+      "rule": "Distribute outfit colors by visual surface area: 60% dominant base, 30% secondary structure, 10% intentional accent.",
+      "application": "60% charcoal grey (wool trousers and overcoat), 30% crisp white (oxford shirt or knit), 10% deep burgundy (leather loafers or silk tie).",
+      "failure_mode": "Wearing four equal 25% color blocks (e.g. yellow hat, red jacket, green pants, blue shoes) results in clownish color noise."
+    },
+    {
+      "id": "PRIN-06",
+      "name": "High-Low Contrast (Formal Meets Casual)",
+      "rule": "Elevate casual wear and soften formal tailoring by pairing one formal item with utilitarian or sporty pieces.",
+      "application": "A tailored double-breasted navy blazer worn over an optic white heavy-cotton tee, straight-leg vintage denim, and black leather penny loafers.",
+      "failure_mode": "Pairing a full tuxedo jacket with athletic gym mesh shorts and flip-flops without intermediate bridging garments."
+    },
+    {
+      "id": "PRIN-07",
+      "name": "Footwear-to-Hemline Architecture",
+      "rule": "The opening of the trouser leg dictates the acceptable shoe profile.",
+      "application": "Wide-leg trousers require a shoe with sufficient visual weight (chunky sole loafer, retro basketball sneaker, or pointed boot extending past the hem) to avoid having the feet disappear. Tapered trousers require low-profile shoes with a clean ankle break.",
+      "failure_mode": "Wearing flimsy low-profile ballet flats under extra-long ultra-wide pooled denim where the hem sweeps the ground."
+    },
+    {
+      "id": "PRIN-08",
+      "name": "Hardware and Metal Finish Integrity",
+      "rule": "Maintain unified metal tones across all accessories in an ensemble.",
+      "application": "If belt buckle is polished brass/gold, watch case, sunglasses wire frame, and bag hardware should be gold or brass tone. If silver, keep all hardware in cool nickel/silver.",
+      "failure_mode": "Silver hoop earrings, gold chunky necklace, gunmetal belt buckle, and rose gold watch."
+    }
+  ]
+}

@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
 import accountService from '../services/accountService';
 import aiService from "../services/aiService";
-import { findSimilarProductsByVector, getPairedItem, ProductMatch } from "../services/productMetadataService";
 import { resolveColorHex } from '../utils/colors';
 
 interface VirtualWardrobeViewProps {
@@ -13,6 +12,7 @@ interface VirtualWardrobeViewProps {
   userEmail: string;
   userName?: string;
   isDarkMode?: boolean;
+  userId?: string;
 }
 
 const sizes: WardrobeSize[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
@@ -39,173 +39,126 @@ const categoryIcons: Record<string, string> = {
   Dress: 'styler'
 };
 
-const svgImage = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-
-const getScanSample = (category = 'Kurti') => {
-  const isDenim = ['Jeans', 'Shorts', 'Trousers'].includes(category);
-  const isOuter = ['Hoodie', 'Jacket', 'Blazer', 'Sweatshirt'].includes(category);
-  const isShirt = ['Shirt', 'T-Shirt', 'Polo', 'Crop Top'].includes(category);
-  const base = isDenim ? '#1e2f55' : isOuter ? '#6d4cc2' : isShirt ? '#c25783' : '#244c9a';
-  const accent = isDenim ? '#8fb3ff' : isOuter ? '#d8b4fe' : isShirt ? '#ffe4f2' : '#f8e7b0';
-  const stitch = isDenim ? '#c7d2fe' : '#f8fafc';
-  const detail = isDenim
-    ? `<path d="M42 72c70 28 143 24 238-14M38 316c88-30 158-26 244 8" stroke="${stitch}" stroke-width="5" opacity=".35"/><path d="M78 0l62 420M198 0l-38 420" stroke="#0f172a" stroke-width="3" opacity=".28"/>`
-    : isOuter
-      ? `<path d="M168 0v420" stroke="${accent}" stroke-width="8" opacity=".72"/><path d="M154 20h28v34h-28zM154 72h28v34h-28zM154 124h28v34h-28z" fill="#f8fafc" opacity=".82"/><path d="M42 82c90 50 175 44 240-16" stroke="#fff" stroke-width="3" opacity=".24"/>`
-      : `<path d="M74 62c42 30 88 28 136 0 11 48 42 80 78 104-48 44-91 101-126 170-28-58-69-112-124-162 35-29 55-66 36-112Z" fill="none" stroke="${accent}" stroke-width="6" opacity=".8"/><path d="M90 114c54 36 102 34 150-2" stroke="#fff" stroke-width="3" opacity=".52"/>`;
-
-  return svgImage(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420">
-      <defs>
-        <linearGradient id="cloth" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${base}"/><stop offset=".55" stop-color="#111827"/><stop offset="1" stop-color="${base}"/></linearGradient>
-        <radialGradient id="light" cx="38%" cy="22%" r="70%"><stop stop-color="#ffffff" stop-opacity=".38"/><stop offset=".45" stop-color="#ffffff" stop-opacity=".07"/><stop offset="1" stop-color="#000000" stop-opacity=".35"/></radialGradient>
-        <pattern id="weave" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 8h18M8 0v18" stroke="#fff" stroke-opacity=".08" stroke-width="1"/><path d="M0 17h18" stroke="#000" stroke-opacity=".15"/></pattern>
-        <pattern id="floral" width="56" height="56" patternUnits="userSpaceOnUse"><circle cx="18" cy="18" r="6" fill="${accent}" opacity=".88"/><path d="M18 6c10 7 10 18 0 24C8 24 8 13 18 6ZM6 18c7-10 18-10 24 0-6 10-17 10-24 0Z" fill="#fff" opacity=".48"/><path d="M34 38c16-11 28 6 14 14-10 5-24-1-14-14Z" fill="${accent}" opacity=".5"/></pattern>
-        <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .12"/></feComponentTransfer></filter>
-      </defs>
-      <rect width="320" height="420" rx="34" fill="#0b1020"/>
-      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#cloth)"/>
-      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#weave)"/>
-      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#floral)" opacity="${isDenim ? '.18' : '.78'}"/>
-      ${detail}
-      <rect x="18" y="18" width="284" height="384" rx="30" fill="url(#light)"/>
-      <rect x="18" y="18" width="284" height="384" rx="30" filter="url(#grain)" opacity=".55"/>
-    </svg>`
-  );
-};
-
-const sampleScan = getScanSample('Kurti');
-
 const storageKey = (userId: string) => `nova_wardrobe_${userId}`;
 const profileKey = (userId: string) => `nova_wardrobe_profile_${userId}`;
 const outfitsKey = (userId: string) => `nova_wardrobe_outfits_${userId}`;
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const processingSteps = ['Detecting Pattern', 'Detecting Colors', 'Extracting Vectors', 'Matching Catalog', 'Complete'];
-
 const topCategories = ['T-Shirt', 'Shirt', 'Polo', 'Hoodie', 'Sweatshirt', 'Jacket', 'Blazer', 'Kurti', 'Crop Top'];
 const bottomCategories = ['Jeans', 'Trousers', 'Shorts', 'Leggings', 'Palazzo'];
 const isBottomWear = (category: string) => bottomCategories.includes(category);
 
-const photoSignals = async (dataUrl: string) => {
-  const image = new Image();
-  image.src = dataUrl;
-  await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Unable to read photo')); });
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 64;
-  const context = canvas.getContext('2d');
-  if (!context) return { primary: 'Review needed', secondary: '—', pattern: 'Review needed' };
-  context.clearRect(0, 0, 64, 64);
-  context.drawImage(image, 0, 0, 64, 64);
-  const classify = (red: number, green: number, blue: number) => {
-    const maximum = Math.max(red, green, blue);
-    const minimum = Math.min(red, green, blue);
-    const value = maximum / 255;
-    const saturation = maximum === 0 ? 0 : (maximum - minimum) / maximum;
-    const lightness = (maximum + minimum) / 510;
-    if (value < 0.2) return 'Black';
-    if (saturation < 0.08 && lightness > 0.86) return 'White';
-    if (saturation < 0.12) return lightness < 0.55 ? 'Charcoal' : 'Grey';
+interface NormalizedUpload {
+  dataUrl: string;
+  file: File;
+  isPng: boolean;
+}
 
-    let hue = 0;
-    if (maximum !== minimum) {
-      if (maximum === red) hue = 60 * (((green - blue) / (maximum - minimum)) % 6);
-      else if (maximum === green) hue = 60 * ((blue - red) / (maximum - minimum) + 2);
-      else hue = 60 * ((red - green) / (maximum - minimum) + 4);
-    }
-    if (hue < 0) hue += 360;
-    if (saturation < 0.3 && lightness > 0.65) return hue < 55 ? 'Beige' : hue < 95 ? 'Mint' : 'Lavender';
-    if (hue >= 345 || hue < 15) return 'Red';
-    if (hue < 42) return lightness < 0.5 ? 'Brown' : 'Orange';
-    if (hue < 75) return 'Yellow';
-    if (hue < 165) return 'Green';
-    if (hue < 205) return 'Cyan';
-    if (hue < 255) return 'Blue';
-    if (hue < 315) return 'Purple';
-    return 'Pink';
-  };
-  const counts: Record<string, number> = {};
-  const colorGrid: string[][] = [];
-  const pixels = context.getImageData(0, 0, 64, 64).data;
-  for (let y = 0; y < 64; y += 2) {
-    const row: string[] = [];
-    for (let x = 0; x < 64; x += 2) {
-      const index = (y * 64 + x) * 4;
-      if (pixels[index + 3] < 48) { row.push('transparent'); continue; }
-      const color = classify(pixels[index], pixels[index + 1], pixels[index + 2]);
-      const saturation = (Math.max(pixels[index], pixels[index + 1], pixels[index + 2]) - Math.min(pixels[index], pixels[index + 1], pixels[index + 2])) / Math.max(1, Math.max(pixels[index], pixels[index + 1], pixels[index + 2]));
-      counts[color] = (counts[color] || 0) + (saturation < 0.08 ? 0.65 : 1);
-      row.push(color);
-    }
-    colorGrid.push(row);
+/**
+ * Validates image type and size, normalizes orientation, and resizes large dimensions
+ * while strictly preserving aspect ratio and PNG alpha transparency.
+ */
+const validateAndNormalizeImage = async (file: File): Promise<NormalizedUpload> => {
+  const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+  if (!validTypes.includes(file.type) && !file.type.startsWith('image/')) {
+    throw new Error('Unsupported image format. Please upload a JPEG, PNG, or WebP photo.');
   }
-  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const [primary = 'Review needed'] = ranked[0] || [];
-  const secondary = ranked.find(([color]) => color !== primary)?.[0] || '—';
-  const totalPixels = Object.values(counts).reduce((sum, value) => sum + value, 0) || 1;
-  const secondaryShare = (counts[secondary] || 0) / totalPixels;
-  let transitions = 0;
-  let comparisons = 0;
-  colorGrid.forEach((row, y) => row.forEach((color, x) => {
-    if (color === 'transparent') return;
-    if (x > 0 && row[x - 1] !== 'transparent') { comparisons += 1; if (row[x - 1] !== color) transitions += 1; }
-    if (y > 0 && colorGrid[y - 1][x] !== 'transparent') { comparisons += 1; if (colorGrid[y - 1][x] !== color) transitions += 1; }
-  }));
-  const textureVariation = comparisons ? transitions / comparisons : 0;
-  const pattern = primary === 'White' && secondary === 'Black' && secondaryShare > 0.04 ? 'Polka dot / printed'
-    : secondary !== '—' && secondaryShare > 0.14 && textureVariation > 0.16 ? 'Patterned / printed' : 'Solid';
-  return { primary, secondary, pattern };
-};
 
-// A square, well-lit preview makes a quick or crooked phone photo pleasant to browse.
-const normalizePhoto = async (source: string) => {
-  const image = new Image();
-  image.src = source;
-  await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Unable to read photo')); });
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 900;
-  const context = canvas.getContext('2d');
-  if (!context) return source;
-  context.fillStyle = '#f8fafc'; context.fillRect(0, 0, 900, 900);
-  const scale = Math.min(820 / image.width, 820 / image.height);
-  const width = image.width * scale; const height = image.height * scale;
-  context.drawImage(image, (900 - width) / 2, (900 - height) / 2, width, height);
-  return canvas.toDataURL('image/jpeg', 0.9);
-};
+  const maxSizeBytes = 15 * 1024 * 1024;
+  if (file.size > maxSizeBytes) {
+    throw new Error('Image size is too large (max 15MB). Please choose a smaller photo.');
+  }
 
-const toDataUrl = async (source: string) => {
-  if (source.startsWith('data:')) return source;
-  const response = await fetch(source);
-  const blob = await response.blob();
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error('Unable to read generated garment'));
-    reader.readAsDataURL(blob);
+  return new Promise<NormalizedUpload>((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      try {
+        const maxDimension = 1200;
+        let { width, height } = img;
+        if (width <= 0 || height <= 0) {
+          throw new Error('Invalid image dimensions');
+        }
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Could not initialize canvas context');
+        }
+
+        // Preserve transparency for PNG: clearRect, do not fill with solid background
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const outputType = isPng ? 'image/png' : 'image/jpeg';
+        const dataUrl = canvas.toDataURL(outputType, 0.92);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve({ dataUrl, file, isPng });
+            return;
+          }
+          const cleanName = file.name.replace(/\.[^/.]+$/, '');
+          const normalizedFile = new File([blob], `${cleanName}${isPng ? '.png' : '.jpg'}`, {
+            type: outputType,
+            lastModified: Date.now()
+          });
+          resolve({ dataUrl, file: normalizedFile, isPng });
+        }, outputType, 0.92);
+      } catch (err: any) {
+        reject(new Error(err?.message || 'Failed to normalize image.'));
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Invalid image file. Could not read image data.'));
+    };
+    img.src = objectUrl;
   });
 };
 
-export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false }) => {
-  const userId = accountService.getUserDocId(userEmail);
-  const username = userEmail ? userEmail.split('@')[0] : userId;
+export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false, userId: propUserId }) => {
+  const currentUid = auth.currentUser?.uid || propUserId || null;
+  const legacyUserId = accountService.getUserDocId(userEmail);
+  const userId = currentUid || legacyUserId;
+  const username = userEmail ? userEmail.split('@')[0] : (userName || userId);
   const [profile, setProfile] = useState<WardrobeProfile>(() => {
     try {
-      return JSON.parse(localStorage.getItem(profileKey(accountService.getUserDocId(userEmail))) || '{}');
+      return JSON.parse(
+        localStorage.getItem(profileKey(userId)) ||
+        localStorage.getItem(profileKey(legacyUserId)) ||
+        '{}'
+      );
     } catch {
       return {};
     }
   });
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [scanMethod, setScanMethod] = useState<WardrobeScanMethod>('Live Scan');
-  const [scanImage, setScanImage] = useState(sampleScan);
-  const [generatedItem, setGeneratedItem] = useState<WardrobeItem | null>(null);
-  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState(0);
+  const [scanMethod, setScanMethod] = useState<WardrobeScanMethod>('Upload Photo');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
-  const [matchedProducts, setMatchedProducts] = useState<ProductMatch[]>([]);
-  const [scannedMatch, setScannedMatch] = useState<ProductMatch | null>(null);
-  const [pairedProduct, setPairedProduct] = useState<any | null>(null);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [bgRemovalError, setBgRemovalError] = useState<string | null>(null);
+  const [useOriginalFallback, setUseOriginalFallback] = useState(false);
+  const [garmentCategory, setGarmentCategory] = useState<string>('');
+  const [garmentColor, setGarmentColor] = useState<string>('Custom');
+  const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -217,8 +170,30 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [outfitSeed, setOutfitSeed] = useState<WardrobeItem | null>(null);
   const [outfitPartnerId, setOutfitPartnerId] = useState<string>('');
   const [savedOutfitCount, setSavedOutfitCount] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(outfitsKey(accountService.getUserDocId(userEmail))) || '[]').length; } catch { return 0; }
+    try {
+      return JSON.parse(
+        localStorage.getItem(outfitsKey(userId)) ||
+        localStorage.getItem(outfitsKey(legacyUserId)) ||
+        '[]'
+      ).length;
+    } catch {
+      return 0;
+    }
   });
+
+  const sanitizeForFirestore = (item: WardrobeItem) => {
+    const { originalScan, ...rest } = item;
+    return {
+      ...rest,
+      // Do not store base64 data URLs in Firestore to keep document size well under 1MB (Task 8)
+      generatedImage: item.generatedImage?.startsWith('data:') ? '' : (item.generatedImage || ''),
+      gender: item.gender || 'unisex',
+      attributes: item.attributes || {},
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      colors: Array.isArray(item.colors) ? item.colors : [],
+      timesWorn: item.timesWorn || 0
+    };
+  };
 
   useEffect(() => {
     const testConnection = async () => {
@@ -236,29 +211,44 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     const loadWardrobe = async () => {
       setIsLoading(true);
       try {
-        const saved = localStorage.getItem(storageKey(userId));
-        if (saved) setItems(JSON.parse(saved));
-        const snap = await getDocs(query(collection(db, 'users', userId, 'wardrobe'), orderBy('dateAdded', 'desc')));
-        const remote = snap.docs.map((entry) => ({ ...(entry.data() as WardrobeItem), id: entry.id }));
-        if (remote.length) {
-          setItems(remote);
-          localStorage.setItem(storageKey(userId), JSON.stringify(remote));
+        const localRaw = localStorage.getItem(storageKey(userId)) || 
+          (legacyUserId !== userId ? localStorage.getItem(storageKey(legacyUserId)) : null);
+        const localItems: WardrobeItem[] = localRaw ? JSON.parse(localRaw) : [];
+        if (localItems.length) setItems(localItems);
+
+        if (currentUid) {
+          const snap = await getDocs(query(collection(db, 'users', currentUid, 'wardrobe'), orderBy('dateAdded', 'desc')));
+          const remote = snap.docs.map((entry) => ({ ...(entry.data() as WardrobeItem), id: entry.id }));
+          if (remote.length) {
+            const merged = remote.map((remoteItem) => {
+              const matchedLocal = localItems.find((l) => l.id === remoteItem.id);
+              return {
+                ...remoteItem,
+                generatedImage: remoteItem.generatedImage || matchedLocal?.generatedImage || '',
+                originalScan: remoteItem.originalScan || matchedLocal?.originalScan || ''
+              };
+            });
+            setItems(merged);
+            localStorage.setItem(storageKey(userId), JSON.stringify(merged));
+          }
         }
-      } catch {
-        const saved = localStorage.getItem(storageKey(userId));
-        setItems(saved ? JSON.parse(saved) : []);
+      } catch (err) {
+        console.warn('Failed to load wardrobe from cloud, using local fallback:', err);
+        const localRaw = localStorage.getItem(storageKey(userId)) || 
+          (legacyUserId !== userId ? localStorage.getItem(storageKey(legacyUserId)) : null);
+        setItems(localRaw ? JSON.parse(localRaw) : []);
       } finally {
         setIsLoading(false);
       }
     };
     loadWardrobe();
-  }, [userId]);
+  }, [currentUid, userId, legacyUserId]);
 
   useEffect(() => {
     localStorage.setItem(profileKey(userId), JSON.stringify(profile));
     accountService.upsertUserProfile(
       {
-        uid: userEmail || userId,
+        uid: currentUid || userEmail || userId,
         username,
         name: userName || username,
         email: userEmail,
@@ -267,7 +257,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       },
       { wardrobeCount: items.length }
     ).catch(() => undefined);
-  }, [items.length, profile, userEmail, userId, userName, username]);
+  }, [currentUid, items.length, profile, userEmail, userId, userName, username]);
 
   const categories = profile.gender === 'Male' ? maleCategories : femaleCategories;
   const categoryOptions = ['All', ...new Set(items.map((item) => item.category))];
@@ -288,180 +278,226 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     localStorage.setItem(storageKey(userId), JSON.stringify(next));
   };
 
-  const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const raw = String(reader.result || sampleScan);
-      try { setScanImage(await normalizePhoto(raw)); } catch { setScanImage(raw); }
+  const processBackgroundRemoval = async (file: File, category: string) => {
+    setIsRemovingBg(true);
+    setBgRemovalError(null);
+    try {
+      const result = await aiService.uploadGarment(file, category);
+      if (!result?.processed_image) {
+        throw new Error('Garment processor did not return an image.');
+      }
+      setProcessedImage(result.processed_image);
+      setUseOriginalFallback(false);
+      setSaveStatus('Background removed successfully.');
+      window.setTimeout(() => setSaveStatus(null), 2000);
+    } catch (err: any) {
+      console.error('Background removal failed:', err);
+      const detail = err?.message || 'Server unreachable at http://127.0.0.1:8000';
       setProcessedImage(null);
-      setGeneratedItem(null);
-    };
-    reader.readAsDataURL(file);
+      setBgRemovalError(`Background removal failed: ${detail}`);
+    } finally {
+      setIsRemovingBg(false);
+    }
   };
 
-  const handleAnalyze = async () => {
-    if (!scanImage) {
-      alert("Please upload or scan a garment first.");
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setBgRemovalError(null);
+      setUseOriginalFallback(false);
+      setProcessedImage(null);
+
+      const normalized = await validateAndNormalizeImage(file);
+      setUploadedImage(normalized.dataUrl);
+      setUploadedFile(normalized.file);
+
+      await processBackgroundRemoval(normalized.file, garmentCategory || selectedCategory || '');
+    } catch (err: any) {
+      console.error('Image upload validation failed:', err);
+      setBgRemovalError(err.message || 'Failed to process selected image.');
+      setSaveStatus(err.message || 'Image processing error.');
+      window.setTimeout(() => setSaveStatus(null), 3000);
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const retryBackgroundRemoval = () => {
+    if (uploadedFile) {
+      processBackgroundRemoval(uploadedFile, garmentCategory || selectedCategory || '');
+    }
+  };
+
+  const continueWithOriginal = () => {
+    if (!uploadedImage) return;
+    setUseOriginalFallback(true);
+    setProcessedImage(uploadedImage);
+    setBgRemovalError(null);
+    setSaveStatus('Using original photo without background removal.');
+    window.setTimeout(() => setSaveStatus(null), 2500);
+  };
+
+  const saveWardrobeItem = async (itemToSave: WardrobeItem) => {
+    const next = [itemToSave, ...items.filter((item) => item.id !== itemToSave.id)];
+    persistItems(next);
+
+    if (!currentUid) {
+      setSaveStatus('Saved locally (Guest mode — sign in to sync with cloud)');
+      setSelectedCategory(null);
+      setUploadedImage(null);
+      setUploadedFile(null);
+      setProcessedImage(null);
+      setBgRemovalError(null);
+      setUseOriginalFallback(false);
+      window.setTimeout(() => setSaveStatus(null), 3000);
       return;
     }
 
     try {
-      setIsProcessing(true);
-      setProcessingStep(0);
-
-      const response = await fetch(scanImage);
-      const blob = await response.blob();
-      const file = new File([blob], `nova-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
-
-      setProcessingStep(1);
-      let result: any = null;
+      const sanitized = sanitizeForFirestore(itemToSave);
+      await setDoc(doc(db, 'users', currentUid, 'wardrobe', itemToSave.id), sanitized);
+      setSaveStatus('Saved to cloud wardrobe');
       try {
-        result = await aiService.uploadGarment(file, selectedCategory || '');
-        if (!result?.processed_image) throw new Error('The garment processor did not return an image.');
-        setProcessedImage(result.processed_image);
-      } catch (error) {
-        // Keep the wardrobe flow usable when the optional Python processor is unavailable.
-        result = { processed_image: scanImage };
-        setProcessedImage(scanImage);
-        setSaveStatus('AI processor unavailable. Used a local garment preview.');
+        await accountService.upsertUserProfile(
+          {
+            uid: currentUid,
+            username,
+            name: userName || username,
+            email: userEmail,
+            gender: profile.gender,
+            size: profile.size
+          },
+          { wardrobeCount: next.length, wardrobeUpdatedAt: itemToSave.dateAdded }
+        );
+      } catch {
+        // Non-critical profile metadata update
       }
-
-      setProcessingStep(2);
-      let embedding: number[] = [];
-      try { embedding = await aiService.getEmbedding(file); } catch { /* Catalog matching is optional. */ }
-
-      setProcessingStep(3);
-      const scannedAttributes = {
-        category: selectedCategory || result?.category || result?.attributes?.category,
-        primaryColor: result?.primaryColor ?? result?.attributes?.primaryColor ?? 'Blue',
-        subcategory: result?.subcategory ?? result?.attributes?.subcategory,
-        pattern: result?.pattern ?? result?.attributes?.pattern,
-        sleeveType: result?.sleeveType ?? result?.attributes?.sleeveType,
-        neckType: result?.neckType ?? result?.attributes?.neckType,
-        fit: result?.fit ?? result?.attributes?.fit,
-        material: result?.material ?? result?.attributes?.material
-      };
-        const matches = embedding.length ? await findSimilarProductsByVector(embedding, scannedAttributes, 5) : [];
-        setMatchedProducts(matches);
-
-      // Analyze the garment crop, not the original person/background photo.
-      let garmentForAnalysis = scanImage;
-      try { garmentForAnalysis = await toDataUrl(result.processed_image); } catch { throw new Error('Could not read the isolated garment image.'); }
-      const localSignals = await photoSignals(garmentForAnalysis);
-      const color = result?.primaryColor ?? result?.attributes?.primaryColor ?? localSignals.primary;
-      const secondaryColor = result?.secondaryColor ?? result?.attributes?.secondaryColor ?? localSignals.secondary;
-      const pattern = result?.pattern ?? result?.attributes?.pattern ?? localSignals.pattern;
-      const category = selectedCategory || result?.category || 'T-Shirt';
-      const bottomWear = isBottomWear(category);
-      const detected: WardrobeDetectedAttributes = {
-        primaryColor: color, secondaryColor, pattern,
-        fabric: result?.material ?? result?.attributes?.material ?? 'Review fabric',
-        style: result?.fit ?? result?.attributes?.fit ?? 'Everyday',
-        sleeveType: bottomWear ? 'Not applicable' : result?.sleeveType ?? result?.attributes?.sleeveType ?? 'Not specified',
-        neckType: bottomWear ? 'Not applicable' : result?.neckType ?? result?.attributes?.neckType ?? 'Not specified',
-        ...(bottomWear ? {
-          rise: result?.rise ?? result?.attributes?.rise ?? 'Not specified',
-          length: result?.length ?? result?.attributes?.length ?? 'Not specified'
-        } : {})
-      };
-      setGeneratedItem({
-        id: makeId(), category, size: profile.size || 'M',
-        generatedImage: result.processed_image, originalScan: scanImage,
-        colors: [color, ...(secondaryColor !== '—' ? [secondaryColor] : [])], pattern, fabric: detected.fabric,
-        tags: [category, color, pattern, detected.style].filter(Boolean), dateAdded: new Date().toISOString(),
-        timesWorn: 0, attributes: detected
-      });
-
-      if (matches.length > 0) {
-        setScannedMatch(matches[0]);
-      }
-
-      const paired = await getPairedItem(
-        String(scannedAttributes.category || ''), 
-        String(scannedAttributes.primaryColor || '')
+    } catch (err: any) {
+      console.warn('Firestore wardrobe cloud save failed:', err);
+      const isPermission = err?.code === 'permission-denied';
+      setSaveStatus(
+        isPermission
+          ? 'Saved locally (Cloud save permission denied — check Firestore rules)'
+          : `Saved locally (Cloud sync failed: ${err?.message || 'Network error'})`
       );
-      setPairedProduct(paired);
-
-      setProcessingStep(4);
-    } catch (error) {
-      console.error("NOVA garment analysis failed:", error);
-      setSaveStatus('We could not read that photo. Try a clearer garment image.');
-    } finally {
-      setIsProcessing(false);
     }
+
+    setSelectedCategory(null);
+    setUploadedImage(null);
+    setUploadedFile(null);
+    setProcessedImage(null);
+    setBgRemovalError(null);
+    setUseOriginalFallback(false);
+    window.setTimeout(() => setSaveStatus(null), 3500);
   };
 
-  const saveItem = async () => {
-    if (!generatedItem) return;
-    const next = [generatedItem, ...items.filter((item) => item.id !== generatedItem.id)];
-    persistItems(next);
-    setSaveStatus('Saved to wardrobe');
-    try {
-      const ref = await addDoc(collection(db, 'users', userId, 'wardrobe'), generatedItem);
-      const savedWithRemoteId = { ...generatedItem, id: ref.id };
-      const remoteNext = [savedWithRemoteId, ...items.filter((item) => item.id !== generatedItem.id)];
-      await setDoc(doc(db, 'users', userId, 'wardrobe', ref.id), savedWithRemoteId);
-      await accountService.upsertUserProfile(
-        {
-          uid: userEmail || userId,
-          username,
-          name: userName || username,
-          email: userEmail,
-          gender: profile.gender,
-          size: profile.size
-        },
-        { wardrobeCount: remoteNext.length, wardrobeUpdatedAt: savedWithRemoteId.dateAdded }
-      );
-      persistItems(remoteNext);
-    } catch {
-      setSaveStatus('Saved locally. Firebase sync will retry when available.');
+  const handleSaveGarment = () => {
+    const finalImage = useOriginalFallback ? uploadedImage : (processedImage || uploadedImage);
+    if (!finalImage) {
+      setSaveStatus('Please select or capture a clothing photo first.');
+      window.setTimeout(() => setSaveStatus(null), 2500);
+      return;
     }
-    setSelectedCategory(null);
-    setGeneratedItem(null);
-    window.setTimeout(() => setSaveStatus(null), 2400);
+
+    const finalCategory = garmentCategory || selectedCategory || 'Clothing';
+    const finalColor = garmentColor.trim() || 'Custom';
+
+    const newItem: WardrobeItem = {
+      id: makeId(),
+      category: finalCategory,
+      size: profile.size || 'M',
+      generatedImage: finalImage,
+      originalScan: uploadedImage || finalImage,
+      colors: [finalColor],
+      pattern: 'Solid',
+      fabric: 'Standard',
+      tags: [finalCategory, finalColor].filter(Boolean),
+      dateAdded: new Date().toISOString(),
+      timesWorn: 0,
+      attributes: {
+        category: finalCategory,
+        primaryColor: finalColor,
+        secondaryColor: '—',
+        pattern: 'Solid',
+        fabric: 'Standard',
+        style: 'Everyday',
+        neckType: 'Standard',
+        sleeveType: 'Standard'
+      }
+    };
+
+    saveWardrobeItem(newItem);
   };
 
   const deleteItem = async (item: WardrobeItem) => {
-    persistItems(items.filter((entry) => entry.id !== item.id));
+    const next = items.filter((entry) => entry.id !== item.id);
+    persistItems(next);
     setSelectedItem(null);
-    try {
-      await deleteDoc(doc(db, 'users', userId, 'wardrobe', item.id));
-      await accountService.upsertUserProfile(
-        {
-          uid: userEmail || userId,
-          username,
-          name: userName || username,
-          email: userEmail,
-          gender: profile.gender,
-          size: profile.size
-        },
-        { wardrobeCount: Math.max(0, items.length - 1), wardrobeUpdatedAt: new Date().toISOString() }
-      );
-    } catch {
+
+    if (!currentUid) {
       setSaveStatus('Removed locally');
-      window.setTimeout(() => setSaveStatus(null), 1800);
+      window.setTimeout(() => setSaveStatus(null), 2000);
+      return;
     }
+
+    try {
+      await deleteDoc(doc(db, 'users', currentUid, 'wardrobe', item.id));
+      setSaveStatus('Removed from cloud wardrobe');
+      try {
+        await accountService.upsertUserProfile(
+          {
+            uid: currentUid,
+            username,
+            name: userName || username,
+            email: userEmail,
+            gender: profile.gender,
+            size: profile.size
+          },
+          { wardrobeCount: Math.max(0, next.length), wardrobeUpdatedAt: new Date().toISOString() }
+        );
+      } catch {}
+    } catch (err: any) {
+      console.warn('Firestore wardrobe delete failed:', err);
+      setSaveStatus('Removed locally (Cloud sync failed)');
+    }
+    window.setTimeout(() => setSaveStatus(null), 2500);
   };
 
-  const updateItem = (item: WardrobeItem) => {
+  const updateItem = async (item: WardrobeItem) => {
     const next = items.map((entry) => (entry.id === item.id ? item : entry));
     persistItems(next);
     setSelectedItem(item);
-    setDoc(doc(db, 'users', userId, 'wardrobe', item.id), item)
-      .then(() => accountService.upsertUserProfile(
-        {
-          uid: userEmail || userId,
-          username,
-          name: userName || username,
-          email: userEmail,
-          gender: profile.gender,
-          size: profile.size
-        },
-        { wardrobeCount: next.length, wardrobeUpdatedAt: new Date().toISOString() }
-      ))
-      .catch(() => undefined);
+
+    if (!currentUid) {
+      setSaveStatus('Updated locally');
+      window.setTimeout(() => setSaveStatus(null), 2000);
+      return;
+    }
+
+    try {
+      const sanitized = sanitizeForFirestore(item);
+      await setDoc(doc(db, 'users', currentUid, 'wardrobe', item.id), sanitized, { merge: true });
+      setSaveStatus('Updated in cloud wardrobe');
+      try {
+        await accountService.upsertUserProfile(
+          {
+            uid: currentUid,
+            username,
+            name: userName || username,
+            email: userEmail,
+            gender: profile.gender,
+            size: profile.size
+          },
+          { wardrobeCount: next.length, wardrobeUpdatedAt: new Date().toISOString() }
+        );
+      } catch {}
+    } catch (err: any) {
+      console.warn('Firestore wardrobe update failed:', err);
+      setSaveStatus('Updated locally (Cloud sync failed)');
+    }
+    window.setTimeout(() => setSaveStatus(null), 2500);
   };
 
   const markOutfitWorn = (outfitItems: WardrobeItem[]) => {
@@ -469,7 +505,14 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     const now = new Date().toISOString();
     const next = items.map((item) => wornIds.has(item.id) ? { ...item, timesWorn: (item.timesWorn || 0) + 1, lastWorn: now } : item);
     persistItems(next);
-    next.filter((item) => wornIds.has(item.id)).forEach((item) => setDoc(doc(db, 'users', userId, 'wardrobe', item.id), item).catch(() => undefined));
+    if (currentUid) {
+      next
+        .filter((item) => wornIds.has(item.id))
+        .forEach((item) => {
+          const sanitized = sanitizeForFirestore(item);
+          setDoc(doc(db, 'users', currentUid, 'wardrobe', item.id), sanitized, { merge: true }).catch(() => undefined);
+        });
+    }
     setSaveStatus('Fit saved as worn — nice choice.');
     window.setTimeout(() => setSaveStatus(null), 2400);
   };
@@ -551,8 +594,8 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         </div>
         <div className="mt-5 grid gap-3">
           {[
-            ['center_focus_strong', 'AI Smart Scan'],
-            ['apparel', 'Virtual Garment Generation'],
+            ['photo_camera', 'Garment Photo Capture'],
+            ['content_cut', 'Automatic Background Removal'],
             ['checkroom', 'Organized Wardrobe'],
             ['auto_awesome', 'Outfit & Styling Assistant'],
             ['donut_large', 'Closet Insights']
@@ -662,12 +705,13 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                   transition={{ delay: index * 0.025 }}
                   onClick={() => {
                     setSelectedCategory(category);
-                    setGeneratedItem(null);
-                    setScanImage(getScanSample(category));
-                    setProcessingStep(0);
-                    setMatchedProducts([]);
-                    setScannedMatch(null);
-                    setPairedProduct(null);
+                    setGarmentCategory(category);
+                    setUploadedImage(null);
+                    setUploadedFile(null);
+                    setProcessedImage(null);
+                    setBgRemovalError(null);
+                    setUseOriginalFallback(false);
+                    setGarmentColor('Custom');
                   }}
                   className={`min-h-24 rounded-xl border p-2 text-center shadow-sm transition-transform active:scale-[0.98] ${subCard}`}
                 >
@@ -818,222 +862,231 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3">
             <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className={`max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border p-4 shadow-2xl ${modalSurface}`}>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-black">Add {selectedCategory}</h2>
-                <button onClick={() => setSelectedCategory(null)} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF] text-[#5E667A]'}`}><span className="material-symbols-outlined text-base">close</span></button>
+                <div>
+                  <h2 className="text-xl font-black">Add to Wardrobe</h2>
+                  <p className={`text-xs ${muted}`}>Category: <span className={`font-bold ${accentText}`}>{garmentCategory || selectedCategory}</span></p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setUploadedImage(null);
+                    setUploadedFile(null);
+                    setProcessedImage(null);
+                    setBgRemovalError(null);
+                    setUseOriginalFallback(false);
+                  }} 
+                  className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF] text-[#5E667A]'}`}
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
               </div>
-              <div className={`mb-4 grid grid-cols-2 gap-2 rounded-xl p-1 ${isDarkMode ? 'bg-[#111220]' : 'bg-[#F2EEFF] border border-[#E4DFF5]'}`}>
-                {(['Live Scan', 'Upload Photo'] as WardrobeScanMethod[]).map((method) => (
-                  <button key={method} onClick={() => setScanMethod(method)} className={`rounded-lg py-2 text-xs font-black ${scanMethod === method ? purpleButton : muted}`}>
-                    <span className="material-symbols-outlined mr-1 align-middle text-sm">{method === 'Live Scan' ? 'camera_alt' : 'photo_library'}</span>{method}
+
+              {/* Upload method selection */}
+              <div className={`mb-3 grid grid-cols-2 gap-2 rounded-xl p-1 ${isDarkMode ? 'bg-[#111220]' : 'bg-[#F2EEFF] border border-[#E4DFF5]'}`}>
+                {(['Upload Photo', 'Live Scan'] as WardrobeScanMethod[]).map((method) => (
+                  <button 
+                    key={method} 
+                    type="button"
+                    onClick={() => setScanMethod(method)} 
+                    className={`rounded-lg py-2 text-xs font-black transition ${scanMethod === method ? purpleButton : muted}`}
+                  >
+                    <span className="material-symbols-outlined mr-1 align-middle text-sm">
+                      {method === 'Live Scan' ? 'photo_camera' : 'photo_library'}
+                    </span>
+                    {method === 'Live Scan' ? 'Take Photo' : 'Upload File'}
                   </button>
                 ))}
               </div>
-              <label className={`mb-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-xs font-black ${
-                isDarkMode ? 'border-[#7041a8] bg-[#201733] text-[#d8b4fe]' : 'border-[#553BE2]/40 bg-[#F2EEFF] text-[#553BE2]'
+
+              {/* Hidden file input */}
+              <input 
+                id="wardrobe-file-input"
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                capture={scanMethod === 'Live Scan' ? 'environment' : undefined} 
+                onChange={handleFile} 
+                className="hidden" 
+              />
+
+              {/* Main Photo Upload & Preview Card */}
+              <div className={`rounded-[24px] border p-4 ${
+                isDarkMode ? 'border-white/10 bg-white/[0.04] shadow-2xl backdrop-blur-2xl' : 'border-[#E4DFF5] bg-[#F2EEFF]/60 shadow-sm'
               }`}>
-                <span className="material-symbols-outlined">{scanMethod === 'Live Scan' ? 'photo_camera' : 'upload'}</span>
-                {scanMethod === 'Live Scan' ? 'Take a photo of your garment' : 'Upload a garment photo'}
-                <input type="file" accept="image/*" capture={scanMethod === 'Live Scan' ? 'environment' : undefined} onChange={handleFile} className="hidden" />
-              </label>
-              <div className={`rounded-[24px] border p-3 ${
-                isDarkMode ? 'border-white/10 bg-white/[0.04] shadow-2xl shadow-purple-950/20 backdrop-blur-2xl' : 'border-[#E4DFF5] bg-[#F2EEFF]/60 shadow-sm'
-              }`}>
-                <div className={`relative overflow-hidden rounded-[20px] border p-3 ${
-                  isDarkMode ? 'border-white/10 bg-[#10111f]/85' : 'border-[#E4DFF5] bg-white'
-                }`}>
-                  {isDarkMode && <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,.28),transparent_32%),radial-gradient(circle_at_100%_80%,rgba(59,130,246,.18),transparent_35%)]" />}
-                  <p className={`relative z-10 mb-2 text-[10px] font-black uppercase tracking-[0.2em] ${muted}`}>Scanned Garment Detail</p>
-                  <div className={`relative z-10 aspect-[4/3] overflow-hidden rounded-2xl border ${isDarkMode ? 'border-white/10 bg-[#070812]' : 'border-[#E4DFF5] bg-[#F2EEFF]'}`}>
-                    <img src={scanImage} alt="Scanned garment detail" className="h-full w-full object-contain bg-[#f8fafc]"/>
-                    <motion.div animate={{ y: ['-20%', '110%'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }} className="absolute left-0 right-0 top-0 h-16 bg-gradient-to-b from-transparent via-[#553BE2]/30 to-transparent" />
-                    {[
-                      'left-3 top-3 border-l-2 border-t-2',
-                      'right-3 top-3 border-r-2 border-t-2',
-                      'bottom-3 left-3 border-b-2 border-l-2',
-                      'bottom-3 right-3 border-b-2 border-r-2'
-                    ].map((corner) => (
-                      <span key={corner} className={`absolute h-10 w-10 rounded-sm border-[#553BE2] ${corner}`} />
-                    ))}
-                    <div className="absolute left-4 top-5 rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-[9px] font-black text-emerald-600">PATTERN LOCK</div>
-                    <div className="absolute bottom-4 right-4 rounded-full border border-[#E4DFF5] bg-[#F2EEFF] px-2 py-1 text-[9px] font-black text-[#553BE2]">AI 98%</div>
-                  </div>
-                </div>
-
-                <div className="relative my-4 flex items-center justify-center">
-                  <div className="absolute h-px w-full bg-gradient-to-r from-transparent via-[#553BE2]/40 to-transparent" />
-                  <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ECE7FF] bg-[#553BE2] text-white shadow-md shadow-[#553BE2]/25">
-                    <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
-                  </motion.div>
-                </div>
-
-                <div className={`grid gap-2 rounded-2xl border p-3 ${
-                  isDarkMode ? 'border-[#30264c] bg-[#111220]/80' : 'border-[#E4DFF5] bg-white'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${accentText}`}>AI Analysis</p>
-                      <p className={`mt-1 text-xs font-semibold ${muted}`}>Fabric Detail to Garment Generation</p>
+                {!uploadedImage ? (
+                  <label 
+                    htmlFor="wardrobe-file-input"
+                    className={`flex min-h-[240px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition ${
+                      isDarkMode 
+                        ? 'border-[#7041a8]/60 bg-[#121324] text-[#d8b4fe] hover:border-[#a855f7]' 
+                        : 'border-[#553BE2]/40 bg-white text-[#553BE2] hover:border-[#553BE2]'
+                    }`}
+                  >
+                    <div className={`mb-3 flex h-14 w-14 items-center justify-center rounded-2xl ${
+                      isDarkMode ? 'bg-[#251a3b] text-[#c084fc]' : 'bg-[#F2EEFF] text-[#553BE2]'
+                    }`}>
+                      <span className="material-symbols-outlined text-3xl">
+                        {scanMethod === 'Live Scan' ? 'add_a_photo' : 'cloud_upload'}
+                      </span>
                     </div>
-                    {isProcessing ? <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#553BE2] border-t-transparent" /> : <span className={`material-symbols-outlined ${accentText}`}>auto_awesome</span>}
-                  </div>
-                  <div className="space-y-2">
-                    {processingSteps.map((step, index) => {
-                      const isActive = index === processingStep && (isProcessing || matchedProducts.length > 0);
-                      const isDone = matchedProducts.length > 0 ? true : index < processingStep;
-                      return (
-                        <div key={step} className="flex items-center gap-3 text-[11px] font-bold">
-                          <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                            isDone
-                              ? 'border-emerald-300 bg-emerald-400/20 text-emerald-600'
-                              : isActive
-                                ? 'border-[#553BE2] bg-[#F2EEFF] text-[#553BE2]'
-                                : isDarkMode ? 'border-slate-700 text-slate-600' : 'border-[#E4DFF5] text-[#8E96AA]'
-                          }`}>
-                            {isDone ? <span className="material-symbols-outlined text-[13px]">check</span> : index + 1}
-                          </span>
-                          <span className={isDone || isActive ? (isDarkMode ? 'text-slate-100' : 'text-[#131426]') : muted}>{step}</span>
-                          {isActive && isProcessing && <motion.span animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 1.1, repeat: Infinity }} className="ml-auto h-1.5 w-1.5 rounded-full bg-[#553BE2]" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className={`mt-4 overflow-hidden rounded-[20px] border p-3 ${
-                  isDarkMode ? 'border-white/10 bg-[#090a13]' : 'border-[#E4DFF5] bg-white'
-                }`}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${muted}`}>Generated Garment</p>
-                    <span className={`rounded-full px-2 py-1 text-[9px] font-black ${badgeSurface}`}>Catalog Mockup</span>
-                  </div>
-                  <div className={`relative flex aspect-[4/5] items-center justify-center rounded-2xl ${
-                    isDarkMode
-                      ? 'bg-[radial-gradient(circle_at_50%_18%,rgba(168,85,247,.2),transparent_35%),linear-gradient(180deg,#141629,#090a13)]'
-                      : 'bg-[#F2EEFF]'
-                  }`}>
-                    {isProcessing ? (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-                        <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-2 border-[#553BE2] border-t-transparent" />
-                        <p className={`text-xs font-black ${accentText}`}>{processingSteps[processingStep]}</p>
-                      </motion.div>
-                    ) : processedImage ? (
-                      <motion.img
-                        initial={{ opacity: 0, y: 24, scale: 0.94 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.45 }}
-                        src={processedImage}
-                        alt="Processed garment"
-                        className="h-full w-full object-contain p-4 drop-shadow-2xl"
-                      />
-                    ) : generatedItem ? (
-                      <motion.img initial={{ opacity: 0, y: 24, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.45, ease: 'easeOut' }} src={generatedItem.generatedImage} alt="Generated garment" className="h-full w-full object-contain p-2 drop-shadow-2xl" />
-                    ) : (
-                      <div className={`text-center ${accentText}`}>
-                        <span className="material-symbols-outlined text-5xl">auto_awesome</span>
-                        <p className={`mt-2 text-xs font-black ${muted}`}>Ready to generate</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {matchedProducts.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 rounded-[20px] border p-3 ${subCard}`}>
-                  <p className={`mb-3 text-[10px] font-black uppercase tracking-[0.2em] ${accentText}`}>
-                    {matchedProducts[0].matchType === 'Exact Match' ? 'Exact Match Found' : 'Similar Matches'}
-                  </p>
-                  
-                  <div className={`flex items-center gap-3 rounded-xl p-2 text-xs ${isDarkMode ? 'bg-white/[0.05]' : 'bg-white border border-[#E4DFF5]'}`}>
-                    {scannedMatch?.imageUrl && (
-                      <img src={scannedMatch.imageUrl} alt={scannedMatch.name || 'Matched Product'} className="h-14 w-14 rounded-lg object-cover" />
-                    )}
-                    <div className="flex-1">
-                      <div className="font-bold">{scannedMatch?.name || scannedMatch?.subcategory}</div>
-                      <div className={`text-[10px] ${muted}`}>{scannedMatch?.primaryColor} • {scannedMatch?.material}</div>
-                    </div>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${badgeSurface}`}>
-                      {matchedProducts[0].similarityScore}%
+                    <p className="text-sm font-black">
+                      {scanMethod === 'Live Scan' ? 'Take a Clothing Photo' : 'Choose a Clothing Photo'}
+                    </p>
+                    <p className={`mt-1 text-xs ${muted}`}>JPEG, PNG, or WebP (up to 15MB)</p>
+                    <span className={`mt-4 rounded-xl px-4 py-2 text-xs font-black shadow-sm ${purpleButton}`}>
+                      Select Photo
                     </span>
-                  </div>
+                  </label>
+                ) : (
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${muted}`}>Garment Preview</span>
+                      {isRemovingBg ? (
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-500">
+                          Removing background...
+                        </span>
+                      ) : processedImage && !useOriginalFallback ? (
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+                          ✓ Background Removed
+                        </span>
+                      ) : useOriginalFallback ? (
+                        <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+                          Original Photo
+                        </span>
+                      ) : null}
+                    </div>
 
-                  {pairedProduct && (
+                    {/* Preview box with checkerboard background to visualize transparency */}
                     <div 
-                      className={`mt-3 flex cursor-pointer items-center justify-between rounded-xl border p-2 ${
-                        isDarkMode ? 'border-purple-500/30 bg-[#201733]' : 'border-[#E4DFF5] bg-[#F2EEFF]'
+                      className={`relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl border ${
+                        isDarkMode ? 'border-white/10 bg-[#090a13]' : 'border-[#E4DFF5] bg-white'
                       }`}
-                      onClick={() => {
-                        setSelectedItem({
-                          id: String(pairedProduct.id || 'paired-1'),
-                          category: String(pairedProduct.category || 'Bottom Wear'),
-                          colors: pairedProduct.colors || ['White'],
-                          pattern: String(pairedProduct.pattern || 'Solid'),
-                          fabric: String(pairedProduct.fabric || 'Cotton'),
-                          size: profile.size || 'M',
-                          dateAdded: new Date().toISOString(),
-                          generatedImage: String(pairedProduct.imageUrl || pairedProduct.mainImage || ''),
-                          tags: ['Paired'],
-                          attributes: {
-                            category: String(pairedProduct.category || 'Bottom Wear'),
-                            primaryColor: String(pairedProduct.colors?.[0] || 'White'),
-                            secondaryColor: 'Standard',
-                            pattern: String(pairedProduct.pattern || 'Solid'),
-                            neckType: 'Regular',
-                            sleeveType: 'Regular',
-                            fit: 'Regular Fit',
-                            material: String(pairedProduct.fabric || 'Cotton')
-                          }
-                        });
+                      style={{
+                        backgroundImage: isDarkMode
+                          ? 'linear-gradient(45deg, #131424 25%, transparent 25%), linear-gradient(-45deg, #131424 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #131424 75%), linear-gradient(-45deg, transparent 75%, #131424 75%)'
+                          : 'linear-gradient(45deg, #f0eefa 25%, transparent 25%), linear-gradient(-45deg, #f0eefa 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0eefa 75%), linear-gradient(-45deg, transparent 75%, #f0eefa 75%)',
+                        backgroundSize: '20px 20px',
+                        backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        <img src={pairedProduct.imageUrl || pairedProduct.mainImage} alt={pairedProduct.name} className="h-10 w-10 rounded-md object-cover" />
-                        <div>
-                          <p className={`text-[9px] font-bold uppercase ${accentText}`}>Paired With</p>
-                          <p className="text-xs font-bold">{pairedProduct.name || pairedProduct.category}</p>
+                      {isRemovingBg ? (
+                        <div className="flex flex-col items-center justify-center p-6 text-center">
+                          <div className="h-10 w-10 animate-spin rounded-full border-3 border-[#553BE2] border-t-transparent" />
+                          <p className={`mt-3 text-xs font-black ${accentText}`}>Removing background with rembg...</p>
+                          <p className={`mt-1 text-[11px] ${muted}`}>Preserving garment silhouette</p>
+                        </div>
+                      ) : (
+                        <img 
+                          src={processedImage || uploadedImage} 
+                          alt="Garment preview" 
+                          className="h-full w-full object-contain p-3 drop-shadow-xl" 
+                        />
+                      )}
+                    </div>
+
+                    {/* Error display with clear retry and fallback options */}
+                    {bgRemovalError && !isRemovingBg && (
+                      <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs">
+                        <div className="flex items-start gap-2 text-rose-500">
+                          <span className="material-symbols-outlined text-base">warning</span>
+                          <span className="font-semibold">{bgRemovalError}</span>
+                        </div>
+                        <div className="mt-2.5 flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={retryBackgroundRemoval}
+                            className="flex-1 rounded-lg bg-rose-500 px-3 py-1.5 text-[11px] font-bold text-white shadow hover:bg-rose-600"
+                          >
+                            Retry Background Removal
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={continueWithOriginal}
+                            className={`flex-1 rounded-lg border px-3 py-1.5 text-[11px] font-bold ${
+                              isDarkMode ? 'border-white/20 bg-white/10 text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                            }`}
+                          >
+                            Use Original Photo
+                          </button>
                         </div>
                       </div>
-                      <span className={`material-symbols-outlined text-sm ${accentText}`}>chevron_right</span>
-                    </div>
-                  )}
+                    )}
 
-                  <button 
-                    className={`mt-3 w-full rounded-xl py-2.5 text-xs font-black ${purpleButton}`}
-                    onClick={() => {
-                      if (scannedMatch) {
-                        setSelectedItem({
-                          id: String(scannedMatch.productId || `match-${Date.now()}`),
-                          category: String(scannedMatch.category || 'Top Wear'),
-                          colors: [String(scannedMatch.primaryColor || 'Standard')],
-                          pattern: String(scannedMatch.pattern || 'Solid'),
-                          fabric: String(scannedMatch.material || 'Cotton'),
-                          size: profile.size || 'M',
-                          dateAdded: new Date().toISOString(),
-                          generatedImage: String(scannedMatch.imageUrl || processedImage || scanImage),
-                          tags: ['Scanned Match'],
-                          attributes: {
-                            category: String(scannedMatch.category || 'Top Wear'),
-                            primaryColor: String(scannedMatch.primaryColor || 'Standard'),
-                            secondaryColor: String(scannedMatch.secondaryColor || scannedMatch.primaryColor || 'Standard'),
-                            pattern: String(scannedMatch.pattern || 'Solid'),
-                            neckType: String(scannedMatch.neckType || 'Regular'),
-                            sleeveType: String(scannedMatch.sleeveType || 'Regular'),
-                            fit: String(scannedMatch.fit || 'Regular Fit'),
-                            material: String(scannedMatch.material || 'Cotton')
-                          }
-                        });
-                      }
-                    }}
-                  >
-                    View Details
-                  </button>
-                </motion.div>
+                    <div className="mt-3 flex justify-end">
+                      <label 
+                        htmlFor="wardrobe-file-input"
+                        className={`cursor-pointer text-xs font-bold ${accentText} hover:underline`}
+                      >
+                        Choose a different photo
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Garment details configuration */}
+              {uploadedImage && (
+                <div className={`mt-3 rounded-2xl border p-3 ${subCard}`}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                        Category
+                      </label>
+                      <select 
+                        value={garmentCategory || selectedCategory || ''} 
+                        onChange={(e) => setGarmentCategory(e.target.value)}
+                        className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                          isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                        }`}
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                        Color / Note
+                      </label>
+                      <input 
+                        type="text"
+                        value={garmentColor}
+                        onChange={(e) => setGarmentColor(e.target.value)}
+                        placeholder="e.g. Navy Blue"
+                        className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                          isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
               )}
 
+              {/* Action buttons */}
               <div className="mt-4 flex gap-3">
-                <button onClick={handleAnalyze} disabled={isProcessing} className={`flex-1 rounded-xl border py-3 text-xs font-black shadow-sm disabled:opacity-60 ${
-                  isDarkMode ? 'border-[#30264c] bg-[#171827] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
-                }`}>AI Smart Scan</button>
-                <button onClick={saveItem} disabled={!generatedItem} className={`flex-1 rounded-xl py-3 text-xs font-black disabled:opacity-40 ${purpleButton}`}>Save Item</button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setUploadedImage(null);
+                    setUploadedFile(null);
+                    setProcessedImage(null);
+                    setBgRemovalError(null);
+                    setUseOriginalFallback(false);
+                  }} 
+                  className={`flex-1 rounded-xl border py-3 text-xs font-black shadow-sm ${
+                    isDarkMode ? 'border-[#30264c] bg-[#171827] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleSaveGarment} 
+                  disabled={!uploadedImage || isRemovingBg} 
+                  className={`flex-1 rounded-xl py-3 text-xs font-black disabled:opacity-40 ${purpleButton}`}
+                >
+                  Save to Wardrobe
+                </button>
               </div>
             </motion.section>
           </motion.div>

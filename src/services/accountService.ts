@@ -54,7 +54,7 @@ export const upsertUserProfile = async (
     wardrobeUpdatedAt?: string;
   }
 ) => {
-  const docId = getUserDocId(account.email || account.uid || account.username || 'guestuser@nova.ai');
+  const docId = account.uid || getUserDocId(account.email || account.username || 'guestuser@nova.ai');
   const email = account.email || '';
   const username = account.username || (email ? email.split('@')[0] : docId);
   const now = Date.now();
@@ -82,7 +82,10 @@ export const upsertUserProfile = async (
 
 export const fetchProfileFromFirebase = async (uid: string): Promise<Partial<NovaAccount> | null> => {
   try {
-    const docId = getUserDocId(uid);
+    let docId = uid;
+    if (uid.includes('@')) {
+      docId = getUserDocId(uid);
+    }
     const parentSnap = await getDoc(doc(db, 'users', docId));
     if (parentSnap.exists()) return parentSnap.data() as Partial<NovaAccount>;
 

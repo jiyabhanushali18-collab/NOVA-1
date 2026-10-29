@@ -122,11 +122,7 @@ const prepareImage = async (imageDataUrl: string): Promise<PreparedImage> => {
 
   const sharp = await getSharp();
   if (!sharp) {
-    // Sharp not available - return mock/fallback data
-    console.warn('⚠ Sharp not available - returning mock image data for analysis');
-    const fallbackData = Buffer.alloc(384 * 384 * 3);
-    fallbackData.fill(200); // Neutral gray tone
-    return { data: fallbackData, width: 384, height: 384 };
+    throw new Error('Image processing library (sharp) is not available on this server.');
   }
 
   const input = Buffer.from(parsed.data, 'base64');
@@ -377,13 +373,7 @@ export const analyzeSelfieLocally = async (imageDataUrl: string): Promise<LocalV
 
     return analysis;
   } catch (error) {
-    console.warn('⚠ Local analysis failed, returning mock data:', error instanceof Error ? error.message : String(error));
-    return {
-      skinTone: { value: 'Medium', confidence: 0.7 },
-      faceShape: { value: 'Oval', confidence: 0.6 },
-      hairType: { value: 'Straight', confidence: 0.6 },
-      hairColor: { value: 'Brown', confidence: 0.7 },
-      outfitStyle: { value: 'Casual', confidence: 0.5 }
-    };
+    console.error('Local selfie analysis failed:', error instanceof Error ? error.message : String(error));
+    throw error instanceof Error ? error : new Error(String(error));
   }
 };

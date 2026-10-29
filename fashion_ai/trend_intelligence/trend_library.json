@@ -1,0 +1,357 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-10-27",
+  "governance_standard": "NOVA Sourced & Dated Fashion Intelligence Standards",
+  "trends": [
+    {
+      "trend_id": "TRD-2025-01",
+      "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+      "description": "Architectural high-rise trousers and jeans that curve outward dramatically at the hips and outer thigh before tapering sharply back in at the ankle.",
+      "relevant_aesthetics": ["modern_minimalist", "elevated_casual", "streetwear"],
+      "clothing_categories": ["bottoms", "denim", "tailoring"],
+      "region": "Global & Urban India",
+      "season": "All-Season (2024-2026 Macro-Shift)",
+      "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+      "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+      "publication_date": "2024-09-15",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "editorial_and_retail",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Fitted baby tee, tucked-in fine-gauge knit, or nipped-in blazer to balance lower volume",
+        "bottom": "Rigid high-waisted barrel-leg denim or tailored wool-blend horseshoe pants",
+        "footwear": "Pointed-toe slingback kitten heels, almond-toe loafers, or slim retro sneakers (avoid chunky dad shoes)",
+        "accessories": "Minimalist leather belt with silver hardware, structured shoulder bag"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "All climates; choose 100% cotton for dry heat, tropical-weight wool for evening",
+        "occasion": "Elevated casual, creative workplace, gallery openings, weekend social"
+      },
+      "budget_friendly_alternatives": "High-street curved-seam denim from accessible retailers or thrifting vintage tapered jeans sized up and darted.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-04-01",
+      "status": "active_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-02",
+      "trend_name": "Butter Yellow as the Soft Alternative Neutral",
+      "description": "Pale, creamy, warm pastel yellow that functions as an understated neutral base, replacing stark optical white and cold greys.",
+      "relevant_aesthetics": ["clean_girl", "quiet_luxury", "soft_tailoring"],
+      "clothing_categories": ["knitwear", "silks", "tailoring", "accessories"],
+      "region": "Global",
+      "season": "Spring/Summer & Resort (2024-2026)",
+      "source_title": "Why Butter Yellow Is the Defining Color Trend of Recent Runways",
+      "source_url": "https://www.harpersbazaar.com/fashion/trends/butter-yellow-trend",
+      "publication_date": "2024-06-20",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "runway_and_street_style",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Butter yellow silk-cashmere knit polo or fluid satin blouse",
+        "bottom": "Warm ivory wide-leg pleated linen trousers or washed denim",
+        "footwear": "Chocolate brown leather loafers or cream kitten-heel mules",
+        "accessories": "18k gold vermeil jewellery, rich tan leather tote"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Ideal for warm and tropical weather; reflects heat while maintaining color depth",
+        "occasion": "Daytime networking, brunch, garden weddings, creative professional"
+      },
+      "budget_friendly_alternatives": "Linen button-down dyed in soft butter tone paired with staple cream trousers.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-06-01",
+      "status": "active_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-03",
+      "trend_name": "Mesh & Sheer Ballet Flats",
+      "description": "Semi-transparent fishnet, mesh, and delicate lace ballet flats that introduce negative space and airy tactile contrast to outfits.",
+      "relevant_aesthetics": ["clean_girl", "tactile_minimalist", "coquette"],
+      "clothing_categories": ["footwear"],
+      "region": "Global & Metro India",
+      "season": "Spring/Summer (2024-2026)",
+      "source_title": "The Mesh Shoe Phenomenon: How Alaïa's Flats Changed Warm-Weather Dressing",
+      "source_url": "https://www.vogue.com/fashion/trends/mesh-flats-summer",
+      "publication_date": "2024-05-10",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "editorial_and_retail",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Crisp poplin oversized button-down or sheer layered tank",
+        "bottom": "Puddle trousers with relaxed hem or midi slip skirt",
+        "footwear": "Black or beige sheer mesh ballet flats with single buckle strap",
+        "accessories": "Cord pendant necklace, woven straw or raffia shoulder bag"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Excellent for hot, dry or mild summer weather; avoid in wet monsoon conditions",
+        "occasion": "Casual city days, weekend cafes, summer dinner"
+      },
+      "budget_friendly_alternatives": "Woven crochet or micro-mesh Mary Janes from high-street collections.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2026-12-01",
+      "status": "active_seasonal_trend"
+    },
+    {
+      "trend_id": "TRD-2025-04",
+      "trend_name": "Low-Profile Retro Runners & Ballet-Sneaker Hybrids",
+      "description": "Slim, low-profile retro track and martial arts-inspired trainers (Adidas SL72, Puma Speedcat, Miu Miu hybrid ballet sneakers) replacing chunky platform 'dad shoes'.",
+      "relevant_aesthetics": ["gen_z_streetwear", "sporty_preppy", "high_low_styling"],
+      "clothing_categories": ["footwear"],
+      "region": "Global & India",
+      "season": "Ongoing Macro-Trend (2024-2026)",
+      "source_title": "The Death of the Chunky Sneaker: Rise of Sleek Low-Profile Runners",
+      "source_url": "https://www.harpersbazaar.com/fashion/trends/retro-sneaker-shifts",
+      "publication_date": "2024-08-01",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "retail_and_consumer_street_style",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Oversized tailored blazer over vintage jersey or plain baby tee",
+        "bottom": "Fluid wide-leg trousers pooling over the flat toe-box, or sporty track shorts",
+        "footwear": "Sleek suede low-profile retro runner in chocolate/cream or bold primary color",
+        "accessories": "Sporty canvas tote or half-moon leather cross-body"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "All seasons; breathable suede/mesh upper suited for moderate climates",
+        "occasion": "Everyday college, travel, casual Friday, creative office"
+      },
+      "budget_friendly_alternatives": "Classic canvas low-top plimsolls or vintage racing trainers from secondary marketplaces.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-06-01",
+      "status": "active_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-05",
+      "trend_name": "Drop-Waist Silhouettes & Elongated Bodices",
+      "description": "Seams and bodices extending past the natural waist to the low hip before flaring into a fluid A-line, bubble, or pleated skirt, creating an elongated sculptural torso.",
+      "relevant_aesthetics": ["romantic_feminine", "coquette", "contemporary_evening"],
+      "clothing_categories": ["dresses", "skirts", "tops"],
+      "region": "Global",
+      "season": "Spring/Summer & Resort (2024-2026)",
+      "source_title": "Why the Drop-Waist Silhouette Has Captured Modern Runways and Red Carpets",
+      "source_url": "https://www.vogue.com/fashion/trends/drop-waist-dress-revival",
+      "publication_date": "2024-07-12",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "runway_and_editorial",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Fitted drop-waist bodice or longline knit extending to upper hip",
+        "bottom": "Flared pleated lower hem or integrated cotton poplin skirt",
+        "footwear": "Pointed kitten-heel mules or minimalist flat leather sandals",
+        "accessories": "Delicate pearls, ribbon hair ties, miniature clutch"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Light cotton poplin or silk suited for warm weather",
+        "occasion": "Summer galas, cocktail parties, evening dates, art exhibitions"
+      },
+      "budget_friendly_alternatives": "Drop-waist poplin sundresses from accessible contemporary brands.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2026-12-01",
+      "status": "active_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-06",
+      "trend_name": "Blokecore & Sporty-Preppy Juxtaposition",
+      "description": "Subverting athletic streetwear by pairing vintage football/rugby jerseys with sharp formal tailoring, pleated mini/midi skirts, or leather dress shoes.",
+      "relevant_aesthetics": ["blokecore", "sporty_preppy", "gen_z_streetwear"],
+      "clothing_categories": ["tops", "streetwear", "skirts", "outerwear"],
+      "region": "Global & Indian Urban Gen Z",
+      "season": "Ongoing Gen Z Core (2023-2026)",
+      "source_title": "Blokecore: How Football Kits Became High Fashion's Favorite Streetwear Trope",
+      "source_url": "https://www.elle.in/fashion/trends/blokecore-indian-gen-z",
+      "publication_date": "2024-04-18",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "consumer_and_social_phenomenon",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Vintage oversized long-sleeve striped rugby or football jersey",
+        "bottom": "Knife-pleated midi skirt or relaxed straight-leg dark wash denim",
+        "footwear": "Black leather loafers with white crew socks, or low-profile retro trainers",
+        "accessories": "Rectangular rimless sunglasses, nylon cross-body bag"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Breathable moisture-wicking synthetic jersey fabric ideal for warm humid climates",
+        "occasion": "College campus, weekend hangout, music concerts, casual creative agency"
+      },
+      "budget_friendly_alternatives": "Thrifted vintage sports jerseys paired with existing pleated schoolgirl skirts or tailored trousers.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-01-01",
+      "status": "active_genz_core"
+    },
+    {
+      "trend_id": "TRD-2025-07",
+      "trend_name": "Coquette & Dark Balletcore Contrast",
+      "description": "Hyper-feminine romanticism featuring delicate ribbons, lace trim, and sheer pastel fabrics juxtaposed with moody dark leather jackets or heavy footwear to avoid saccharine cliché.",
+      "relevant_aesthetics": ["coquette", "balletcore", "romantic_grunge"],
+      "clothing_categories": ["tops", "skirts", "accessories", "knitwear"],
+      "region": "Global",
+      "season": "Spring/Fall (2024-2026)",
+      "source_title": "The Evolution of the Coquette Aesthetic: From Hyper-Sweet to Edgy Contrast",
+      "source_url": "https://www.harpersbazaar.com/fashion/trends/coquette-aesthetic-evolution",
+      "publication_date": "2024-03-25",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "social_and_retail",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "top": "Delicate lace-trim camisole or sheer babydoll top in blush or ivory",
+        "outerwear": "Worn vintage distressed brown leather motorcycle jacket",
+        "bottom": "Silky slip skirt or micro pleated skirt with lace hem",
+        "footwear": "Chunky Mary Janes with ribbon ties or matte leather knee-high boots",
+        "accessories": "Bow hair barrettes, cord ribbon choker"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Mild to warm; layer jacket for evening chill",
+        "occasion": "Cafes, indie music gigs, weekend dates, museum visits"
+      },
+      "budget_friendly_alternatives": "Lace-trimmed thrifted camisoles styled with an oversized second-hand leather jacket.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2026-12-01",
+      "status": "active_genz_core"
+    },
+    {
+      "trend_id": "TRD-2025-08",
+      "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+      "description": "Subverting formal Indian ethnic codes by styling short Lucknowi Chikankari or hand-block printed cotton kurtis as daily tops paired with baggy low-rise jeans, cargo pants, or denim skirts.",
+      "relevant_aesthetics": ["indo_western_fusion", "desi_casual", "indian_genz"],
+      "clothing_categories": ["kurtis", "denim", "fusion_separates"],
+      "region": "India (Pan-India Metro & Tier-1/2 Colleges)",
+      "season": "All-Season (Climate-Essential)",
+      "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+      "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+      "publication_date": "2024-10-05",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "regional_editorial_and_consumer_reality",
+      "confidence": "very_high",
+      "suggested_garment_combinations": {
+        "top": "Short pastel Chikankari cotton kurti (thigh-length, relaxed cut) with sleeves rolled",
+        "bottom": "Baggy wide-leg medium wash blue denim or olive utilitarian cargo pants",
+        "footwear": "Classic tan leather Kolhapuri flats or clean low-profile white sneakers",
+        "accessories": "Oxidised silver jhumka earrings, canvas tote bag, tiny black bindi"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Engineered for 30°C-38°C Indian heat and humidity; breathable mulmul/cotton ensures all-day comfort",
+        "occasion": "College lectures, casual cafe outings, library sessions, creative studio work"
+      },
+      "budget_friendly_alternatives": "Locally sourced street-market Lucknowi cotton kurtis paired with affordable high-street baggy jeans.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-10-01",
+      "status": "active_cultural_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-09",
+      "trend_name": "Oxidised Silver Jewellery with Contemporary Streetwear",
+      "description": "Juxtaposing heritage Indian oxidised silver jewellery (layered tribal chokers, heavy silver jhumkas, multi-finger rings) with western streetwear staples like boxy blazers, graphic tees, and hoodies.",
+      "relevant_aesthetics": ["indian_genz", "contemporary_fusion", "alt_streetwear"],
+      "clothing_categories": ["accessories", "jewellery", "streetwear"],
+      "region": "India & Global South Asian Diaspora",
+      "season": "All-Season",
+      "source_title": "Silver Linings: Why Gen Z is Obsessed with Oxidised Silver Jewellery",
+      "source_url": "https://www.grazia.co.in/fashion/trends/oxidised-silver-streetwear-gen-z",
+      "publication_date": "2024-08-22",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "consumer_and_editorial",
+      "confidence": "very_high",
+      "suggested_garment_combinations": {
+        "top": "Oversized washed charcoal graphic tee or unstructured black linen blazer",
+        "bottom": "Straight-leg ecru denim or dark grey tailored trousers",
+        "footwear": "Chunky leather loafers or clean skate shoes",
+        "accessories": "Tiered oxidised silver coin choker, stacked silver rings, minimal silver ear cuffs"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "All climates; sweat-resistant natural metals suited for humid environments",
+        "occasion": "College fests, art pop-ups, indie concerts, informal social gatherings"
+      },
+      "budget_friendly_alternatives": "Authentic street-market artisan brass/silver alloy jewellery from local bazaars (Janpath, Colaba Causeway).",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-08-01",
+      "status": "active_cultural_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-10",
+      "trend_name": "Deep Cherry & Rich Burgundy Monolith",
+      "description": "Deep wine, oxblood, and dark black-cherry shades dominating leather jackets, structured bags, and footwear as the premium alternative to black.",
+      "relevant_aesthetics": ["quiet_luxury", "elevated_casual", "autumn_tailoring"],
+      "clothing_categories": ["outerwear", "leather", "footwear", "bags"],
+      "region": "Global & India",
+      "season": "Fall/Winter (2024-2026)",
+      "source_title": "The Saturated Wine Spectrum: Deep Cherry and Oxblood Dominate Fall/Winter",
+      "source_url": "https://www.vogue.com/fashion/trends/burgundy-color-trend",
+      "publication_date": "2024-10-01",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "runway_and_retail",
+      "confidence": "high",
+      "suggested_garment_combinations": {
+        "outerwear": "Glossy or distressed dark cherry leather jacket or tailored wool overcoat",
+        "top": "Oatmeal or charcoal cashmere crewneck knit",
+        "bottom": "Charcoal tailored straight-leg trousers or dark indigo denim",
+        "footwear": "Deep burgundy polished leather loafers or sleek ankle boots",
+        "accessories": "Patent oxblood East-West shoulder bag"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Suited for mild to cold weather (winter evenings in North India; cool global seasons)",
+        "occasion": "Evening dining, gallery openings, cocktail receptions, executive casual"
+      },
+      "budget_friendly_alternatives": "Thrifted faux-leather oversized jacket in deep wine paired with staple dark jeans.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-03-01",
+      "status": "active_macro_trend"
+    },
+    {
+      "trend_id": "TRD-2025-11",
+      "trend_name": "Capri Pants & Knee-Length Pedal Pushers",
+      "description": "Fitted, calf-grazing trousers ending below the knee, revived from noughties pop-culture and styled with sharp modern tailoring.",
+      "relevant_aesthetics": ["y2k_revival", "noughties_preppy", "editorial_casual"],
+      "clothing_categories": ["bottoms"],
+      "region": "Global",
+      "season": "Spring/Summer (2024-2026)",
+      "source_title": "The High-Fashion Rehabilitation of the Capri Pant",
+      "source_url": "https://www.voguescandinavia.com/trends/capri-pants-trend-guide",
+      "publication_date": "2024-06-15",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "editorial_and_runway",
+      "confidence": "medium",
+      "suggested_garment_combinations": {
+        "top": "Oversized structured linen blazer worn buttoned as a top, or crisp poplin shirt",
+        "bottom": "Tailored stretch-cotton black or khaki capri pants ending mid-calf",
+        "footwear": "Kitten-heel slingbacks or low-profile ballet flats to elongate the ankle",
+        "accessories": "Slim 90s sunglasses, structured mini handheld bag"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Warm weather; exposes lower leg while maintaining tailored upper modesty",
+        "occasion": "Creative workplace, summer brunch, fashion events"
+      },
+      "budget_friendly_alternatives": "Tailoring thrifted slim trousers to a precise mid-calf hem.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2026-11-01",
+      "status": "active_seasonal_trend"
+    },
+    {
+      "trend_id": "TRD-2025-12",
+      "trend_name": "Handloom Ajrakh & Sanganeri Block-Print Co-ords",
+      "description": "Traditional Indian natural-dye block-print textiles tailored into modern gender-neutral summer sets (boxy Cuban-collar shirts with relaxed drawstring shorts or trousers).",
+      "relevant_aesthetics": ["indian_genz", "sustainable_artisan", "summer_casual"],
+      "clothing_categories": ["co-ords", "shirts", "shorts"],
+      "region": "India (Pan-India Summer)",
+      "season": "Spring/Summer/Monsoon (All-Season Climate)",
+      "source_title": "Artisanal Streetwear: Indian Block Prints Get a Modern Co-ord Makeover",
+      "source_url": "https://www.vogue.in/fashion/trends/handloom-co-ords-indian-summer",
+      "publication_date": "2024-05-18",
+      "date_accessed": "2026-10-27",
+      "evidence_type": "regional_editorial_and_retail",
+      "confidence": "very_high",
+      "suggested_garment_combinations": {
+        "top": "Boxy Cuban-collar half-sleeve shirt in hand-block indigo/madder Ajrakh print",
+        "bottom": "Matching or contrast ecru relaxed-fit drawstring cotton shorts or linen trousers",
+        "footwear": "Tan leather braided slides or handcrafted mojaris",
+        "accessories": "Handcrafted brass cuff, round wire-frame sunglasses"
+      },
+      "climate_and_occasion_suitability": {
+        "climate": "Breathable 100% cambric cotton engineered for extreme heat (35°C-42°C)",
+        "occasion": "Summer vacations, weekend markets, casual travel, creative casual"
+      },
+      "budget_friendly_alternatives": "Direct-from-weaver cotton block-print shirts paired with plain neutral shorts.",
+      "last_verified_date": "2026-10-27",
+      "expiry_review_date": "2027-05-01",
+      "status": "active_cultural_macro_trend"
+    }
+  ]
+}

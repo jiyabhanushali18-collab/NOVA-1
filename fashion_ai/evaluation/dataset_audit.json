@@ -1,0 +1,166 @@
+{
+  "1. Men's clothing & styling": {
+    "count": 1609,
+    "percentage": 50.4,
+    "samples": [
+      {
+        "input": "I'm a tall, athletic man with broad shoulders and a narrow waist. I prefer sharp, tailored suits that highlight my V-shaped torso.",
+        "completion": "Outfit Combination 1:\n- Top: Fitted white linen shirt\n- Bottom: Slim-fit beige chinos\n- Shoe: Brown leather loafers\n- Accessories: Brown woven belt, aviator sunglasses\n\nOutfit Combination 2:\n- Top: Li"
+      },
+      {
+        "input": "I'm a medium height woman with a soft, round figure. I love bohemian styles with flowing dresses and skirts that embrace my curves.",
+        "completion": "Outfit 1:\n- Top: A loose, flowy peasant blouse in a vibrant floral print.\n- Bottom: A high-waisted maxi skirt in a soft, lightweight fabric with a bohemian print.\n- Shoes: Brown leather sandals with i"
+      }
+    ]
+  },
+  "2. Women's clothing & styling": {
+    "count": 2505,
+    "percentage": 78.5,
+    "samples": [
+      {
+        "input": "I'm a tall, athletic man with broad shoulders and a narrow waist. I prefer sharp, tailored suits that highlight my V-shaped torso.",
+        "completion": "Outfit Combination 1:\n- Top: Fitted white linen shirt\n- Bottom: Slim-fit beige chinos\n- Shoe: Brown leather loafers\n- Accessories: Brown woven belt, aviator sunglasses\n\nOutfit Combination 2:\n- Top: Li"
+      },
+      {
+        "input": "I'm a medium height woman with a soft, round figure. I love bohemian styles with flowing dresses and skirts that embrace my curves.",
+        "completion": "Outfit 1:\n- Top: A loose, flowy peasant blouse in a vibrant floral print.\n- Bottom: A high-waisted maxi skirt in a soft, lightweight fabric with a bohemian print.\n- Shoes: Brown leather sandals with i"
+      }
+    ]
+  },
+  "3. Gender-neutral / non-conventional": {
+    "count": 248,
+    "percentage": 7.8,
+    "samples": [
+      {
+        "input": "I'm a tall, slender, androgynous person. I lean towards gender-neutral, minimalist styles that flatter my linear silhouette.",
+        "completion": "Outfit 1:\n- Top: A loose-fitting white linen shirt with a mandarin collar\n- Bottom: High-waisted black tailored pants with a straight, wide leg\n- Shoe: White leather low-top sneakers\n- Accessories: A "
+      },
+      {
+        "input": "I'm a tall, androgynous non-binary person with a lean frame. I prefer oversized, artsy clothing that creates an intriguing, fluid silhouette.",
+        "completion": "Outfit Combination 1:\n- Top: A flowy, oversized linen button-up shirt in a neutral color, like beige or white, with a unique asymmetrical cut.\n- Bottom: High-waisted wide-leg pants in a soft, earthy t"
+      }
+    ]
+  },
+  "4. Clean-girl / Pinterest aesthetic": {
+    "count": 1,
+    "percentage": 0.0,
+    "samples": [
+      {
+        "input": "I'm a muscular mesomorph man who likes showing off my physique. I prefer fitted t-shirts, jeans, and suits that highlight my strong build.",
+        "completion": "Outfit 1:\n- Top: Fitted white linen shirt with short sleeves to showcase your physique and keep you cool in the tropical climate.\n- Bottom: Tailored navy blue chino shorts that give a crisp and clean "
+      }
+    ]
+  },
+  "5. Minimalist / elevated casual": {
+    "count": 639,
+    "percentage": 20.0,
+    "samples": [
+      {
+        "input": "I'm a petite, slender man with a youthful appearance. I gravitate towards smart-casual wear, preferring fitted jeans and stylish bomber jackets.",
+        "completion": "Outfit Combination 1:\n\nTop: A light-colored linen short-sleeve shirt with a subtle print.\nBottom: Fitted dark blue jeans with a tapered leg.\nShoes: Classic white sneakers.\nAccessories: A brown leather"
+      },
+      {
+        "input": "I'm a medium-built man with a balanced, rectangular shape. I prefer minimalist, clean-cut clothing like straight-leg pants and slim-fit shirts.",
+        "completion": "Outfit 1:\n- Top: A slim-fit, short-sleeve linen shirt in a light green color to blend with the nature surroundings.\n- Bottom: A pair of beige straight-leg pants for a clean and minimalist look.\n- Shoe"
+      }
+    ]
+  },
+  "6. Gen Z Streetwear": {
+    "count": 1502,
+    "percentage": 47.0,
+    "samples": [
+      {
+        "input": "I'm a medium height woman with a soft, round figure. I love bohemian styles with flowing dresses and skirts that embrace my curves.",
+        "completion": "Outfit 1:\n- Top: A loose, flowy peasant blouse in a vibrant floral print.\n- Bottom: A high-waisted maxi skirt in a soft, lightweight fabric with a bohemian print.\n- Shoes: Brown leather sandals with i"
+      },
+      {
+        "input": "I'm a petite, slender man with a youthful appearance. I gravitate towards smart-casual wear, preferring fitted jeans and stylish bomber jackets.",
+        "completion": "Outfit Combination 1:\n\nTop: A light-colored linen short-sleeve shirt with a subtle print.\nBottom: Fitted dark blue jeans with a tapered leg.\nShoes: Classic white sneakers.\nAccessories: A brown leather"
+      }
+    ]
+  },
+  "7. Silhouette, proportion, fabric": {
+    "count": 2783,
+    "percentage": 87.2,
+    "samples": [
+      {
+        "input": "I'm a tall, athletic man with broad shoulders and a narrow waist. I prefer sharp, tailored suits that highlight my V-shaped torso.",
+        "completion": "Outfit Combination 1:\n- Top: Fitted white linen shirt\n- Bottom: Slim-fit beige chinos\n- Shoe: Brown leather loafers\n- Accessories: Brown woven belt, aviator sunglasses\n\nOutfit Combination 2:\n- Top: Li"
+      },
+      {
+        "input": "I'm a medium height woman with a soft, round figure. I love bohemian styles with flowing dresses and skirts that embrace my curves.",
+        "completion": "Outfit 1:\n- Top: A loose, flowy peasant blouse in a vibrant floral print.\n- Bottom: A high-waisted maxi skirt in a soft, lightweight fabric with a bohemian print.\n- Shoes: Brown leather sandals with i"
+      }
+    ]
+  },
+  "8. Colour theory & palettes": {
+    "count": 1642,
+    "percentage": 51.4,
+    "samples": [
+      {
+        "input": "I'm a short, curvy man with a muscular build. I opt for relaxed, comfortable clothing like stretch jeans and loose shirts that accommodate my frame.",
+        "completion": "Outfit 1:\n- Top: A loose, lightweight button-up shirt in a neutral color like olive green or light blue.\n- Bottom: Dark wash stretch jeans that fit your muscular build.\n- Shoe: Brown suede Chelsea boo"
+      },
+      {
+        "input": "I'm a tall, thin woman with an ectomorph body type. I like layering pieces to add dimension, such as chunky knits and structured jackets.",
+        "completion": "Outfit combination 1:\n- Top: A chunky cable-knit sweater in a neutral color like cream or beige. This will add some texture and warmth to your look.\n- Bottom: High-waisted jeans in a medium wash. This"
+      }
+    ]
+  },
+  "9. Shoes & Accessories": {
+    "count": 3191,
+    "percentage": 99.9,
+    "samples": [
+      {
+        "input": "I'm a tall, athletic man with broad shoulders and a narrow waist. I prefer sharp, tailored suits that highlight my V-shaped torso.",
+        "completion": "Outfit Combination 1:\n- Top: Fitted white linen shirt\n- Bottom: Slim-fit beige chinos\n- Shoe: Brown leather loafers\n- Accessories: Brown woven belt, aviator sunglasses\n\nOutfit Combination 2:\n- Top: Li"
+      },
+      {
+        "input": "I'm a medium height woman with a soft, round figure. I love bohemian styles with flowing dresses and skirts that embrace my curves.",
+        "completion": "Outfit 1:\n- Top: A loose, flowy peasant blouse in a vibrant floral print.\n- Bottom: A high-waisted maxi skirt in a soft, lightweight fabric with a bohemian print.\n- Shoes: Brown leather sandals with i"
+      }
+    ]
+  },
+  "10. Occasion, climate, budget": {
+    "count": 373,
+    "percentage": 11.7,
+    "samples": [
+      {
+        "input": "I'm a skinny, tall man with a linear body shape. I tend to choose slim-fit suits and skinny jeans that complement my slender frame.",
+        "completion": "Outfit Combination 1:\nTop: A lightweight linen button-up shirt in a warm earthy tone, such as olive green or burnt orange.\nBottom: Slim-fit khaki chinos for a casual yet put-together look.\nShoes: Brow"
+      },
+      {
+        "input": "I'm a medium-height woman with a soft, rectangular body. I enjoy cozy, casual styles like knit sweaters and relaxed-fit jeans.",
+        "completion": "Outfit 1:\n- Top: A cozy, oversized cable knit sweater in a neutral color like cream or beige to keep you warm and stylish.\n- Bottom: Relaxed-fit jeans in a medium wash for a casual and comfortable loo"
+      }
+    ]
+  },
+  "11. Capsule wardrobe & versatility": {
+    "count": 336,
+    "percentage": 10.5,
+    "samples": [
+      {
+        "input": "I'm a short, curvy man with a muscular build. I opt for relaxed, comfortable clothing like stretch jeans and loose shirts that accommodate my frame.",
+        "completion": "Outfit 1:\n- Top: A loose, lightweight button-up shirt in a neutral color like olive green or light blue.\n- Bottom: Dark wash stretch jeans that fit your muscular build.\n- Shoe: Brown suede Chelsea boo"
+      },
+      {
+        "input": "I'm a medium-built man with a balanced, rectangular shape. I prefer minimalist, clean-cut clothing like straight-leg pants and slim-fit shirts.",
+        "completion": "Outfit 1:\n- Top: A slim-fit, short-sleeve linen shirt in a light green color to blend with the nature surroundings.\n- Bottom: A pair of beige straight-leg pants for a clean and minimalist look.\n- Shoe"
+      }
+    ]
+  },
+  "12. Current & seasonal trends": {
+    "count": 14,
+    "percentage": 0.4,
+    "samples": [
+      {
+        "input": "I'm a plus-size man with a prominent stomach and love classic, tailored clothes. I need suiting recommendations to minimize and smooth my large midsec",
+        "completion": "Outfit Combination 1:\n- Top: Tailored short-sleeved button-down shirt in a light, breathable fabric such as linen or cotton, in a solid color like navy or beige.\n- Bottom: Flat-front tailored shorts t"
+      },
+      {
+        "input": "I'm a short, athletic woman with a strong lower body. I prefer sporty, yet feminine attire like skorts and tank tops for a balanced look.",
+        "completion": "Outfit Combination 1:\n- Top: A fitted tank top in a bright color, such as neon pink, to add femininity.\n- Bottom: A black or navy skort that accentuates your strong lower body.\n- Shoe: White sneakers "
+      }
+    ]
+  }
+}

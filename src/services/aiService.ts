@@ -1,6 +1,13 @@
 const AI_SERVER_URL = "http://127.0.0.1:8000";
 
 export interface VisionAnalysisResponse {
+  success?: boolean;
+  filename?: string;
+  path?: string;
+  processed_image?: string;
+  image_url?: string;
+  scan_note?: string;
+  error?: string;
   detected_objects?: string[];
   labels?: string[];
   dominant_color_rgb?: { r: number; g: number; b: number };
@@ -13,7 +20,6 @@ export interface VisionAnalysisResponse {
   neckType?: string;
   fit?: string;
   material?: string;
-  processed_image?: string;
   attributes?: {
     category?: string;
     primaryColor?: string;
@@ -42,7 +48,7 @@ export const aiService = {
   },
 
   /**
-   * Sends garment file to Google Cloud Vision API backend (/api/analyze-vision)
+   * Sends garment file to Python backend background-removal endpoint (/upload)
    */
   async uploadGarment(file: File, category = ''): Promise<VisionAnalysisResponse> {
     const formData = new FormData();
@@ -50,33 +56,28 @@ export const aiService = {
     formData.append("category", category);
 
     try {
-      const response = await fetch(`${AI_SERVER_URL}/api/analyze-vision`, {
+      const response = await fetch(`${AI_SERVER_URL}/upload`, {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error(`Vision API endpoint error: ${response.status} ${response.statusText}`);
+        let errorDetail = response.statusText;
+        try {
+          const errorJson = await response.json();
+          errorDetail = errorJson.detail || errorJson.error || errorDetail;
+        } catch {}
+        throw new Error(`Garment processor error (${response.status}): ${errorDetail}`);
       }
 
       const result = await response.json();
-      return result.data || result;
+      if (!result.success || !result.processed_image) {
+        throw new Error(result.error || "Garment processor did not return a processed image.");
+      }
+      return result;
     } catch (error) {
-      console.error("❌ Error uploading garment to Vision API:", error);
-      
-      // Fallback return if local backend is restarting or offline
-      return {
-        category: "Top Wear",
-        primaryColor: "Blue",
-        pattern: "Solid",
-        material: "Cotton",
-        attributes: {
-          category: "Top Wear",
-          primaryColor: "Blue",
-          pattern: "Solid",
-          material: "Cotton"
-        }
-      };
+      console.error("❌ Error uploading garment to background-removal API:", error);
+      throw error;
     }
   },
 

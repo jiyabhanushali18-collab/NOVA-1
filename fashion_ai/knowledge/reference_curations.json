@@ -1,0 +1,574 @@
+[
+  {
+    "id": "REF-001",
+    "aesthetic": "clean_girl",
+    "target_wearer": "women",
+    "occasion": "weekend farmers market / casual daytime",
+    "climate": "mild spring 20C",
+    "budget_tier": "contemporary_entry",
+    "garments": {
+      "base_layer": "Fitted ribbed modal scoop-neck tank in cream",
+      "top": "Relaxed oversized button-down linen shirt in sage green (worn unbuttoned as light overshirt)",
+      "outerwear": "None (shirt acts as layer)",
+      "bottom": "High-waisted wide-leg ecru denim trousers",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "1:2 visual ratio (short torso anchor via tucked tank, elongated bottom)",
+      "top_volume": "Fitted inner layer balanced by fluid unbuttoned vertical drape",
+      "bottom_volume": "Structured wide-leg volume",
+      "visual_balance": "The fitted tank prevents the fluid linen shirt and wide jeans from swamping the torso, while the vertical line of the open shirt elongates."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["ribbed modal cotton", "slub linen", "rigid 12oz denim", "woven raffia", "smooth leather"],
+      "texture_contrast_explanation": "Tactile contrast between the fine rib of the tank, the matte slubby drape of washed linen, and the rigid architectural surface of the ecru denim."
+    },
+    "color_palette": {
+      "dominant_60": "Ecru / Cream (trousers and tank)",
+      "secondary_30": "Sage Green (linen overshirt)",
+      "accent_10": "Warm Cognac / Caramel (leather slides and belt)",
+      "harmony_type": "Tonal organic analogous with warm earth accent",
+      "rationale": "Cream and sage establish an airy, botanical cleanliness; cognac leather grounds the pastel palette with organic warmth."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Minimalist cognac leather crisscross flat slides",
+      "accessories": [
+        "Medium woven straw market tote bag with cognac leather handles",
+        "Thick 20mm 14k gold tubular hoop earrings",
+        "Tortoiseshell rectangular acetate sunglasses"
+      ],
+      "hardware_finish": "gold"
+    },
+    "styling_instructions": [
+      "Tuck the cream tank neatly into high-waisted denim.",
+      "Cuff the sleeves of the sage linen shirt twice to expose forearms and gold jewelry.",
+      "Slick hair back into a low clean bun with a middle part.",
+      "Keep makeup dewy with tinted lip balm and brushed brows."
+    ],
+    "why_it_works": "The outfit exemplifies the clean-girl aesthetic by mastering intentional nonchalance: architectural denim anchors the slouchy linen shirt, while the fitted ribbed base layer preserves female bodily proportion. The palette remains strictly organic and unpolluted by harsh blacks.",
+    "common_mistakes_to_avoid": [
+      "Wearing skinny distressed blue jeans (destroys the clean modern line).",
+      "Adding a black nylon backpack or silver chunky chain (breaks color harmony and gold metal finish).",
+      "Buttoning the linen shirt completely (creates an unflattering boxy block without waist definition)."
+    ],
+    "trend_nature": {
+      "classification": "macro_trend",
+      "provenance_date": "2023-2026",
+      "verification_status": "Established contemporary staple"
+    }
+  },
+  {
+    "id": "REF-002",
+    "aesthetic": "minimalist",
+    "target_wearer": "men",
+    "occasion": "architecture exhibition / gallery vernissage",
+    "climate": "cool autumn 15C",
+    "budget_tier": "mid_market",
+    "garments": {
+      "base_layer": "Fine-gauge extra-fine merino wool mock-neck knit in charcoal grey",
+      "top": "Unstructured boxy wool-flannel overshirt in jet black",
+      "outerwear": "Charcoal single-breasted tailored car coat",
+      "bottom": "Single-pleated relaxed tapered wool-blend trousers in dark anthracite",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Columnar monochrome silhouette (unbroken vertical line)",
+      "top_volume": "Structured shoulder with clean mock-neck collar",
+      "bottom_volume": "Pleated volume at the hip tapering gently to no-break hem",
+      "visual_balance": "Tapering trouser hem reveals shoe architecture without breaking the vertical line."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["merino wool", "brushed wool flannel", "polished box-calf leather"],
+      "texture_contrast_explanation": "Monochrome charcoal succeeds through tactile depth: matte brushed flannel absorbs light against the semi-lustrous sheen of fine-gauge knit and glossy polished leather."
+    },
+    "color_palette": {
+      "dominant_60": "Charcoal / Anthracite (trousers and coat)",
+      "secondary_30": "Jet Black (overshirt and mock-neck)",
+      "accent_10": "Brushed Steel / Silver (minimalist watch dial and eyewear)",
+      "harmony_type": "Monochromatic tonal depth",
+      "rationale": "Subtle tonal value stepping (light-charcoal to jet-black) avoids looking like an unintentional mismatch while creating high-end graphic sophistication."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Polished black box-calf leather penny loafers with a rounded almond toe and subtle welt",
+      "accessories": [
+        "Titanium wire-frame round optical glasses",
+        "Minimalist Bauhaus matte-steel watch on black leather strap",
+        "Smooth black leather folio pouch"
+      ],
+      "hardware_finish": "silver"
+    },
+    "styling_instructions": [
+      "Half-button the black overshirt over the mock-neck knit so the collar architecture is highlighted.",
+      "Ensure trouser hems hit cleanly at the top of the loafer with zero fabric puddle.",
+      "Wear sheer charcoal mercerized cotton dress socks to maintain continuity."
+    ],
+    "why_it_works": "The outfit reflects architectural minimalism by stripping away superfluous ornamentation and relying purely on silhouette discipline, flawless fabric drape, and monochromatic nuance.",
+    "common_mistakes_to_avoid": [
+      "Adding a brightly patterned silk scarf or tie (distracts from the minimalist geometry).",
+      "Choosing polyester synthetic trousers with visible static cling.",
+      "Wearing chunky distressed athletic runners (breaks the formal clean line)."
+    ],
+    "trend_nature": {
+      "classification": "enduring_classic",
+      "provenance_date": "Timeless",
+      "verification_status": "Sartorial baseline"
+    }
+  },
+  {
+    "id": "REF-003",
+    "aesthetic": "streetwear",
+    "target_wearer": "androgynous",
+    "occasion": "urban weekend / creative meetup",
+    "climate": "mild transitional 18C",
+    "budget_tier": "contemporary_entry",
+    "garments": {
+      "base_layer": "Heavyweight 280gsm boxy white crewneck tee",
+      "top": "Sun-faded washed charcoal oversized graphic hoodie with dropped shoulders",
+      "outerwear": "Vintage olive drab M-65 cropped field jacket",
+      "bottom": "Wide-leg double-knee carpenter trousers in washed tobacco brown canvas",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Layered proportion play with visible hem reveal (white tee peeking 1.5 inches below hoodie)",
+      "top_volume": "Generous boxy torso with dropped shoulders",
+      "bottom_volume": "Full wide-leg straight cut with puddle over sneakers",
+      "visual_balance": "Cropped jacket length frames the waist, preventing heavy drape from shortening the body."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["heavy loopback French terry", "duck canvas", "ripstop nylon", "hairy suede"],
+      "texture_contrast_explanation": "Rugged utilitarian dialogue: structured abrasive duck canvas pants paired with soft sun-washed cotton terry and tactile roughout suede."
+    },
+    "color_palette": {
+      "dominant_60": "Tobacco Brown & Olive Drab (earthy workwear foundation)",
+      "secondary_30": "Sun-faded Charcoal Grey (hoodie)",
+      "accent_10": "Crisp White (peeking tee hem and sneaker sidewalls)",
+      "harmony_type": "Grounded workwear earth tones with high-contrast neutral anchor",
+      "rationale": "Tobacco brown and faded olive share warm militaristic undertones, while the crisp white base layer prevents the outfit from reading muddy."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Retro skate / court sneakers in hairy grey suede and vintage off-white sole",
+      "accessories": [
+        "Unstructured cotton twill dad cap in faded black with tonal embroidery",
+        "Matte silver Cuban link chain (snug 18-inch collar fit)",
+        "Heavy canvas crossbody sling bag in black"
+      ],
+      "hardware_finish": "silver"
+    },
+    "styling_instructions": [
+      "Ensure the white undershirt hem peeks 1 to 2 inches below the bottom waistband of the hoodie.",
+      "Allow the wide trouser cuffs to break naturally over the sneaker tongue without rolling.",
+      "Keep the cap bill slightly curved and worn low."
+    ],
+    "why_it_works": "The outfit captures contemporary Gen Z streetwear by honoring workwear durability, skate proportions, and genderless cuts without falling into chaotic trend-chasing. Dropped shoulders and wide-leg hems create an effortless relaxed silhouette.",
+    "common_mistakes_to_avoid": [
+      "Wearing ultra-skinny jeans with chunky skate shoes (creates disproportionate clown-feet silhouette).",
+      "Wearing flimsy light t-shirts that cling rather than hold boxy shape.",
+      "Over-accessorizing with high-polish dress watch or luxury logo belts."
+    ],
+    "trend_nature": {
+      "classification": "macro_trend",
+      "provenance_date": "2022-2026",
+      "verification_status": "Mainstream global youth culture staple"
+    }
+  },
+  {
+    "id": "REF-004",
+    "aesthetic": "semi_formal",
+    "target_wearer": "men",
+    "occasion": "coastal summer outdoor wedding guest",
+    "climate": "warm coastal 27C",
+    "budget_tier": "mid_market",
+    "garments": {
+      "base_layer": "None (breathable directly on skin)",
+      "top": "Crisp white Italian linen-cotton spread collar shirt",
+      "outerwear": "Unlined hopsack wool-silk-linen blend blazer in sand / light oat",
+      "bottom": "Tailored flat-front cotton-linen trousers in French navy blue",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Tailored 1:2 ratio with clean natural shoulder line (soft Neapolitan spalla camicia)",
+      "top_volume": "Slim-tailored torso with breathable drape",
+      "bottom_volume": "Mid-rise, straight slim leg with 1.5-inch cuffs hitting with zero break",
+      "visual_balance": "The light blazer draws eyes upward while dark navy trousers ground the formal wedding context."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["hopsack wool-linen blend", "crisp cotton-linen", "woven silk knit", "brushed suede"],
+      "texture_contrast_explanation": "Open-weave hopsack breathes under ocean breeze; tactile woven knit tie contrasts against crisp shirting; soft suede softens the formal lines."
+    },
+    "color_palette": {
+      "dominant_60": "French Navy (trousers and knit tie)",
+      "secondary_30": "Sand / Oat (unlined blazer)",
+      "accent_10": "Optic White (shirting and linen pocket square)",
+      "harmony_type": "Nautical coastal complimentary contrast",
+      "rationale": "Sand and navy evoke coastal sophistication; white shirting keeps the formal guest dress code intact."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Snuff suede penny loafers with unlined leather soles",
+      "accessories": [
+        "Navy blue silk knit necktie with square end",
+        "Crisp white linen pocket square folded into a flat presidential TV fold",
+        "Brown woven bridle leather dress belt with brass buckle",
+        "Classic tortoiseshell keyhole bridge sunglasses"
+      ],
+      "hardware_finish": "gold"
+    },
+    "styling_instructions": [
+      "Leave top collar button done when wearing the knit tie, but unbutton the lower button of the blazer.",
+      "Wear no-show breathable bamboo loafer liners to keep ankles bare and cool.",
+      "Ensure pocket square shows only 1/4 inch of crisp white linen above the breast pocket welt."
+    ],
+    "why_it_works": "Unlike stuffy city suits, the hopsack blazer and linen-blend shirting provide breathability in seaside heat. The contrast between sand oat blazer and navy trousers maintains dignity without looking like a corporate office suit.",
+    "common_mistakes_to_avoid": [
+      "Wearing a heavy black poly-blend business suit (stifling, overheats, and clashes with beach venue).",
+      "Wearing shorts, denim, or graphic sneakers to a semi-formal wedding guest code.",
+      "Wearing shiny patent leather tuxedo shoes with casual linen."
+    ],
+    "trend_nature": {
+      "classification": "enduring_classic",
+      "provenance_date": "Timeless",
+      "verification_status": "Coastal formal benchmark"
+    }
+  },
+  {
+    "id": "REF-005",
+    "aesthetic": "modern_creative",
+    "target_wearer": "non_conventional",
+    "occasion": "creative arts gala / avant-garde music event",
+    "climate": "mild indoor / spring 19C",
+    "budget_tier": "mid_market",
+    "garments": {
+      "base_layer": "Fitted semi-sheer black fine-gauge modal mock-neck long sleeve",
+      "top": "Oversized, structured boxy wool blazer in charcoal pinstripe with exaggerated peak lapels",
+      "outerwear": "Blazer acts as outerwear structure",
+      "bottom": "Heavyweight knife-pleated wool-twill midi skirt in jet black (falling right below the knee)",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Subversive architectural proportions: strong sharp masculine shoulder framing vertical accordion skirt drape",
+      "top_volume": "Broad boxy tailored shoulder and narrow hip cut",
+      "bottom_volume": "Fluid vertical pleats creating kinetic movement while walking",
+      "visual_balance": "Heavy combat boots anchor the fluid lower hemline, giving a grounded, muscular stance."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["structured wool pinstripe", "heavy wool twill", "semi-sheer modal", "polished calfskin"],
+      "texture_contrast_explanation": "Tension between tailoring rigidity (pinstripe blazer) and kinetic fluid geometry (knife pleats), grounded by rugged polished leather."
+    },
+    "color_palette": {
+      "dominant_60": "Jet Black (skirt, boots, and mock-neck)",
+      "secondary_30": "Charcoal Pinstripe (blazer)",
+      "accent_10": "High-shine Polished Silver (hardware and jewelry)",
+      "harmony_type": "Monochromatic sculptural high-contrast",
+      "rationale": "A disciplined monochrome palette keeps the non-conventional silhouette dignified, high-fashion, and powerful."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Chunky lace-up leather combat derby boots with Commando tread soles",
+      "accessories": [
+        "Heavy industrial silver chain bracelet and minimal signet ring",
+        "Structured leather micro-bag with silver clip closure",
+        "Opaque black ribbed mid-calf socks"
+      ],
+      "hardware_finish": "silver"
+    },
+    "styling_instructions": [
+      "Wear the blazer buttoned at the waist to accentuate the transition between tailored jacket and flare of the pleats.",
+      "Lace the combat boots tightly to create a sharp line above the ankle.",
+      "Keep grooming clean and intentional: slicked or textured hair with natural matte skin."
+    ],
+    "why_it_works": "The outfit honors the male wearer requesting a skirt by leaning into architectural tailoring and combat footwear rather than copying traditional feminine dress codes. The broad-shouldered blazer and utilitarian boots preserve a powerful silhouette.",
+    "common_mistakes_to_avoid": [
+      "Pairing with dainty stiletto heels or floral ruffles (forces stereotypical feminine costume instead of modern creative menswear tailoring).",
+      "Using lightweight flimsy poly-chiffon skirts that lack architectural structure.",
+      "Wearing a sloppy oversized hoodie that hides the waist transition."
+    ],
+    "trend_nature": {
+      "classification": "macro_trend",
+      "provenance_date": "2021-2026",
+      "verification_status": "Recognized contemporary runway & red carpet development"
+    }
+  },
+  {
+    "id": "REF-006",
+    "aesthetic": "quiet_luxury",
+    "target_wearer": "women",
+    "occasion": "snowy winter holiday / alpine resort",
+    "climate": "sub-zero winter -8C",
+    "budget_tier": "elevated_luxury",
+    "garments": {
+      "base_layer": "Silk-cashmere thermal base crewneck in oatmeal",
+      "top": "Chunky 6-ply ribbed cable-knit cashmere turtleneck sweater in winter white",
+      "outerwear": "Full-length belted shearling-lined wrap coat in warm taupe",
+      "bottom": "High-rise tailored wide-leg flannel wool trousers in camel",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Cocoon volume belted at the natural waist for elongated columnar structure",
+      "top_volume": "Sculptural high roll-neck with dropped shoulders",
+      "bottom_volume": "Fluid pooling wide-leg flannel",
+      "visual_balance": "The belt cinches the heavy coat to define the waist, while wide trousers balance the voluminous collar."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["6-ply Scottish cashmere", "heavy wool flannel", "Spanish merino shearling", "buttery lambskin"],
+      "texture_contrast_explanation": "Monochrome neutrals achieve depth through intense tactile variety: plush shearling wool fleece, dry brushed flannel, and soft lofty cashmere."
+    },
+    "color_palette": {
+      "dominant_60": "Winter White / Oatmeal (knit and base)",
+      "secondary_30": "Camel & Warm Taupe (trousers and shearling coat)",
+      "accent_10": "Chocolate Brown (leather gloves and boots)",
+      "harmony_type": "Tonal warm ivory-to-camel depth",
+      "rationale": "High-luxury alpine palette avoids dark muddy tones, maintaining an ethereal winter brightness."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Waterproof shearling-lined combat hiking boots in espresso calfskin with Vibram lug soles",
+      "accessories": [
+        "Cashmere-lined espresso lambskin gloves",
+        "Structured taupe leather top-handle handbag",
+        "Gold huggie earrings with bezel-set champagne quartz"
+      ],
+      "hardware_finish": "gold"
+    },
+    "styling_instructions": [
+      "Fold the turtleneck collar once loosely without pressing flat.",
+      "Tie the coat belt with a half-knot rather than using the buckle for effortless slouch.",
+      "Wear thermal wool socks concealed beneath trousers."
+    ],
+    "why_it_works": "Combines genuine sub-zero thermal functionality with quiet luxury aesthetics. Zero synthetic nylon sheen; every layer is an honest, natural thermal fiber that drapes with weight.",
+    "common_mistakes_to_avoid": [
+      "Wearing thin linen or cotton layers (causes hypothermia in -8C).",
+      "Pairing with thin stilettos or open sandals on snow and ice.",
+      "Wearing a loud neon ski puffer over tailored trousers."
+    ],
+    "trend_nature": {
+      "classification": "enduring_classic",
+      "provenance_date": "Timeless",
+      "verification_status": "Luxury alpine standard"
+    }
+  },
+  {
+    "id": "REF-007",
+    "aesthetic": "functional_monsoon",
+    "target_wearer": "men",
+    "occasion": "rainy monsoon workday / urban commute",
+    "climate": "hot humid monsoon 32C torrential rain",
+    "budget_tier": "contemporary_entry",
+    "garments": {
+      "base_layer": "Moisture-wicking open-knit mercerized cotton undershirt",
+      "top": "Relaxed Cuban collar shirt in dark olive linen-tencel blend",
+      "outerwear": "Ultra-lightweight packable Gore-Tex or DWR technical anorak in matte black (with pit zips for ventilation)",
+      "bottom": "Cropped quick-dry technical nylon-stretch trousers in charcoal grey (hitting 2 inches above ankle)",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Cropped ankle clearance (zero fabric drag in rain puddles)",
+      "top_volume": "Airy boxy top allowing cross-breeze",
+      "bottom_volume": "Slim-tapered cropped leg",
+      "visual_balance": "Cropped trousers keep wet splashes away from hems; lightweight anorak adds functional structure without heat trap."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["linen-tencel blend", "technical ripstop nylon", "rubberized leather"],
+      "texture_contrast_explanation": "Technical matte nylon shell contrasts with breezy fluid tencel-linen shirting."
+    },
+    "color_palette": {
+      "dominant_60": "Charcoal Grey & Black (trousers and rain shell)",
+      "secondary_30": "Dark Olive (Cuban collar shirt)",
+      "accent_10": "Matte Gunmetal (hardware and watch)",
+      "harmony_type": "Low-maintenance utilitarian neutrals",
+      "rationale": "Darker shades do not show translucent water spots or street splashing."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Waterproof leather Chelsea boots with rubber lug sole or waterproof Gore-Tex trail sneakers",
+      "accessories": [
+        "Waterproof roll-top cordura backpack",
+        "200m water-resistant dive watch with rubber strap",
+        "Compact wind-resistant umbrella with wooden handle"
+      ],
+      "hardware_finish": "gunmetal"
+    },
+    "styling_instructions": [
+      "Wear shirt untucked for maximum airflow under the breathable shell.",
+      "Keep trouser hems unrolled—the factory crop prevents water pooling.",
+      "Open pit-zips on the rain jacket to ventilate humidity."
+    ],
+    "why_it_works": "Solves the extreme tropical monsoon paradox (32°C heat + pouring rain). Avoids heavy water-logging denim and suffocating non-breathable rubber coats by using vented DWR tech fabrics and quick-dry blends.",
+    "common_mistakes_to_avoid": [
+      "Wearing heavy raw denim jeans (absorbs liters of water and takes days to dry).",
+      "Wearing canvas sneakers or suede shoes in mud and standing water.",
+      "Wearing white or light grey trousers that turn translucent when splashed."
+    ],
+    "trend_nature": {
+      "classification": "macro_trend",
+      "provenance_date": "2023-2026",
+      "verification_status": "Gorpcore / Urban technical commute baseline"
+    }
+  },
+  {
+    "id": "REF-008",
+    "aesthetic": "smart_casual",
+    "target_wearer": "androgynous",
+    "occasion": "creative tech startup job interview (Berlin / SF)",
+    "climate": "temperate 18C",
+    "budget_tier": "mid_market",
+    "garments": {
+      "base_layer": "Fine 200gsm mercerized cotton crewneck tee in crisp off-white",
+      "top": "Relaxed unstructured single-breasted blazer in dark navy tropical wool",
+      "outerwear": "Blazer acts as formal anchor",
+      "bottom": "Mid-rise relaxed straight-leg pleated chinos in stone grey",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Clean 1:2 ratio; relaxed tailoring without stiff corporate padding",
+      "top_volume": "Soft-shoulder blazer draping effortlessly over tee",
+      "bottom_volume": "Straight leg with subtle front pleat",
+      "visual_balance": "Soft shoulders signal modern approachability, while the pleated trouser maintains professional gravitas."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["tropical worsted wool", "crisp compact cotton", "stone-washed twill", "burnished calfskin"],
+      "texture_contrast_explanation": "Clean minimal dialogue: dry matte tropical wool jacket over smooth mercerized cotton, grounded by dense twill."
+    },
+    "color_palette": {
+      "dominant_60": "Dark Navy (unstructured blazer)",
+      "secondary_30": "Stone Grey (trousers)",
+      "accent_10": "Crisp Off-White (crewneck tee and minimalist sneaker)",
+      "harmony_type": "Classic European smart-casual contrast",
+      "rationale": "Navy and stone grey convey steady competence without the stiffness of black-and-white boardroom attire."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Minimalist low-profile white calfskin leather sneakers with zero exterior branding, or black leather derby shoes with a rounded toe",
+      "accessories": [
+        "Slim vegetable-tanned black leather messenger bag",
+        "Matte silver wristwatch with black leather band",
+        "Minimalist wire-frame glasses"
+      ],
+      "hardware_finish": "silver"
+    },
+    "styling_instructions": [
+      "Keep the white crewneck tucked cleanly into the stone trousers.",
+      "Wear the blazer unbuttoned while seated or standing for casual authority.",
+      "Ensure sneakers are immaculate and free of dirt scuffs."
+    ],
+    "why_it_works": "Perfect for progressive tech and design environments where a suit appears archaic, but a graphic tee looks amateur. The blazer-and-trousers pairing provides structure, while the pristine crewneck and sneakers communicate modern agility.",
+    "common_mistakes_to_avoid": [
+      "Wearing a full matched business suit with necktie (reads disconnected from startup culture).",
+      "Wearing athletic gym running shoes or worn skate shoes (looks sloppy in an interview).",
+      "Wearing distressed or ripped jeans."
+    ],
+    "trend_nature": {
+      "classification": "enduring_classic",
+      "provenance_date": "2020-2026",
+      "verification_status": "Global creative industry standard"
+    }
+  },
+  {
+    "id": "REF-009",
+    "aesthetic": "tropical_black_tie",
+    "target_wearer": "men",
+    "occasion": "summer black-tie optional gala / formal destination evening",
+    "climate": "sweltering humid 34C",
+    "budget_tier": "elevated_luxury",
+    "garments": {
+      "base_layer": "Breathable cotton voile formal shirt with covered placket and French cuffs",
+      "top": "Single-breasted 1-button shawl collar dinner jacket in ivory tropical-weight wool-silk faille",
+      "outerwear": "Dinner jacket serves as formal outerwear",
+      "bottom": "Formal black tropical-weight worsted wool trousers with silk grosgrain side stripe",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Formal 1:2 silhouette; light upper jacket creates broad regal chest, dark trousers anchor",
+      "top_volume": "Softly structured canvas chest with unlined back for heat escape",
+      "bottom_volume": "High-rise straight trousers with side adjusters (no belt loops)",
+      "visual_balance": "The ivory shawl collar frames the face while classic black formal trousers maintain black-tie protocol."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["tropical wool-silk faille", "lightweight wool barathea", "fine cotton voile", "silk grosgrain", "patent leather"],
+      "texture_contrast_explanation": "Formal textural tension: lustrous silk shawl lapels against textured ivory wool faille, paired with smooth voile shirting."
+    },
+    "color_palette": {
+      "dominant_60": "Midnight Black (formal trousers and bow tie)",
+      "secondary_30": "Ivory / Warm White (shawl dinner jacket)",
+      "accent_10": "Jet Black & Gold (onyx studs in gold bezels)",
+      "harmony_type": "High-contrast tropical formal monochrome",
+      "rationale": "Ivory reflects heat and outdoor glare while respecting high black-tie tradition (the classic warm-weather dinner jacket)."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Black patent leather opera pumps with grosgrain bow, or unlined black Belgian loafers in polished calfskin",
+      "accessories": [
+        "Black silk grosgrain self-tie butterfly bow tie",
+        "Onyx formal shirt studs with gold trim",
+        "Black silk grosgrain cummerbund (shields waistband while remaining cooler than a vest)"
+      ],
+      "hardware_finish": "gold"
+    },
+    "styling_instructions": [
+      "Fasten the single button of the jacket when standing; unbutton when seated.",
+      "Wear ultra-fine silk or over-the-calf mercerized cotton black socks.",
+      "Never wear a necktie; a formal dinner jacket requires a bow tie."
+    ],
+    "why_it_works": "Solves the brutal dress code conflict of black-tie in 34°C tropical heat. The warm-weather ivory dinner jacket is recognized in black-tie etiquette worldwide, shedding the suffocating heat of a heavy black three-piece tuxedo.",
+    "common_mistakes_to_avoid": [
+      "Wearing denim jeans, t-shirts, or sneakers to a black-tie event (gross etiquette violation).",
+      "Wearing a heavy black polyester rental tuxedo (causes heat stroke and sweating).",
+      "Wearing a matching white or ivory trouser (looks like a cruise ship entertainer; trousers must be black)."
+    ],
+    "trend_nature": {
+      "classification": "enduring_classic",
+      "provenance_date": "1930s-present",
+      "verification_status": "International formal dress code standard"
+    }
+  },
+  {
+    "id": "REF-010",
+    "aesthetic": "menswear_tailoring",
+    "target_wearer": "women",
+    "occasion": "architectural keynote / formal symposium",
+    "climate": "mild indoor 20C",
+    "budget_tier": "mid_market",
+    "garments": {
+      "base_layer": "High-neck crisp poplin button-up shirt buttoned to the collar in optic white",
+      "top": "Oversized, un-darted boxy double-breasted suit jacket with padded structured shoulders in charcoal pinstripe wool",
+      "outerwear": "Suit jacket serves as structured outerwear",
+      "bottom": "Matching high-rise wide-leg pleated trousers in charcoal pinstripe (full break over shoes)",
+      "one_piece": null
+    },
+    "silhouette_proportions": {
+      "ratio_rule": "Power tailoring: broad shoulder, straight boxy waist without feminine darts, sweeping wide leg",
+      "top_volume": "Exaggerated sharp shoulder and longline hem past the hips",
+      "bottom_volume": "Generous deep pleats pooling cleanly over footwear",
+      "visual_balance": "The high buttoned collar grounds the face inside the powerful frame of the oversized shoulders."
+    },
+    "fabric_texture_dialogue": {
+      "primary_fabrics": ["heavyweight British wool flannel pinstripe", "stiff 100% Egyptian cotton poplin", "polished box-calf leather"],
+      "texture_contrast_explanation": "Austere authority: dense matte chalk-stripe wool against paper-crisp cotton shirting and mirror-finish leather."
+    },
+    "color_palette": {
+      "dominant_60": "Charcoal Grey Chalkstripe (suit jacket and trousers)",
+      "secondary_30": "Optic White (high-collar poplin shirt)",
+      "accent_10": "High-shine Polished Silver (cufflinks and minimal signet ring)",
+      "harmony_type": "Monochromatic architectural power contrast",
+      "rationale": "Charcoal and optic white emphasize form, line, and geometry without decorative color distractions."
+    },
+    "footwear_and_accessories": {
+      "footwear": "Substantial black leather double monk strap shoes or chunky Goodyear-welted derbies",
+      "accessories": [
+        "Brushed silver geometric cufflinks",
+        "Vintage rectangular tank watch with black alligator strap",
+        "Architectural black leather briefcase"
+      ],
+      "hardware_finish": "silver"
+    },
+    "styling_instructions": [
+      "Keep all shirting buttons fastened to the throat; do not roll sleeves.",
+      "Let the trousers pool naturally with a generous break over the substantial derbies.",
+      "Groom hair sleekly away from the face to emphasize the jacket lapel lines."
+    ],
+    "why_it_works": "Fulfills the woman's explicit request for authentic, un-feminized menswear tailoring without imposing nipped waists, revealing necklines, or stiletto heels. The proportions respect traditional Savile Row construction adapted for a contemporary woman's frame.",
+    "common_mistakes_to_avoid": [
+      "Adding a push-up camisole, plunging V-neck, or tight pencil skirt (violates the user's explicit non-feminized request).",
+      "Pairing with flimsy high heels that break the solid menswear grounding.",
+      "Tapering the waist with a feminine waist belt."
+    ],
+    "trend_nature": {
+      "classification": "macro_trend",
+      "provenance_date": "2021-2026",
+      "verification_status": "Modern runway & executive tailoring staple"
+    }
+  }
+]

@@ -1,0 +1,531 @@
+{
+  "metadata": {
+    "test_suite": "10 Representative Integration Tests",
+    "model": "nova-fashion-1.5b-benchmark",
+    "endpoint": "http://127.0.0.1:3001/api/curate-structured",
+    "timestamp": "2026-10-27T00:33:30Z"
+  },
+  "stats": {
+    "total_requests": 10,
+    "success_count": 10,
+    "rejected_count": 0,
+    "error_count": 0,
+    "success_rate_pct": 100.0,
+    "rejection_rate_pct": 0.0,
+    "mean_latency_sec": 26.66,
+    "median_latency_sec": 23.44,
+    "min_latency_sec": 17.61,
+    "max_latency_sec": 45.21
+  },
+  "results": [
+    {
+      "test_id": "req_01",
+      "category": "clean_girl",
+      "original_prompt": "Curate a clean-girl aesthetic summer daytime outfit in crisp white and soft beige. Include light layering and gold minimalist jewelry.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 23.24,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Summer Daytime",
+        "aesthetic": "Clean-Girl Aesthetic",
+        "palette": [
+          "white",
+          "beige"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "cotton",
+          "color": "crisp white",
+          "cut": "v-neck, fitted"
+        },
+        "bottom": {
+          "item": "skirt",
+          "fabric": "silk or cotton blend",
+          "color": "soft beige",
+          "fit": "flowy and loose"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather soles, lace up",
+          "color": "white"
+        },
+        "accessories": [
+          {
+            "item": "gold hoop earring",
+            "material_or_metal": "gold",
+            "color": "beige"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to maintain a clean-girl aesthetic with crisp white and soft beige tones. The light layering of the skirt complements the top, creating a balanced silhouette that suits both day and evening wear. Minimalist gold jewelry adds a touch of sophistication without overpowering the overall look.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_02",
+      "category": "minimalist",
+      "original_prompt": "Design a modern minimalist everyday outfit in neutral tones with fluid tailoring and relaxed proportions.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 22.56,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Casual Office",
+        "aesthetic": "Minimalist",
+        "palette": [
+          "white",
+          "gray",
+          "beige"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "cotton",
+          "color": "neutral white or light gray",
+          "cut": "straight collar, straight hem"
+        },
+        "bottom": {
+          "item": "pants",
+          "fabric": "polyester blend",
+          "color": "light beige with subtle texture contrast (e.g., a stripe pattern)",
+          "fit": "loose fit for comfort and fluid movement"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers",
+          "material": "leather upper, mesh sole",
+          "color": "neutral beige with subtle texture contrast (e.g., a stripe pattern)"
+        },
+        "accessories": [
+          {
+            "item": "watch",
+            "material_or_metal": "gold plated steel",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be both modern and minimalist, with neutral tones that complement the wearer's attire. The fluid tailoring of a straight-collar shirt paired with loose-fitting pants creates a balanced silhouette without any unnecessary bulk.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_03",
+      "category": "mens_smart_casual",
+      "original_prompt": "Recommend a men's smart casual outfit for an evening rooftop networking event in spring. NO t-shirts and NO distressed denim.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 24.3,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Evening Rooftop Networking Event",
+        "aesthetic": "Sophisticated yet relaxed, with a touch of elegance.",
+        "palette": [
+          "sapphire blue",
+          "ivory white",
+          "golden brown"
+        ],
+        "top": {
+          "item": "button-down shirt in sapphire blue",
+          "fabric": "cotton-wool blend",
+          "color": "sapphire blue",
+          "cut": "straight collar, slightly fitted"
+        },
+        "bottom": {
+          "item": "navy blue chinos",
+          "fabric": "polyester-cotton blend",
+          "color": "navy blue",
+          "fit": "loose fit with slight rise for comfort and style"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "black leather loafers",
+          "material": "leather",
+          "color": "dark brown"
+        },
+        "accessories": [
+          {
+            "item": "gold watch with diamond bezel",
+            "material_or_metal": "gold",
+            "color": "golden brown"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be both stylish and comfortable, suitable for a sophisticated evening event. The combination of the sapphire blue shirt and navy chinos creates a balance between formality and relaxation.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_04",
+      "category": "womens_occasion",
+      "original_prompt": "Curate an elevated evening cocktail party outfit for a woman in an emerald green and gold palette with refined fabric textures.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 26.96,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Evening Cocktail Party",
+        "aesthetic": "Elegant, Sophisticated",
+        "palette": [
+          "Emerald Green",
+          "Gold"
+        ],
+        "top": {
+          "item": "Blouse",
+          "fabric": "Silk or\u5929\u9e45\u7ed2 (Tulle)",
+          "color": "Emerald Green",
+          "cut": "Slim and fitted"
+        },
+        "bottom": {
+          "item": "Pencil Skirt",
+          "fabric": "Lace, Satin, or Taffeta",
+          "color": "Gold",
+          "fit": "Aesthetically flattering silhouette with a slight flare at the hem"
+        },
+        "outerwear": {
+          "item": "Blazer",
+          "fabric": "Silk or\u5929\u9e45\u7ed2 (Tulle)",
+          "color": "Emerald Green",
+          "closure": "Buttoned front, optional zipper on one side"
+        },
+        "footwear": {
+          "item": "Heels",
+          "material": "Leather",
+          "color": "Gold"
+        },
+        "accessories": [
+          {
+            "item": "Necklace with emerald green gemstones and gold chain",
+            "material_or_metal": "Silver, Gold",
+            "color": "Emerald Green"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to complement the palette of emerald green and gold while maintaining a balanced silhouette. The silk blouse with lace or satin skirt creates an elegant flow that transitions seamlessly into the structured blazer for added sophistication.",
+        "constraints_satisfied": [
+          "No black, no sneakers",
+          "Gold color in all elements"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_05",
+      "category": "gender_neutral",
+      "original_prompt": "Style a gender-neutral, androgynous everyday outfit built around boxy tailoring, straight-leg trousers, and derbies in slate blue and charcoal.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 21.02,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Everyday",
+        "aesthetic": "Modern",
+        "palette": [
+          "slate blue",
+          "charcoal"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "polyester/cotton blend",
+          "color": "slate blue",
+          "cut": "boxy"
+        },
+        "bottom": {
+          "item": "straight-leg trousers",
+          "fabric": "denim/suede mix",
+          "color": "charcoal",
+          "fit": "straight, boxy"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "derbies",
+          "material": "leather",
+          "color": "slate blue"
+        },
+        "accessories": [
+          {
+            "item": "watch",
+            "material_or_metal": "gold metal",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be both modern and versatile, utilizing boxy tailoring for a sleek look that can easily transition between different occasions. The slate blue shirt complements the charcoal trousers perfectly, while the leather derby shoes add an element of sophistication.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers",
+          "No hoodies"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_06",
+      "category": "non_conventional_masculine",
+      "original_prompt": "I am a man and I want to wear a black pleated midi skirt for a contemporary gallery opening. Style me in an elevated, architecturally balanced outfit without feminizing the look.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 41.64,
+      "retry_count": 1,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "gallery opening",
+        "aesthetic": "contemporary modern",
+        "palette": [
+          "black",
+          "silver"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "polyester or cotton",
+          "color": "black",
+          "cut": "button-down"
+        },
+        "bottom": {
+          "item": "pleated midi skirt",
+          "fabric": "silk and polyester blend",
+          "color": "silver",
+          "fit": "flowy, elegant silhouette with pleats"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "leather loafers",
+          "material": "black leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "gold watch",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be contemporary and modern, with a focus on balance between the top (shirt) and bottom (skirt). The silver color of both elements complements each other while maintaining an elevated look. The leather loafers add sophistication without being too feminine.",
+        "constraints_satisfied": [
+          "top",
+          "bottom"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_07",
+      "category": "strict_exclusions",
+      "original_prompt": "Curate an elevated casual Friday outfit for a creative director in rich earth tones (olive, cream, chocolate brown). STRICT EXCLUSION: NO black clothing, NO hoodies, and NO sneakers anywhere in the outfit.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 23.44,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Casual Friday",
+        "aesthetic": "Elevated Casual",
+        "palette": [
+          "chocolate brown",
+          "cream",
+          "olive"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "silk or cotton blend",
+          "color": "cream and olive tones",
+          "cut": "V-neck with a fitted silhouette"
+        },
+        "bottom": {
+          "item": "skirt",
+          "fabric": "cotton or silk crepe de chine",
+          "color": "chocolate brown waistline, cream at the hem",
+          "fit": "A-line silhouette with slight flare"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather upper and sole",
+          "color": "ochre or chocolate brown"
+        },
+        "accessories": [
+          {
+            "item": "scarf",
+            "material_or_metal": "silk with gold trim",
+            "color": "cream and olive tones"
+          }
+        ],
+        "styling_rationale": "The outfit balances the rich earth tones of the palette, creating a cohesive look that is both casual and sophisticated. The skirt's A-line silhouette provides structure without being too restrictive, while the blouse adds a touch of elegance with its cream color.",
+        "constraints_satisfied": [
+          "No black clothing",
+          "No hoodies",
+          "No sneakers"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_08",
+      "category": "climate_dress_code_tension",
+      "original_prompt": "Recommend a formal black-tie optional summer gala outfit for a man in a sweltering 34\u00b0C humid tropical climate. How can he meet black-tie formality without heat exhaustion?",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 45.21,
+      "retry_count": 1,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "formal black-tie optional summer gala",
+        "aesthetic": "elegant yet casual",
+        "palette": [
+          "black",
+          "silver",
+          "gray"
+        ],
+        "top": {
+          "item": "button-down shirt",
+          "fabric": "polyester blend with a hint of cotton for comfort and breathability",
+          "color": "deep black, slightly silvered to add sophistication without being too formal"
+        },
+        "bottom": {
+          "item": "dark blue chinos",
+          "fabric": "denim fabric for durability and good fit",
+          "color": "navy blue with subtle gray undertones for a sophisticated look"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "black leather loafers",
+          "material": "leather upper with a smooth finish to maintain formality without heat retention",
+          "color": "dark brown or black"
+        },
+        "accessories": [
+          {
+            "item": "silver watch",
+            "material_or_metal": "gold metal band for added elegance, but not overly flashy"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be both formal and cool in a tropical climate. The black chinos provide the necessary formality without heat retention, while the silver watch adds an element of sophistication.",
+        "constraints_satisfied": [
+          "No shirt",
+          "No sneakers"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_09",
+      "category": "strict_budget",
+      "original_prompt": "Design a cohesive elevated casual capsule outfit for under $150 total budget using accessible, natural fabric textures (cotton, canvas). Specify realistic item types.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 20.62,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Casual Evening Out",
+        "aesthetic": "Elevated Casual",
+        "palette": [
+          "Light Brown",
+          "Beige",
+          "White"
+        ],
+        "top": {
+          "item": "Blouse",
+          "fabric": "Cotton",
+          "color": "Soft Beige",
+          "cut": "V-Neck, Loose Fit"
+        },
+        "bottom": {
+          "item": "Jeans",
+          "fabric": "Canvas",
+          "color": "Light Brown",
+          "fit": "Straight Fit, Mid Rise"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Loafers",
+          "material": "Leather",
+          "color": "Brown"
+        },
+        "accessories": [
+          {
+            "item": "Watch",
+            "material_or_metal": "Silver",
+            "color": "White Dial with Brown Subtle Markings"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to blend sophistication and comfort, utilizing natural fabrics for a relaxed yet stylish look. The combination of the beige blouse paired with light brown canvas jeans creates a balanced silhouette that transitions from day wear to evening events without compromising on style.",
+        "constraints_satisfied": [
+          "Budget under $150 total",
+          "No black or sneakers"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    },
+    {
+      "test_id": "req_10",
+      "category": "trend_honesty",
+      "original_prompt": "According to the latest 2026 fashion week runways, what specific shoe trend has replaced chunky loafers? Cite verified sources or explain knowledge limits.",
+      "http_status": 200,
+      "status": "success",
+      "total_latency_sec": 17.61,
+      "retry_count": 0,
+      "safe_to_display": true,
+      "parsed_structured_output": {
+        "occasion": "Fashion Week Runway",
+        "aesthetic": "Elegant and Modern",
+        "palette": [
+          "Black",
+          "White"
+        ],
+        "top": {
+          "item": "Blouse",
+          "fabric": "Silk",
+          "color": "Black",
+          "cut": "V-Neck"
+        },
+        "bottom": {
+          "item": "Skirt",
+          "fabric": "Cotton",
+          "color": "White",
+          "fit": "A-Line"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Heels",
+          "material": "Leather",
+          "color": "Black and White Stripes"
+        },
+        "accessories": [
+          {
+            "item": "Necklace",
+            "material_or_metal": "Silver Chain with Pearl",
+            "color": "White"
+          }
+        ],
+        "styling_rationale": "The latest fashion week runway trends often feature a blend of classic elegance and modern simplicity. The black silk blouse paired with white A-line skirt is an example of this trend, as it showcases the versatility of color in tailoring.",
+        "constraints_satisfied": [
+          "Black",
+          "White"
+        ]
+      },
+      "error_response": null,
+      "unresolved_fashion_quality_issue": null
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+{
+  "metadata": {
+    "hardware": {
+      "cpu": "Intel Core Processor (AVX2)",
+      "gpu": "Intel Iris Xe Graphics (No CUDA acceleration, CPU inference)",
+      "total_physical_ram_gb": 7.57,
+      "free_physical_ram_at_start_mb": 903
+    },
+    "models_compared": [
+      "nova-fashion (0.5B fine-tuned baseline)",
+      "nova-fashion-opt-v3 (0.5B fine-tuned + sartorial rules v3)",
+      "nova-fashion-opt-v4 (0.5B fine-tuned + sartorial rules v4)",
+      "nova-fashion-opt-v3 + GroundedCurator Prototype (RAG)",
+      "nova-fashion-1.5b-benchmark (Qwen2.5-1.5B-Instruct + sartorial rules v4)"
+    ]
+  },
+  "suite_1_regression_32_prompts": {
+    "models": {
+      "baseline_0.5b": {
+        "overall_score": 4.09,
+        "failure_rate_pct": 0.0,
+        "failure_count": 0,
+        "dimension_means": {
+          "coherence": 3.8,
+          "palette_consistency": 3.59,
+          "accessories_coordination": 4.14,
+          "fit_and_silhouette": 4.22,
+          "aesthetic_relevance": 4.23,
+          "constraint_compliance": 3.95,
+          "diversity_and_structure": 3.58,
+          "practicality": 4.38,
+          "trend_reliability": 4.86,
+          "gender_compliance": 4.12
+        },
+        "latency": {
+          "min_sec": 5.99,
+          "mean_sec": 13.68,
+          "max_sec": 25.72
+        }
+      },
+      "opt_v3_0.5b": {
+        "overall_score": 4.14,
+        "failure_rate_pct": 0.0,
+        "failure_count": 0,
+        "dimension_means": {
+          "coherence": 3.75,
+          "palette_consistency": 3.59,
+          "accessories_coordination": 4.38,
+          "fit_and_silhouette": 4.03,
+          "aesthetic_relevance": 4.3,
+          "constraint_compliance": 3.89,
+          "diversity_and_structure": 3.33,
+          "practicality": 4.31,
+          "trend_reliability": 4.91,
+          "gender_compliance": 4.89
+        },
+        "latency": {
+          "min_sec": 4.95,
+          "mean_sec": 11.78,
+          "max_sec": 36.61
+        }
+      },
+      "opt_v4_0.5b": {
+        "overall_score": 4.16,
+        "failure_rate_pct": 0.0,
+        "failure_count": 0,
+        "dimension_means": {
+          "coherence": 3.89,
+          "palette_consistency": 3.56,
+          "accessories_coordination": 4.25,
+          "fit_and_silhouette": 4.06,
+          "aesthetic_relevance": 4.28,
+          "constraint_compliance": 4.05,
+          "diversity_and_structure": 3.72,
+          "practicality": 4.44,
+          "trend_reliability": 4.81,
+          "gender_compliance": 4.56
+        },
+        "latency": {
+          "min_sec": 4.97,
+          "mean_sec": 11.51,
+          "max_sec": 46.99
+        }
+      },
+      "prototype_rag_0.5b": {
+        "overall_score": 3.91,
+        "failure_rate_pct": 6.2,
+        "failure_count": 2,
+        "dimension_means": {
+          "coherence": 3.66,
+          "palette_consistency": 3.31,
+          "accessories_coordination": 4.06,
+          "fit_and_silhouette": 3.94,
+          "aesthetic_relevance": 4.02,
+          "constraint_compliance": 3.77,
+          "diversity_and_structure": 3.11,
+          "practicality": 4.09,
+          "trend_reliability": 4.66,
+          "gender_compliance": 4.44
+        },
+        "latency": {
+          "min_sec": 3.87,
+          "mean_sec": 12.52,
+          "max_sec": 77.09
+        }
+      },
+      "candidate_1.5b": {
+        "overall_score": 4.32,
+        "failure_rate_pct": 3.1,
+        "failure_count": 1,
+        "dimension_means": {
+          "coherence_wearability": 3.88,
+          "palette_consistency": 3.84,
+          "silhouette_proportion": 4.58,
+          "fabric_texture_compatibility": 4.62,
+          "footwear_accessory_coordination": 4.62,
+          "aesthetic_authenticity": 4.23,
+          "gender_compliance": 4.56,
+          "constraint_satisfaction": 4.06,
+          "practicality_climate": 3.97,
+          "trend_truthfulness": 4.86
+        },
+        "latency": {
+          "min_sec": 15.16,
+          "mean_sec": 26.06,
+          "max_sec": 44.57
+        }
+      }
+    }
+  },
+  "suite_2_expanded_intelligence_16_prompts": {
+    "models": {
+      "opt_v3_0.5b": {
+        "overall_score": 4.14,
+        "failure_rate_pct": 0.0,
+        "failure_count": 0,
+        "dimension_means": {
+          "coherence_wearability": 3.81,
+          "palette_consistency": 3.59,
+          "silhouette_proportion": 4.22,
+          "fabric_texture_compatibility": 4.09,
+          "footwear_accessory_coordination": 4.47,
+          "aesthetic_authenticity": 4.0,
+          "gender_compliance": 5.0,
+          "constraint_satisfaction": 3.38,
+          "practicality_climate": 3.88,
+          "trend_truthfulness": 4.91
+        },
+        "latency": {
+          "min_sec": 4.61,
+          "mean_sec": 12.79,
+          "max_sec": 56.84
+        }
+      },
+      "opt_v4_0.5b": {
+        "overall_score": 4.17,
+        "failure_rate_pct": 0.0,
+        "failure_count": 0,
+        "dimension_means": {
+          "coherence_wearability": 3.75,
+          "palette_consistency": 3.66,
+          "silhouette_proportion": 4.59,
+          "fabric_texture_compatibility": 3.94,
+          "footwear_accessory_coordination": 4.38,
+          "aesthetic_authenticity": 3.91,
+          "gender_compliance": 5.0,
+          "constraint_satisfaction": 3.56,
+          "practicality_climate": 4.03,
+          "trend_truthfulness": 4.91
+        },
+        "latency": {
+          "min_sec": 4.79,
+          "mean_sec": 14.69,
+          "max_sec": 33.08
+        }
+      },
+      "prototype_rag_0.5b": {
+        "overall_score": 3.81,
+        "failure_rate_pct": 12.5,
+        "failure_count": 2,
+        "dimension_means": {
+          "coherence_wearability": 3.62,
+          "palette_consistency": 3.22,
+          "silhouette_proportion": 4.16,
+          "fabric_texture_compatibility": 3.75,
+          "footwear_accessory_coordination": 4.06,
+          "aesthetic_authenticity": 3.44,
+          "gender_compliance": 4.5,
+          "constraint_satisfaction": 3.31,
+          "practicality_climate": 3.66,
+          "trend_truthfulness": 4.41
+        },
+        "latency": {
+          "min_sec": 5.9,
+          "mean_sec": 20.92,
+          "max_sec": 77.04
+        }
+      },
+      "candidate_1.5b": {
+        "overall_score": 4.23,
+        "failure_rate_pct": 0.0,
+        "failure_count": 0,
+        "dimension_means": {
+          "coherence_wearability": 3.81,
+          "palette_consistency": 3.5,
+          "silhouette_proportion": 4.44,
+          "fabric_texture_compatibility": 4.31,
+          "footwear_accessory_coordination": 4.56,
+          "aesthetic_authenticity": 4.09,
+          "gender_compliance": 4.78,
+          "constraint_satisfaction": 3.78,
+          "practicality_climate": 4.03,
+          "trend_truthfulness": 5.0
+        },
+        "latency": {
+          "min_sec": 6.33,
+          "mean_sec": 29.29,
+          "max_sec": 44.5
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,404 @@
+[
+  {
+    "id": "exp_01",
+    "category": "texture_contrast",
+    "prompt": "Style a woman in a tactile autumn outfit pairing a chunky cable-knit sweater with a bias-cut satin slip skirt. Explain how to balance the heavy knit texture with the liquid sheen of the skirt.",
+    "target_gender": "women",
+    "aesthetic": "tactile_minimalist",
+    "expected_palette": [
+      "cream",
+      "champagne",
+      "taupe",
+      "oatmeal"
+    ],
+    "constraints": {
+      "key_textures": [
+        "cable-knit",
+        "satin slip skirt"
+      ],
+      "occasion": "autumn daytime dinner"
+    },
+    "fashion_mechanics": "Texture tension: matte heavy wool vs smooth lustrous silk/satin; volume balance: boxy slouchy knit half-tucked or draping over sleek column skirt.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_02",
+    "category": "silhouette_balance",
+    "prompt": "Recommend an elevated casual outfit for a man with broad athletic shoulders who wants to wear wide-leg pleated trousers without looking bulky or top-heavy.",
+    "target_gender": "men",
+    "aesthetic": "elevated_casual",
+    "expected_palette": [
+      "charcoal",
+      "white",
+      "black",
+      "navy"
+    ],
+    "constraints": {
+      "body_consideration": "broad athletic shoulders",
+      "key_item": "wide-leg pleated trousers"
+    },
+    "fashion_mechanics": "Proportion rule: Avoid heavily padded shoulders; use fluid unconstructed knit polo or raglan sleeve top tucked in with high-rise trousers to elongate bottom half.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_03",
+    "category": "complex_palette",
+    "prompt": "Curate an outfit for an art collector in a strict tri-color palette of burnt terracotta, slate blue, and ivory. Specify exactly which piece carries which color using the 60-30-10 color rule.",
+    "target_gender": "universal",
+    "aesthetic": "artistic_tailoring",
+    "expected_palette": [
+      "terracotta",
+      "slate blue",
+      "ivory"
+    ],
+    "constraints": {
+      "palette_rule": "60-30-10 rule across terracotta, slate blue, ivory"
+    },
+    "fashion_mechanics": "Color harmony: 60% dominant base, 30% secondary structure, 10% intentional accent; complementary contrast between warm terracotta and cool slate blue.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_04",
+    "category": "distinct_aesthetic_options",
+    "prompt": "Provide two completely distinct outfit concepts for an evening gallery opening in London: Option 1 in Parisian Minimalist Tailoring, and Option 2 in Japanese Workwear (Ame-kaji / Gorpcore). They must have zero overlapping items and completely different silhouettes.",
+    "target_gender": "androgynous",
+    "aesthetic": "multi_aesthetic",
+    "expected_palette": [
+      "Option 1: black/cream/navy",
+      "Option 2: olive/indigo/khaki"
+    ],
+    "constraints": {
+      "option_count": 2,
+      "distinct_silhouettes": true,
+      "no_overlapping_items": true
+    },
+    "fashion_mechanics": "Option 1: sleek, sharp, fluid lines, leather dress shoes. Option 2: boxy, heavy canvas, utilitarian pockets, rugged lugged footwear.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_05",
+    "category": "high_low_styling",
+    "prompt": "Style a woman for a casual Saturday creative agency meeting pairing an oversized tailored double-breasted blazer with vintage washed jeans and casual sneakers. Explain how to avoid looking sloppy.",
+    "target_gender": "women",
+    "aesthetic": "elevated_casual",
+    "expected_palette": [
+      "navy",
+      "medium blue denim",
+      "white",
+      "black"
+    ],
+    "constraints": {
+      "key_items": [
+        "oversized double-breasted blazer",
+        "vintage jeans",
+        "sneakers"
+      ]
+    },
+    "fashion_mechanics": "High-low balance: The sharp structured shoulder of the blazer elevates the distressed denim; a fitted tucked white tee grounds the waist; clean minimalist leather sneakers keep it refined.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_06",
+    "category": "climate_dress_code_tension",
+    "prompt": "Recommend a formal black-tie optional summer gala outfit for a man in a sweltering 34\u00b0C humid tropical climate. How can he meet black-tie formality without heat exhaustion?",
+    "target_gender": "men",
+    "aesthetic": "tropical_black_tie",
+    "expected_palette": [
+      "ivory / off-white dinner jacket",
+      "black trousers"
+    ],
+    "constraints": {
+      "formality": "black-tie optional",
+      "climate": "34C humid heatwave"
+    },
+    "fashion_mechanics": "Fabric engineering: An ivory tropical-weight wool-silk or linen-blend dinner jacket with black lightweight wool trousers, voile/poplin pleated shirt, and grosgrain cummerbund or side adjusters (avoiding heavy three-piece vests).",
+    "is_trend_query": false,
+    "is_conflict": true,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_07",
+    "category": "capsule_transition",
+    "prompt": "Design a 3-piece core capsule for a professional that transitions seamlessly from a corporate boardroom presentation at 10 AM to an upscale rooftop lounge at 8 PM by swapping only one layer or accessory.",
+    "target_gender": "universal",
+    "aesthetic": "day_to_night_capsule",
+    "expected_palette": [
+      "charcoal",
+      "white",
+      "midnight navy"
+    ],
+    "constraints": {
+      "core_items": 3,
+      "transition_rule": "swap only one layer/accessory"
+    },
+    "fashion_mechanics": "Versatility: Base of tailored trousers and silk/poplin shirting; swap corporate tie/blazer for an unstructured suede bomber or statement jewelry and unbuttoned collar.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_08",
+    "category": "non_conventional_masculine",
+    "prompt": "I am a man who wants to wear a pleated kilt/skirt to an indie film premiere in autumn. Style the entire look with masculine tailoring and heavy footwear so it looks authoritative and sharp, not like a costume.",
+    "target_gender": "non_conventional",
+    "aesthetic": "architectural_menswear",
+    "expected_palette": [
+      "black",
+      "charcoal",
+      "dark olive"
+    ],
+    "constraints": {
+      "user": "man requesting pleated skirt",
+      "occasion": "film premiere",
+      "style": "authoritative, tailored, combat footwear"
+    },
+    "fashion_mechanics": "Grounding non-conventional pieces: Pair heavy wool twill pleated kilt with a structured peak-lapel blazer or leather jacket and chunky lug-sole Commando derby boots; keep palette dark and disciplined.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_09",
+    "category": "footwear_hemline_geometry",
+    "prompt": "A woman wants to wear ultra-wide-leg pooled trousers to a rainy outdoor garden cocktail. What footwear and hemline adjustments should she make to keep the look intentional and prevent ruined trousers?",
+    "target_gender": "women",
+    "aesthetic": "practical_cocktail",
+    "expected_palette": [
+      "any"
+    ],
+    "constraints": {
+      "conflict": "wide pooled trousers vs wet rain garden"
+    },
+    "fashion_mechanics": "Hemline geometry: Pooled hems on wet ground drag and ruin fabric; recommend tailoring trousers with a 1-inch hem lift or switching to a pointed-toe heeled waterproof boot with platform sole to elevate hem above wet ground.",
+    "is_trend_query": false,
+    "is_conflict": true,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_10",
+    "category": "strict_avoidance_constraints",
+    "prompt": "Style a modern Gen Z streetwear outfit for a young man, but with strict negative constraints: NO hoodies, NO cargo pants, and NO black clothing. Focus on earth tones and interesting textures.",
+    "target_gender": "men",
+    "aesthetic": "streetwear",
+    "expected_palette": [
+      "olive",
+      "cream",
+      "tobacco brown",
+      "rust",
+      "khaki"
+    ],
+    "constraints": {
+      "negative_constraints": [
+        "NO hoodies",
+        "NO cargo pants",
+        "NO black clothing"
+      ],
+      "palette": "earth tones"
+    },
+    "fashion_mechanics": "Creative constraint navigation: Boxy waffle-knit long-sleeve or zipped chore jacket in tobacco brown, wide-leg ecru carpenter/painter pants or double-pleat twill trousers, retro court sneakers in suede olive.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_11",
+    "category": "trend_truth_audit",
+    "prompt": "Give me the official 2026 Paris Fashion Week data on which footwear style replaced loafers this season. Include verified designer runway names and sales statistics.",
+    "target_gender": "universal",
+    "aesthetic": "trend_verification",
+    "expected_palette": [],
+    "constraints": {
+      "demands_fake_data": "requires 2026 verified sales statistics and runway data"
+    },
+    "fashion_mechanics": "Model honesty check: Must transparently acknowledge it lacks live 2026 data and cannot provide verified sales statistics; discuss macro-sartorial directions instead without fabricating fake Vogue citations.",
+    "is_trend_query": true,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_12",
+    "category": "monochrome_depth",
+    "prompt": "Design an all-black monochrome evening outfit for a woman. Explain how to use 4 different fabric textures so the outfit has depth rather than looking like a flat black blob.",
+    "target_gender": "women",
+    "aesthetic": "architectural_monochrome",
+    "expected_palette": [
+      "black",
+      "jet black"
+    ],
+    "constraints": {
+      "palette": "strictly all-black monochrome",
+      "texture_requirement": "4 distinct fabric textures"
+    },
+    "fashion_mechanics": "Tactile contrast in monochrome: Lustrous silk/satin, matte dry wool crepe, sheer fine mesh/chiffon, and polished patent or smooth calfskin leather.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_13",
+    "category": "hardware_discipline",
+    "prompt": "Style an elevated business casual look for a man wearing a brown leather belt with a warm brass buckle. Specify his watch, shoes, and bag hardware so all metallic and leather accents remain coordinated.",
+    "target_gender": "men",
+    "aesthetic": "business_casual",
+    "expected_palette": [
+      "navy",
+      "white",
+      "rich brown",
+      "warm brass"
+    ],
+    "constraints": {
+      "anchor_accessory": "brown leather belt with brass buckle",
+      "coordination_rule": "all hardware and leather must align"
+    },
+    "fashion_mechanics": "Hardware and leather discipline: Brown leather shoes matching belt tone; watch case in warm brass/gold; bag with brass/gold hardware; no cool silver or black leather mismatches.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_15",
+    "category": "budget_materiality",
+    "prompt": "Style an autumn college campus look on a thrift store budget under $35. Recommend specific secondhand garments and durable vintage fabrics to hunt for that look premium despite low cost.",
+    "target_gender": "universal",
+    "aesthetic": "vintage_collegiate",
+    "expected_palette": [
+      "washed denim",
+      "forest green",
+      "heather grey",
+      "tobacco"
+    ],
+    "constraints": {
+      "budget": "under $35 secondhand thrift",
+      "fabric_focus": "durable vintage fibers"
+    },
+    "fashion_mechanics": "Thrift hunting wisdom: Target heavy 100% cotton vintage flannels, 100% wool grandfather knits, and rigid non-stretch vintage Levi's/Wrangler denim which age beautifully and resist pilling.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "exp_16",
+    "category": "menswear_on_women",
+    "prompt": "A woman wants an authentic, un-feminized oversized menswear suit for an architectural keynote address. She wants a boxy silhouette without nipped waists or cleavage. Detail the cut, shirting, and footwear.",
+    "target_gender": "women",
+    "aesthetic": "menswear_tailoring",
+    "expected_palette": [
+      "charcoal pinstripe",
+      "crisp white",
+      "black"
+    ],
+    "constraints": {
+      "user": "woman requesting authentic menswear tailoring",
+      "avoid": "nipped waists, cleavage, feminine alterations"
+    },
+    "fashion_mechanics": "Authentic menswear proportion on women: Straight un-darted boxy jacket with padded shoulders, wide-leg full-break trousers, high-buttoned stiff collar shirt, and substantial derbies or monk straps.",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "p13",
+    "category": "gender_specific_men",
+    "prompt": "Style a man for a casual college day. Keep it comfortable, youthful, and practical for carrying a backpack.",
+    "target_gender": "men",
+    "aesthetic": "gender_specific_men",
+    "expected_palette": [
+      "denim blue",
+      "heather grey",
+      "white",
+      "navy"
+    ],
+    "constraints": {
+      "occasion": "college classes"
+    },
+    "fashion_mechanics": "",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "p14",
+    "category": "gender_specific_men",
+    "prompt": "Recommend a summer outdoor wedding guest outfit for a man. Dress code is semi-formal coastal. Light linen or cotton textures.",
+    "target_gender": "men",
+    "aesthetic": "gender_specific_men",
+    "expected_palette": [
+      "sand",
+      "light blue",
+      "tobacco",
+      "cream"
+    ],
+    "constraints": {
+      "occasion": "summer coastal wedding guest",
+      "formality": "semi-formal"
+    },
+    "fashion_mechanics": "",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "p17",
+    "category": "gender_neutral",
+    "prompt": "Give me an androgynous streetwear look suitable for autumn weather. Do not use hyper-gendered terms.",
+    "target_gender": "androgynous",
+    "aesthetic": "gender_neutral",
+    "expected_palette": [
+      "olive",
+      "black",
+      "off-white"
+    ],
+    "constraints": {
+      "climate": "autumn"
+    },
+    "fashion_mechanics": "",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "p22",
+    "category": "budget_climate",
+    "prompt": "Style a college student on a strict $45 budget using thrift store staples for a casual autumn weekend in a chilly city (8\u00b0C).",
+    "target_gender": "unspecified",
+    "aesthetic": "budget_climate",
+    "expected_palette": [
+      "vintage brown",
+      "washed denim",
+      "cream"
+    ],
+    "constraints": {
+      "budget": "$45 thrift budget",
+      "climate": "chilly 8C"
+    },
+    "fashion_mechanics": "",
+    "is_trend_query": false,
+    "is_conflict": false,
+    "is_underspecified": false
+  },
+  {
+    "id": "p30",
+    "category": "current_trends",
+    "prompt": "According to the latest 2026 fashion week runways, what specific shoe trend has replaced chunky loafers? Give verified sources.",
+    "target_gender": "unspecified",
+    "aesthetic": "current_trends",
+    "expected_palette": [],
+    "constraints": {
+      "query": "verified 2026 runway shoe trends"
+    },
+    "fashion_mechanics": "",
+    "is_trend_query": true,
+    "is_conflict": false,
+    "is_underspecified": false
+  }
+]

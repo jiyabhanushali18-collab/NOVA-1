@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { firestore } from './firebase';
 import { LocalVisionAnalysis, analyzeSelfieLocally } from './localVisionAnalyzer';
+import { analyzeBodyPose } from './bodyPoseAnalyzer';
 
 const router = express.Router();
 
@@ -159,6 +160,50 @@ router.post('/analyze-selfie', async (req: any, res: any) => {
   } catch (error: any) {
     console.error('Local selfie analysis failed:', error);
     return res.status(422).json({ error: error.message || 'Selfie analysis failed.' });
+  }
+});
+
+router.post('/analyze-body', async (req: any, res: any) => {
+  const started = Date.now();
+  const { imageDataUrl, userId } = req.body || {};
+
+  if (!imageDataUrl || typeof imageDataUrl !== 'string') {
+    return res.status(400).json({ error: 'imageDataUrl is required.' });
+  }
+
+  const parsed = splitDataUrl(imageDataUrl);
+  if (!parsed) {
+    return res.status(400).json({ error: 'imageDataUrl must be a base64 image data URL.' });
+  }
+
+  try {
+    const bodyAnalysis = await analyzeBodyPose(imageDataUrl);
+    const result = {
+      ...bodyAnalysis,
+      analysisEngine: 'mediapipe-pose-cpu',
+      elapsedMs: Date.now() - started,
+      analyzedAt: new Date().toISOString()
+    };
+
+    if (userId) {
+      const docId = getUserDocId(userId);
+      withTimeout(
+        setDoc(
+          doc(firestore, 'users', docId),
+          {
+            bodyAnalysis: result,
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        ),
+        1200
+      ).catch((err) => console.warn('Could not persist body analysis to Firestore:', err?.message || err));
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Body pose analysis failed:', error);
+    return res.status(422).json({ error: error.message || 'Body pose analysis failed.' });
   }
 });
 

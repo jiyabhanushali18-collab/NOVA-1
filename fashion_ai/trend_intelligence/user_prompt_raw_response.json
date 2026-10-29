@@ -1,0 +1,69 @@
+{
+  "status": "success",
+  "data": {
+    "occasion": "College / Everyday",
+    "aesthetic": "Clean girl / clean aesthetic",
+    "palette": [
+      "white",
+      "light grey",
+      "pastel pink"
+    ],
+    "top": {
+      "item": "short pastel Chikankari cotton kurti (thigh-length, relaxed cut)",
+      "fabric": "cotton poplin",
+      "color": "pale pink or light mint green"
+    },
+    "bottom": {
+      "item": "baggy wide-leg medium wash blue denim or olive utilitarian cargo pants",
+      "fabric": "denim fabric",
+      "fit": "extra-long, baggy fit with elastic waistband for comfort and low rise"
+    },
+    "outerwear": null,
+    "footwear": {
+      "item": "clean white sneakers",
+      "material": "leather",
+      "color": "white"
+    },
+    "accessories": [
+      {
+        "item": "black leather belt with a single buckle strap",
+        "material_or_metal": "gold metal",
+        "color": "silver"
+      }
+    ],
+    "styling_rationale": "The outfit is designed to be both clean and stylish, reflecting the 'clean girl' aesthetic. The pastel kurti provides a fresh color contrast against the denim pants for added vibrancy without overpowering the overall look. The baggy fit of the jeans allows for comfort while maintaining an appropriate dress code for college or everyday wear in hot weather.",
+    "constraints_satisfied": [
+      "budget-friendly",
+      "clean aesthetic"
+    ]
+  },
+  "metadata": {
+    "model": "nova-fashion-1.5b-benchmark",
+    "duration_ms": 48370,
+    "retry_count": 0,
+    "trend_grounded": true,
+    "matched_trends": [
+      "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+      "Mesh & Sheer Ballet Flats"
+    ],
+    "sources_cited": [
+      {
+        "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+        "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+        "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+        "publication_date": "2024-10-05",
+        "confidence": "very_high"
+      },
+      {
+        "trend_name": "Mesh & Sheer Ballet Flats",
+        "source_title": "The Mesh Shoe Phenomenon: How Alaïa's Flats Changed Warm-Weather Dressing",
+        "source_url": "https://www.vogue.com/fashion/trends/mesh-flats-summer",
+        "publication_date": "2024-05-10",
+        "confidence": "high"
+      }
+    ],
+    "validation_status": "VALID",
+    "safe_to_display": true
+  },
+  "_raw_response": "{\n  \"occasion\": \"College / Everyday\",\n  \"aesthetic\": \"Clean girl / clean aesthetic\",\n  \"palette\": [\"white\", \"light grey\", \"pastel pink\"],\n  \"top\": {\n    \"item\": \"short pastel Chikankari cotton kurti (thigh-length, relaxed cut)\",\n    \"fabric\": \"cotton poplin\",\n    \"color\": \"pale pink or light mint green\"\n  },\n  \"bottom\": {\n    \"item\": \"baggy wide-leg medium wash blue denim or olive utilitarian cargo pants\",\n    \"fabric\": \"denim fabric\",\n    \"fit\": \"extra-long, baggy fit with elastic waistband for comfort and low rise\"\n  },\n  \"outerwear\": null,\n  \"footwear\": {\n    \"item\": \"clean white sneakers\",\n    \"material\": \"leather\",\n    \"color\": \"white\"\n  },\n  \"accessories\": [\n    {\n      \"item\": \"black leather belt with a single buckle strap\",\n      \"material_or_metal\": \"gold metal\",\n      \"color\": \"silver\"\n    }\n  ],\n  \"styling_rationale\": \"The outfit is designed to be both clean and stylish, reflecting the 'clean girl' aesthetic. The pastel kurti provides a fresh color contrast against the denim pants for added vibrancy without overpowering the overall look. The baggy fit of the jeans allows for comfort while maintaining an appropriate dress code for college or everyday wear in hot weather.\",\n  \"constraints_satisfied\": [\"budget-friendly\", \"clean aesthetic\"]\n}"
+}

@@ -1706,7 +1706,7 @@ export default function App() {
       case 'scan-outfit':
         return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} />;
       case 'wardrobe':
-        return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} isDarkMode={isDarkMode} />;
+        return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} userName={userName} userId={activeUid || auth.currentUser?.uid} isDarkMode={isDarkMode} />;
       case 'chat':
         return <ChatView userName={userName} onNavigate={navigate} products={productsData} />;
       case 'cart':

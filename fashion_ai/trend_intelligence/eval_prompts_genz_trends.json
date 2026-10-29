@@ -1,0 +1,322 @@
+[
+  {
+    "id": "genz_01",
+    "category": "clean_girl_butter_yellow",
+    "prompt": "Curate a clean-girl daytime summer outfit incorporating the trending butter yellow palette. Style with warm neutrals, delicate gold jewelry, and light layering.",
+    "is_factual_query": false,
+    "target_aesthetic": "clean_girl",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["butter yellow", "gold jewelry", "clean tailoring"]
+  },
+  {
+    "id": "genz_02",
+    "category": "blokecore_streetwear",
+    "prompt": "Design a Gen Z Blokecore outfit pairing a vintage oversized football/rugby jersey with sharp contrasting pieces. Explain how to avoid looking like you just left the gym.",
+    "is_factual_query": false,
+    "target_aesthetic": "blokecore",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["vintage jersey", "pleated skirt or tailored trousers", "leather loafers or retro runners"]
+  },
+  {
+    "id": "genz_03",
+    "category": "coquette_romantic",
+    "prompt": "Style a modern Coquette romantic outfit featuring delicate lace trims and ribbon accents. Ground the look with sturdy or tailored footwear so it feels edgy rather than costume-like.",
+    "is_factual_query": false,
+    "target_aesthetic": "coquette",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["lace trim", "ribbons", "sturdy boots or Mary Janes"]
+  },
+  {
+    "id": "genz_04",
+    "category": "y2k_revival",
+    "prompt": "Curate an authentic Y2K revival casual outfit built around low-rise relaxed cargo pants and a fitted baby tee. STRICT EXCLUSION: NO skinny jeans.",
+    "is_factual_query": false,
+    "target_aesthetic": "y2k_revival",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["low-rise relaxed cargo", "baby tee", "rimless sunglasses or shoulder bag"]
+  },
+  {
+    "id": "genz_05",
+    "category": "gorpcore_utilitarian",
+    "prompt": "Design a utilitarian Gorpcore streetwear outfit featuring technical water-resistant fabrics, parachute pants, and trail-inspired aesthetics in an earth-tone palette.",
+    "is_factual_query": false,
+    "target_aesthetic": "gorpcore",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["parachute pants", "technical vest or ripstop layer", "trail runners"]
+  },
+  {
+    "id": "genz_06",
+    "category": "dark_academia",
+    "prompt": "Curate a Dark Academia autumn library ensemble for a student in a historic university setting. Balance heavy textures like tweed and corduroy with tailored wool.",
+    "is_factual_query": false,
+    "target_aesthetic": "dark_academia",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["tweed or houndstooth", "tailored wool trousers", "leather oxfords or derbies"]
+  },
+  {
+    "id": "genz_07",
+    "category": "90s_minimalism",
+    "prompt": "Style a minimalist 90s-inspired evening slip dress outfit for an art gallery dinner. Focus on clean lines, architectural simplicity, and discreet accessories.",
+    "is_factual_query": false,
+    "target_aesthetic": "90s_minimalist",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["bias-cut slip dress", "minimalist mules or strappy sandals", "cord necklace"]
+  },
+  {
+    "id": "genz_08",
+    "category": "retro_runner_streetwear",
+    "prompt": "Design an elevated street-style outfit centered around low-profile retro suede runners (such as Adidas SL72 or Puma Speedcats). Avoid chunky dad sneakers.",
+    "is_factual_query": false,
+    "target_aesthetic": "gen_z_streetwear",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["low-profile retro runners", "fluid wide-leg trousers", "oversized blazer or track jacket"]
+  },
+  {
+    "id": "genz_09",
+    "category": "indian_desi_western_fusion",
+    "prompt": "Curate an everyday college outfit for a student in Delhi pairing a pastel Lucknowi Chikankari short kurti with baggy wide-leg denim. Blend traditional craft with modern street practicality.",
+    "is_factual_query": false,
+    "target_aesthetic": "indo_western_fusion",
+    "region": "india",
+    "target_gender": "women",
+    "expected_elements": ["short Chikankari kurti", "baggy wide-leg jeans", "Kolhapuri slides or clean sneakers", "jhumkas"]
+  },
+  {
+    "id": "genz_10",
+    "category": "indian_ajrakh_coords",
+    "prompt": "Recommend an artisanal summer co-ord outfit for a man in Mumbai's sweltering 35°C humid weather using hand-block printed Ajrakh or Sanganeri cotton textiles.",
+    "is_factual_query": false,
+    "target_aesthetic": "indian_artisan",
+    "region": "india",
+    "target_gender": "men",
+    "expected_elements": ["Cuban-collar block-print shirt", "drawstring cotton shorts or trousers", "leather sandals or mojaris"]
+  },
+  {
+    "id": "genz_11",
+    "category": "indian_oxidised_silver_streetwear",
+    "prompt": "Design an edgy street-style outfit featuring heavy Indian oxidised silver jewellery (layered tribal choker and stacked rings) styled with a contemporary oversized blazer and denim.",
+    "is_factual_query": false,
+    "target_aesthetic": "contemporary_fusion",
+    "region": "india",
+    "target_gender": "universal",
+    "expected_elements": ["oxidised silver choker or jhumkas", "oversized blazer or boxy tee", "straight-leg denim"]
+  },
+  {
+    "id": "genz_12",
+    "category": "indian_upcycled_handloom",
+    "prompt": "Style an eco-conscious cultural festival outfit in Bangalore using an upcycled handloom saree jacket or corset blouse paired with modern tailored trousers.",
+    "is_factual_query": false,
+    "target_aesthetic": "sustainable_fusion",
+    "region": "india",
+    "target_gender": "women",
+    "expected_elements": ["handloom corset or jacket", "pleated wide trousers", "handcrafted flats"]
+  },
+  {
+    "id": "genz_13",
+    "category": "indian_mens_fusion",
+    "prompt": "Recommend a modern Indo-Western cocktail party ensemble for a man attending a destination wedding in Goa. Balance Indian heritage tailoring with coastal warm-weather ease.",
+    "is_factual_query": false,
+    "target_aesthetic": "mens_fusion",
+    "region": "india",
+    "target_gender": "men",
+    "expected_elements": ["short unlined bandhgala or linen kurta shirt", "cropped tailored trousers", "suede loafers"]
+  },
+  {
+    "id": "genz_14",
+    "category": "indian_monsoon_college",
+    "prompt": "Curate a practical college outfit for Mumbai monsoon humidity: quick-drying breathable mulmul fabric, cropped or rolled hemlines, and water-friendly footwear.",
+    "is_factual_query": false,
+    "target_aesthetic": "practical_desi",
+    "region": "india",
+    "target_gender": "universal",
+    "expected_elements": ["breathable cotton/mulmul top", "cropped pants or culottes", "waterproof sandals"]
+  },
+  {
+    "id": "genz_15",
+    "category": "indian_corset_lehenga_skirt",
+    "prompt": "Design a modern festive look for an Indian Gen Z bridesmaid pairing a structured embroidered corset blouse with a fluid, lightweight gathered skirt.",
+    "is_factual_query": false,
+    "target_aesthetic": "modern_festive",
+    "region": "india",
+    "target_gender": "women",
+    "expected_elements": ["corset blouse", "fluid gathered skirt", "statement silver/gold earrings"]
+  },
+  {
+    "id": "genz_16",
+    "category": "indian_budget_streetwear",
+    "prompt": "Create a high-style college street outfit under ₹1,500 total budget combining street-bazaar artisan cotton separates with existing sneakers.",
+    "is_factual_query": false,
+    "target_aesthetic": "accessible_desi",
+    "region": "india",
+    "target_gender": "universal",
+    "expected_elements": ["hand-block cotton top", "staple denim or chinos", "bazaar silver accessories"]
+  },
+  {
+    "id": "genz_17",
+    "category": "barrel_leg_workplace",
+    "prompt": "Style trending barrel-leg (horseshoe) trousers for a professional creative office. Tone down the avant-garde exaggerated volume so it feels polished and authoritative.",
+    "is_factual_query": false,
+    "target_aesthetic": "elevated_workplace",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["barrel-leg tailored trousers", "fitted knit or tucked poplin shirt", "pointed kitten heels"]
+  },
+  {
+    "id": "genz_18",
+    "category": "burgundy_warm_weather",
+    "prompt": "Incorporate the trending deep cherry / oxblood palette into a warm-weather spring outfit. STRICT EXCLUSION: NO heavy wool overcoats and NO leather trench coats.",
+    "is_factual_query": false,
+    "target_aesthetic": "elevated_casual",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["cherry/burgundy silk or cotton piece", "lightweight neutral contrast", "summer-appropriate footwear"]
+  },
+  {
+    "id": "genz_19",
+    "category": "capri_pants_high_low",
+    "prompt": "Curate an editorial high-low outfit featuring trending calf-length capri pants. Pair them with structured tailoring and kitten heels to avoid noughties cliché.",
+    "is_factual_query": false,
+    "target_aesthetic": "editorial_casual",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["tailored capri pants", "oversized structured blazer", "kitten-heel mules or slingbacks"]
+  },
+  {
+    "id": "genz_20",
+    "category": "clean_girl_anti_neutral",
+    "prompt": "Style a clean-girl polished aesthetic with STRICT EXCLUSION: NO white, NO beige, and NO gold jewelry. Demonstrate how to achieve clean minimalism in saturated colors.",
+    "is_factual_query": false,
+    "target_aesthetic": "clean_girl",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["deep navy, charcoal, or olive base", "silver jewelry", "structured clean lines"]
+  },
+  {
+    "id": "genz_21",
+    "category": "drop_waist_proportions",
+    "prompt": "Style a drop-waist dress for a petite woman (5'2\") without cutting off her vertical proportions or making her legs appear short.",
+    "is_factual_query": false,
+    "target_aesthetic": "romantic_tailoring",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["gentle drop waist with monochromatic flow", "pointed footwear or nude tone", "minimal visual breaks"]
+  },
+  {
+    "id": "genz_22",
+    "category": "gender_neutral_preppy",
+    "prompt": "Design a gender-neutral, androgynous collegiate preppy outfit in charcoal, slate blue, and ivory. Avoid conventional gendered tailoring.",
+    "is_factual_query": false,
+    "target_aesthetic": "androgynous_preppy",
+    "region": "global",
+    "target_gender": "neutral",
+    "expected_elements": ["unstructured blazer or knit vest", "straight-leg trousers", "derbies or loafers"]
+  },
+  {
+    "id": "genz_23",
+    "category": "men_pleated_skirt",
+    "prompt": "I am a man and I want to wear a black pleated midi skirt for a contemporary gallery opening. Style me in an elevated, architecturally balanced outfit without feminizing the look.",
+    "is_factual_query": false,
+    "target_aesthetic": "avant_garde_menswear",
+    "region": "global",
+    "target_gender": "men",
+    "expected_elements": ["black pleated skirt", "tailored button-down or structured jacket", "black leather derbies/boots"]
+  },
+  {
+    "id": "genz_24",
+    "category": "athleisure_no_sneakers_hoodies",
+    "prompt": "Create an elevated sporty casual outfit for Sunday errands. STRICT EXCLUSION: NO sneakers and NO hoodies allowed anywhere.",
+    "is_factual_query": false,
+    "target_aesthetic": "elevated_athleisure",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["track trousers or sporty separates", "knit polo or chore jacket", "loafers or leather slides"]
+  },
+  {
+    "id": "genz_25",
+    "category": "factual_trend_footwear_shift",
+    "prompt": "What footwear trend has replaced chunky platform dad sneakers in 2024-2026? Cite verified fashion sources and explain the proportion shift.",
+    "is_factual_query": true,
+    "target_aesthetic": "trend_analysis",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["low-profile retro runners", "ballet-sneaker hybrids", "Harper's Bazaar / Vogue citations"]
+  },
+  {
+    "id": "genz_26",
+    "category": "factual_trend_low_rise_vs_high_rise",
+    "prompt": "Is low-rise denim replacing high-waisted wide-leg trousers, or do they coexist? Explain how to balance upper-body proportions differently for each rise.",
+    "is_factual_query": true,
+    "target_aesthetic": "trend_analysis",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["coexistence of rises", "torso-to-leg proportion balancing", "cropped vs tucked top guidance"]
+  },
+  {
+    "id": "genz_27",
+    "category": "factual_trend_quiet_luxury_status",
+    "prompt": "According to fashion reports, what is the current trajectory of 'quiet luxury' vs bold color and personality dressing in 2025/2026?",
+    "is_factual_query": true,
+    "target_aesthetic": "trend_analysis",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["evolution to personality-driven tailoring", "rich burgundy and butter yellow", "editorial insights"]
+  },
+  {
+    "id": "genz_28",
+    "category": "factual_trend_2026_epistemic_limits",
+    "prompt": "According to the latest 2026 fashion week runways, what specific shoe trend has replaced chunky loafers? Give verified sources or state your knowledge limits.",
+    "is_factual_query": true,
+    "target_aesthetic": "trend_analysis",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["epistemic boundary disclosure", "directional macro shifts", "no fabricated citations"]
+  },
+  {
+    "id": "genz_29",
+    "category": "budget_student_capsule",
+    "prompt": "Curate an affordable student capsule outfit for under $80 total featuring modern wide-leg proportions and accessible thrift-store staples.",
+    "is_factual_query": false,
+    "target_aesthetic": "budget_streetwear",
+    "region": "global",
+    "target_gender": "universal",
+    "expected_elements": ["thrifted wide-leg denim", "basic cotton tee", "affordable canvas footwear"]
+  },
+  {
+    "id": "genz_30",
+    "category": "vintage_leather_styling",
+    "prompt": "Style a vintage oversized distressed brown leather motorcycle jacket for a coffee date. Explain how to balance the heavy masculine jacket with softer feminine elements.",
+    "is_factual_query": false,
+    "target_aesthetic": "high_low_vintage",
+    "region": "global",
+    "target_gender": "women",
+    "expected_elements": ["distressed brown leather jacket", "slip skirt or lace camisole", "minimalist footwear"]
+  },
+  {
+    "id": "genz_31",
+    "category": "extreme_heat_formal_wedding",
+    "prompt": "Recommend a summer outdoor wedding guest outfit for a man in an extreme 38°C dry climate for under $200. Must meet semi-formal dress codes without causing heat stroke.",
+    "is_factual_query": false,
+    "target_aesthetic": "summer_formal",
+    "region": "global",
+    "target_gender": "men",
+    "expected_elements": ["breathable linen shirt", "cotton-linen tailored chinos", "suede loafers without socks"]
+  },
+  {
+    "id": "genz_32",
+    "category": "capsule_kurti_day_to_night",
+    "prompt": "Demonstrate how to transition a single cotton Chikankari kurti from a morning university lecture to an evening cafe social by altering bottom pairings, footwear, and accessories.",
+    "is_factual_query": false,
+    "target_aesthetic": "versatile_fusion",
+    "region": "india",
+    "target_gender": "women",
+    "expected_elements": ["core Chikankari kurti", "day pairing (tote + flats)", "evening pairing (silver jewelry + heels/bag)"]
+  }
+]

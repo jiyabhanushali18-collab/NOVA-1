@@ -1,0 +1,4103 @@
+{
+  "metadata": {
+    "title": "NOVA Phase 5 Gen Z & Live Trend Intelligence Benchmark",
+    "date": "2026-10-27",
+    "model": "nova-fashion-1.5b-benchmark",
+    "total_prompts": 32
+  },
+  "summary": {
+    "condition_1_before_no_retrieval": {
+      "overall_mean_score": 4.24,
+      "median_score": 4.29,
+      "dimension_means": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.36,
+        "regional_climate_practicality": 4.27,
+        "outfit_coherence_wearability": 4.02,
+        "constraint_compliance": 4.91,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.09
+      },
+      "failure_rate_pct": 0.0,
+      "failure_count": 0,
+      "mean_latency_sec": 21.44,
+      "median_latency_sec": 17.92,
+      "min_latency_sec": 13.02,
+      "max_latency_sec": 77.04
+    },
+    "condition_2_after_with_trend_grounding": {
+      "overall_mean_score": 4.35,
+      "median_score": 4.36,
+      "dimension_means": {
+        "factual_trend_grounding": 4.34,
+        "aesthetic_differentiation": 4.38,
+        "regional_climate_practicality": 4.3,
+        "outfit_coherence_wearability": 3.92,
+        "constraint_compliance": 4.45,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.09
+      },
+      "failure_rate_pct": 6.2,
+      "failure_count": 2,
+      "mean_latency_sec": 125.9,
+      "median_latency_sec": 30.96,
+      "min_latency_sec": 17.2,
+      "max_latency_sec": 2222.3
+    }
+  },
+  "results_before": [
+    {
+      "prompt_id": "genz_01",
+      "category": "clean_girl_butter_yellow",
+      "prompt": "Curate a clean-girl daytime summer outfit incorporating the trending butter yellow palette. Style with warm neutrals, delicate gold jewelry, and light layering.",
+      "status": "success",
+      "duration_sec": 18.99,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "daytime",
+        "aesthetic": "clean girl chic",
+        "palette": [
+          "butter yellow",
+          "soft beige",
+          "navy blue"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "cotton voile or chiffon",
+          "color": "butter yellow",
+          "cut": "flowing silhouette"
+        },
+        "bottom": {
+          "item": "skirt",
+          "fabric": "silk crepe de chine",
+          "color": "soft beige",
+          "fit": "austere fit with a slight flare for comfort and movement"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather sandals",
+          "color": "butter yellow or soft beige, matching the skirt's color"
+        },
+        "accessories": [
+          {
+            "item": "bracelet",
+            "material_or_metal": "gold chain with delicate gold links and a small pendant of butter yellow stone",
+            "color": "golden brown to match the bracelet"
+          }
+        ],
+        "styling_rationale": "The outfit is designed for clean-girl chic, incorporating warm neutrals like soft beige and butter yellow. The skirt's austere fit allows for light layering while maintaining a flowy silhouette that suits this aesthetic. Gold jewelry complements the overall palette without overpowering it.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_02",
+      "category": "blokecore_streetwear",
+      "prompt": "Design a Gen Z Blokecore outfit pairing a vintage oversized football/rugby jersey with sharp contrasting pieces. Explain how to avoid looking like you just left the gym.",
+      "status": "success",
+      "duration_sec": 26.32,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Edgy and Athletic",
+        "palette": [
+          "#FF5733",
+          "#6B8E24"
+        ],
+        "top": {
+          "item": "V-neck Vintage Oversized Football Jersey",
+          "fabric": "Cotton Blend (100% Cotton Shell, Polyester Fill)",
+          "color": "#F9D0A2",
+          "cut": "Straight Cut with a Loose Fit"
+        },
+        "bottom": {
+          "item": "Black Skinny Jeans",
+          "fabric": "Denim Fabric",
+          "color": "#387645",
+          "fit": "Slim Fit, High Rise"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "White Sneakers with a Vintage Football Logo on the Side",
+          "material": "Canvas",
+          "color": "#E0A13D"
+        },
+        "accessories": [
+          {
+            "item": "Silver Chain Necklace with a Small Metal Charm (24K Gold)",
+            "material_or_metal": "Gold, Silver",
+            "color": "#C8B79F"
+          }
+        ],
+        "styling_rationale": "The outfit combines the edgy aesthetic of football jerseys and athletic silhouettes with sharp contrasting elements to avoid looking like you just left the gym. The vibrant colors (#FF5733, #6B8E24) are bold while maintaining a balance that suggests an energetic yet stylish evening look.",
+        "constraints_satisfied": [
+          "No black sneakers",
+          "No white gloves"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_03",
+      "category": "coquette_romantic",
+      "prompt": "Style a modern Coquette romantic outfit featuring delicate lace trims and ribbon accents. Ground the look with sturdy or tailored footwear so it feels edgy rather than costume-like.",
+      "status": "success",
+      "duration_sec": 22.27,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Evening",
+        "aesthetic": "Romantic/Coquettish",
+        "palette": [
+          "Soft Pink",
+          "Gold",
+          "Silver"
+        ],
+        "top": {
+          "item": "Sheath Dress",
+          "fabric": "Silk Blend, Lace Trim",
+          "color": "Soft Pink with Gold Accents",
+          "cut": "Aline Silhouette"
+        },
+        "bottom": {
+          "item": "Pencil Skirt",
+          "fabric": "Sturdy Cotton Blend",
+          "color": "Black",
+          "fit": "Skimming Fit, Straight Cut"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": "",
+          "color": ""
+        },
+        "footwear": {
+          "item": "Platform Heels in Silver Leather",
+          "material": "Leather",
+          "color": "Silver"
+        },
+        "accessories": [
+          {
+            "item": "Ribbon Necklace with Gold Clasp",
+            "material_or_metal": "Gold, Silk Ribbon",
+            "color": "Gold"
+          }
+        ],
+        "styling_rationale": "The outfit combines a romantic sheath dress with a sleek pencil skirt for balance and edginess. The lace trim adds delicate touches while the silver platform heels give an edge to the overall look.",
+        "constraints_satisfied": [
+          "Soft Pink color is used in top, bottom, outerwear, accessories"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_04",
+      "category": "y2k_revival",
+      "prompt": "Curate an authentic Y2K revival casual outfit built around low-rise relaxed cargo pants and a fitted baby tee. STRICT EXCLUSION: NO skinny jeans.",
+      "status": "success",
+      "duration_sec": 21.55,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Vintage Glamorous",
+        "palette": [
+          "navy",
+          "saddle brown",
+          "gold"
+        ],
+        "top": {
+          "item": "baby tee",
+          "fabric": "cotton",
+          "color": "navy blue",
+          "cut": "fitted"
+        },
+        "bottom": {
+          "item": "low-rise relaxed cargo pants",
+          "fabric": "polyester cotton blend",
+          "color": "saddle brown",
+          "fit": "loose but comfortable, low rise"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "leather loafers",
+          "material": "leather",
+          "color": "gold"
+        },
+        "accessories": [
+          {
+            "item": "chain necklace with gold pendant",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to evoke a nostalgic, glamorous Y2K vibe through the use of low-rise cargo pants and a fitted baby tee. The navy blue color of both items creates a cohesive look that suggests vintage elegance. The gold accents add an extra touch of glamour without overpowering the casual nature of the attire.",
+        "constraints_satisfied": [
+          "No skinny jeans",
+          "Cargo pants for bottom"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_05",
+      "category": "gorpcore_utilitarian",
+      "prompt": "Design a utilitarian Gorpcore streetwear outfit featuring technical water-resistant fabrics, parachute pants, and trail-inspired aesthetics in an earth-tone palette.",
+      "status": "error",
+      "duration_sec": 77.04,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 2.5,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 3.71,
+      "diagnostics": [
+        "Weak aesthetic differentiation for gorpcore",
+        "Incomplete ensemble missing core anchor"
+      ],
+      "data": null
+    },
+    {
+      "prompt_id": "genz_06",
+      "category": "dark_academia",
+      "prompt": "Curate a Dark Academia autumn library ensemble for a student in a historic university setting. Balance heavy textures like tweed and corduroy with tailored wool.",
+      "status": "success",
+      "duration_sec": 21.61,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Library",
+        "aesthetic": "Dark Acadian",
+        "palette": [
+          "dark navy",
+          "olive green",
+          "burgundy"
+        ],
+        "top": {
+          "item": "blazer",
+          "fabric": "woolen",
+          "color": "dark navy",
+          "cut": "tailored"
+        },
+        "bottom": {
+          "item": "chinos",
+          "fabric": "woven cotton",
+          "color": "light olive green",
+          "fit": "straight leg, slightly loose"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "leather loafers",
+          "material": "leather",
+          "color": "dark burgundy"
+        },
+        "accessories": [
+          {
+            "item": "silk scarf",
+            "material_or_metal": "silver",
+            "color": "burgundy"
+          }
+        ],
+        "styling_rationale": "The ensemble balances the dark and academic theme with a touch of sophistication, featuring heavy textures like tweed chinos paired with tailored wool blazers. The use of rich colors in olive green for trousers and burgundy loafers creates a cohesive look that is both stylish and respectful to the library environment.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_07",
+      "category": "90s_minimalism",
+      "prompt": "Style a minimalist 90s-inspired evening slip dress outfit for an art gallery dinner. Focus on clean lines, architectural simplicity, and discreet accessories.",
+      "status": "success",
+      "duration_sec": 17.44,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Art Gallery Dinner",
+        "aesthetic": "Minimalist Artistic Style",
+        "palette": [
+          "Slate Gray",
+          "White"
+        ],
+        "top": {
+          "item": "Silk Crepe de Chine Shirt Dress",
+          "fabric": "Silk Crepe De Chine",
+          "color": "Slate Gray",
+          "cut": "Slim Fit, A-Line Silhouette"
+        },
+        "bottom": {
+          "item": "White Silk Tights",
+          "fabric": "Silk",
+          "color": "White",
+          "fit": "Tight Fitting"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Black Patent Leather Sandals",
+          "material": "Leather",
+          "color": "Slate Gray"
+        },
+        "accessories": [
+          {
+            "item": "Silver Chain Necklace with a Simple Diamond Pendant",
+            "material_or_metal": "Silver",
+            "color": "White"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to complement the minimalist aesthetic of an art gallery, featuring clean lines and simplicity. The color palette includes slate gray for a sophisticated look that matches the tone of the artwork.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers",
+          "No hoodies"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_08",
+      "category": "retro_runner_streetwear",
+      "prompt": "Design an elevated street-style outfit centered around low-profile retro suede runners (such as Adidas SL72 or Puma Speedcats). Avoid chunky dad sneakers.",
+      "status": "rejected",
+      "duration_sec": 31.55,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 3.93,
+      "diagnostics": [
+        "Negative constraint violation: 'sneaker' in footwear slot despite explicit exclusion."
+      ],
+      "data": {
+        "occasion": "casual",
+        "aesthetic": "retro/low-profile street style",
+        "palette": [
+          "saddle brown",
+          "black"
+        ],
+        "top": {
+          "item": "tank top or crop top",
+          "fabric": "cotton",
+          "color": "saddle brown"
+        },
+        "bottom": {
+          "item": "jeans in a low-profile, high-waisted style (e.g., skinny jeans)",
+          "fabric": "denim",
+          "color": "black"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers with minimal branding and clean lines",
+          "material": "leather or suede",
+          "color": "black, brown (for a more low-profile look)"
+        },
+        "accessories": [
+          {
+            "item": "watch in a retro design",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to blend modern streetwear elements with classic low-profile sneakers, creating a unique and stylish look.",
+        "constraints_satisfied": [
+          "No sneaker in the footwear slot"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_09",
+      "category": "indian_desi_western_fusion",
+      "prompt": "Curate an everyday college outfit for a student in Delhi pairing a pastel Lucknowi Chikankari short kurti with baggy wide-leg denim. Blend traditional craft with modern street practicality.",
+      "status": "success",
+      "duration_sec": 18.33,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "data": {
+        "occasion": "everyday",
+        "aesthetic": "casual chic, traditional aesthetic",
+        "palette": [
+          "light pink",
+          "soft blue",
+          "white"
+        ],
+        "top": {
+          "item": "Lucknowi Chikankari short kurti",
+          "fabric": "silk and cotton blend",
+          "color": "pastel pink and soft blue",
+          "cut": "flowy, traditional style"
+        },
+        "bottom": {
+          "item": "baggy wide-leg denim pants",
+          "fabric": "denim fabric with a relaxed fit",
+          "color": "light indigo or light grey",
+          "fit": "loose and baggy for comfort"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather soles, canvas uppers",
+          "color": "brown leather with pastel accents"
+        },
+        "accessories": [
+          {
+            "item": "jewelry set including a gold necklace and silver earrings",
+            "material_or_metal": "gold chain, silver hoop earring",
+            "color": "pastel colors for contrast"
+          }
+        ],
+        "styling_rationale": "The pastel Lucknowi Chikankari short kurti blends traditional craftsmanship with modern streetwear aesthetics. The baggy wide-leg denim pants provide comfort and practicality suitable for college life in Delhi, while the leather sandals add a touch of luxury to complete this everyday look.",
+        "constraints_satisfied": [
+          "Pastel color combinations are allowed",
+          "Denim is acceptable as bottom fabric"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_10",
+      "category": "indian_ajrakh_coords",
+      "prompt": "Recommend an artisanal summer co-ord outfit for a man in Mumbai's sweltering 35\u00b0C humid weather using hand-block printed Ajrakh or Sanganeri cotton textiles.",
+      "status": "success",
+      "duration_sec": 17.29,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Summer Evening Outfit",
+        "aesthetic": "Casual yet Stylish, with an emphasis on comfort and practicality.",
+        "palette": [
+          "Khaki",
+          "Beige",
+          "Tan"
+        ],
+        "top": {
+          "item": "T-shirt",
+          "fabric": "Hand-block printed Ajrakh or Sanganeri cotton fabric",
+          "color": "Khaki or Beige",
+          "cut": "V-neck, straight cut"
+        },
+        "bottom": {
+          "item": "Jeans",
+          "fabric": "Hand-block printed Ajrakh or Sanganeri cotton fabric",
+          "color": "Tan",
+          "fit": "Straight leg"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Sneakers",
+          "material": "Leather soles, canvas uppers",
+          "color": "Khaki or Tan"
+        },
+        "accessories": [
+          {
+            "item": "Watch",
+            "material_or_metal": "Gold band with a silver dial",
+            "color": "Silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be both stylish and practical, combining comfort with an artisanal touch. The hand-block printed Ajrakh or Sanganeri fabric provides vibrant colors in khaki or beige tones that are ideal for a casual yet fashionable look suitable for Mumbai's humid climate.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_11",
+      "category": "indian_oxidised_silver_streetwear",
+      "prompt": "Design an edgy street-style outfit featuring heavy Indian oxidised silver jewellery (layered tribal choker and stacked rings) styled with a contemporary oversized blazer and denim.",
+      "status": "success",
+      "duration_sec": 17.02,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Street Style",
+        "aesthetic": "Edgy, Street Chic",
+        "palette": [
+          "silver",
+          "bronze"
+        ],
+        "top": {
+          "item": "tee shirt",
+          "fabric": "Cotton",
+          "color": "Black",
+          "cut": "Sweatshirt"
+        },
+        "bottom": {
+          "item": "jeans",
+          "fabric": "Denim",
+          "color": "Grey",
+          "fit": "Straight"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": "",
+          "color": ""
+        },
+        "footwear": {
+          "item": "sneakers",
+          "material": "Leather",
+          "color": "Black"
+        },
+        "accessories": [
+          {
+            "item": "silver choker with tribal design",
+            "material_or_metal": "Silver, Leather",
+            "color": "Bronze"
+          },
+          {
+            "item": "stacked rings in silver and gold",
+            "material_or_metal": "Silver, Gold",
+            "color": "Gold"
+          }
+        ],
+        "styling_rationale": "The outfit combines street chic with edgy elements through the use of heavy Indian oxidised silver jewellery layered into a contemporary oversized blazer. The black tee shirt and grey jeans create an understated yet fashionable silhouette.",
+        "constraints_satisfied": [
+          "No black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_12",
+      "category": "indian_upcycled_handloom",
+      "prompt": "Style an eco-conscious cultural festival outfit in Bangalore using an upcycled handloom saree jacket or corset blouse paired with modern tailored trousers.",
+      "status": "success",
+      "duration_sec": 15.88,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Cultural Festival",
+        "aesthetic": "Vintage and Bohemian",
+        "palette": [
+          "brown",
+          "tan",
+          "saffron"
+        ],
+        "top": {
+          "item": "corset blouse",
+          "fabric": "handloom cotton",
+          "color": "saffron with brown trimmings"
+        },
+        "bottom": {
+          "item": "modern tailored trousers in olive green fabric",
+          "fabric": "cotton or linen blend",
+          "color": "olive green"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals with upcycled leather soles and a suede upper",
+          "material": "upcycled leather, suede",
+          "color": "saffron or brown"
+        },
+        "accessories": [
+          {
+            "item": "earrings in gold hoop style",
+            "material_or_metal": "gold",
+            "color": "brown with saffron accents"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to blend traditional handloom craftsmanship with modern tailoring, reflecting the cultural heritage of Bangalore's textile industry while embracing sustainability through upcycling.",
+        "constraints_satisfied": [
+          "No black, no sneakers",
+          "Saree jacket or corset blouse"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_13",
+      "category": "indian_mens_fusion",
+      "prompt": "Recommend a modern Indo-Western cocktail party ensemble for a man attending a destination wedding in Goa. Balance Indian heritage tailoring with coastal warm-weather ease.",
+      "status": "success",
+      "duration_sec": 17.92,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Indo-Western Cocktail Party",
+        "aesthetic": "Casual yet elegant, blending traditional and contemporary styles.",
+        "palette": [
+          "Indian Red",
+          "Coastal Blue",
+          "Beige"
+        ],
+        "top": {
+          "item": "Saree or Kurta-Pajama",
+          "fabric": "Silk for elegance; cotton for comfort",
+          "color": "Indian Red, Beige"
+        },
+        "bottom": {
+          "item": "Jeans with a touch of denim wash (for beachy vibes)",
+          "fabric": "Denim or Cotton",
+          "color": "Coastal Blue, White"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Leather Sandals",
+          "material": "Suede for comfort and elegance",
+          "color": "Beige"
+        },
+        "accessories": [
+          {
+            "item": "Necklace with a pendant of Indian motifs (for jewelry)",
+            "material_or_metal": "Gold, Silk",
+            "color": "Indian Red"
+          }
+        ],
+        "styling_rationale": "The outfit balances the traditional saree or kurta-pajama for an elegant touch from India and the contemporary jeans with a beachy wash for ease in Goa. The leather sandals add both comfort and elegance.",
+        "constraints_satisfied": [
+          "No black, no sneakers",
+          "Indian Red for sarees/pajamas"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_14",
+      "category": "indian_monsoon_college",
+      "prompt": "Curate a practical college outfit for Mumbai monsoon humidity: quick-drying breathable mulmul fabric, cropped or rolled hemlines, and water-friendly footwear.",
+      "status": "success",
+      "duration_sec": 17.91,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "data": {
+        "occasion": "College Monsoon",
+        "aesthetic": "Eco-Friendly & Stylish",
+        "palette": [
+          "green",
+          "white",
+          "black"
+        ],
+        "top": {
+          "item": "T-shirt",
+          "fabric": "mulmul fabric, cotton blend",
+          "color": "light green or white",
+          "cut": "cropped"
+        },
+        "bottom": {
+          "item": "jeans",
+          "fabric": "mulmul fabric, denim",
+          "color": "green or black",
+          "fit": "rolled hemlines"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": null,
+          "color": null
+        },
+        "footwear": {
+          "item": "sneakers with water-resistant soles",
+          "material": "leather or rubber sole",
+          "color": "green"
+        },
+        "accessories": [
+          {
+            "item": "waterproof bag",
+            "material_or_metal": null,
+            "color": "black"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be practical and stylish, keeping in mind the monsoon season with high humidity. The mulmul fabric ensures quick drying and breathability, while rolled hemlines prevent water from seeping through. Sneakers are chosen for their durability and water resistance.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_15",
+      "category": "indian_corset_lehenga_skirt",
+      "prompt": "Design a modern festive look for an Indian Gen Z bridesmaid pairing a structured embroidered corset blouse with a fluid, lightweight gathered skirt.",
+      "status": "success",
+      "duration_sec": 18.64,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Indian wedding",
+        "aesthetic": "Elegant and traditional",
+        "palette": [
+          "Gold",
+          "Silver",
+          "Beige"
+        ],
+        "top": {
+          "item": "Structured Embroidered Corset Blouse",
+          "fabric": "Silk, Lycra blend",
+          "color": "Gold",
+          "cut": "Structured with a fitted silhouette"
+        },
+        "bottom": {
+          "item": "Fluid Lightweight Gathered Skirt",
+          "fabric": "Tencel, Silk",
+          "color": "Beige",
+          "fit": "Flowing and gathered at the hem for elegance"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Heels",
+          "material": "Leather",
+          "color": "Gold"
+        },
+        "accessories": [
+          {
+            "item": "Necklace with Swarovski Crystal Beads",
+            "material_or_metal": "Silver",
+            "color": "Crystal"
+          }
+        ],
+        "styling_rationale": "The structured and embroidered blouse provides a classic yet modern touch to the traditional Indian wedding attire. The fluid, lightweight skirt adds elegance without compromising on comfort, while the gathered hem gives it an extra layer of sophistication. The gold accents in both items create a harmonious contrast that complements the festive theme. The heeled shoes add a finishing touch of glamour and femininity.",
+        "constraints_satisfied": [
+          "Gold",
+          "Silver",
+          "Beige"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_16",
+      "category": "indian_budget_streetwear",
+      "prompt": "Create a high-style college street outfit under \u20b91,500 total budget combining street-bazaar artisan cotton separates with existing sneakers.",
+      "status": "success",
+      "duration_sec": 15.99,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 5.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Street Street",
+        "aesthetic": "Elegant and Sophisticated",
+        "palette": [
+          "Indian Red",
+          "Saffron Yellow",
+          "Crimson"
+        ],
+        "top": {
+          "item": "T-shirt",
+          "fabric": "Organic Cotton",
+          "color": "Indian Red",
+          "cut": "V-Neck"
+        },
+        "bottom": {
+          "item": "Jeans",
+          "fabric": "Artisan Crafted Denim",
+          "color": "Saffron Yellow",
+          "fit": "Straight Fit"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Loafers",
+          "material": "Leather",
+          "color": "Indian Red"
+        },
+        "accessories": [
+          {
+            "item": "Watch",
+            "material_or_metal": "Gold",
+            "color": "Crimson"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to match the aesthetic of an elegant and sophisticated college street style. The Indian Red T-shirt, Saffron Yellow jeans, and Leather Loafers create a vibrant contrast that perfectly complements each other while staying within the budget constraint.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_17",
+      "category": "barrel_leg_workplace",
+      "prompt": "Style trending barrel-leg (horseshoe) trousers for a professional creative office. Tone down the avant-garde exaggerated volume so it feels polished and authoritative.",
+      "status": "success",
+      "duration_sec": 34.36,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "data": {
+        "occasion": "professional creative office",
+        "aesthetic": "polished and authoritative",
+        "palette": [
+          "black",
+          "silver"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "polyester cotton blend",
+          "color": "black",
+          "cut": "button-down"
+        },
+        "bottom": {
+          "item": "horseshoe trousers (skirt-like)",
+          "fabric": "cotton twill",
+          "color": "silver",
+          "fit": "straight leg, slightly fitted at the waist for a polished silhouette"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers",
+          "material": "leather upper with synthetic sole",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "watch",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The top is a button-down shirt in black, which provides structure and authority. The silver-colored trousers create a polished contrast to the black shirt, while the leather sneakers add a touch of sophistication without being too bold for an office setting.",
+        "constraints_satisfied": [
+          "No skirt was placed in 'top' field"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_18",
+      "category": "burgundy_warm_weather",
+      "prompt": "Incorporate the trending deep cherry / oxblood palette into a warm-weather spring outfit. STRICT EXCLUSION: NO heavy wool overcoats and NO leather trench coats.",
+      "status": "success",
+      "duration_sec": 19.06,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Spring",
+        "aesthetic": "Soft, Warm",
+        "palette": [
+          "deep_cherry",
+          "oxtail_brown"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "cotton blend",
+          "color": "deep_cherry",
+          "cut": "V-neck"
+        },
+        "bottom": {
+          "item": "skirt",
+          "fabric": "polyester cotton blend",
+          "color": "oxtail_brown",
+          "fit": "flowy, full skirt silhouette"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather soles with a suede upper",
+          "color": "brown leather"
+        },
+        "accessories": [
+          {
+            "item": "scarf",
+            "material_or_metal": "silk chiffon",
+            "color": "oxtail_brown"
+          }
+        ],
+        "styling_rationale": "The deep cherry and oxblood palette creates a warm, inviting atmosphere suitable for spring. The combination of the soft fabric textures (cotton blend blouse with polyester cotton skirt) ensures comfort while maintaining style. The flowy silhouette adds to the natural feel of spring weather.",
+        "constraints_satisfied": [
+          "Excluded: No heavy wool overcoats",
+          "Excluded: No leather trench coats"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_19",
+      "category": "capri_pants_high_low",
+      "prompt": "Curate an editorial high-low outfit featuring trending calf-length capri pants. Pair them with structured tailoring and kitten heels to avoid noughties clich\u00e9.",
+      "status": "success",
+      "duration_sec": 16.8,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Elegant yet Chic",
+        "palette": [
+          "navy blue",
+          "silver",
+          "sapphire"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "Silk",
+          "color": "Slate Grey",
+          "cut": "V-Neck"
+        },
+        "bottom": {
+          "item": "calf-length capri pants",
+          "fabric": "Cotton Blend",
+          "color": "Navy Blue",
+          "fit": "Straight Cut, Mid-Length"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "leather kitten heels",
+          "material": "Leather",
+          "color": "Silver Grey"
+        },
+        "accessories": [
+          {
+            "item": "silk scarf",
+            "material_or_metal": "Silk",
+            "color": "Sapphire Blue"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance the structured tailoring with a chic blouse, while the capri pants and kitten heels create an elegant yet casual look. The use of silver accents complements both the fabric and color choices.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers",
+          "No hoodies"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_20",
+      "category": "clean_girl_anti_neutral",
+      "prompt": "Style a clean-girl polished aesthetic with STRICT EXCLUSION: NO white, NO beige, and NO gold jewelry. Demonstrate how to achieve clean minimalism in saturated colors.",
+      "status": "success",
+      "duration_sec": 16.58,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Clean Minimalist Polished Aesthetics",
+        "palette": [
+          "black",
+          "silver"
+        ],
+        "top": {
+          "item": "Blouse",
+          "fabric": "Silk",
+          "color": "Black",
+          "cut": "V-Neck"
+        },
+        "bottom": {
+          "item": "Skirt",
+          "fabric": "Denim",
+          "color": "Silver Grey",
+          "fit": "Slim Fit"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Leather Sandals",
+          "material": "Leather",
+          "color": "Black"
+        },
+        "accessories": [
+          {
+            "item": "Silver Necklace with Black Pendant",
+            "material_or_metal": "Silk",
+            "color": "Silver"
+          }
+        ],
+        "styling_rationale": "The clean minimalist aesthetic is achieved through a combination of black and silver, which are both bold yet understated colors. The silk blouse provides texture contrast to the smooth skirt while maintaining a sleek silhouette. Leather sandals complete this look without any gold jewelry.",
+        "constraints_satisfied": [
+          "White excluded",
+          "Beige excluded",
+          "Gold Jewelry excluded"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_21",
+      "category": "drop_waist_proportions",
+      "prompt": "Style a drop-waist dress for a petite woman (5'2\") without cutting off her vertical proportions or making her legs appear short.",
+      "status": "success",
+      "duration_sec": 16.89,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "data": {
+        "occasion": "casual",
+        "aesthetic": "modern chic",
+        "palette": [
+          "navy blue",
+          "silver"
+        ],
+        "top": {
+          "item": "drop-waist dress",
+          "fabric": "silk satin",
+          "color": "navy blue",
+          "cut": "flowing silhouette with a drop waist"
+        },
+        "bottom": {
+          "item": "skirt",
+          "fabric": "cotton twill",
+          "color": "silver grey",
+          "fit": "straight cut, slightly fitted at the hips for comfort and balance"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "chain necklace with pearls",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The drop-waist dress maintains the petite woman's vertical proportions while accentuating her waistline. The skirt provides a balanced silhouette, and the sandals complete the modern chic aesthetic.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_22",
+      "category": "gender_neutral_preppy",
+      "prompt": "Design a gender-neutral, androgynous collegiate preppy outfit in charcoal, slate blue, and ivory. Avoid conventional gendered tailoring.",
+      "status": "success",
+      "duration_sec": 24.98,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "data": {
+        "occasion": "College Pre-Party",
+        "aesthetic": "Classy yet Informal",
+        "palette": [
+          "charcoal",
+          "slate blue",
+          "ivory"
+        ],
+        "top": {
+          "item": "plain white t-shirt with a subtle collegiate logo and an open neckline in charcoal.",
+          "fabric": "cotton",
+          "color": "white, charcoal",
+          "cut": "V-neck"
+        },
+        "bottom": {
+          "item": "sage green chinos that match the top color-wise but have a slightly more relaxed fit with a slight flare at the hem in slate blue.",
+          "fabric": "polyester",
+          "color": "green, blue",
+          "fit": "slightly wider waist and straight legs"
+        },
+        "outerwear": {
+          "item": "a light woolen sweater with collegiate stripes that matches the top color-wise but is slightly lighter in shade. It has a relaxed fit.",
+          "fabric": "wool",
+          "color": "lighter charcoal, blue"
+        },
+        "footwear": {
+          "item": "suede loafers in ivory with subtle collegiate patterns on them to match the bottom and top colors."
+        },
+        "accessories": [
+          {
+            "item": "a silver watch with a small chain",
+            "material_or_metal": "silver, leather"
+          }
+        ],
+        "styling_rationale": "The outfit is designed for a casual yet stylish pre-party environment. The charcoal and slate blue colors create a classic look that complements the collegiate theme without being too formal or traditional.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_23",
+      "category": "men_pleated_skirt",
+      "prompt": "I am a man and I want to wear a black pleated midi skirt for a contemporary gallery opening. Style me in an elevated, architecturally balanced outfit without feminizing the look.",
+      "status": "success",
+      "duration_sec": 16.14,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "gallery opening",
+        "aesthetic": "contemporary modernism",
+        "palette": [
+          "black",
+          "silver"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "silk chiffon",
+          "color": "black",
+          "cut": "V-neck, fitted silhouette"
+        },
+        "bottom": {
+          "item": "pleated midi skirt",
+          "fabric": "polyester blend with black and silver accents",
+          "color": "silver",
+          "fit": "flowy, slightly loose at the hips to create an architectural shape"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers",
+          "material": "leather upper, mesh sole",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "silver hoop earrings",
+            "material_or_metal": "gold-filled",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance the contemporary aesthetic with a modern architectural silhouette. The blouse and skirt are both black, creating a sleek contrast that complements the gallery's minimalist theme. The silver accents on the skirt add an element of sophistication without feminizing the look.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_24",
+      "category": "athleisure_no_sneakers_hoodies",
+      "prompt": "Create an elevated sporty casual outfit for Sunday errands. STRICT EXCLUSION: NO sneakers and NO hoodies allowed anywhere.",
+      "status": "success",
+      "duration_sec": 16.54,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Sunday errands",
+        "aesthetic": "sporty chic",
+        "palette": [
+          "navy blue",
+          "saffron yellow",
+          "black"
+        ],
+        "top": {
+          "item": "polo shirt",
+          "fabric": "cotton blend",
+          "color": "navy blue",
+          "cut": "straight and fitted"
+        },
+        "bottom": {
+          "item": "jeans",
+          "fabric": "denim",
+          "color": "saffron yellow",
+          "fit": "flared and slightly loose"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals or loafers",
+          "material": "leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "watch",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be both sporty and chic, with a focus on balance between the top (polo shirt) and bottom (jeans). The use of black leather shoes adds a touch of sophistication without compromising comfort. The combination of navy blue and saffron yellow creates an eye-catching yet professional look.",
+        "constraints_satisfied": [
+          "No sneakers",
+          "No hoodies"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_25",
+      "category": "factual_trend_footwear_shift",
+      "prompt": "What footwear trend has replaced chunky platform dad sneakers in 2024-2026? Cite verified fashion sources and explain the proportion shift.",
+      "status": "success",
+      "duration_sec": 17.08,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.0,
+      "diagnostics": [
+        "Weak aesthetic differentiation for trend analysis"
+      ],
+      "data": {
+        "occasion": "Casual",
+        "aesthetic": "Elegant yet casual",
+        "palette": [
+          "black",
+          "silver"
+        ],
+        "top": {
+          "item": "tank top",
+          "fabric": "polyester, cotton blend",
+          "color": "white or light pastel color"
+        },
+        "bottom": {
+          "item": "jeans",
+          "fabric": "denim fabric",
+          "color": "black or dark blue"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals with a flat sole and minimal heel height (around 1-2 cm)",
+          "material": "leather, canvas, rubber soles",
+          "color": "light brown, beige, or neutral tones"
+        },
+        "accessories": [
+          {
+            "item": "sunglasses",
+            "material_or_metal": "silver frame with metal accents",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The trend of replacing chunky platform dad sneakers in favor of minimalist sandals is a shift towards more proportionate and comfortable footwear. This change aligns with the 'Elegant yet casual' aesthetic, offering both formality and comfort.",
+        "constraints_satisfied": [
+          "No black or white shoes",
+          "No chunky platforms"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_26",
+      "category": "factual_trend_low_rise_vs_high_rise",
+      "prompt": "Is low-rise denim replacing high-waisted wide-leg trousers, or do they coexist? Explain how to balance upper-body proportions differently for each rise.",
+      "status": "rejected",
+      "duration_sec": 32.55,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.0,
+      "diagnostics": [
+        "Mandatory requirement violation: required item 'wide-leg trousers' was missing from the ensemble."
+      ],
+      "data": {
+        "occasion": "casual",
+        "aesthetic": "modern chic",
+        "palette": [
+          "black",
+          "navy blue",
+          "silver"
+        ],
+        "top": {
+          "item": "tank top",
+          "fabric": "polyester cotton blend",
+          "color": "white",
+          "cut": "v-neck"
+        },
+        "bottom": {
+          "item": "low-rise denim trousers",
+          "fabric": "denim",
+          "color": "black",
+          "fit": "straight, slightly loose"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "leather loafers",
+          "material": "leather",
+          "color": "brown"
+        },
+        "accessories": [
+          {
+            "item": "silver watch",
+            "material_or_metal": "gold",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The tank top provides a modern and chic upper body, while the low-rise denim trousers offer comfort with an appropriate fit. The leather loafers add texture to the outfit without compromising on style.",
+        "constraints_satisfied": [
+          "top is not high-waisted",
+          "bottom has low rise"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_27",
+      "category": "factual_trend_quiet_luxury_status",
+      "prompt": "According to fashion reports, what is the current trajectory of 'quiet luxury' vs bold color and personality dressing in 2025/2026?",
+      "status": "success",
+      "duration_sec": 13.02,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.21,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Sophisticated yet understated elegance",
+        "palette": [
+          "neutral tones",
+          "soft pastels"
+        ],
+        "top": {
+          "item": "Silk blouse with a fitted silhouette, color: Ivory"
+        },
+        "bottom": {
+          "item": "Black trousers in a straight cut, fabric: Cotton",
+          "fit": "Straight and slim"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Leather ankle boots with gold accents, material: Leather",
+          "color": "Gold"
+        },
+        "accessories": [
+          {
+            "item": "Silver watch with a diamond bezel, color: Silver",
+            "material_or_metal": "Silk",
+            "color": "Diamond"
+          }
+        ],
+        "styling_rationale": "The current trend is moving towards 'quiet luxury' where the focus lies on understated elegance without overwhelming colors. This reflects in both clothing and accessories.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_28",
+      "category": "factual_trend_2026_epistemic_limits",
+      "prompt": "According to the latest 2026 fashion week runways, what specific shoe trend has replaced chunky loafers? Give verified sources or state your knowledge limits.",
+      "status": "success",
+      "duration_sec": 14.94,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.0,
+      "diagnostics": [
+        "Weak aesthetic differentiation for trend analysis"
+      ],
+      "data": {
+        "occasion": "Fashion Week Runway",
+        "aesthetic": "Modern and Stylish",
+        "palette": [
+          "Black",
+          "Silver"
+        ],
+        "top": {
+          "item": "Blouse",
+          "fabric": "Silk Blend",
+          "color": "Midnight Blue",
+          "cut": "V-Neck Shape"
+        },
+        "bottom": {
+          "item": "Skirt",
+          "fabric": "Denim Fabric",
+          "color": "Dark Navy",
+          "fit": "A-Line Silhouette"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Loafers with a Flat Sole and Small Metal Clip Detail",
+          "material": "Leather",
+          "color": "Black"
+        },
+        "accessories": [
+          {
+            "item": "Watches in Stainless Steel Case, Black Dial",
+            "material_or_metal": "Stainless Steel",
+            "color": "Black"
+          }
+        ],
+        "styling_rationale": "The latest fashion week runway showcased a shift towards more modern and streamlined footwear trends. Loafers with flat soles and small metal clip details are gaining popularity as they offer both comfort and style.",
+        "constraints_satisfied": [
+          "No restrictions stated"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_29",
+      "category": "budget_student_capsule",
+      "prompt": "Curate an affordable student capsule outfit for under $80 total featuring modern wide-leg proportions and accessible thrift-store staples.",
+      "status": "success",
+      "duration_sec": 18.7,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 5.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Casual School Day",
+        "aesthetic": "Modern, Stylish",
+        "palette": [
+          "#29547e",
+          "#63A1CD",
+          "#F2E8D0"
+        ],
+        "top": {
+          "item": "T-shirt",
+          "fabric": "Cotton Blend",
+          "color": "#29547e",
+          "cut": "Wide Leg"
+        },
+        "bottom": {
+          "item": "Jeans",
+          "fabric": "Denim",
+          "color": "#63A1CD",
+          "fit": "Straight"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Loafers",
+          "material": "Leather",
+          "color": "#29547e"
+        },
+        "accessories": [
+          {
+            "item": "Scarves",
+            "material_or_metal": "Silk",
+            "color": "#63A1CD"
+          }
+        ],
+        "styling_rationale": "The outfit features modern, stylish wide-leg proportions and accessible thrift-store staples. The T-shirt is a versatile piece that can be paired with jeans for both casual school days and more formal events.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_30",
+      "category": "vintage_leather_styling",
+      "prompt": "Style a vintage oversized distressed brown leather motorcycle jacket for a coffee date. Explain how to balance the heavy masculine jacket with softer feminine elements.",
+      "status": "success",
+      "duration_sec": 19.45,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Coffee Date",
+        "aesthetic": "Vintage and Bohemian",
+        "palette": [
+          "brown",
+          "tan",
+          "rust"
+        ],
+        "top": {
+          "item": "Overcoat-style leather jacket",
+          "fabric": "Brown Leather, with a distressed finish for added texture",
+          "color": "Brown",
+          "cut": "Slightly oversized silhouette, featuring wide lapels and exaggerated shoulders"
+        },
+        "bottom": {
+          "item": "Vintage denim jeans",
+          "fabric": "Denim, dark wash for contrast against the leather jacket's brown color",
+          "color": "Dark Brown",
+          "fit": "Straight leg with a slight flare at the hem to add volume and give it some shape"
+        },
+        "outerwear": {
+          "item": "No Jacket or Coat (null)",
+          "fabric": "",
+          "color": ""
+        },
+        "footwear": {
+          "item": "Leather boots",
+          "material": "Brown leather, with a distressed finish for contrast and texture",
+          "color": "Brown"
+        },
+        "accessories": [
+          {
+            "item": "Vintage leather belt",
+            "material_or_metal": "Gold metal buckle",
+            "color": "Golden Brown"
+          }
+        ],
+        "styling_rationale": "The combination of a vintage motorcycle jacket and denim jeans creates a balanced look that is both masculine and feminine. The brown color from the jacket contrasts with the dark wash of the jeans, adding depth to the overall aesthetic. The leather belt adds an extra layer of texture without overpowering the outfit.",
+        "constraints_satisfied": [
+          "The user has requested vintage elements for this style."
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_31",
+      "category": "extreme_heat_formal_wedding",
+      "prompt": "Recommend a summer outdoor wedding guest outfit for a man in an extreme 38\u00b0C dry climate for under $200. Must meet semi-formal dress codes without causing heat stroke.",
+      "status": "success",
+      "duration_sec": 15.27,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.5,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 5.0
+      },
+      "overall_score": 4.36,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Summer Outdoor Wedding",
+        "aesthetic": "Casual yet elegant, suitable for a formal event with relaxed attire.",
+        "palette": [
+          "Light Beige",
+          "Coral Red",
+          "Silver"
+        ],
+        "top": {
+          "item": "T-shirt",
+          "fabric": "Organic Cotton Blend",
+          "color": "Beige",
+          "cut": "V-Neck"
+        },
+        "bottom": {
+          "item": "Lightweight, Breathable Shorts (Coral Red)",
+          "fabric": "Polyester/Lycra blend",
+          "color": "Red",
+          "fit": "Loose Fit, Stretchy Waistband"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Leather Loafers",
+          "material": "Black Leather",
+          "color": "Brown"
+        },
+        "accessories": [
+          {
+            "item": "Silver Watch",
+            "material_or_metal": "Silver",
+            "color": "White"
+          }
+        ],
+        "styling_rationale": "The outfit balances formality with comfort, providing a balance between the heat and formal attire. The light beige top allows for breathability while maintaining an elegant silhouette.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_32",
+      "category": "capsule_kurti_day_to_night",
+      "prompt": "Demonstrate how to transition a single cotton Chikankari kurti from a morning university lecture to an evening cafe social by altering bottom pairings, footwear, and accessories.",
+      "status": "success",
+      "duration_sec": 17.86,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "data": {
+        "occasion": "Evening Cafe Social",
+        "aesthetic": "Sophisticated yet casual chic with minimal embellishments",
+        "palette": [
+          "Light Beige",
+          "Soft Pink",
+          "Silver"
+        ],
+        "top": {
+          "item": "Chikankari Kurti",
+          "fabric": "Cotton, Silk Blend",
+          "color": "Beige",
+          "cut": "Sedate with a slight flare"
+        },
+        "bottom": {
+          "item": "Black Chinos",
+          "fabric": "Polyester, Cotton Blend",
+          "color": "Dark Beige",
+          "fit": "Straight and Comfortable"
+        },
+        "outerwear": {
+          "item": "Silver Silk Blazer",
+          "fabric": "Silk, Polyester Blend",
+          "color": "Silver"
+        },
+        "footwear": {
+          "item": "Black Leather Loafers",
+          "material": "Leather",
+          "color": "Dark Brown"
+        },
+        "accessories": [
+          {
+            "item": "Gold Silk Scarf",
+            "material_or_metal": "Silk, Gold Thread",
+            "color": "Silver-Gold"
+          }
+        ],
+        "styling_rationale": "The outfit transitions from a formal university setting to an evening cafe social by incorporating elements of both worlds. The Chikankari kurti is paired with black chinos for a sophisticated yet casual chic aesthetic, while the blazer and loafers add a touch of elegance without compromising comfort.",
+        "constraints_satisfied": [
+          "No restrictions mentioned"
+        ]
+      }
+    }
+  ],
+  "results_after": [
+    {
+      "prompt_id": "genz_01",
+      "category": "clean_girl_butter_yellow",
+      "prompt": "Curate a clean-girl daytime summer outfit incorporating the trending butter yellow palette. Style with warm neutrals, delicate gold jewelry, and light layering.",
+      "status": "error",
+      "duration_sec": 2222.3,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 2.5,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.0,
+      "diagnostics": [
+        "Weak aesthetic differentiation for clean girl",
+        "Incomplete ensemble missing core anchor"
+      ],
+      "matched_trends": [
+        "Butter Yellow as the Soft Alternative Neutral",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [],
+      "data": null
+    },
+    {
+      "prompt_id": "genz_02",
+      "category": "blokecore_streetwear",
+      "prompt": "Design a Gen Z Blokecore outfit pairing a vintage oversized football/rugby jersey with sharp contrasting pieces. Explain how to avoid looking like you just left the gym.",
+      "status": "success",
+      "duration_sec": 28.65,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Blokecore & Sporty-Preppy Juxtaposition",
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Blokecore & Sporty-Preppy Juxtaposition",
+          "source_title": "Blokecore: How Football Kits Became High Fashion's Favorite Streetwear Trope",
+          "source_url": "https://www.elle.in/fashion/trends/blokecore-indian-gen-z",
+          "publication_date": "2024-04-18",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        }
+      ],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Sporty-Preppy",
+        "palette": [
+          "blue",
+          "white",
+          "black"
+        ],
+        "top": {
+          "item": "Vintage oversized long-sleeve striped rugby or football jersey",
+          "fabric": "Cotton/Polycrylic blend, featuring a vintage feel with stripes and logos",
+          "color": "Blue (stripes), white (sweatband)",
+          "cut": "Loose fit, tailored for comfort"
+        },
+        "bottom": {
+          "item": "Knife-pleated midi skirt or relaxed straight-leg dark wash denim",
+          "fabric": "Denim, featuring a high-waisted pleats and distressed look",
+          "color": "Black (denim), white (sweatband)",
+          "fit": "Loose fit with slight flare"
+        },
+        "outerwear": {
+          "item": "None",
+          "fabric": "Leather, for added texture contrast in the outfit balance",
+          "color": "Brown/Reddish-brown leather"
+        },
+        "footwear": {
+          "item": "Black leather loafers with white crew socks or low-profile retro trainers",
+          "material": "Leather, providing a sharp contrast to the denim and brown leather of the top and outerwear",
+          "color": "Brown/Reddish-brown (leather), black (crew socks/trainers)"
+        },
+        "accessories": [
+          {
+            "item": "Watch with a vintage-style dial",
+            "material_or_metal": "Gold, for added texture contrast in the outfit balance",
+            "color": "Silver/gold"
+          }
+        ],
+        "styling_rationale": "The combination of a classic rugby jersey and knife-pleated skirt creates an interesting juxtaposition that can be worn casually while still maintaining a sporty look. The leather loafers add a sharp contrast to the denim, creating balance in texture and color without being too bold.",
+        "constraints_satisfied": [
+          "Vintage rugby/football jersey",
+          "Knife-pleated midi skirt or relaxed straight-leg dark wash denim"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_03",
+      "category": "coquette_romantic",
+      "prompt": "Style a modern Coquette romantic outfit featuring delicate lace trims and ribbon accents. Ground the look with sturdy or tailored footwear so it feels edgy rather than costume-like.",
+      "status": "rejected",
+      "duration_sec": 38.1,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.36,
+      "diagnostics": [
+        "Garment slot error: upper-body item 'knit' was placed in 'bottom' field."
+      ],
+      "matched_trends": [
+        "Coquette & Dark Balletcore Contrast",
+        "Mesh & Sheer Ballet Flats"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Coquette & Dark Balletcore Contrast",
+          "source_title": "The Evolution of the Coquette Aesthetic: From Hyper-Sweet to Edgy Contrast",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/coquette-aesthetic-evolution",
+          "publication_date": "2024-03-25",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Mesh & Sheer Ballet Flats",
+          "source_title": "The Mesh Shoe Phenomenon: How Ala\u00efa's Flats Changed Warm-Weather Dressing",
+          "source_url": "https://www.vogue.com/fashion/trends/mesh-flats-summer",
+          "publication_date": "2024-05-10",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "date night",
+        "aesthetic": "romantic edgy",
+        "palette": [
+          "rose pink",
+          "silver",
+          "gold"
+        ],
+        "top": {
+          "item": "sheer babydoll top in blush or ivory",
+          "fabric": "silky, delicate lace trim",
+          "color": "blush/pink",
+          "cut": "v-neckline with lace trims"
+        },
+        "bottom": {
+          "item": "pompom-knit micro pleated skirt with sheer hem",
+          "fabric": "crisp poplin, sheen",
+          "color": "white or blush",
+          "fit": "loose-fitting, slightly flared"
+        },
+        "outerwear": {
+          "item": "black leather jacket with dark lace trim",
+          "fabric": "leather",
+          "color": "dark brown/olive green"
+        },
+        "footwear": {
+          "item": "brown suede ankle boots with single buckle strap and ribbons for edginess",
+          "material": "suede, leather",
+          "color": "burgundy/brown"
+        },
+        "accessories": [
+          {
+            "item": "gold hoop earrings",
+            "material_or_metal": "silver",
+            "color": "golden"
+          }
+        ],
+        "styling_rationale": "The outfit combines delicate lace and sheer fabrics with dark, edgy elements to create a romantic yet modern look. The combination of soft textures (silky poplin) and sharp contrasts (dark leather jacket and bold boots) provides balance.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_04",
+      "category": "y2k_revival",
+      "prompt": "Curate an authentic Y2K revival casual outfit built around low-rise relaxed cargo pants and a fitted baby tee. STRICT EXCLUSION: NO skinny jeans.",
+      "status": "success",
+      "duration_sec": 34.38,
+      "scores": {
+        "factual_trend_grounding": 4.5,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.5,
+      "diagnostics": [],
+      "matched_trends": [
+        "Capri Pants & Knee-Length Pedal Pushers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Capri Pants & Knee-Length Pedal Pushers",
+          "source_title": "The High-Fashion Rehabilitation of the Capri Pant",
+          "source_url": "https://www.voguescandinavia.com/trends/capri-pants-trend-guide",
+          "publication_date": "2024-06-15",
+          "confidence": "medium"
+        }
+      ],
+      "data": {
+        "occasion": "casual",
+        "aesthetic": "modern vintage revival",
+        "palette": [
+          "navy",
+          "white",
+          "saddle brown"
+        ],
+        "top": {
+          "item": "baby tee in white, fitted cut with a V-neckline and straight hem"
+        },
+        "bottom": {
+          "item": "cargo pants in navy blue, low-rise design ending mid-calf",
+          "fabric": "cotton blend",
+          "color": "navy",
+          "fit": "low rise, relaxed silhouette"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers with white accents and a black sole",
+          "material": "leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "scarf in navy, made of silk and featuring gold metallic fringe",
+            "material_or_metal": "gold",
+            "color": "navy"
+          }
+        ],
+        "styling_rationale": "The outfit combines the modern revival of capri pants with a fitted baby tee to create an authentic Y2K casual look. The low-rise cargo pants and sneakers provide both comfort and style, while the white accents on the shoes add a touch of vintage flair.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_05",
+      "category": "gorpcore_utilitarian",
+      "prompt": "Design a utilitarian Gorpcore streetwear outfit featuring technical water-resistant fabrics, parachute pants, and trail-inspired aesthetics in an earth-tone palette.",
+      "status": "success",
+      "duration_sec": 19.86,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "casual outdoor",
+        "aesthetic": "trail-inspired",
+        "palette": [
+          "green",
+          "brown",
+          "tan"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "technical water-resistant fabric (e.g., Gore-Tex)",
+          "color": "light green or khaki"
+        },
+        "bottom": {
+          "item": "parachute pants",
+          "fabric": "water-resistant and durable material",
+          "color": "tan or brown"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers",
+          "material": "leather",
+          "color": "brown"
+        },
+        "accessories": [
+          {
+            "item": "scarf",
+            "material_or_metal": "plaid cotton or leather",
+            "color": "green, brown, tan"
+          }
+        ],
+        "styling_rationale": "The outfit combines technical and trail-inspired elements to create a utilitarian streetwear look that is both functional and aesthetically pleasing.",
+        "constraints_satisfied": [
+          "user requested aesthetic of 'trail-inspired', fabric choices for top (technical water-resistant), bottom (parachute pants, durable materials)",
+          "no explicit negative constraints"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_06",
+      "category": "dark_academia",
+      "prompt": "Curate a Dark Academia autumn library ensemble for a student in a historic university setting. Balance heavy textures like tweed and corduroy with tailored wool.",
+      "status": "success",
+      "duration_sec": 19.52,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "Library Study",
+        "aesthetic": "Dark Academia",
+        "palette": [
+          "black",
+          "dark brown",
+          "olive green"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "woolen fabric with a textured weave, such as tweed or corduroy",
+          "color": "deep navy blue, black, or dark gray",
+          "cut": "tailored and fitted"
+        },
+        "bottom": {
+          "item": "trousers",
+          "fabric": "heavy cotton twill or wool trousers with a slight texture for contrast",
+          "color": "dark brown, olive green, or navy blue",
+          "fit": "relaxed but not baggy to maintain proportion"
+        },
+        "outerwear": {
+          "item": "null",
+          "fabric": "none (if none is preferred)",
+          "color": "black"
+        },
+        "footwear": {
+          "item": "sneakers with a leather sole and dark brown color for contrast",
+          "material": "leather",
+          "color": "dark brown or black"
+        },
+        "accessories": [
+          {
+            "item": "scarf in olive green fabric, tied around the neck",
+            "material_or_metal": "silk",
+            "color": "olive green"
+          }
+        ],
+        "styling_rationale": "The ensemble balances textures with a tweed or corduroy blouse and trousers paired with dark brown leather sneakers to create contrast without being too harsh. The tailored fit of the top and relaxed silhouette of the bottom maintain proportion, while the outerwear is kept minimal in color for the library setting.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_07",
+      "category": "90s_minimalism",
+      "prompt": "Style a minimalist 90s-inspired evening slip dress outfit for an art gallery dinner. Focus on clean lines, architectural simplicity, and discreet accessories.",
+      "status": "success",
+      "duration_sec": 19.58,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.14,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "Art Gallery Dinner",
+        "aesthetic": "Minimalist and Architectural",
+        "palette": [
+          "black",
+          "white",
+          "silver"
+        ],
+        "top": {
+          "item": "Silk Crepe Evening Dress",
+          "fabric": "Crepe de Chine, Silk",
+          "color": "Black with subtle white lace detailing on the bodice for a touch of elegance.",
+          "cut": "Slim fit silhouette, slightly fitted at waist to create an hourglass shape."
+        },
+        "bottom": {
+          "item": "Silver Striped Crepe Pants",
+          "fabric": "Crepe de Chine, Silver Stripe",
+          "color": "Black with silver stripes for a modern twist on classic elegance.",
+          "fit": "Slim fit, slightly fitted at waist to create an hourglass shape."
+        },
+        "outerwear": {
+          "item": "Silver Striped Silk Blazer",
+          "fabric": "Silk",
+          "color": "White"
+        },
+        "footwear": {
+          "item": "Black Patent Leather Loafer Shoes",
+          "material": "Leather",
+          "color": "Black with a touch of silver for an architectural finish."
+        },
+        "accessories": [
+          {
+            "item": "Silver Watch",
+            "material_or_metal": "Silver Metal Case, Silver Dial"
+          }
+        ],
+        "styling_rationale": "The outfit maintains the minimalist aesthetic by focusing on clean lines and simplicity. The texture of the crepe dress contrasts with the silver stripe pants for a modern twist, while the blazer adds depth without overpowering the overall look. The black color is neutral and appropriate for an art gallery setting.",
+        "constraints_satisfied": [
+          "No restrictions"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_08",
+      "category": "retro_runner_streetwear",
+      "prompt": "Design an elevated street-style outfit centered around low-profile retro suede runners (such as Adidas SL72 or Puma Speedcats). Avoid chunky dad sneakers.",
+      "status": "rejected",
+      "duration_sec": 40.02,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.36,
+      "diagnostics": [
+        "Negative constraint violation: 'sneaker' in footwear slot despite explicit exclusion."
+      ],
+      "matched_trends": [
+        "Low-Profile Retro Runners & Ballet-Sneaker Hybrids",
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Low-Profile Retro Runners & Ballet-Sneaker Hybrids",
+          "source_title": "The Death of the Chunky Sneaker: Rise of Sleek Low-Profile Runners",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/retro-sneaker-shifts",
+          "publication_date": "2024-08-01",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        }
+      ],
+      "data": {
+        "occasion": "daily wear",
+        "aesthetic": "elevated street style",
+        "palette": [
+          "chocolate",
+          "cream"
+        ],
+        "top": {
+          "item": "shirt or blouse",
+          "fabric": "silk, cotton, polyester blend",
+          "color": "pastel pink, light blue"
+        },
+        "bottom": {
+          "item": "jeans or cargo pants",
+          "fabric": "denim, canvas",
+          "color": "blue, olive green"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers in white color with a low-profile design",
+          "material": "leather",
+          "color": "white"
+        },
+        "accessories": [
+          {
+            "item": "scarf",
+            "material_or_metal": "cotton, silk",
+            "color": "pastel pink or light blue"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to reflect the current trend of low-profile retro runners and ballet-sneaker hybrids. The combination of a pastel-colored shirt/blouse with sleek white sneakers creates an elevated street style, while the wide-leg jeans/jean shorts pair well with the low-profile design.",
+        "constraints_satisfied": [
+          "sneakers excluded"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_09",
+      "category": "indian_desi_western_fusion",
+      "prompt": "Curate an everyday college outfit for a student in Delhi pairing a pastel Lucknowi Chikankari short kurti with baggy wide-leg denim. Blend traditional craft with modern street practicality.",
+      "status": "success",
+      "duration_sec": 24.17,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.71,
+      "diagnostics": [],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "everyday college outfit",
+        "aesthetic": "casual chic with a touch of traditional elegance",
+        "palette": [
+          "light pink",
+          "navy blue"
+        ],
+        "top": {
+          "item": "short pastel Lucknowi Chikankari cotton kurti",
+          "fabric": "cotton, silk blend",
+          "color": "light pink (thigh-length)",
+          "cut": "relaxed fit with rolled sleeves"
+        },
+        "bottom": {
+          "item": "baggy wide-leg medium wash blue denim or olive utilitarian cargo pants",
+          "fabric": "denim, high-waisted",
+          "color": "blue (medium wash)"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "clean low-profile white sneakers",
+          "material": "leather",
+          "color": "white"
+        },
+        "accessories": [
+          {
+            "item": "gold watch",
+            "material_or_metal": "gold",
+            "color": "silver (case)"
+          }
+        ],
+        "styling_rationale": "The outfit blends traditional Lucknowi Chikankari craftsmanship with modern streetwear elements, creating a casual chic look that is both elegant and practical for college students. The light pink kurti adds a touch of traditional elegance while the baggy wide-leg jeans provide comfort and functionality.",
+        "constraints_satisfied": [
+          "pastel color",
+          "Lucknowi Chikankari fabric"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_10",
+      "category": "indian_ajrakh_coords",
+      "prompt": "Recommend an artisanal summer co-ord outfit for a man in Mumbai's sweltering 35\u00b0C humid weather using hand-block printed Ajrakh or Sanganeri cotton textiles.",
+      "status": "rejected",
+      "duration_sec": 53.89,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 2.5,
+        "constraint_compliance": 2.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.07,
+      "diagnostics": [
+        "Garment misplaced in wrong slot",
+        "Garment slot error: lower-body item 'trousers' was placed in 'top' field.",
+        "Garment slot error: lower-body item 'shorts' was placed in 'top' field."
+      ],
+      "matched_trends": [
+        "Handloom Ajrakh & Sanganeri Block-Print Co-ords",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Handloom Ajrakh & Sanganeri Block-Print Co-ords",
+          "source_title": "Artisanal Streetwear: Indian Block Prints Get a Modern Co-ord Makeover",
+          "source_url": "https://www.vogue.in/fashion/trends/handloom-co-ords-indian-summer",
+          "publication_date": "2024-05-18",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "Summer",
+        "aesthetic": "Casual yet stylish with traditional elements",
+        "palette": [
+          "indigo",
+          "madder",
+          "ecru"
+        ],
+        "top": {
+          "item": "boxy Cuban-collar half-sleeve shirt in hand-block indigo/madder Ajrakh print / Matching or contrast ecru relaxed-fit drawstring cotton shorts or linen trousers",
+          "fabric": "handloom Ajrakh/Sanganeri block-printed cotton",
+          "color": "indigo, madder, ecru"
+        },
+        "bottom": {
+          "item": "matching hand-block printed Ajrakh/Sanganeri block-printed drawstring cotton shorts or linen trousers with a relaxed fit and contrast color (ecru)",
+          "fabric": "handloom Ajrakh/Sanganeri",
+          "color": "indigo, madder"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": null,
+          "color": null
+        },
+        "footwear": {
+          "item": "tan leather braided slides or handcrafted mojaris",
+          "material": "leather",
+          "color": "tan"
+        },
+        "accessories": [
+          {
+            "item": "matching jewelry (necklace, earrings)",
+            "material_or_metal": null,
+            "color": null
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance the traditional Ajrakh/Sanganeri block-print textiles with modern comfort through relaxed fit and handloom fabric. The combination of a boxy half-sleeve shirt, drawstring shorts/trousers, tan leather slides/mojaris, and matching accessories creates a stylish yet casual look suitable for Mumbai's humid summer weather.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_11",
+      "category": "indian_oxidised_silver_streetwear",
+      "prompt": "Design an edgy street-style outfit featuring heavy Indian oxidised silver jewellery (layered tribal choker and stacked rings) styled with a contemporary oversized blazer and denim.",
+      "status": "success",
+      "duration_sec": 30.96,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.71,
+      "diagnostics": [],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+        "Oxidised Silver Jewellery with Contemporary Streetwear"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Oxidised Silver Jewellery with Contemporary Streetwear",
+          "source_title": "Silver Linings: Why Gen Z is Obsessed with Oxidised Silver Jewellery",
+          "source_url": "https://www.grazia.co.in/fashion/trends/oxidised-silver-streetwear-gen-z",
+          "publication_date": "2024-08-22",
+          "confidence": "very_high"
+        }
+      ],
+      "data": {
+        "occasion": "Streetwear Casual",
+        "aesthetic": "Edgy Street Chic",
+        "palette": [
+          "silver",
+          "black",
+          "charcoal"
+        ],
+        "top": {
+          "item": "Oversized washed charcoal graphic tee or unstructured black linen blazer",
+          "fabric": "denim, cotton",
+          "color": "washed charcoal, black",
+          "cut": "unstructured"
+        },
+        "bottom": {
+          "item": "Straight-leg ecru denim or dark grey tailored trousers",
+          "fabric": "denim, wool blend",
+          "color": "ecru, dark grey",
+          "fit": "straight leg"
+        },
+        "outerwear": {
+          "item": "Oversized washed charcoal graphic tee or unstructured black linen blazer",
+          "fabric": "denim, cotton",
+          "color": "washed charcoal, black"
+        },
+        "footwear": {
+          "item": "Chunky leather loafers or clean skate shoes",
+          "material": "leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "Layered heavy silver choker and stacked rings",
+            "material_or_metal": "silver, gold",
+            "color": "heavy oxidised silver"
+          }
+        ],
+        "styling_rationale": "The outfit combines contemporary streetwear elements with traditional Indian aesthetics. The oversized blazer adds a touch of coolness while the graphic tee maintains edginess. The heavy silver jewelry completes the look by adding an authentic and modern twist.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_12",
+      "category": "indian_upcycled_handloom",
+      "prompt": "Style an eco-conscious cultural festival outfit in Bangalore using an upcycled handloom saree jacket or corset blouse paired with modern tailored trousers.",
+      "status": "success",
+      "duration_sec": 34.47,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Handloom Ajrakh & Sanganeri Block-Print Co-ords",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Handloom Ajrakh & Sanganeri Block-Print Co-ords",
+          "source_title": "Artisanal Streetwear: Indian Block Prints Get a Modern Co-ord Makeover",
+          "source_url": "https://www.vogue.in/fashion/trends/handloom-co-ords-indian-summer",
+          "publication_date": "2024-05-18",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "Cultural Festival in Bangalore",
+        "aesthetic": "Eco-conscious & Traditional",
+        "palette": [
+          "ecru",
+          "indigo/madder"
+        ],
+        "top": {
+          "item": "Handloom Ajrakh Hand-Woven Saree Jacket or Corset Blouse",
+          "fabric": "handwoven cotton/ silk blend",
+          "color": "ecru, indigo/madder"
+        },
+        "bottom": {
+          "item": "Modern Tailored Denim Trousers with Barrel-Leg Horseshoe Shape",
+          "fabric": "denim or wool-blend tailored trousers",
+          "fit": "fitted, high-waisted, barrel-leg shape"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "Pointed-toe Slingshot Kitten Heels",
+          "material": "leather",
+          "color": "black (optional)"
+        },
+        "accessories": [
+          {
+            "item": "Silk Scarf in Handloom Ajrakh Print"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to reflect the cultural festival atmosphere with traditional elements and modern tailoring. The hand-woven saree jacket or corset blouse pairs well with contemporary trousers, creating a balance between tradition and innovation.",
+        "constraints_satisfied": [
+          "Handloom Ajrakh & Sanganeri Block-Print Co-ords trend in active_cultural_macro_trend",
+          "Barrel-Leg (Horseshoe) Denim & Trousers trend in active_macro_trend"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_13",
+      "category": "indian_mens_fusion",
+      "prompt": "Recommend a modern Indo-Western cocktail party ensemble for a man attending a destination wedding in Goa. Balance Indian heritage tailoring with coastal warm-weather ease.",
+      "status": "success",
+      "duration_sec": 26.58,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.36,
+      "diagnostics": [
+        "Weak aesthetic differentiation for mens fusion"
+      ],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "destination wedding in Goa",
+        "aesthetic": "casual chic with a touch of sophistication",
+        "palette": [
+          "light pastel",
+          "blue denim",
+          "white sneakers"
+        ],
+        "top": {
+          "item": "short pastel Chikankari cotton kurti",
+          "fabric": "cotton, silk blend",
+          "color": "pastel pink or light blue",
+          "cut": "thigh-length with rolled sleeves"
+        },
+        "bottom": {
+          "item": "baggy wide-leg medium wash denim pants",
+          "fabric": "denim fabric",
+          "color": "blue",
+          "fit": "loose, baggy fit"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "pointed-toe slingback kitten heels or clean low-profile white sneakers",
+          "material": "leather",
+          "color": "white"
+        },
+        "accessories": [
+          {
+            "item": "silver watch",
+            "material_or_metal": "gold, silver",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit balances the traditional Indian heritage with a contemporary casual chic aesthetic. The pastel Chikankari kurti provides an element of elegance without being overly formal, while the baggy wide-leg denim pants offer comfort and ease for outdoor activities in Goa's warm weather.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_14",
+      "category": "indian_monsoon_college",
+      "prompt": "Curate a practical college outfit for Mumbai monsoon humidity: quick-drying breathable mulmul fabric, cropped or rolled hemlines, and water-friendly footwear.",
+      "status": "success",
+      "duration_sec": 26.72,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.71,
+      "diagnostics": [],
+      "matched_trends": [
+        "Barrel-Leg (Horseshoe) Denim & Trousers",
+        "Mesh & Sheer Ballet Flats"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Mesh & Sheer Ballet Flats",
+          "source_title": "The Mesh Shoe Phenomenon: How Ala\u00efa's Flats Changed Warm-Weather Dressing",
+          "source_url": "https://www.vogue.com/fashion/trends/mesh-flats-summer",
+          "publication_date": "2024-05-10",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "College Monsoon",
+        "aesthetic": "Comfortable & Stylish",
+        "palette": [
+          "green",
+          "white"
+        ],
+        "top": {
+          "item": "shirt or blouse",
+          "fabric": "mulmul fabric, breathable cotton",
+          "color": "light green",
+          "cut": "sleeveless, cropped"
+        },
+        "bottom": {
+          "item": "trousers or skirt",
+          "fabric": "mulmul fabric, quick-drying mulmul pants",
+          "color": "green",
+          "fit": "horseshoe leg shape, rolled hemline"
+        },
+        "outerwear": {
+          "item": "jacket/coat/blazer",
+          "fabric": "polyester or wool blend for durability and warmth retention",
+          "color": "navy blue with green accents (for contrast)"
+        },
+        "footwear": {
+          "item": "sandals, loafers, sneakers",
+          "material": "mulmul fabric, leather upper"
+        },
+        "accessories": [
+          {
+            "item": "scarf or watch",
+            "color": "green and white striped pattern"
+          }
+        ],
+        "styling_rationale": "The chosen outfit is designed to be both practical for college life in Mumbai's monsoon season, with breathable mulmul fabric that keeps the wearer dry. The cropped trousers feature a horseshoe leg shape and rolled hemline, ensuring comfort while providing quick-drying properties. The jacket/coat/blazer balances warmth and style without being too heavy or restricting movement.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_15",
+      "category": "indian_corset_lehenga_skirt",
+      "prompt": "Design a modern festive look for an Indian Gen Z bridesmaid pairing a structured embroidered corset blouse with a fluid, lightweight gathered skirt.",
+      "status": "success",
+      "duration_sec": 24.25,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "Indian Gen Z Bridesmaid",
+        "aesthetic": "Modern Festive",
+        "palette": [
+          "pastel pink",
+          "white"
+        ],
+        "top": {
+          "item": "structured embroidered corset blouse",
+          "fabric": "silk/crepe, structured fabric with embroidery details",
+          "color": "pastel pink",
+          "cut": "structured silhouette"
+        },
+        "bottom": {
+          "item": "fluid, lightweight gathered skirt",
+          "fabric": "cotton/synthetic blend, fluid and breathable material for comfort",
+          "color": "white",
+          "fit": "flowing with slight gathers at the hemline"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "pointed-toe slingback kitten heels",
+          "material": "leather, structured heel design for elegance and comfort",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "scarves in pastel pink and white stripes",
+            "material_or_metal": "silk, metallic thread",
+            "color": "pastel pink and white"
+          }
+        ],
+        "styling_rationale": "This outfit balances the structured elegance of the corset blouse with a fluid flow from the skirt. The use of pastel colors adds modern festive flair without being overtly formal.",
+        "constraints_satisfied": [
+          "Pastel color for top",
+          "Fluid and lightweight material for bottom"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_16",
+      "category": "indian_budget_streetwear",
+      "prompt": "Create a high-style college street outfit under \u20b91,500 total budget combining street-bazaar artisan cotton separates with existing sneakers.",
+      "status": "success",
+      "duration_sec": 21.97,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 5.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "College Street",
+        "aesthetic": "High Style and Trendy",
+        "palette": [
+          "#F2D8B4",
+          "#E7C395",
+          "#A68071"
+        ],
+        "top": {
+          "item": "Blouse",
+          "fabric": "Artisan Cotton Blend with Silk Thread",
+          "color": "#F2D8B4",
+          "cut": "Slim Fit, A-Line Silhouette"
+        },
+        "bottom": {
+          "item": "Pants",
+          "fabric": "Cotton Canvas with Leather Trim",
+          "color": "#E7C395",
+          "fit": "Straight Cut with a Slim Waistline and Wide Hem"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": null,
+          "color": null
+        },
+        "footwear": {
+          "item": "Sneakers in #A68071",
+          "material": "Canvas Leather Blend with Metal Buckles",
+          "color": "#A68071"
+        },
+        "accessories": [
+          {
+            "item": "Necklace of Gold Thread and Gemstone Set",
+            "material_or_metal": "Gold Thread, Ruby Stone",
+            "color": "#F2D8B4"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance a high style aesthetic with practicality. The artisan cotton blouse offers texture tension through its silk thread and contrast with the canvas pants for volume balancing. The leather trim on the pants adds an element of luxury without being too expensive, while the sneakers maintain street bazaar integrity within budget constraints.",
+        "constraints_satisfied": [
+          "No black shoes",
+          "No hoodie"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_17",
+      "category": "barrel_leg_workplace",
+      "prompt": "Style trending barrel-leg (horseshoe) trousers for a professional creative office. Tone down the avant-garde exaggerated volume so it feels polished and authoritative.",
+      "status": "success",
+      "duration_sec": 26.0,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Barrel-Leg (Horseshoe) Denim & Trousers",
+        "Butter Yellow as the Soft Alternative Neutral"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Butter Yellow as the Soft Alternative Neutral",
+          "source_title": "Why Butter Yellow Is the Defining Color Trend of Recent Runways",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/butter-yellow-trend",
+          "publication_date": "2024-06-20",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "Professional Creative Office",
+        "aesthetic": "Polished Authority",
+        "palette": [
+          "soft yellow",
+          "black"
+        ],
+        "top": {
+          "item": "nipped-in blazer",
+          "fabric": "wool-blend cotton blend",
+          "color": "navy blue with a hint of soft yellow (80% wool, 20% silk)",
+          "cut": "satin lapel and shoulders"
+        },
+        "bottom": {
+          "item": "soft yellow linen trousers",
+          "fabric": "100% linen",
+          "color": "soft butter yellow with a hint of navy blue (85% linen, 15% cotton)",
+          "fit": "straight leg, slightly loose"
+        },
+        "outerwear": {
+          "item": "null",
+          "fabric": "wool-blend denim jacket or blazer",
+          "color": "navy blue with soft yellow accents (80% wool, 20% silk)"
+        },
+        "footwear": {
+          "item": "cream kitten-heel loafers",
+          "material": "leather",
+          "color": "soft butter yellow"
+        },
+        "accessories": [
+          {
+            "item": "gold watch",
+            "material_or_metal": "gold",
+            "color": "silver (to contrast with gold)"
+          }
+        ],
+        "styling_rationale": "The top and bottom are tailored to fit a professional office setting, while the blazer adds an authoritative touch. The soft yellow color of the trousers is balanced by navy blue accents for a polished look.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_18",
+      "category": "burgundy_warm_weather",
+      "prompt": "Incorporate the trending deep cherry / oxblood palette into a warm-weather spring outfit. STRICT EXCLUSION: NO heavy wool overcoats and NO leather trench coats.",
+      "status": "rejected",
+      "duration_sec": 43.03,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 2.5,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.0,
+      "diagnostics": [
+        "Garment misplaced in wrong slot",
+        "Garment slot error: lower-body item 'trousers' was placed in 'top' field."
+      ],
+      "matched_trends": [
+        "Deep Cherry & Rich Burgundy Monolith",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Deep Cherry & Rich Burgundy Monolith",
+          "source_title": "The Saturated Wine Spectrum: Deep Cherry and Oxblood Dominate Fall/Winter",
+          "source_url": "https://www.vogue.com/fashion/trends/burgundy-color-trend",
+          "publication_date": "2024-10-01",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "warm weather spring outing",
+        "aesthetic": "casual chic with a touch of elegance",
+        "palette": [
+          "deep cherry",
+          "rich burgundy"
+        ],
+        "top": {
+          "item": "charcoal tailored straight-leg trousers",
+          "fabric": "wool-blend, structured fabric for added warmth and comfort",
+          "color": "oak brown or deep charcoal grey",
+          "cut": "straight leg with a slight flare at the ankle"
+        },
+        "bottom": {
+          "item": "deep burgundy polished leather loafers",
+          "fabric": "leather",
+          "color": "burgundy",
+          "fit": "suede upper, metal buckle closure for added durability and style"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": "",
+          "color": ""
+        },
+        "footwear": {
+          "item": "pointed-toe slingback kitten heels",
+          "material": "leather",
+          "color": "burgundy"
+        },
+        "accessories": [
+          {
+            "item": "scarf in deep cherry color, silk texture",
+            "material_or_metal": "silk",
+            "color": "deep cherry"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance the warm weather with a touch of elegance through the use of structured wool-blend trousers for warmth and comfort. The deep burgundy loafers add an element of sophistication, while the pointed-toe kitten heels complete the look.",
+        "constraints_satisfied": [
+          "NO black",
+          "No leather trench coats"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_19",
+      "category": "capri_pants_high_low",
+      "prompt": "Curate an editorial high-low outfit featuring trending calf-length capri pants. Pair them with structured tailoring and kitten heels to avoid noughties clich\u00e9.",
+      "status": "success",
+      "duration_sec": 38.87,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Capri Pants & Knee-Length Pedal Pushers",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Capri Pants & Knee-Length Pedal Pushers",
+          "source_title": "The High-Fashion Rehabilitation of the Capri Pant",
+          "source_url": "https://www.voguescandinavia.com/trends/capri-pants-trend-guide",
+          "publication_date": "2024-06-15",
+          "confidence": "medium"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "editorial",
+        "aesthetic": "stylish yet modern",
+        "palette": [
+          "navy blue",
+          "saddle brown",
+          "silver"
+        ],
+        "top": {
+          "item": "structured linen blazer",
+          "fabric": "linen and wool blend",
+          "color": "navy blue",
+          "cut": "buttoned, tailored"
+        },
+        "bottom": {
+          "item": "crisp poplin capri pants",
+          "fabric": "cotton with a crisp texture",
+          "color": "saddle brown",
+          "fit": "tucked-in and structured"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "slimpointed-toe ballet flats",
+          "material": "leather",
+          "color": "silver"
+        },
+        "accessories": [
+          {
+            "item": "pearl necklace with stud earrings",
+            "material_or_metal": "gold, silver, silk",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be stylish yet modern. The structured blazer and crisp poplin capri pants create a balanced silhouette that complements the contemporary tailoring aesthetic. The slimpointed-toe ballet flats add a touch of elegance without compromising on comfort or functionality.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_20",
+      "category": "clean_girl_anti_neutral",
+      "prompt": "Style a clean-girl polished aesthetic with STRICT EXCLUSION: NO white, NO beige, and NO gold jewelry. Demonstrate how to achieve clean minimalism in saturated colors.",
+      "status": "rejected",
+      "duration_sec": 31.89,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.07,
+      "diagnostics": [
+        "Negative constraint violation: color 'white' found in top garment 'white tee'."
+      ],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Clean Minimalist Polished Aesthetics",
+        "palette": [
+          "black",
+          "blue",
+          "green"
+        ],
+        "top": {
+          "item": "white tee",
+          "fabric": "cotton, smooth fabric texture",
+          "color": "black"
+        },
+        "bottom": {
+          "item": "navy blue jeans",
+          "fabric": "denim material texture",
+          "fit": "straight silhouette with a slight rise"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sandals",
+          "material": "leather sole, smooth leather texture",
+          "color": "brown"
+        },
+        "accessories": [
+          {
+            "item": "silver watch",
+            "material_or_metal": "gold metal band",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to achieve a clean, minimalist look with saturated colors. The black tee and navy blue jeans create a contrast in texture that adds visual interest without being too bold. The brown sandals provide a grounding element while the silver watch complements the overall aesthetic.",
+        "constraints_satisfied": [
+          "No white",
+          "No beige",
+          "Gold jewelry is not worn"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_21",
+      "category": "drop_waist_proportions",
+      "prompt": "Style a drop-waist dress for a petite woman (5'2\") without cutting off her vertical proportions or making her legs appear short.",
+      "status": "success",
+      "duration_sec": 23.24,
+      "scores": {
+        "factual_trend_grounding": 4.5,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.36,
+      "diagnostics": [],
+      "matched_trends": [
+        "Drop-Waist Silhouettes & Elongated Bodices"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Drop-Waist Silhouettes & Elongated Bodices",
+          "source_title": "Why the Drop-Waist Silhouette Has Captured Modern Runways and Red Carpets",
+          "source_url": "https://www.vogue.com/fashion/trends/drop-waist-dress-revival",
+          "publication_date": "2024-07-12",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "Evening Event",
+        "aesthetic": "Elegant & Sophisticated",
+        "palette": [
+          "black",
+          "silver",
+          "gold"
+        ],
+        "top": {
+          "item": "drop-waist dress with black bodice and silver trim",
+          "fabric": "cotton poplin, silk satin",
+          "color": "black, silver",
+          "cut": "fitted drop-waist bodice extending to upper hip"
+        },
+        "bottom": {
+          "item": "pleated skirt in a metallic gold fabric (e.g., rhinestone-embroidered cotton poplin)",
+          "fabric": "metallic gold or iridescent silver",
+          "color": "gold, shimmering",
+          "fit": "flared pleats at the hem"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": "black leather belt with a small pocket for keys and phone",
+          "color": "black"
+        },
+        "footwear": {
+          "item": "pointed kitten-heel mules in gold metallic fabric (e.g., silver rhinestones)",
+          "material": "leather, suede",
+          "color": "gold, silver"
+        },
+        "accessories": [
+          {
+            "item": "silver clutch bag with a small mirror pocket and chain strap for easy access to phone or wallet",
+            "material_or_metal": "silk, leather",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The drop-waist silhouette is designed to elongate the torso while maintaining vertical proportions. The black bodice with silver trim and a fitted design ensure that even at its fullest point, it doesn't create an unflattering look on petite women.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_22",
+      "category": "gender_neutral_preppy",
+      "prompt": "Design a gender-neutral, androgynous collegiate preppy outfit in charcoal, slate blue, and ivory. Avoid conventional gendered tailoring.",
+      "status": "success",
+      "duration_sec": 18.96,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        }
+      ],
+      "data": {
+        "occasion": "Casual Preppy",
+        "aesthetic": "Preppy Collegiate",
+        "palette": [
+          "charcoal",
+          "slate blue",
+          "ivory"
+        ],
+        "top": {
+          "item": "shirt",
+          "fabric": "cotton, silk blend",
+          "color": "light gray or charcoal grey",
+          "cut": "button-down style with a relaxed fit"
+        },
+        "bottom": {
+          "item": "jeans",
+          "fabric": "blue denim, olive cargo pants",
+          "color": "slate blue or medium wash jeans",
+          "fit": "baggy wide-leg silhouette"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers",
+          "material": "leather, rubber sole",
+          "color": "dark brown or black"
+        },
+        "accessories": [
+          {
+            "item": "watch",
+            "material_or_metal": "gold metal case with silver dial",
+            "color": "ivory or light gray"
+          }
+        ],
+        "styling_rationale": "The outfit combines elements of preppy and collegiate fashion, using pastel colors to create a balanced aesthetic. The charcoal base provides an understated yet sophisticated look.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_23",
+      "category": "men_pleated_skirt",
+      "prompt": "I am a man and I want to wear a black pleated midi skirt for a contemporary gallery opening. Style me in an elevated, architecturally balanced outfit without feminizing the look.",
+      "status": "success",
+      "duration_sec": 17.2,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "gallery opening",
+        "aesthetic": "contemporary and sophisticated",
+        "palette": [
+          "black",
+          "silver"
+        ],
+        "top": {
+          "item": "blouse",
+          "fabric": "satin or silk chiffon",
+          "color": "silver",
+          "cut": "V-neck, fitted silhouette"
+        },
+        "bottom": {
+          "item": "pleated midi skirt",
+          "fabric": "black crepe de chine with a slight sheen for contrast",
+          "color": "black",
+          "fit": "loose but structured to maintain volume and pleats"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers in black leather",
+          "material": "leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "silver watch with a small, intricate design on the face",
+            "material_or_metal": "gold-plated metal band for contrast and texture dialogue",
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit maintains an elevated look by balancing textures (black leather shoes against silver accessories) while adhering to a contemporary aesthetic. The structured pleated skirt complements the blouse, ensuring volume without being too voluminous.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_24",
+      "category": "athleisure_no_sneakers_hoodies",
+      "prompt": "Create an elevated sporty casual outfit for Sunday errands. STRICT EXCLUSION: NO sneakers and NO hoodies allowed anywhere.",
+      "status": "rejected",
+      "duration_sec": 56.01,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.07,
+      "diagnostics": [
+        "Garment slot error: 'footwear' field 'leather ankle boot with a smooth leather upper. the lower part of the boot features a slight embossed pattern for contrast, enhancing texture tension and visual appeal without being too bold.' does not appear to be shoes/footwear."
+      ],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "Sunday errands",
+        "aesthetic": "Elevated sporty casual",
+        "palette": [
+          "navy blue",
+          "saffron yellow",
+          "black"
+        ],
+        "top": {
+          "item": "crew neck t-shirt in navy blue with a subtle stripe design and a fitted silhouette that complements the body's curves.",
+          "fabric": "100% cotton, lightweight but durable",
+          "color": "navy blue",
+          "cut": "fitted"
+        },
+        "bottom": {
+          "item": "jeans in black with a straight cut for comfort and durability. The waist is slightly loose to allow movement.",
+          "fabric": "polyester blend, providing both stretch and durability while maintaining the look of classic jeans.",
+          "color": "black",
+          "fit": "straight"
+        },
+        "outerwear": {
+          "item": "jacket in black with a zip closure. The jacket features an oversized silhouette that allows for a relaxed yet stylish appearance.",
+          "fabric": "polyester, providing both warmth and comfort without adding bulk to the outfit.",
+          "color": "black",
+          "style": "oversized"
+        },
+        "footwear": {
+          "item": "leather ankle boot with a smooth leather upper. The lower part of the boot features a slight embossed pattern for contrast, enhancing texture tension and visual appeal without being too bold.",
+          "material": "leather",
+          "color": "black"
+        },
+        "accessories": [
+          {
+            "item": "silk scarf in saffron yellow with gold threads. The silk adds a touch of elegance to the outfit while providing additional texture through its soft, flowing nature."
+          }
+        ],
+        "styling_rationale": "The combination of navy blue and black colors creates a classic yet modern look that is both elevated and sporty. The fit of the t-shirt allows for movement without compromising formality, while the straight cut jeans provide comfort during errands. The oversized jacket balances with the relaxed silhouette of the top by adding an element of luxury to the casual outfit.",
+        "constraints_satisfied": [
+          "NO sneakers",
+          "NO hoodies"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_25",
+      "category": "factual_trend_footwear_shift",
+      "prompt": "What footwear trend has replaced chunky platform dad sneakers in 2024-2026? Cite verified fashion sources and explain the proportion shift.",
+      "status": "rejected",
+      "duration_sec": 845.81,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 1.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 3.71,
+      "diagnostics": [
+        "Weak aesthetic differentiation for trend analysis",
+        "Garment slot error: upper-body item 'tee' was placed in 'bottom' field.",
+        "Garment slot error: upper-body item 'knit' was placed in 'bottom' field.",
+        "Garment slot error: upper-body item 'blazer' was placed in 'bottom' field."
+      ],
+      "matched_trends": [
+        "Coquette & Dark Balletcore Contrast",
+        "Barrel-Leg (Horseshoe) Denim & Trousers"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Coquette & Dark Balletcore Contrast",
+          "source_title": "The Evolution of the Coquette Aesthetic: From Hyper-Sweet to Edgy Contrast",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/coquette-aesthetic-evolution",
+          "publication_date": "2024-03-25",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Barrel-Leg (Horseshoe) Denim & Trousers",
+          "source_title": "The Rise of Horseshoe and Barrel-Leg Jeans in Contemporary Street Style",
+          "source_url": "https://www.vogue.com/fashion/trends/barrel-leg-jeans-guide",
+          "publication_date": "2024-09-15",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "Casual Evening",
+        "aesthetic": "Hyper-feminine and architectural",
+        "palette": [
+          "blush",
+          "ivory"
+        ],
+        "top": {
+          "item": "Delicate lace-trim camisole in blush or ivory",
+          "fabric": "Silky fabric, such as silk chiffon or organza",
+          "color": "Blush or Ivory",
+          "cut": "V-neckline with delicate lace trim"
+        },
+        "bottom": {
+          "item": "Slim-fitted baby tee and fine-gauge knit top tucked into a fitted blazer for balance",
+          "fabric": "Silky fabric, such as silk chiffon or organza",
+          "color": "Blush or Ivory",
+          "fit": "Balanced silhouette with subtle waistline"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": null,
+          "color": null
+        },
+        "footwear": {
+          "item": "Slim retro sneakers in a dark shade of brown, such as black or navy",
+          "material": "Leather",
+          "color": "Brown"
+        },
+        "accessories": [
+          {
+            "item": "Pearl necklace with delicate silver chain and large pearl pendant",
+            "material_or_metal": "Silver and Pearl",
+            "color": "White, to contrast the brown sneakers"
+          }
+        ],
+        "styling_rationale": "The trend of 'Coquette & Dark Balletcore Contrast' emphasizes a hyper-feminine aesthetic with delicate lace trim. The combination of chunky Mary Janes or matte leather knee-high boots and sleek retro sneakers in dark tones creates an interesting proportion shift, balancing the softness of the top and bottom while maintaining architectural elegance.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_26",
+      "category": "factual_trend_low_rise_vs_high_rise",
+      "prompt": "Is low-rise denim replacing high-waisted wide-leg trousers, or do they coexist? Explain how to balance upper-body proportions differently for each rise.",
+      "status": "rejected",
+      "duration_sec": 37.4,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.0,
+      "diagnostics": [
+        "Mandatory requirement violation: required item 'wide-leg trousers' was missing from the ensemble."
+      ],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "casual",
+        "aesthetic": "streetwear/bohemian",
+        "palette": [
+          "black",
+          "indigo"
+        ],
+        "top": {
+          "item": "tank top",
+          "fabric": "cotton",
+          "color": "white",
+          "cut": "v-neck, scoop neck"
+        },
+        "bottom": {
+          "item": "low-rise denim trousers",
+          "fabric": "denim",
+          "color": "indigo",
+          "fit": "loose fit with slight taper at the hem"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "leather ankle boots",
+          "material": "leather",
+          "color": "brown"
+        },
+        "accessories": [
+          {
+            "item": "chain necklace in gold with a pendant of turquoise stones",
+            "material_or_metal": "gold, silver, silk, leather",
+            "color": "silver and green"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance the relaxed silhouette of the tank top with the structured fit of the low-rise denim trousers. The brown boots add a touch of warmth while keeping it casual without being too formal.",
+        "constraints_satisfied": [
+          "top",
+          "bottom"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_27",
+      "category": "factual_trend_quiet_luxury_status",
+      "prompt": "According to fashion reports, what is the current trajectory of 'quiet luxury' vs bold color and personality dressing in 2025/2026?",
+      "status": "success",
+      "duration_sec": 41.07,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.5,
+      "diagnostics": [],
+      "matched_trends": [
+        "Butter Yellow as the Soft Alternative Neutral",
+        "Deep Cherry & Rich Burgundy Monolith"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Butter Yellow as the Soft Alternative Neutral",
+          "source_title": "Why Butter Yellow Is the Defining Color Trend of Recent Runways",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/butter-yellow-trend",
+          "publication_date": "2024-06-20",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Deep Cherry & Rich Burgundy Monolith",
+          "source_title": "The Saturated Wine Spectrum: Deep Cherry and Oxblood Dominate Fall/Winter",
+          "source_url": "https://www.vogue.com/fashion/trends/burgundy-color-trend",
+          "publication_date": "2024-10-01",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "casual office",
+        "aesthetic": "quiet luxury",
+        "palette": [
+          "soft pastel yellow",
+          "charcoal grey",
+          "dark burgundy"
+        ],
+        "top": {
+          "item": "oatmeal cashmere crewneck knit",
+          "fabric": "silk, wool blend",
+          "color": "light cream or pale yellow",
+          "cut": "straight neck"
+        },
+        "bottom": {
+          "item": "dark indigo denim wide-leg trousers",
+          "fabric": "denim fabric",
+          "color": "deep blue",
+          "fit": "loose, comfortable fit"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "suede loafers in dark burgundy color",
+          "material": "leather",
+          "color": "dark burgundy"
+        },
+        "accessories": [
+          {
+            "item": "silver watch with small pearl pendant",
+            "material_or_metal": "silver, gold-plated metal",
+            "color": "white or silver"
+          }
+        ],
+        "styling_rationale": "The outfit maintains a quiet luxury aesthetic while incorporating soft pastel yellow and dark burgundy elements. The oatmeal cashmere crewneck knit tops the look with its gentle texture contrast against the darker trousers, creating a balanced silhouette that is both chic and understated.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_28",
+      "category": "factual_trend_2026_epistemic_limits",
+      "prompt": "According to the latest 2026 fashion week runways, what specific shoe trend has replaced chunky loafers? Give verified sources or state your knowledge limits.",
+      "status": "rejected",
+      "duration_sec": 47.57,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 2.5,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.5,
+        "constraint_compliance": 3.5,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.07,
+      "diagnostics": [
+        "Weak aesthetic differentiation for trend analysis",
+        "Garment slot error: 'footwear' field 'suede mary jane with a silver buckle and lace trim at the toe' does not appear to be shoes/footwear."
+      ],
+      "matched_trends": [
+        "Low-Profile Retro Runners & Ballet-Sneaker Hybrids",
+        "Coquette & Dark Balletcore Contrast"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Low-Profile Retro Runners & Ballet-Sneaker Hybrids",
+          "source_title": "The Death of the Chunky Sneaker: Rise of Sleek Low-Profile Runners",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/retro-sneaker-shifts",
+          "publication_date": "2024-08-01",
+          "confidence": "high"
+        },
+        {
+          "trend_name": "Coquette & Dark Balletcore Contrast",
+          "source_title": "The Evolution of the Coquette Aesthetic: From Hyper-Sweet to Edgy Contrast",
+          "source_url": "https://www.harpersbazaar.com/fashion/trends/coquette-aesthetic-evolution",
+          "publication_date": "2024-03-25",
+          "confidence": "high"
+        }
+      ],
+      "data": {
+        "occasion": "a formal event",
+        "aesthetic": "retro chic with modern twist",
+        "palette": [
+          "dark brown",
+          "silver",
+          "beige"
+        ],
+        "top": {
+          "item": "silk blouse in blush pink",
+          "fabric": "crepe de chine",
+          "color": "blush pink",
+          "cut": "flowing, fitted"
+        },
+        "bottom": {
+          "item": "black leather trousers with silver trim and lace detailing at the hem",
+          "fabric": "leather",
+          "color": "black",
+          "fit": "flared, slightly loose on top to show off the blouse"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "suede Mary Jane with a silver buckle and lace trim at the toe",
+          "material": "leather",
+          "color": "silver"
+        },
+        "accessories": [
+          {
+            "item": "a delicate, beaded necklace in blush pink",
+            "material_or_metal": "gold plated",
+            "color": "blush pink"
+          }
+        ],
+        "styling_rationale": "The outfit combines a classic blouse with modern lace detailing trousers to create a retro chic look. The low-profile runner and Mary Jane shoes add a touch of contemporary style without compromising the traditional aesthetic.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_29",
+      "category": "budget_student_capsule",
+      "prompt": "Curate an affordable student capsule outfit for under $80 total featuring modern wide-leg proportions and accessible thrift-store staples.",
+      "status": "success",
+      "duration_sec": 21.19,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 5.0
+      },
+      "overall_score": 4.43,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "casual",
+        "aesthetic": "modern and trendy",
+        "palette": [
+          "black",
+          "white",
+          "gray"
+        ],
+        "top": {
+          "item": "tank top",
+          "fabric": "organic cotton blend",
+          "color": "black",
+          "cut": "v-neck, wide-leg silhouette"
+        },
+        "bottom": {
+          "item": "jeans with a distressed look (thrift store)",
+          "fabric": "denim fabric",
+          "color": "white or gray",
+          "fit": "wide leg and slightly loose at the waist for comfort"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "sneakers in a neutral color (thrift store)",
+          "material": "leather upper, rubber sole",
+          "color": "black or brown"
+        },
+        "accessories": [
+          {
+            "item": "chain necklace with silver pendant and black beads",
+            "material_or_metal": "silver chain, leather loop",
+            "color": "white"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to balance modernity with a casual feel. The tank top provides comfort while the wide-leg jeans allow for relaxed yet stylish proportions. The sneakers add a touch of streetwear without being too flashy, and the necklace complements both the style and budget.",
+        "constraints_satisfied": [
+          "top",
+          "bottom"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_30",
+      "category": "vintage_leather_styling",
+      "prompt": "Style a vintage oversized distressed brown leather motorcycle jacket for a coffee date. Explain how to balance the heavy masculine jacket with softer feminine elements.",
+      "status": "success",
+      "duration_sec": 30.02,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 5.0,
+        "regional_climate_practicality": 4.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.29,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "coffee date",
+        "aesthetic": "vintage and casual chic",
+        "palette": [
+          "brown",
+          "rusty gold"
+        ],
+        "top": {
+          "item": "motorcycle jacket",
+          "fabric": "leather with a distressed brown leather finish, featuring slight wear and tear for a vintage look.",
+          "color": "brown",
+          "cut": "oversized silhouette with wide lapels and exaggerated shoulders"
+        },
+        "bottom": {
+          "item": "jeans",
+          "fabric": "denim with distressing on the legs to match the jacket's distressed leather, creating a contrast of textures.",
+          "color": "rusty gold",
+          "fit": "straight-leg jeans that hug the body but have some slight flare for comfort and flow"
+        },
+        "outerwear": {
+          "item": null,
+          "fabric": null,
+          "color": null
+        },
+        "footwear": {
+          "item": "leather loafers",
+          "material": "leather with a distressed brown finish, matching the jacket's leather for continuity.",
+          "color": "rusty gold"
+        },
+        "accessories": [
+          {
+            "item": "scarf",
+            "material_or_metal": null,
+            "color": "brown and rust-colored stripes or patches to tie in with the distressed look of the jacket."
+          }
+        ],
+        "styling_rationale": "The motorcycle jacket is a bold statement, but by pairing it with softer elements like jeans that have been distressing on the legs, we create a balance between masculine strength and feminine grace. The brown leather fabric not only matches the color palette of the jacket but also adds to its vintage charm. The rust-colored contrast in the jeans ties back into this aesthetic seamlessly.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_31",
+      "category": "extreme_heat_formal_wedding",
+      "prompt": "Recommend a summer outdoor wedding guest outfit for a man in an extreme 38\u00b0C dry climate for under $200. Must meet semi-formal dress codes without causing heat stroke.",
+      "status": "success",
+      "duration_sec": 25.77,
+      "scores": {
+        "factual_trend_grounding": 3.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 4.5,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 5.0
+      },
+      "overall_score": 4.36,
+      "diagnostics": [],
+      "matched_trends": [],
+      "sources_cited": [],
+      "data": {
+        "occasion": "Summer Outdoor Wedding",
+        "aesthetic": "Casual Elegant",
+        "palette": [
+          "white",
+          "beige",
+          "light blue"
+        ],
+        "top": {
+          "item": "T-shirt",
+          "fabric": "cotton blend, lightweight cotton",
+          "color": "white or light beige",
+          "cut": "V-neck, round neck"
+        },
+        "bottom": {
+          "item": "Lightweight shorts (jeans with a lighter color and fabric for summer)",
+          "fabric": "polyester, cotton blend",
+          "color": "light blue or white",
+          "fit": "loose fit, slightly baggy at waist to allow movement"
+        },
+        "outerwear": {
+          "item": "Sunglasses",
+          "fabric": null,
+          "color": "black"
+        },
+        "footwear": {
+          "item": "Loafers with a light fabric texture for comfort and breathability",
+          "material": "leather, suede",
+          "color": "light beige or white"
+        },
+        "accessories": [
+          {
+            "item": "Watch",
+            "material_or_metal": null,
+            "color": "silver"
+          }
+        ],
+        "styling_rationale": "The outfit is designed to be casual yet elegant, with a focus on comfort and breathability. The white or light beige T-shirt allows for the texture tension of lightweight shorts while maintaining an air of formality. The loose fit shorts allow movement without restricting the legs, paired with loafers that offer both style and comfort.",
+        "constraints_satisfied": [
+          "No black",
+          "No sneakers"
+        ]
+      }
+    },
+    {
+      "prompt_id": "genz_32",
+      "category": "capsule_kurti_day_to_night",
+      "prompt": "Demonstrate how to transition a single cotton Chikankari kurti from a morning university lecture to an evening cafe social by altering bottom pairings, footwear, and accessories.",
+      "status": "success",
+      "duration_sec": 59.39,
+      "scores": {
+        "factual_trend_grounding": 5.0,
+        "aesthetic_differentiation": 4.0,
+        "regional_climate_practicality": 5.0,
+        "outfit_coherence_wearability": 4.0,
+        "constraint_compliance": 5.0,
+        "gender_integrity": 5.0,
+        "affordability_materiality": 4.0
+      },
+      "overall_score": 4.57,
+      "diagnostics": [],
+      "matched_trends": [
+        "Indian Gen Z Desi-Western Kurti-Denim Fusion"
+      ],
+      "sources_cited": [
+        {
+          "trend_name": "Indian Gen Z Desi-Western Kurti-Denim Fusion",
+          "source_title": "How Gen Z in India is Rewriting the Everyday Wardrobe with Desi Fusion",
+          "source_url": "https://www.elle.in/fashion/features/gen-z-indian-streetwear-fusion",
+          "publication_date": "2024-10-05",
+          "confidence": "very_high"
+        }
+      ],
+      "data": {
+        "occasion": "Evening Cafe Social",
+        "aesthetic": "Modern Indian",
+        "palette": [
+          "light pastel",
+          "blue denim"
+        ],
+        "top": {
+          "item": "short pastel Chikankari cotton kurti (thigh-length, relaxed cut)",
+          "fabric": "cotton",
+          "color": "pastel pink or light blue",
+          "cut": "relaxed fit"
+        },
+        "bottom": {
+          "item": "baggy wide-leg medium wash blue denim or olive utilitarian cargo pants",
+          "fabric": "denim fabric",
+          "color": "blue, greenish-blue",
+          "fit": "wide leg and baggy silhouette"
+        },
+        "outerwear": null,
+        "footwear": {
+          "item": "clean low-profile white sneakers",
+          "material": "leather",
+          "color": "white"
+        },
+        "accessories": [
+          {
+            "item": "silk scarf in pastel pink or light blue color",
+            "material_or_metal": "silk",
+            "color": "pastel pink or light blue"
+          }
+        ],
+        "styling_rationale": "The outfit combines the traditional Chikankari kurti with modern denim, creating a fusion that is both respectful of cultural heritage and contemporary in its presentation. The pastel color palette adds a touch of elegance without being too formal.",
+        "constraints_satisfied": [
+          "NO black",
+          "NO sneakers"
+        ]
+      }
+    }
+  ]
+}
