@@ -31,6 +31,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           {/* 1. Home */}
           <button
             type="button"
+            data-tutorial-target="nav-home"
             onClick={() => onNavigate('home')}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isHomeActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
@@ -61,6 +62,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           {/* 2. Scan */}
           <button
             type="button"
+            data-tutorial-target="nav-scan"
             onClick={() => onNavigate('scan-outfit')}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isScanActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
@@ -96,6 +98,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           <div className="relative flex-none w-[68px] flex flex-col items-center justify-center">
             <button
               type="button"
+              data-tutorial-target="nav-hub"
               onClick={onOpenQuickHub}
               aria-label={t('nav.openHub')}
               className="absolute -top-[16px] w-[64px] h-[64px] rounded-full bg-gradient-to-b from-[#6545FF] to-[#4D32E8] text-white flex items-center justify-center border-[2.5px] border-white shadow-[0_0_26px_rgba(101,69,255,0.75),0_8px_20px_rgba(0,0,0,0.55)] transition-all active:scale-90 hover:scale-105 cursor-pointer group"
@@ -113,6 +116,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           {/* 4. Stylist */}
           <button
             type="button"
+            data-tutorial-target="nav-stylist"
             onClick={() => onNavigate('chat')}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isStylistActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'
@@ -144,6 +148,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           {/* 5. Profile */}
           <button
             type="button"
+            data-tutorial-target="nav-profile"
             onClick={() => onNavigate('profile')}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 cursor-pointer ${
               isProfileActive ? 'text-[#6045FF]' : 'text-[#94A3B8] hover:text-white'

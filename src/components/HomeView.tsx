@@ -168,7 +168,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="space-y-6 pb-2">
       {/* Greeting Section */}
-      <section className={`relative mt-4 overflow-hidden rounded-[28px] p-5 animate-fade-in border ${
+      <section data-tutorial-target="home-hero" className={`relative mt-4 overflow-hidden rounded-[28px] p-5 animate-fade-in border ${
         isDarkMode
           ? 'bg-slate-900/70 border-slate-800'
           : 'bg-[linear-gradient(135deg,#FFFFFF_0%,#F6F3FF_58%,#EBE4FF_100%)] border-[#DFD8F7] shadow-[0_12px_28px_-6px_rgba(85,59,226,0.08),0_2px_6px_-1px_rgba(19,20,38,0.04)]'
@@ -220,6 +220,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* NOVA Showroom CTA */}
       <section>
         <button
+          data-tutorial-target="home-showroom-card"
           onClick={() => onNavigate('showroom')}
           className={`nova-interactive w-full rounded-[26px] p-6 relative overflow-hidden group cursor-pointer border ${
             isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-hero-surface'
@@ -262,7 +263,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-4">
           {/* Item 1: AI Assistant */}
-          <div 
+          <div
+            data-tutorial-target="home-stylist-card"
             onClick={() => onNavigate('chat')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -284,6 +286,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Item 3: AR Try-On */}
           <div 
+            data-tutorial-target="home-ar-tryon-card"
             onClick={() => onNavigate('ar-tryon')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -305,6 +308,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Item 4: Camera Scan */}
           <div 
+            data-tutorial-target="home-scan-card"
             onClick={() => onNavigate('camera-scan')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -326,6 +330,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Item 5: Virtual Wardrobe */}
           <div
+            data-tutorial-target="home-wardrobe-card"
             onClick={() => onNavigate('wardrobe')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'

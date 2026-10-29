@@ -479,7 +479,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       </div>
 
       {/* Camera scan framing viewfinder card */}
-      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-black">
+      <section data-tutorial-target="scan-viewfinder" className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-black">
         {/* Live Video Feed */}
         <video
           ref={videoRef}
@@ -600,6 +600,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
               </span>
               <button
                 type="button"
+                data-tutorial-target="scan-shutter-btn"
                 onClick={captureFrame}
                 disabled={isCapturing}
                 title={t('cameraScan.captureScan')}

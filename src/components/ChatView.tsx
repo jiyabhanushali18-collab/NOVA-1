@@ -98,7 +98,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName, produc
   return (
     <div className="flex flex-col h-[calc(100vh-160px)] -mx-4">
       {/* Scrollable messages container area */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+      <div data-tutorial-target="chat-messages" className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
         {messages.map((m) => {
           const isUser = m.role === 'user';
           return (
@@ -163,7 +163,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName, produc
 
       {/* Suggested prompts chips block */}
       {messages.length === 1 && (
-        <div className="px-4 py-2 border-t border-[#E4DFF5] bg-[#ECE7FF]/50">
+        <div data-tutorial-target="chat-quick-prompts" className="px-4 py-2 border-t border-[#E4DFF5] bg-[#ECE7FF]/50">
           <p className="text-[10px] font-bold text-[#5E667A] uppercase tracking-widest mb-1.5">{t('chat.suggestedPrompts')}</p>
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             {quickPrompts.map((p) => (
@@ -180,7 +180,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName, produc
       )}
 
       {/* Chat text area input block */}
-      <div className="p-3 bg-white border-t border-[#E4DFF5] flex items-center gap-2">
+      <div data-tutorial-target="chat-input-bar" className="p-3 bg-white border-t border-[#E4DFF5] flex items-center gap-2">
         <input 
           type="text" 
           value={inputVal}

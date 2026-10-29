@@ -29,6 +29,9 @@ import { AdminNotificationsModal } from './components/AdminNotificationsModal';
 import { BottomNavBar } from './components/navigation/BottomNavBar';
 import { QuickHubModal } from './components/navigation/QuickHubModal';
 import { NotificationPermissionModal } from './components/notifications/NotificationPermissionModal';
+import { TutorialProvider, TutorialOverlay, OnboardingWelcome, TryOnFeedbackModal } from './components/onboarding';
+import { tutorialService } from './services/tutorialService';
+import { TutorialFeatureId } from './data/tutorialDefinitions';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
@@ -1878,7 +1881,15 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    replaceScreen('onboarding');
+    if (!tutorialService.hasCompletedOnboardingWelcome()) {
+      replaceScreen('onboarding');
+    } else {
+      if (!isLoggedIn) {
+        replaceScreen('login');
+      } else {
+        resetScreenHistory('home');
+      }
+    }
   };
 
   const handleOnboardingComplete = () => {
@@ -2315,9 +2326,31 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  // Onboarding Slides Guard
+  // Interactive Onboarding Experience Guard
   if (screen === 'onboarding') {
-    return <OnboardingView onComplete={handleOnboardingComplete} />;
+    return (
+      <TutorialProvider currentScreen={screen} onNavigate={navigate}>
+        <OnboardingWelcome
+          fullscreen
+          onStartTour={(featureId: TutorialFeatureId) => {
+            if (!isLoggedIn) {
+              handleGuestContinue();
+            }
+            resetScreenHistory('home');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('nova:start_tutorial', { detail: { featureId } }));
+            }, 100);
+          }}
+          onDismiss={() => {
+            if (!isLoggedIn) {
+              replaceScreen('login');
+            } else {
+              resetScreenHistory('home');
+            }
+          }}
+        />
+      </TutorialProvider>
+    );
   }
 
   // Email Verification Screen Guard
@@ -2387,7 +2420,8 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
+    <TutorialProvider currentScreen={screen} onNavigate={navigate}>
+      <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
         : 'bg-[#F2EEFF] nova-page-wash border-x border-[#E4DFF5] text-[#131426]'
@@ -2621,6 +2655,12 @@ export default function App() {
           />
         </>
       )}
+
+      {/* Interactive Feature Guide Overlay & Modals */}
+      <OnboardingWelcome />
+      <TutorialOverlay />
+      <TryOnFeedbackModal onNavigate={navigate} />
     </div>
+    </TutorialProvider>
   );
 }

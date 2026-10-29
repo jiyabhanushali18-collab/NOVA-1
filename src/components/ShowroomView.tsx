@@ -666,6 +666,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
         </label>
         <button
           type="button"
+          data-tutorial-target="showroom-filters"
           onClick={() => setIsFilterPanelOpen((open) => !open)}
           aria-label={t('showroom.filters')}
           aria-expanded={isFilterPanelOpen}
@@ -780,7 +781,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           </div>
         </div>
         {topReviewedProducts.length > 0 ? (
-          <div className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+          <div data-tutorial-target="showroom-top-collections" className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
             {topReviewedProducts.map((product, index) => (
               <ProductCard
                 key={product.id}
@@ -836,7 +837,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
           </motion.div>
         ) : (
           <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-2 gap-4">
+            <motion.div layout data-tutorial-target="showroom-product-grid" className="grid grid-cols-2 gap-4">
               {visibleProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}

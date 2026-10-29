@@ -571,6 +571,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     if (prev !== item.id) {
       analytics.trackArTryOnProductChanged(item.id, prev);
     }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nova:tutorial:outfit_selected', { detail: { garmentId: item.id } }));
+    }
     if (sessionRef.current && isLiveRef.current) {
       const payload = item.file || item.img;
       sessionRef.current.setGarment(payload).catch((err) => {
@@ -625,6 +628,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       stopLiveSession(false);
     } else {
       // 'idle', 'camera_ready', 'retryable_error', 'configuration_error', 'cancelled'
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nova:tutorial:tryon_live_started'));
+      }
       startLiveSession();
     }
   };
@@ -695,6 +701,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const handleCapture = () => {
     setFlash(true);
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nova:tutorial:look_captured'));
+    }
+
     if ((isCameraActive || isLiveRef.current) && videoRef.current) {
       const frame = captureVideoFrame(videoRef.current);
       if (frame && onCaptureImage) {
@@ -704,10 +714,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       onCaptureImage(activeModelBg, false);
     }
 
+    const isTutorial = typeof window !== 'undefined' && (window as any).__nova_tutorial_active === 'ar-tryon';
+
     setTimeout(() => {
       setFlash(false);
-      stopLiveSession();
-      onNavigate('tryon-result');
+      if (!isTutorial) {
+        stopLiveSession();
+        onNavigate('tryon-result');
+      }
     }, 300);
   };
 
@@ -762,6 +776,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       // 3. Clear, accurate popup confirmation matching requirements
       if (localSuccess) {
         analytics.trackArTryOnResultSaved(selectedGarment, activeGarmentObj?.name);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nova:tutorial:look_saved'));
+        }
       }
 
       if (localSuccess && gallerySuccess) {
@@ -894,7 +911,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       </section>
 
       {/* 3. Camera Preview Area (Optimized for Mobile Phone Visibility) */}
-      <section className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
+      <section data-tutorial-target="ar-camera-preview" className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
         {/* Hardware-accelerated Video Layer */}
         <LiveTryOnViewport
           videoRef={videoRef}
@@ -1033,10 +1050,11 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         )}
 
         {/* In-Camera Floating Bottom Controls: Flip, Shutter, Light */}
-        <div className="absolute bottom-3.5 inset-x-0 flex justify-center items-center gap-5 z-30 px-4 pointer-events-auto">
+        <div data-tutorial-target="ar-camera-controls" className="absolute bottom-3.5 inset-x-0 flex justify-center items-center gap-5 z-30 px-4 pointer-events-auto">
           {/* Flip Camera */}
           <button
             type="button"
+            data-tutorial-target="ar-flip-camera-btn"
             onClick={handleFlip}
             disabled={isFlipping}
             title={t('arTryOn.flipCamera')}
@@ -1056,6 +1074,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           {/* Center Large Shutter Button */}
           <button
             type="button"
+            data-tutorial-target="ar-shutter-btn"
             onClick={handleCapture}
             title={t('arTryOn.takeSnapshot')}
             aria-label={t('arTryOn.takeSnapshot')}
@@ -1067,6 +1086,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           {/* Lighting Toggle / Slider Panel Opener */}
           <button
             type="button"
+            data-tutorial-target="ar-lighting-btn"
             onClick={() => setShowLightingPanel((prev) => !prev)}
             title={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
             aria-label={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
@@ -1095,14 +1115,15 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         </div>
 
         {/* Horizontal Carousel (Touch-smooth on phone) */}
-        <div className="flex gap-2.5 overflow-x-auto hide-scrollbar touch-pan-x snap-x -mx-1 px-1 pb-1">
-          {garmentsList.map((g) => {
+        <div data-tutorial-target="ar-outfit-carousel" className="flex gap-2.5 overflow-x-auto hide-scrollbar touch-pan-x snap-x -mx-1 px-1 pb-1">
+          {garmentsList.map((g, gIdx) => {
             const isSelected = selectedGarment === g.id;
             const productId = g.productId;
             const isWishlisted = productId ? wishlist.includes(productId) : false;
             return (
               <div
                 key={g.id}
+                data-tutorial-target={gIdx === 0 ? "ar-garment-item" : undefined}
                 onClick={() => handleGarmentClick(g)}
                 className={`snap-start shrink-0 w-[90px] rounded-2xl p-2 flex flex-col items-center border transition-all cursor-pointer ${
                   isSelected 
@@ -1176,6 +1197,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       <section className="grid grid-cols-2 gap-3 pt-0.5">
         <button
           type="button"
+          data-tutorial-target="ar-tryon-live-btn"
           onClick={handlePrimaryAction}
           className={`w-full py-3.5 px-3 rounded-2xl active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
             connectionState === 'initializing' || connectionState === 'processing'
@@ -1212,6 +1234,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
         <button
           type="button"
+          data-tutorial-target="ar-save-look-btn"
           onClick={handleSaveLook}
           disabled={isSavingLook}
           className="w-full py-3.5 px-3 rounded-2xl bg-[#111322] hover:bg-[#1A1C30] active:scale-95 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-60"

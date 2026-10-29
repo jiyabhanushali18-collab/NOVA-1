@@ -12,6 +12,7 @@ import {
   writeCachedUserAddress
 } from '../services/addressService';
 import { syncPreferencesUpdate, requestPushNotificationPermission } from '../services/notificationClientService';
+import { useTutorial } from './onboarding';
 
 interface ProfileViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -50,6 +51,7 @@ interface ProfileViewProps {
   onRemoveAccount?: (uid: string) => void;
   onSwitchAccount?: (uid?: string) => void;
   legalConsent?: LegalConsentRecord | null;
+  onOpenTutorialGuides?: () => void;
 }
 
 const getDefaultProductColor = (product?: ProductItem) => (
@@ -134,9 +136,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onAddAccount,
   onRemoveAccount,
   onSwitchAccount,
-  legalConsent
+  legalConsent,
+  onOpenTutorialGuides
 }) => {
   const { locale, language, setLocale, t } = useI18n();
+  const { openWelcome } = useTutorial();
   const effectiveUid = userId || activeUid || userEmail || '';
   const paymentMethodsStorageKey = `nova_payment_methods_${encodeURIComponent(effectiveUid || 'local_user')}`;
   const profileAddressesStorageKey = `nova_profile_addresses_${encodeURIComponent(effectiveUid || 'local_user')}`;
@@ -1199,6 +1203,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             { label: t('profile.settings.terms'), icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
             { label: t('profile.settings.privacyPolicy'), icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
             { label: t('profile.settings.faq') || 'Frequently Asked Questions', icon: 'help_outline', action: () => onNavigate('faq') },
+            { label: t('profile.settings.interactiveGuides') || 'Interactive Feature Guides', icon: 'explore', action: () => onOpenTutorialGuides ? onOpenTutorialGuides() : openWelcome() },
             { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
             { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
