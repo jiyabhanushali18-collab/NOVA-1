@@ -27,7 +27,10 @@ const ActivityCardImage: React.FC<{
   }, [candidateUrl]);
 
   if (!candidateUrl || imgError) {
-    const isScan = activity.badge === 'Camera Scan' || activity.badge === 'Scan' || activity.name?.toLowerCase().includes('scan');
+    const isScan = activity.badge === 'Camera Scan'
+      || activity.badge === 'Scan History'
+      || activity.badge === 'Scan'
+      || activity.name?.toLowerCase().includes('scan');
     const isAR = activity.badge === 'AR Try-On' || activity.name?.toLowerCase().includes('try-on') || activity.name?.toLowerCase().includes('fitting');
     const isReward = activity.badge === 'NOVA Rewards' || activity.name?.toLowerCase().includes('reward') || activity.name?.toLowerCase().includes('points');
     const isWardrobe = activity.badge === 'Wardrobe' || activity.name?.toLowerCase().includes('wardrobe');
@@ -144,13 +147,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
   products = {}
 }) => {
   const { t } = useI18n();
-  const activityList = recentActivity
-    .filter((activity) => activity.badge === 'AR Try-On' && activity.isSuccessfulTryOn)
-    .slice(0, 6);
+  const activityList = recentActivity.filter((activity) => activity.badge !== 'AR Try-On' && activity.badge !== 'Camera Scan');
+  const findActivityProduct = (activity: any) => {
+    if (activity.productId) {
+      return products[activity.productId]
+        || Object.values(products).find((product) => product.productId === activity.productId);
+    }
+    if (activity.badge !== 'Viewed') return undefined;
+    return Object.values(products).find((product) => product.name === activity.name);
+  };
 
   useEffect(() => {
     (activityList || []).forEach((activity: any) => {
-      const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+      const matched = findActivityProduct(activity);
       if (matched) {
         analytics.trackProductImpression(matched, 'home_recent_activity');
       }
@@ -159,7 +168,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="space-y-6 pb-2">
       {/* Greeting Section */}
-      <section className={`relative mt-4 overflow-hidden rounded-[28px] p-5 animate-fade-in border ${
+      <section data-tutorial-target="home-hero" className={`relative mt-4 overflow-hidden rounded-[28px] p-5 animate-fade-in border ${
         isDarkMode
           ? 'bg-slate-900/70 border-slate-800'
           : 'bg-[linear-gradient(135deg,#FFFFFF_0%,#F6F3FF_58%,#EBE4FF_100%)] border-[#DFD8F7] shadow-[0_12px_28px_-6px_rgba(85,59,226,0.08),0_2px_6px_-1px_rgba(19,20,38,0.04)]'
@@ -211,6 +220,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* NOVA Showroom CTA */}
       <section>
         <button
+          data-tutorial-target="home-showroom-card"
           onClick={() => onNavigate('showroom')}
           className={`nova-interactive w-full rounded-[26px] p-6 relative overflow-hidden group cursor-pointer border ${
             isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-hero-surface'
@@ -253,7 +263,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-4">
           {/* Item 1: AI Assistant */}
-          <div 
+          <div
+            data-tutorial-target="home-stylist-card"
             onClick={() => onNavigate('chat')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -275,6 +286,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Item 3: AR Try-On */}
           <div 
+            data-tutorial-target="home-ar-tryon-card"
             onClick={() => onNavigate('ar-tryon')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -296,6 +308,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Item 4: Camera Scan */}
           <div 
+            data-tutorial-target="home-scan-card"
             onClick={() => onNavigate('camera-scan')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -317,6 +330,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Item 5: Virtual Wardrobe */}
           <div
+            data-tutorial-target="home-wardrobe-card"
             onClick={() => onNavigate('wardrobe')}
             className={`nova-interactive rounded-[22px] p-4 flex flex-col items-start cursor-pointer group border ${
               isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'nova-surface'
@@ -367,36 +381,38 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </button>
       </section>
 
-      {/* Recently Tried On Section */}
+      {/* Recent Activity Section */}
       <section>
         <div className="flex justify-between items-end mb-4">
-          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.recentlyTriedOn')}</h2>
-          <button 
-            onClick={() => onNavigate('ar-tryon')}
-            className="text-xs font-semibold text-[#553BE2] flex items-center hover:underline"
-          >
-            {t('home.tryOnMore')} <span className="material-symbols-outlined text-sm ml-1 leading-none">chevron_right</span>
-          </button>
+          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('home.recentActivity')}</h2>
         </div>
-        <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {activityList.length === 0 && (
             <p className={`py-4 text-sm ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-              {t('home.emptyTryOns')}
+              {t('home.emptyRecentActivity')}
             </p>
           )}
           {activityList.map((activity) => {
-            const matched = Object.values(products).find((p: ProductItem) => p.name && activity.name && (p.name === activity.name || p.name.includes(activity.name) || activity.name.includes(p.name)));
+            const matched = findActivityProduct(activity);
             const isSaved = matched ? wishlist.includes(matched.id) : false;
+            const isClickable = Boolean(matched) || activity.badge === 'Wardrobe';
             return (
               <div 
                 key={activity.id}
                 onClick={() => {
-                  if (activity.badge === 'AR Try-On') onNavigate('ar-tryon');
-                  else if (activity.badge === 'Camera Scan') onNavigate('camera-scan');
-                  else if (activity.badge === 'Viewed' && matched) onSelectProduct?.(matched.id);
-                  else onNavigate('scan-outfit');
+                  if (matched) onSelectProduct?.(matched.id, matched);
+                  else if (activity.badge === 'Wardrobe') onNavigate('wardrobe');
                 }}
-                className="flex-none w-36 group cursor-pointer"
+                onKeyDown={(event) => {
+                  if (event.target === event.currentTarget && isClickable && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    if (matched) onSelectProduct?.(matched.id, matched);
+                    else if (activity.badge === 'Wardrobe') onNavigate('wardrobe');
+                  }
+                }}
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                className={`group snap-start shrink-0 w-[78%] sm:w-[48%] ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <div className={`h-48 rounded-2xl overflow-hidden relative shadow-[0_8px_20px_-4px_rgba(85,59,226,0.07),0_2px_5px_-1px_rgba(19,20,38,0.03)] border border-[#E4DFF5] ${isDarkMode ? 'bg-slate-900' : 'bg-[#0D1527]'} mb-2`}>
                   <ActivityCardImage activity={activity} matchedProduct={matched} isDarkMode={isDarkMode} />

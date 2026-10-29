@@ -430,17 +430,14 @@ const sendOTPEmail = async (
       let errorBody: { code?: string; message?: string } = {};
       const errorText = await response.text();
       try { errorBody = JSON.parse(errorText); } catch { /* non-JSON response */ }
-      const errorDetail = errorBody.message || errorText.slice(0, 500);
+      const errorDetail = (errorBody.message || errorText).slice(0, 500);
 
-      // Detect Brevo IP-restriction rejection so the cause is immediately visible
-      // in logs without manually parsing the raw Brevo error body.
       if (
         response.status === 401 &&
         (errorBody.code === 'unauthorized' || errorBody.message?.includes('unrecognised IP'))
       ) {
         console.error("[Email] Brevo rejected the request: IP address not authorised.", {
           status: response.status,
-          hint: "Add this server's outbound IP to Brevo → Settings → Security → Authorised IPs, or disable the IP restriction in the Brevo dashboard.",
           brevoCode: errorBody.code,
           recipient: maskEmail(email)
         });

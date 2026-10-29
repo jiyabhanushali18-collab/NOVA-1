@@ -24,8 +24,14 @@ import { SetupPreferencesView } from './components/SetupPreferencesView';
 import { VirtualWardrobeView } from './components/VirtualWardrobeView';
 import { ProfileAnalysisView } from './components/ProfileAnalysisView';
 import { LegalDocumentView } from './components/LegalDocumentView';
+import { FAQView } from './components/FAQView';
+import { AdminNotificationsModal } from './components/AdminNotificationsModal';
 import { BottomNavBar } from './components/navigation/BottomNavBar';
 import { QuickHubModal } from './components/navigation/QuickHubModal';
+import { NotificationPermissionModal } from './components/notifications/NotificationPermissionModal';
+import { TutorialProvider, TutorialOverlay, OnboardingWelcome, TryOnFeedbackModal } from './components/onboarding';
+import { tutorialService } from './services/tutorialService';
+import { TutorialFeatureId } from './data/tutorialDefinitions';
 import useAccounts from './hooks/useAccounts';
 import useActiveAccount from './hooks/useActiveAccount';
 import accountService from './services/accountService';
@@ -42,6 +48,9 @@ import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emailLinkAuth';
 import { normalizeProductVariants } from './utils/productVariants';
 import { useI18n } from './i18n';
+import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
+import { Capacitor } from '@capacitor/core';
+import { initializeDeepLinkHandler, getNativeAppSchemeUrl, DeepLinkDestination } from './services/deepLinkService';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -432,6 +441,17 @@ export default function App() {
   const { t } = useI18n();
   // Session authorization states loaded from localStorage
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
+  const isNativeApp = Capacitor.isNativePlatform();
+  const pendingDeepLinkRef = useRef<DeepLinkDestination | null>(null);
+  const [showWebAppBanner, setShowWebAppBanner] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const hasDeepLinkParam =
+      window.location.search.includes('screen=') ||
+      window.location.search.includes('utm_source=') ||
+      window.location.search.includes('deepLink=');
+    const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    return hasDeepLinkParam || isMobileBrowser;
+  });
   const [screen, setScreen] = useState<ScreenId>('splash');
   const screenRef = useRef<ScreenId>('splash');
   const screenHistoryRef = useRef<ScreenId[]>(['splash']);
@@ -525,6 +545,20 @@ export default function App() {
     setScreen(previousScreen);
   };
 
+  const navigateBackFromFaq = () => {
+    const historyStack = [...screenHistoryRef.current];
+    while (
+      historyStack.length > 0 &&
+      historyStack[historyStack.length - 1] === 'faq'
+    ) {
+      historyStack.pop();
+    }
+    const previousScreen = historyStack[historyStack.length - 1] || 'profile';
+    screenHistoryRef.current = historyStack.length > 0 ? historyStack : [previousScreen];
+    screenRef.current = previousScreen;
+    setScreen(previousScreen);
+  };
+
   // Account management
   const { accounts, addAccount, removeAccount, replaceAccounts } = useAccounts();
   const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
@@ -608,7 +642,7 @@ export default function App() {
     };
   }, [isLoggedIn, activeUid, userEmail, isGuestSession]);
 
-  const handleAddressSaved = (updatedAddress: DeliveryAddress, allAddresses?: DeliveryAddress[]) => {
+    const handleAddressSaved = (updatedAddress: DeliveryAddress, allAddresses?: DeliveryAddress[]) => {
     const hasValidAddress = Boolean(
       updatedAddress && (updatedAddress.flatNo || updatedAddress.city || updatedAddress.pinCode)
     );
@@ -661,13 +695,14 @@ export default function App() {
     }
   };
 
-  const handleProfileSaved = async (profile: { name: string; email: string; phone: string; address: string }) => {
+  const handleProfileSaved = async (profile: { name: string; email: string; phone: string; address: string; profilePhoto?: string }) => {
     const firebaseUser = !isGuestSession ? await waitForFirebaseAuthReady() : null;
     if (!isGuestSession && !firebaseUser) {
       throw new Error('Your sign-in session has expired. Please sign in again, then save your profile.');
     }
 
     const currentUid = activeUid || firebaseUser?.uid || userEmail;
+    const photoToSave = profile.profilePhoto !== undefined ? profile.profilePhoto : (userProfilePhoto || activeAccount?.profilePhoto || '');
     const updatedAccount: NovaAccount = {
       ...activeAccount,
       uid: currentUid,
@@ -678,6 +713,7 @@ export default function App() {
       phone: profile.phone,
       address: profile.address,
       pinCode: userPinCode,
+      profilePhoto: photoToSave || undefined,
       deliveryAddress: userDeliveryAddress || undefined,
       savedAddresses: userSavedAddresses,
       createdAt: activeAccount?.createdAt || Date.now()
@@ -685,7 +721,7 @@ export default function App() {
 
     if (firebaseUser) {
       const userDocumentId = firebaseUser.uid;
-      const profileUpdate = {
+      const profileUpdate: Record<string, any> = {
         uid: firebaseUser.uid,
         name: profile.name,
         contactEmail: profile.email,
@@ -693,8 +729,20 @@ export default function App() {
         address: profile.address,
         updatedAt: serverTimestamp()
       };
+      if (profile.profilePhoto !== undefined) {
+        profileUpdate.profilePhoto = profile.profilePhoto;
+      }
       await setDoc(doc(db, 'users', userDocumentId), profileUpdate, { merge: true });
       await setDoc(doc(db, 'users', userDocumentId, 'profile', 'meta'), profileUpdate, { merge: true });
+    }
+
+    if (profile.profilePhoto !== undefined) {
+      setUserProfilePhoto(profile.profilePhoto);
+      if (profile.profilePhoto) {
+        localStorage.setItem('userProfilePhoto', profile.profilePhoto);
+      } else {
+        localStorage.removeItem('userProfilePhoto');
+      }
     }
 
     localStorage.setItem('userName', profile.name);
@@ -737,6 +785,56 @@ export default function App() {
       cancelled = true;
     };
   }, [isLoggedIn, activeUid, userEmail, isGuestSession]);
+
+  // Sync push notification registration token with backend for automated marketing & style alerts
+  useEffect(() => {
+    syncPushTokenWithBackend({
+      uid: activeUid || undefined,
+      email: userEmail || undefined
+    }).catch(() => {});
+  }, [isLoggedIn, activeUid, userEmail]);
+
+  // Unified Deep Link Handler for Android App Links (cold & warm start) and web destinations
+  useEffect(() => {
+    const cleanup = initializeDeepLinkHandler((dest: DeepLinkDestination) => {
+      console.log('[App] Navigating to deep link destination:', dest);
+
+      if (dest.campaignId) {
+        trackPushTap(dest.campaignId, dest.screen);
+      }
+
+      // If user is currently in unauthenticated auth gate, stash destination to resume after login
+      if (!isLoggedIn) {
+        pendingDeepLinkRef.current = dest;
+        return;
+      }
+
+      if (dest.productId) {
+        setSelectedProductId(dest.productId);
+      }
+
+      setScreen(dest.screen);
+
+      // Clean query parameters from address bar in browser mode without triggering navigation reload
+      if (typeof window !== 'undefined' && window.location.search) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('deepLink');
+        cleanUrl.searchParams.delete('open');
+        cleanUrl.searchParams.delete('screen');
+        cleanUrl.searchParams.delete('tab');
+        cleanUrl.searchParams.delete('campaignId');
+        cleanUrl.searchParams.delete('productId');
+        cleanUrl.searchParams.delete('utm_source');
+        cleanUrl.searchParams.delete('utm_medium');
+        cleanUrl.searchParams.delete('utm_campaign');
+        window.history.replaceState({ novaScreen: dest.screen }, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
+      }
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [isLoggedIn]);
 
   // Persistent measurements state
   const [measurements, setMeasurements] = useState<Measurement[]>(() => {
@@ -877,6 +975,9 @@ export default function App() {
     if (typeof window === 'undefined') return;
 
     window.history.replaceState({ novaScreen: screenRef.current }, '', window.location.href);
+    if (window.location.search.includes('admin=true') || window.location.hash === '#admin') {
+      navigate('admin-campaigns');
+    }
 
     const handleBrowserBack = () => {
       const historyStack = screenHistoryRef.current;
@@ -927,7 +1028,7 @@ export default function App() {
     return levelThresholds.find((threshold) => threshold > Math.max(points, 100)) ?? levelThresholds[levelThresholds.length - 1];
   };
 
-  const awardNovaPoints = (amount: number, description: string, associatedImage?: string) => {
+  const awardNovaPoints = (amount: number, description: string, associatedImage?: string, productId?: string) => {
     if (amount <= 0) return;
     setNovaPoints((prevPoints) => {
       const nextPoints = Math.max(100, prevPoints + amount);
@@ -939,6 +1040,7 @@ export default function App() {
         badge: 'NOVA Rewards',
         icon: 'stars',
         color: 'bg-amber-500/80',
+        productId,
         imageUrl: associatedImage || ''
       });
       return nextPoints;
@@ -1380,8 +1482,11 @@ export default function App() {
     setScreen(to);
   };
 
-  const handleTryOnSuccess = (garment: { id: string; name: string; imageUrl: string }) => {
-    awardNovaPoints(25, `Tried on ${garment.name}`, garment.imageUrl);
+  const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string }) => {
+    const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id;
+    const product = productId ? productsData[productId] || products[productId] : undefined;
+    const productImage = product?.mainImage || product?.imageUrl || product?.imageUrls?.[0] || garment.imageUrl;
+    awardNovaPoints(25, `Tried on ${garment.name}`, productImage, productId);
     addRecentActivity({
       id: `tryon-${garment.id}-${Date.now()}`,
       name: garment.name,
@@ -1389,7 +1494,9 @@ export default function App() {
       badge: 'AR Try-On',
       icon: 'view_in_ar',
       color: 'bg-primary/80',
-      imageUrl: garment.imageUrl,
+      productId,
+      imageUrl: productImage,
+      timestamp: Date.now(),
       isSuccessfulTryOn: true
     });
   };
@@ -1427,22 +1534,11 @@ export default function App() {
   const [capturedTryOnImage, setCapturedTryOnImage] = useState<string | null>(null);
   const [capturedTryOnIsLive, setCapturedTryOnIsLive] = useState(false);
 
-  const handleScannedProductMatched = (product: ProductItem, scanImageUrl?: string) => {
+  const handleScannedProductMatched = (product: ProductItem) => {
     if (!product?.id) return;
     setProductsData((current) => current[product.id] ? current : { ...current, [product.id]: product });
     setSelectedProductId(product.id);
     setSelectedColor(getDefaultProductColor(product));
-
-    const actualImg = scanImageUrl || product.imageUrl || '';
-    addRecentActivity({
-      id: Date.now().toString(),
-      name: `${product.name} Scan`,
-      time: new Date().toLocaleString(),
-      badge: 'Camera Scan',
-      icon: 'photo_camera',
-      color: 'bg-secondary/80',
-      imageUrl: actualImg
-    });
   };
 
   // Interactive Cart Handlers
@@ -1472,6 +1568,21 @@ export default function App() {
         ]);
         analytics.trackCartAdd(p, color, size, 1, screenRef.current || 'cart');
       }
+    }
+  };
+
+  const handleUpdateCartQuantity = (prodId: string, color: string, size: string, delta: number) => {
+    const isPresentIndex = cartItems.findIndex(
+      (item) =>
+        (item.product.id === prodId || item.product.productId === prodId) &&
+        normalizeColor(item.color) === normalizeColor(color) &&
+        item.size === size
+    );
+
+    if (isPresentIndex > -1) {
+      handleUpdateQuantity(isPresentIndex, delta);
+    } else if (delta > 0) {
+      handleAddToCart(prodId, color, size);
     }
   };
 
@@ -1549,6 +1660,11 @@ export default function App() {
             userId={activeUid || userEmail}
             userEmail={userEmail}
             userName={userName}
+            products={Object.values(productsData)}
+            productsLoading={productsLoading}
+            productsError={productsError}
+            wishlist={wishlist}
+            onToggleWishlist={handleToggleWishlist}
           />
         );
       case 'tryon-result':
@@ -1619,6 +1735,24 @@ export default function App() {
             consentRecord={userLegalConsent}
           />
         );
+      case 'faq':
+        return (
+          <FAQView
+            onBack={navigateBackFromFaq}
+            onNavigate={navigate}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case 'admin-campaigns':
+        return (
+          <div className="w-full min-h-screen flex flex-col justify-center">
+            <AdminNotificationsModal
+              isOpen={true}
+              onClose={() => navigate('profile')}
+              isDarkMode={isDarkMode}
+            />
+          </div>
+        );
       case 'setup-preferences':
         return (
           <SetupPreferencesView 
@@ -1637,6 +1771,9 @@ export default function App() {
             userName={userName}
             userId={userEmail}
             onComplete={handleCompleteProfileAnalysis}
+            onSkip={() => {
+              resetScreenHistory('profile');
+            }}
           />
         );
       case 'product-details':
@@ -1658,8 +1795,16 @@ export default function App() {
             products={allProducts}
             databaseProducts={Object.values(productsData)}
             onNavigate={navigate} 
+            onTryOnProduct={(product) => {
+              setProductsData((current) => ({ ...current, [product.id]: product }));
+              setSelectedProductId(product.id);
+              setSelectedGarment(product.id);
+              navigate('ar-tryon');
+            }}
             onSelectProduct={(product) => navigate('product-details', { productId: product.id, product })}
             onAddToCart={handleAddToCart}
+            onUpdateCartQuantity={handleUpdateCartQuantity}
+            cartItems={cartItems}
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
             wishlist={wishlist}
@@ -1704,7 +1849,7 @@ export default function App() {
           />
         );
       case 'scan-outfit':
-        return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} />;
+        return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} recentActivity={recentActivityState} />;
       case 'wardrobe':
         return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} userName={userName} userId={activeUid || auth.currentUser?.uid} isDarkMode={isDarkMode} />;
       case 'chat':
@@ -1736,7 +1881,15 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    replaceScreen('onboarding');
+    if (!tutorialService.hasCompletedOnboardingWelcome()) {
+      replaceScreen('onboarding');
+    } else {
+      if (!isLoggedIn) {
+        replaceScreen('login');
+      } else {
+        resetScreenHistory('home');
+      }
+    }
   };
 
   const handleOnboardingComplete = () => {
@@ -2039,7 +2192,16 @@ export default function App() {
       accountService.setActiveLocalAccount(selectedUid);
       setActiveAccountUid(selectedUid);
     } catch {}
-    resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+    if (pendingDeepLinkRef.current && !isSignUp) {
+      const dest = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      if (dest.productId) {
+        setSelectedProductId(dest.productId);
+      }
+      resetScreenHistory(dest.screen);
+    } else {
+      resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+    }
   };
 
   const handleAcceptUpdatedTerms = async () => {
@@ -2109,7 +2271,16 @@ export default function App() {
       setActiveAccountUid(guestId);
     } catch {}
 
-    resetScreenHistory('home');
+    if (pendingDeepLinkRef.current) {
+      const dest = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      if (dest.productId) {
+        setSelectedProductId(dest.productId);
+      }
+      resetScreenHistory(dest.screen);
+    } else {
+      resetScreenHistory('home');
+    }
   };
 
   const handleLogout = () => {
@@ -2142,7 +2313,7 @@ export default function App() {
     if (tab === 'wardrobe' && screen === 'wardrobe') return true;
     if (tab === 'ar' && (screen === 'ar-tryon' || screen === 'tryon-result')) return true;
     if (tab === 'chat' && screen === 'chat') return true;
-    if (tab === 'profile' && (screen === 'profile' || screen === 'terms' || screen === 'privacy')) return true;
+    if (tab === 'profile' && (screen === 'profile' || screen === 'terms' || screen === 'privacy' || screen === 'faq')) return true;
     if (tab === 'showroom' && (screen === 'showroom' || screen === 'cart')) return true;
     return false;
   };
@@ -2155,9 +2326,31 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  // Onboarding Slides Guard
+  // Interactive Onboarding Experience Guard
   if (screen === 'onboarding') {
-    return <OnboardingView onComplete={handleOnboardingComplete} />;
+    return (
+      <TutorialProvider currentScreen={screen} onNavigate={navigate}>
+        <OnboardingWelcome
+          fullscreen
+          onStartTour={(featureId: TutorialFeatureId) => {
+            if (!isLoggedIn) {
+              handleGuestContinue();
+            }
+            resetScreenHistory('home');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('nova:start_tutorial', { detail: { featureId } }));
+            }, 100);
+          }}
+          onDismiss={() => {
+            if (!isLoggedIn) {
+              replaceScreen('login');
+            } else {
+              resetScreenHistory('home');
+            }
+          }}
+        />
+      </TutorialProvider>
+    );
   }
 
   // Email Verification Screen Guard
@@ -2180,14 +2373,46 @@ export default function App() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E4DFF5] text-[#131426]">
+        {!isNativeApp && showWebAppBanner && (
+          <div className="sticky top-0 z-50 bg-[#12162B] text-white border-b border-[#232A4C] px-3.5 py-2 flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-[#553BE2] animate-pulse shrink-0" />
+              <span className="text-[11px] font-medium text-slate-300 truncate">Viewing on NOVA Web</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={getNativeAppSchemeUrl(screen, selectedProductId ? { productId: selectedProductId } : undefined)}
+                className="text-[11px] font-bold bg-[#553BE2] hover:bg-[#472FC9] text-white px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+              >
+                Open in App
+              </a>
+              {import.meta.env.VITE_ANDROID_APK_URL && (
+                <a
+                  href={import.meta.env.VITE_ANDROID_APK_URL}
+                  className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg transition-colors border border-slate-700"
+                >
+                  Install APK
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowWebAppBanner(false)}
+                className="text-slate-400 hover:text-white p-0.5 text-xs font-bold"
+                aria-label="Dismiss banner"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
         <main className="flex-grow relative px-4 py-3 flex flex-col justify-center">
           <AuthView 
             onLoginSuccess={handleLoginSuccess} 
             onGuestContinue={handleGuestContinue}
             onProceedToEmailVerification={handleProceedToEmailVerification}
-            prefilledName={pendingEmailVerification?.name}
-            prefilledAddress={pendingEmailVerification?.address}
-            prefilledPinCode={pendingEmailVerification?.pinCode}
+
+
+
           />
         </main>
       </div>
@@ -2195,11 +2420,45 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
+    <TutorialProvider currentScreen={screen} onNavigate={navigate}>
+      <div className={`min-h-screen flex flex-col justify-between ${screen === 'setup-preferences' || screen === 'profile-analysis' ? 'max-w-[920px]' : 'max-w-md'} mx-auto relative shadow-2xl overflow-hidden font-sans transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-slate-950 border-x border-slate-800 text-white' 
         : 'bg-[#F2EEFF] nova-page-wash border-x border-[#E4DFF5] text-[#131426]'
     }`}>
+      {/* Web Fallback App Bar for users visiting via browser */}
+      {!isNativeApp && showWebAppBanner && (
+        <div className="sticky top-0 z-50 bg-[#12162B] text-white border-b border-[#232A4C] px-3.5 py-2 flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-[#553BE2] animate-pulse shrink-0" />
+            <span className="text-[11px] font-medium text-slate-300 truncate">Viewing on NOVA Web</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={getNativeAppSchemeUrl(screen, selectedProductId ? { productId: selectedProductId } : undefined)}
+              className="text-[11px] font-bold bg-[#553BE2] hover:bg-[#472FC9] text-white px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+            >
+              Open in App
+            </a>
+            {import.meta.env.VITE_ANDROID_APK_URL && (
+              <a
+                href={import.meta.env.VITE_ANDROID_APK_URL}
+                className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg transition-colors border border-slate-700"
+              >
+                Install APK
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowWebAppBanner(false)}
+              className="text-slate-400 hover:text-white p-0.5 text-xs font-bold"
+              aria-label="Dismiss banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* 1. Header Toolbar (Hidden when immersive AR camera is loaded to mimic device viewport) */}
       {!isImmersiveAR && (
@@ -2235,7 +2494,7 @@ export default function App() {
             <button 
               onClick={() => setIsWishlistOpen(true)}
               className="nova-interactive w-10 h-10 rounded-full bg-white hover:bg-[#F2EEFF] flex items-center justify-center relative border border-[#E4DFF5] shadow-[0_2px_6px_rgba(19,20,38,0.04)]"
-              title="View Wishlist"
+              title={t('header.viewWishlist')}
             >
               <span className="material-symbols-outlined text-rose-500 text-[20px]" style={{ fontVariationSettings: wishlist.length > 0 ? "'FILL' 1" : undefined }}>favorite</span>
               {wishlist.length > 0 && (
@@ -2249,7 +2508,7 @@ export default function App() {
             <button 
               onClick={() => navigate('cart')}
               className="nova-interactive w-10 h-10 rounded-full bg-[#F2EEFF] flex items-center justify-center relative hover:bg-[#ECE7FF] border border-[#E2DBF8] shadow-[0_2px_6px_rgba(19,20,38,0.03)]"
-              title="View Cart"
+              title={t('header.viewCart')}
             >
               <span className="material-symbols-outlined text-[#553BE2] text-[20px]">local_mall</span>
               {countCartTotalItems() > 0 && (
@@ -2265,7 +2524,7 @@ export default function App() {
               className="nova-interactive w-9 h-9 rounded-full overflow-hidden border-2 border-white ring-2 ring-[#ECE7FF] hover:ring-[#553BE2]/40 shadow-[0_4px_12px_rgba(85,59,226,0.14)]"
             >
               <img 
-                alt="Account profile" 
+                alt={t('header.accountProfile')} 
                 className="w-full h-full object-cover" 
                 referrerPolicy="no-referrer"
                 src={userProfilePhoto || activeAccount?.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'NOVA User')}&background=F2EEFF&color=553BE2&bold=true`}
@@ -2288,7 +2547,7 @@ export default function App() {
             }`}
           >
             <div className="text-xs font-extrabold text-[#553BE2]">
-              Updated Terms &amp; Privacy Policy (v{TERMS_VERSION})
+              {t('legal.renewalNoticeTitle', { version: TERMS_VERSION })}
             </div>
             <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-[#5E667A]'}`}>
               NOVA&apos;s{' '}
@@ -2315,7 +2574,7 @@ export default function App() {
               onClick={handleAcceptUpdatedTerms}
               className="w-full py-2.5 px-4 rounded-xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-60"
             >
-              {isRenewingConsent ? 'Recording Acceptance...' : 'I Agree to Updated Terms & Privacy Policy'}
+              {isRenewingConsent ? t('legal.recording') : t('legal.agreeButton')}
             </button>
           </div>
         )}
@@ -2330,12 +2589,12 @@ export default function App() {
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#E4DFF5]'
           }`}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('profile.settings.wishlist')} ({wishlist.length})</h3>
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('wishlist.title')} ({wishlist.length})</h3>
               <button onClick={() => setIsWishlistOpen(false)} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-[#5E667A] hover:text-[#131426]'}`}>{t('common.close')}</button>
             </div>
             {wishlist.length === 0 ? (
               <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-                No saved items yet â€” tap the heart on products to save them.
+                {t('wishlist.empty')}
               </div>
             ) : (
               <div className="space-y-3">
@@ -2359,13 +2618,13 @@ export default function App() {
                             handleAddToCart(productId, defaultColor, defaultSize);
                           }}
                           className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold"
-                        >Add</button>
+                        >{t('wishlist.add')}</button>
                         <button
                           onClick={() => {
                             handleToggleWishlist(productId);
                           }}
                           className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100"
-                        >Remove</button>
+                        >{t('wishlist.remove')}</button>
                       </div>
                     </div>
                   );
@@ -2375,6 +2634,12 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* 4. First-launch Notification Permission Intro */}
+      <NotificationPermissionModal
+        user={{ uid: activeUid, email: userEmail }}
+        isDarkMode={isDarkMode}
+      />
+
       {/* 3. Bottom persistent device Navigation Tab-Bar & NOVA Hub Modal (Hidden during immersive Tryon filtering) */}
       {!isImmersiveAR && (
         <>
@@ -2390,6 +2655,12 @@ export default function App() {
           />
         </>
       )}
+
+      {/* Interactive Feature Guide Overlay & Modals */}
+      <OnboardingWelcome />
+      <TutorialOverlay />
+      <TryOnFeedbackModal onNavigate={navigate} />
     </div>
+    </TutorialProvider>
   );
 }

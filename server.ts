@@ -23,7 +23,7 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors({
   origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'x-admin-key']
 }));
 app.use(express.json({ limit: '6mb' }));
 
@@ -52,7 +52,13 @@ async function start() {
       { default: productRouter },
       { default: vtonRouter },
       { default: tryOnScoreRouter },
-      { default: analyticsRouter }
+      { default: analyticsRouter },
+      { default: notificationRouter },
+      { default: notificationAdminRouter },
+      { default: addressRouter },
+      { default: marketingEmailRouter },
+      { startNotificationScheduler },
+      { startMarketingEmailScheduler }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
       import('./server/chatRouter.ts'),
@@ -60,7 +66,13 @@ async function start() {
       import('./server/productRouter.ts'),
       import('./server/vtonRouter.ts'),
       import('./server/tryOnScoreRouter.ts'),
-      import('./server/analyticsRouter.ts')
+      import('./server/analyticsRouter.ts'),
+      import('./server/notificationRouter.ts'),
+      import('./server/notificationAdminRouter.ts'),
+      import('./server/addressRouter.ts'),
+      import('./server/marketingEmailRouter.ts'),
+      import('./server/notificationScheduler.ts'),
+      import('./server/marketingEmailScheduler.ts')
     ]);
 
     app.use('/api', authRouter);
@@ -70,6 +82,12 @@ async function start() {
     app.use('/api', vtonRouter);
     app.use('/api', tryOnScoreRouter);
     app.use('/api', analyticsRouter);
+    app.use('/api', notificationRouter);
+    app.use('/api', notificationAdminRouter);
+    app.use('/api', addressRouter);
+    app.use('/api', marketingEmailRouter);
+    startNotificationScheduler();
+    startMarketingEmailScheduler();
 
     const server = http.createServer(app);
 
@@ -91,6 +109,12 @@ async function start() {
 
     // Use Vite's connect instance as middleware 
     app.use(vite.middlewares);
+
+    // Serve Android App Links Digital Asset Links association file
+    app.get('/.well-known/assetlinks.json', (_req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.sendFile(path.resolve(currentDirectory, 'public/.well-known/assetlinks.json'));
+    });
 
     // Serve favicon to prevent browser 404 console errors
     app.get('/favicon.ico', (req, res) => {

@@ -6,6 +6,7 @@ import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, War
 import accountService from '../services/accountService';
 import aiService from "../services/aiService";
 import { resolveColorHex } from '../utils/colors';
+import { useI18n } from '../i18n';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -132,6 +133,7 @@ const validateAndNormalizeImage = async (file: File): Promise<NormalizedUpload> 
 };
 
 export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false, userId: propUserId }) => {
+  const { t } = useI18n();
   const currentUid = auth.currentUser?.uid || propUserId || null;
   const legacyUserId = accountService.getUserDocId(userEmail);
   const userId = currentUid || legacyUserId;
@@ -581,14 +583,14 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         </div>
       )}
 
-      <section className={`rounded-[28px] p-5 backdrop-blur-2xl ${darkPanel}`}>
+      <section data-tutorial-target="wardrobe-header" className={`rounded-[28px] p-5 backdrop-blur-2xl ${darkPanel}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`text-[10px] font-black uppercase tracking-[0.28em] ${accentText}`}>NOVA</p>
-            <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight">Virtual Wardrobe</h1>
-            <p className={`mt-3 max-w-[250px] text-sm leading-relaxed ${muted}`}>Scan. Store. Style. Your entire wardrobe, digitized with AI.</p>
+            <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight">{t('wardrobe.title')}</h1>
+            <p className={`mt-3 max-w-[250px] text-sm leading-relaxed ${muted}`}>{t('wardrobe.subtitle')}</p>
           </div>
-          <button onClick={() => onNavigate('scan-outfit')} className={`h-11 w-11 rounded-2xl ${purpleButton}`}>
+          <button data-tutorial-target="wardrobe-add-btn" onClick={() => onNavigate('scan-outfit')} className={`h-11 w-11 rounded-2xl ${purpleButton}`}>
             <span className="material-symbols-outlined text-xl leading-10">center_focus_strong</span>
           </button>
         </div>
@@ -696,7 +698,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
               }`}>Womenswear</button>
               <button className={`rounded-lg py-2 ${muted}`}>Both</button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div data-tutorial-target="wardrobe-categories" className="grid grid-cols-3 gap-2">
               {categories.map((category, index) => (
                 <motion.button
                   key={category}
@@ -726,7 +728,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
             </div>
           </section>
 
-          <section className={`rounded-[28px] p-4 ${darkPanel}`}>
+          <section data-tutorial-target="wardrobe-items-grid" className={`rounded-[28px] p-4 ${darkPanel}`}>
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black">My Wardrobe</h2>

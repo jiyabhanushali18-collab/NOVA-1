@@ -1,5 +1,6 @@
+import { useI18n } from '../i18n';
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { ScreenId } from '../types';
+import { ProductItem, ScreenId } from '../types';
 import { analytics } from '../services/analyticsService';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -12,10 +13,27 @@ import {
   startLiveTryOnSession,
   captureVideoFrame,
   LiveTryOnSessionHandle,
-  DEFAULT_GARMENTS,
   DEFAULT_MODELS,
   prepareGarmentForLiveTryOn,
+  acquireCameraStream,
+  applyTrackExposure,
+  isHardwareExposureSupported,
+  getCameraDevices,
 } from '../services/liveTryOnService';
+import {
+  PersonDetectionResult,
+  startPersonDetection,
+} from '../services/personDetectionService';
+
+export type ArTryOnState =
+  | 'idle'
+  | 'initializing'
+  | 'camera_ready'
+  | 'processing'
+  | 'success'
+  | 'retryable_error'
+  | 'configuration_error'
+  | 'cancelled';
 
 interface ArTryOnViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -23,16 +41,22 @@ interface ArTryOnViewProps {
   selectedGarment: string;
   setSelectedGarment: (garment: string) => void;
   onCaptureImage?: (imageDataUrl: string, isLiveTryOn: boolean) => void;
-  onTryOnSuccess?: (garment: { id: string; name: string; imageUrl: string }) => void;
+  onTryOnSuccess?: (garment: { id: string; productId?: string; name: string; imageUrl: string }) => void;
   initialGarmentImage?: string | null;
   isDarkMode?: boolean;
   userId?: string;
   userEmail?: string;
   userName?: string;
+  products: ProductItem[];
+  productsLoading: boolean;
+  productsError: string | null;
+  wishlist: string[];
+  onToggleWishlist: (productId: string) => void;
 }
 
 interface GarmentItem {
   id: string;
+  productId?: string;
   name: string;
   category: string;
   img: string;
@@ -48,6 +72,11 @@ interface LiveTryOnViewportProps {
   isVideoLive: boolean;
   lighting: boolean;
   fallbackImg: string;
+  garmentImg?: string;
+  facingMode?: 'user' | 'environment';
+  brightness?: number;
+  isFlipping?: boolean;
+  personDetection?: PersonDetectionResult | null;
 }
 
 const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
@@ -56,12 +85,35 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
   isVideoLive,
   lighting,
   fallbackImg,
+  garmentImg,
+  facingMode = 'user',
+  brightness = 0,
+  isFlipping = false,
+  personDetection,
 }) => {
   const showVideo = isCameraActive || isVideoLive;
+  const [imgError, setImgError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(fallbackImg);
+
+  useEffect(() => {
+    setCurrentSrc(fallbackImg);
+    setImgError(false);
+  }, [fallbackImg]);
+
+  const handleImgError = () => {
+    if (garmentImg && currentSrc !== garmentImg) {
+      setCurrentSrc(garmentImg);
+    } else {
+      setImgError(true);
+    }
+  };
+
+  const effectiveBrightness = 100 + brightness;
+  const effectiveContrast = 100 + Math.round(Math.abs(brightness) * 0.15);
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden bg-black select-none pointer-events-none"
+      className="absolute inset-0 overflow-hidden bg-slate-950 select-none pointer-events-none"
       style={{
         contain: 'strict',
         isolation: 'isolate',
@@ -74,9 +126,12 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
         playsInline
         muted
         style={{
-          transform: 'translateZ(0)',
-          willChange: 'transform',
+          transform: facingMode === 'user' ? 'scaleX(-1) translateZ(0)' : 'translateZ(0)',
+          filter: `brightness(${effectiveBrightness}%) contrast(${effectiveContrast}%)`,
+          willChange: 'transform, filter',
           backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          transition: 'filter 0.25s ease-out',
         }}
         className={`absolute inset-0 w-full h-full object-cover object-top pointer-events-none transition-opacity duration-200 ${
           showVideo ? 'opacity-100 z-10' : 'opacity-0 z-0'
@@ -84,13 +139,79 @@ const LiveTryOnViewport = memo<LiveTryOnViewportProps>(({
       />
 
       {/* High-visibility portrait model when live stream is off */}
-      {!showVideo && (
+      {!showVideo && !imgError && (
         <img
           alt="AR Try-On Portrait Model"
           className="absolute inset-0 w-full h-full object-cover object-top z-0 pointer-events-none"
           referrerPolicy="no-referrer"
-          src={fallbackImg}
+          src={currentSrc}
+          onError={handleImgError}
         />
+      )}
+
+      {/* Fallback stylized mannequin placeholder if static image is unavailable */}
+      {!showVideo && imgError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#161B30] via-[#0F1322] to-[#0A0D18] text-white">
+          <div className="w-16 h-16 rounded-3xl bg-[#5D3DF2]/20 border border-[#5D3DF2]/40 flex items-center justify-center text-[#A594FD] mb-3 shadow-inner">
+            <span className="material-symbols-outlined text-3xl">view_in_ar</span>
+          </div>
+          <span className="text-sm font-bold text-slate-100 tracking-tight">Virtual Fitting Mannequin</span>
+          <span className="text-xs text-slate-400 mt-1">Tap Try On Live to view on camera</span>
+        </div>
+      )}
+
+      {/* Dynamic Person Framing Reticle Indicator */}
+      {showVideo && (
+        <div className="absolute inset-3 rounded-2xl pointer-events-none z-20">
+          <div
+            className={`absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 rounded-tl-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+          <div
+            className={`absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 rounded-tr-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 rounded-bl-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 rounded-br-xl transition-all duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'border-white/70'
+            }`}
+          />
+        </div>
+      )}
+
+      {/* Person Detection Real-Time Guidance Pill */}
+      {showVideo && personDetection && (
+        <div className="absolute top-11 inset-x-0 flex justify-center z-25 pointer-events-none">
+          <div
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 backdrop-blur-md border shadow-sm transition-all duration-300 ${
+              personDetection.detected
+                ? 'bg-emerald-950/85 border-emerald-400/40 text-emerald-300'
+                : 'bg-[#111322]/85 border-white/15 text-slate-300'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                personDetection.detected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+            <span>{personDetection.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Switching Spinner Overlay */}
+      {isFlipping && (
+        <div className="absolute inset-0 bg-[#0B0C15]/75 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2 pointer-events-none">
+          <span className="material-symbols-outlined text-3xl text-[#A594FD] animate-spin">sync</span>
+          <span className="text-xs font-semibold text-slate-200">Switching camera...</span>
+        </div>
       )}
 
       {/* Zero-invalidation hardware-accelerated lighting overlay */}
@@ -116,7 +237,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   userId,
   userEmail,
   userName,
+  products,
+  productsLoading,
+  productsError,
+  wishlist,
+  onToggleWishlist,
 }) => {
+  const { t } = useI18n();
+  const [connectionState, setConnectionState] = useState<ArTryOnState>('idle');
   const [isSavingLook, setIsSavingLook] = useState(false);
   const [flash, setFlash] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -124,6 +252,18 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const [statusText, setStatusText] = useState('Camera ready');
   const [lighting, setLighting] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const facingModeRef = useRef(facingMode);
+  facingModeRef.current = facingMode;
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [showLightingPanel, setShowLightingPanel] = useState(false);
+  const [brightness, setBrightness] = useState(0);
+  const [isAutoLighting, setIsAutoLighting] = useState(false);
+  const isAutoLightingRef = useRef(false);
+  isAutoLightingRef.current = isAutoLighting;
+  const [isHardwareExposure, setIsHardwareExposure] = useState(false);
+  const [personDetection, setPersonDetection] = useState<PersonDetectionResult | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<{ front: number; rear: number; total: number }>({ front: 1, rear: 1, total: 2 });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [savePopup, setSavePopup] = useState<{
     isOpen: boolean;
@@ -131,7 +271,18 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     previewUrl?: string;
     isError?: boolean;
   } | null>(null);
-  const [garmentsList, setGarmentsList] = useState<GarmentItem[]>(DEFAULT_GARMENTS);
+  const [uploadedGarments, setUploadedGarments] = useState<GarmentItem[]>([]);
+  const catalogGarments: GarmentItem[] = products
+    .filter((product) => product.imageUrl)
+    .sort((first, second) => Number(wishlist.includes(second.id)) - Number(wishlist.includes(first.id)))
+    .map((product) => ({
+      id: product.id,
+      productId: product.id,
+      name: product.name,
+      category: product.category,
+      img: product.imageUrl,
+    }));
+  const garmentsList = [...catalogGarments, ...uploadedGarments];
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef<LiveTryOnSessionHandle | null>(null);
@@ -141,9 +292,30 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const pendingConnectControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
+  const lastActionTimeRef = useRef<number>(0);
 
   const activeModelBg = DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS['Lavender'];
   const activeGarmentObj = garmentsList.find((g) => g.id === selectedGarment) || garmentsList[0];
+
+  useEffect(() => {
+    if (
+      !productsLoading
+      && catalogGarments.length > 0
+      && !garmentsList.some((garment) => garment.id === selectedGarment)
+    ) {
+      setSelectedGarment(catalogGarments[0].id);
+    }
+  }, [productsLoading, products, selectedGarment, uploadedGarments, setSelectedGarment]);
+
+  // Stable references to eliminate stale closures in async callbacks
+  const selectedGarmentRef = useRef(selectedGarment);
+  selectedGarmentRef.current = selectedGarment;
+  const activeGarmentObjRef = useRef(activeGarmentObj);
+  activeGarmentObjRef.current = activeGarmentObj;
+  const initialGarmentImageRef = useRef(initialGarmentImage);
+  initialGarmentImageRef.current = initialGarmentImage;
+  const garmentsListRef = useRef(garmentsList);
+  garmentsListRef.current = garmentsList;
 
   useEffect(() => {
     if (selectedGarment && activeGarmentObj) {
@@ -151,12 +323,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
   }, [selectedGarment, activeGarmentObj?.name]);
 
-  // Stop session cleanly
-  const stopLiveSession = useCallback(() => {
+  // Stop session cleanly (can be called by user cancellation or session end)
+  const stopLiveSession = useCallback((isUserCancel = false) => {
     const pendingConnect = pendingConnectControllerRef.current;
     if (pendingConnect) {
       pendingConnect.abort();
-      setStatusText('Cancelling AI connection...');
+      pendingConnectControllerRef.current = null;
     }
     if (sessionRef.current) {
       sessionRef.current.stop();
@@ -170,15 +342,22 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     localPreviewStreamRef.current = null;
     if (isLiveRef.current && sessionStartTimeRef.current) {
       const elapsed = Date.now() - sessionStartTimeRef.current;
-      analytics.trackArTryOnEnded(selectedGarment, elapsed);
+      analytics.trackArTryOnEnded(selectedGarmentRef.current, elapsed);
     }
     isLiveRef.current = false;
     isConnectingRef.current = false;
     setIsCameraActive(false);
     setIsVideoLive(false);
     setIsConnecting(false);
-    if (!pendingConnect) setStatusText('Camera ready');
-  }, [selectedGarment]);
+
+    if (isUserCancel) {
+      setConnectionState('cancelled');
+      setStatusText(t('arTryOn.interrupted'));
+    } else {
+      setConnectionState('idle');
+      setStatusText(t('arTryOn.ready'));
+    }
+  }, [t]);
 
   // Clean up session strictly on unmount
   useEffect(() => {
@@ -195,7 +374,67 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     };
   }, []);
 
-  // Start live session on-demand
+  // Initialize camera preview stream on demand or on mount
+  const initCameraPreview = useCallback(async (targetFacing: 'user' | 'environment') => {
+    if (isLiveRef.current || isConnectingRef.current) return;
+    try {
+      if (localPreviewStreamRef.current) {
+        localPreviewStreamRef.current.getTracks().forEach((track) => track.stop());
+        localPreviewStreamRef.current = null;
+      }
+      const stream = await acquireCameraStream(targetFacing, 30);
+      localPreviewStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((playErr) => console.warn('Preview play error:', playErr));
+      }
+      setIsCameraActive(true);
+      setFacingMode(targetFacing);
+      setStatusText(t('arTryOn.cameraReady'));
+      const videoTrack = stream.getVideoTracks()[0];
+      setIsHardwareExposure(isHardwareExposureSupported(videoTrack));
+    } catch (err: any) {
+      console.warn('Camera preview init error:', err);
+      setIsCameraActive(false);
+      if (err?.name === 'NotAllowedError') {
+        setStatusText(t('arTryOn.cameraDenied'));
+      }
+    }
+  }, [t]);
+
+  // Initialize camera preview immediately when AR Try-On screen opens
+  useEffect(() => {
+    initCameraPreview('user');
+    getCameraDevices().then((info) => {
+      setAvailableCameras({ front: info.frontCameras.length, rear: info.rearCameras.length, total: info.total });
+    });
+  }, [initCameraPreview]);
+
+  // Dynamic real-time person detection loop
+  useEffect(() => {
+    if (!videoRef.current || (!isCameraActive && !isVideoLive)) {
+      setPersonDetection(null);
+      return;
+    }
+
+    const unbind = startPersonDetection(videoRef.current, facingMode, (result) => {
+      setPersonDetection(result);
+      // Auto-lighting adjustment if active
+      if (isAutoLightingRef.current) {
+        if (result.averageLuma < 70) {
+          setBrightness((prev) => Math.min(30, prev + 2));
+        } else if (result.averageLuma > 185) {
+          setBrightness((prev) => Math.max(-25, prev - 2));
+        }
+      }
+    });
+
+    return () => {
+      unbind();
+    };
+  }, [facingMode, isCameraActive, isVideoLive]);
+
+  // Start live session on-demand (Single-flight connection with lifecycle state management)
   const startLiveSession = useCallback(async () => {
     if (isConnectingRef.current || isLiveRef.current || pendingConnectControllerRef.current) return;
     if (!videoRef.current) return;
@@ -211,24 +450,35 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     const connectController = new AbortController();
     pendingConnectControllerRef.current = connectController;
     setIsConnecting(true);
-    setStatusText('Connecting AI...');
+    setConnectionState('initializing');
+    setStatusText(t('arTryOn.preparing'));
     sessionStartTimeRef.current = Date.now();
-    analytics.trackArTryOnStarted(selectedGarment, activeGarmentObj?.name, 'ar_tryon');
+    const currentGarment = activeGarmentObjRef.current;
+    const currentGarmentId = selectedGarmentRef.current;
+    analytics.trackArTryOnStarted(currentGarmentId, currentGarment?.name, 'ar_tryon');
 
-    const garmentSource = initialGarmentImage || activeGarmentObj?.file || activeGarmentObj?.img;
+    const garmentSource = initialGarmentImageRef.current || currentGarment?.file || currentGarment?.img;
 
     try {
       const handle = await startLiveTryOnSession({
         videoElement: videoRef.current,
         garmentImage: garmentSource,
-        facingMode: 'user',
+        facingMode: facingModeRef.current,
         signal: connectController.signal,
         onLocalStream: (stream) => {
           localPreviewStreamRef.current = stream;
           setIsCameraActive(true);
-          setStatusText('Camera active - connecting AI...');
+          setStatusText(t('arTryOn.cameraReady'));
+          const videoTrack = stream.getVideoTracks()[0];
+          setIsHardwareExposure(isHardwareExposureSupported(videoTrack));
+        },
+        onFacingModeChange: (newFacing) => {
+          setFacingMode(newFacing);
         },
         onStatusChange: (status) => {
+          if (!isLiveRef.current && (status.includes('Connecting to AI') || status.includes('Applying garment') || status.includes('session'))) {
+            setConnectionState('processing');
+          }
           setStatusText(status);
         },
         onConnected: () => {
@@ -236,22 +486,29 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           isConnectingRef.current = false;
           setIsVideoLive(true);
           setIsConnecting(false);
-          setStatusText('Live AI Active');
+          setConnectionState('success');
+          setStatusText(t('arTryOn.liveActive'));
           const durationMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : undefined;
-          analytics.trackArTryOnSucceeded(selectedGarment, activeGarmentObj?.name, durationMs);
-          if (activeGarmentObj) {
+          analytics.trackArTryOnSucceeded(selectedGarmentRef.current, activeGarmentObjRef.current?.name, durationMs);
+          if (activeGarmentObjRef.current) {
             onTryOnSuccess?.({
-              id: activeGarmentObj.id,
-              name: activeGarmentObj.name,
-              imageUrl: activeGarmentObj.img.startsWith('blob:') ? '' : activeGarmentObj.img
+              id: activeGarmentObjRef.current.id,
+              productId: activeGarmentObjRef.current.productId,
+              name: activeGarmentObjRef.current.name,
+              imageUrl: activeGarmentObjRef.current.img.startsWith('blob:') ? '' : activeGarmentObjRef.current.img,
             });
           }
         },
         onError: (err) => {
           console.warn('Live session error:', err);
-          analytics.trackArTryOnFailed(selectedGarment, 'stream_error', activeGarmentObj?.name);
-          stopLiveSession();
-          setStatusText(err.message || 'AI connection lost. Tap Try On Live to retry.');
+          analytics.trackArTryOnFailed(selectedGarmentRef.current, 'stream_error', activeGarmentObjRef.current?.name);
+          stopLiveSession(false);
+          setConnectionState('retryable_error');
+          const errMsg = typeof err?.message === 'string' ? err.message : '';
+          const displayErr = errMsg.toLowerCase().includes('stale connect attempt')
+            ? 'Connection sync delay. Tap Retry.'
+            : errMsg || 'AI session interrupted. Tap Retry to reconnect.';
+          setStatusText(displayErr);
         },
       });
 
@@ -261,48 +518,67 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       }
       sessionRef.current = handle;
     } catch (err: any) {
-      if (connectController.signal.aborted) {
+      const errorMsg = typeof err?.message === 'string' ? err.message : String(err || '');
+      const isExplicitAbort = connectController.signal.aborted;
+      const isStale = errorMsg.toLowerCase().includes('stale connect attempt');
+
+      // If superseded by a newer connection attempt, let the new attempt continue cleanly
+      if (pendingConnectControllerRef.current && pendingConnectControllerRef.current !== connectController) {
         return;
       }
+
+      if (isExplicitAbort) {
+        setConnectionState('cancelled');
+        setStatusText(t('arTryOn.interrupted'));
+        return;
+      }
+
       console.error('Could not start live session:', err);
-      const errorCategory = err?.name === 'NotAllowedError' ? 'camera_permission_denied' : 'connection_failed';
-      analytics.trackArTryOnFailed(selectedGarment, errorCategory, activeGarmentObj?.name);
-      isConnectingRef.current = false;
-      setIsConnecting(false);
-      const errorMessage = typeof err?.message === 'string' && err.message.trim()
-        ? err.message.trim()
-        : typeof err?.error?.message === 'string' && err.error.message.trim()
-        ? err.error.message.trim()
-        : 'Unknown connection error';
-      const detail = errorMessage.length > 140 ? `${errorMessage.slice(0, 137)}...` : errorMessage;
-      const isStaleAttempt = err?.name === 'AbortError' || errorMessage.includes('Stale connect attempt');
-      setStatusText(err?.name === 'NotAllowedError'
-        ? 'Camera access denied'
-        : isStaleAttempt
-        ? 'AI connection was interrupted. Tap Try On Live to reconnect.'
-        : `AI connection failed: ${detail}`);
+      const isPermissionDenied = err?.name === 'NotAllowedError' || errorMsg.toLowerCase().includes('permission');
+      const errorCategory = isPermissionDenied ? 'camera_permission_denied' : 'connection_failed';
+      analytics.trackArTryOnFailed(selectedGarmentRef.current, errorCategory, activeGarmentObjRef.current?.name);
+
+      if (isPermissionDenied) {
+        setConnectionState('configuration_error');
+        setStatusText(t('arTryOn.cameraDenied'));
+      } else {
+        setConnectionState('retryable_error');
+        const rawMessage = typeof err?.message === 'string' && err.message.trim()
+          ? err.message.trim()
+          : typeof err?.error?.message === 'string' && err.error.message.trim()
+          ? err.error.message.trim()
+          : 'AI connection error';
+        const sanitized = isStale
+          ? 'Network sync delay. Tap Retry to connect.'
+          : rawMessage.length > 90
+          ? `${rawMessage.slice(0, 87)}...`
+          : rawMessage;
+        setStatusText(`${t('arTryOn.failed')}: ${sanitized}`);
+      }
     } finally {
       if (pendingConnectControllerRef.current === connectController) {
         pendingConnectControllerRef.current = null;
       }
-      if (connectController.signal.aborted) {
-        isConnectingRef.current = false;
-        setIsConnecting(false);
-        setStatusText('Camera ready');
-      }
+      isConnectingRef.current = false;
+      setIsConnecting(false);
     }
-  }, [activeGarmentObj, initialGarmentImage, onTryOnSuccess, stopLiveSession]);
+  }, [onTryOnSuccess, stopLiveSession, t]);
 
-  // Garment selection: instant dispatch via cached blob/file
+  // Garment selection: instant dispatch via cached blob/file without tearing down camera stream
   const handleGarmentClick = (item: GarmentItem) => {
     const prev = selectedGarment;
     setSelectedGarment(item.id);
     if (prev !== item.id) {
       analytics.trackArTryOnProductChanged(item.id, prev);
     }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nova:tutorial:outfit_selected', { detail: { garmentId: item.id } }));
+    }
     if (sessionRef.current && isLiveRef.current) {
       const payload = item.file || item.img;
-      sessionRef.current.setGarment(payload).catch(() => {});
+      sessionRef.current.setGarment(payload).catch((err) => {
+        console.warn('Garment update error:', err);
+      });
     }
   };
 
@@ -322,7 +598,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       file,
     };
 
-    setGarmentsList((prev) => [newGarment, ...prev]);
+    setUploadedGarments((prev) => [newGarment, ...prev]);
     setSelectedGarment(customId);
 
     // Warm up compression in background
@@ -337,25 +613,97 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
   };
 
-  // Toggle Live Camera / Fallback Mode
-  const handleToggleCamera = () => {
-    if (isLiveRef.current || isConnectingRef.current) {
-      stopLiveSession();
+  // Primary Action Button (Try On Live / Cancel / Stop Live / Retry)
+  const handlePrimaryAction = () => {
+    const now = Date.now();
+    // Guard against accidental double taps on mobile touchscreens (600ms debounce)
+    if (now - lastActionTimeRef.current < 600) return;
+    lastActionTimeRef.current = now;
+
+    if (isConnectingRef.current || isConnecting || connectionState === 'initializing' || connectionState === 'processing') {
+      // Cancel in-flight connection
+      stopLiveSession(true);
+    } else if (connectionState === 'success') {
+      // Stop live stream
+      stopLiveSession(false);
     } else {
+      // 'idle', 'camera_ready', 'retryable_error', 'configuration_error', 'cancelled'
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nova:tutorial:tryon_live_started'));
+      }
       startLiveSession();
     }
   };
 
-  // Flip Camera
+  // Backwards compatibility alias
+  const handleToggleCamera = handlePrimaryAction;
+
+  // Flip Camera - front and rear switching for both preview and live session
   const handleFlip = async () => {
-    if (sessionRef.current && isLiveRef.current) {
-      await sessionRef.current.flipCamera();
+    if (isFlipping) return;
+    setIsFlipping(true);
+
+    const nextFacing = facingMode === 'user' ? 'environment' : 'user';
+    setToastMessage(nextFacing === 'environment' ? 'Switching to rear camera...' : 'Switching to front camera...');
+
+    try {
+      if (sessionRef.current && isLiveRef.current) {
+        await sessionRef.current.flipCamera();
+        setFacingMode(nextFacing);
+      } else {
+        await initCameraPreview(nextFacing);
+      }
+
+      setToastMessage(
+        nextFacing === 'environment'
+          ? 'Switched to rear camera (point at person)'
+          : 'Switched to front camera (selfie)'
+      );
+      setTimeout(() => setToastMessage(null), 2500);
+    } catch (error: any) {
+      console.error('Camera flip error:', error);
+      const errorName = error instanceof Error ? error.name : '';
+      const message = errorName === 'CameraUnavailableError'
+        || errorName === 'NotFoundError'
+        || errorName === 'OverconstrainedError'
+        ? 'This device does not have another available camera to switch to.'
+        : errorName === 'NotAllowedError'
+        ? 'Camera access was denied. Allow camera access in your browser settings and try again.'
+        : 'Could not switch cameras. Check camera permissions and try again.';
+      setToastMessage(message);
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setIsFlipping(false);
+    }
+  };
+
+  // Adjust display brightness & native hardware exposure
+  const handleBrightnessChange = (val: number) => {
+    setBrightness(val);
+    setIsAutoLighting(false);
+    const track = (localPreviewStreamRef.current || sessionRef.current?.localStream)?.getVideoTracks()[0];
+    if (track && isHardwareExposure) {
+      applyTrackExposure(track, val / 20).catch(() => {});
+    }
+  };
+
+  // Reset brightness & exposure to default
+  const handleResetLighting = () => {
+    setBrightness(0);
+    setIsAutoLighting(false);
+    const track = (localPreviewStreamRef.current || sessionRef.current?.localStream)?.getVideoTracks()[0];
+    if (track && isHardwareExposure) {
+      applyTrackExposure(track, 0).catch(() => {});
     }
   };
 
   // Shutter capture handler
   const handleCapture = () => {
     setFlash(true);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nova:tutorial:look_captured'));
+    }
 
     if ((isCameraActive || isLiveRef.current) && videoRef.current) {
       const frame = captureVideoFrame(videoRef.current);
@@ -366,10 +714,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       onCaptureImage(activeModelBg, false);
     }
 
+    const isTutorial = typeof window !== 'undefined' && (window as any).__nova_tutorial_active === 'ar-tryon';
+
     setTimeout(() => {
       setFlash(false);
-      stopLiveSession();
-      onNavigate('tryon-result');
+      if (!isTutorial) {
+        stopLiveSession();
+        onNavigate('tryon-result');
+      }
     }, 300);
   };
 
@@ -424,6 +776,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       // 3. Clear, accurate popup confirmation matching requirements
       if (localSuccess) {
         analytics.trackArTryOnResultSaved(selectedGarment, activeGarmentObj?.name);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nova:tutorial:look_saved'));
+        }
       }
 
       if (localSuccess && gallerySuccess) {
@@ -556,7 +911,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       </section>
 
       {/* 3. Camera Preview Area (Optimized for Mobile Phone Visibility) */}
-      <section className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
+      <section data-tutorial-target="ar-camera-preview" className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
         {/* Hardware-accelerated Video Layer */}
         <LiveTryOnViewport
           videoRef={videoRef}
@@ -564,14 +919,35 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           isVideoLive={isVideoLive}
           lighting={lighting}
           fallbackImg={activeModelBg}
+          garmentImg={activeGarmentObj?.img}
+          facingMode={facingMode}
+          brightness={brightness}
+          isFlipping={isFlipping}
+          personDetection={personDetection}
         />
 
         {/* Target Framing Brackets */}
         <div className="absolute inset-3 rounded-2xl pointer-events-none z-20">
-          <div className="absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 border-white rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 border-white rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 border-white rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 border-white rounded-br-xl" />
+          <div
+            className={`absolute top-0 left-0 w-7 h-7 border-t-2 border-l-2 rounded-tl-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
+          <div
+            className={`absolute top-0 right-0 w-7 h-7 border-t-2 border-r-2 rounded-tr-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 left-0 w-7 h-7 border-b-2 border-l-2 rounded-bl-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
+          <div
+            className={`absolute bottom-0 right-0 w-7 h-7 border-b-2 border-r-2 rounded-br-xl transition-colors duration-300 ${
+              personDetection?.detected ? 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'border-white'
+            }`}
+          />
         </div>
 
         {/* Top Status Pill: Camera ready / Live status */}
@@ -579,13 +955,17 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           <div className="max-w-[calc(100%-1rem)] bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
             <span
               className={`w-2 h-2 rounded-full ${
-                isVideoLive
+                connectionState === 'success'
                   ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
-                  : isConnecting
+                  : connectionState === 'initializing' || connectionState === 'processing'
                   ? 'bg-amber-400 animate-ping'
-                  : statusText.includes('retry') || statusText.includes('denied') || statusText.includes('failed')
+                  : connectionState === 'retryable_error' || connectionState === 'configuration_error'
                   ? 'bg-rose-400'
-                  : 'bg-emerald-400'
+                  : connectionState === 'camera_ready'
+                  ? 'bg-cyan-400'
+                  : connectionState === 'cancelled'
+                  ? 'bg-amber-400'
+                  : 'bg-slate-400'
               }`}
             />
             <span title={statusText} className="max-w-[70vw] truncate text-[11px] font-semibold text-slate-200 tracking-wide">
@@ -594,36 +974,124 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           </div>
         </div>
 
+        {/* Interactive Lighting & Exposure Adjustment Panel */}
+        {showLightingPanel && (
+          <div className="absolute bottom-18 left-3 right-3 bg-[#111322]/95 backdrop-blur-xl border border-white/20 rounded-2xl p-3.5 shadow-2xl z-40 animate-in fade-in slide-in-from-bottom-2">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[#FBBF24] text-base">lightbulb</span>
+                <span className="text-xs font-bold text-white tracking-wide">
+                  {t('arTryOn.adjustLighting') || 'Adjust Lighting'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#553BE2]/30 text-[#C4B5FD] border border-[#553BE2]/40">
+                  {isHardwareExposure ? '⚡ Native Exposure' : '✨ Display Brightness'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowLightingPanel(false)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded-lg active:scale-95 cursor-pointer"
+                  title="Close"
+                  aria-label="Close lighting panel"
+                >
+                  <span className="material-symbols-outlined text-sm leading-none">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Brightness / Exposure Slider */}
+            <div className="flex items-center gap-2.5 my-1.5">
+              <span className="material-symbols-outlined text-xs text-slate-400">brightness_low</span>
+              <input
+                type="range"
+                min={-40}
+                max={40}
+                step={1}
+                value={brightness}
+                onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+                className="flex-1 accent-[#553BE2] h-1.5 bg-slate-700/80 rounded-lg cursor-pointer"
+                aria-label={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
+              />
+              <span className="material-symbols-outlined text-xs text-slate-300">brightness_high</span>
+              <span className="text-[11px] font-bold text-white min-w-[42px] text-right">
+                {brightness === 0 ? 'Normal' : `${brightness > 0 ? '+' : ''}${brightness}`}
+              </span>
+            </div>
+
+            {/* Quick Action Controls: Reset & Auto Mode */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-2 text-[11px]">
+              <button
+                type="button"
+                onClick={handleResetLighting}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                title={t('arTryOn.resetLighting') || 'Reset Lighting'}
+              >
+                <span className="material-symbols-outlined text-[13px]">restart_alt</span>
+                <span>{t('arTryOn.resetLighting') || 'Reset'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAutoLighting(!isAutoLighting)}
+                className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                  isAutoLighting
+                    ? 'bg-[#553BE2] text-white shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white'
+                }`}
+                title={t('arTryOn.autoLighting') || 'Auto Lighting'}
+              >
+                <span className="material-symbols-outlined text-[13px]">auto_fix_high</span>
+                <span>Auto {isAutoLighting ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* In-Camera Floating Bottom Controls: Flip, Shutter, Light */}
-        <div className="absolute bottom-3.5 inset-x-0 flex justify-center items-center gap-5 z-30 px-4 pointer-events-auto">
+        <div data-tutorial-target="ar-camera-controls" className="absolute bottom-3.5 inset-x-0 flex justify-center items-center gap-5 z-30 px-4 pointer-events-auto">
           {/* Flip Camera */}
           <button
             type="button"
+            data-tutorial-target="ar-flip-camera-btn"
             onClick={handleFlip}
-            disabled={!isVideoLive}
-            title="Flip Camera"
-            className="w-10 h-10 rounded-full bg-[#111322]/85 hover:bg-[#1C1F36] backdrop-blur-md border border-white/15 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+            disabled={isFlipping}
+            title={t('arTryOn.flipCamera')}
+            aria-label={t('arTryOn.flipCamera')}
+            className="w-10 h-10 rounded-full bg-[#111322]/85 hover:bg-[#1C1F36] backdrop-blur-md border border-white/15 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all disabled:opacity-40 cursor-pointer relative"
           >
-            <span className="material-symbols-outlined text-base">cameraswitch</span>
+            <span className={`material-symbols-outlined text-base ${isFlipping ? 'animate-spin' : ''}`}>
+              cameraswitch
+            </span>
+            {facingMode === 'environment' && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#553BE2] border border-white text-[8px] font-black flex items-center justify-center text-white shadow-sm">
+                R
+              </span>
+            )}
           </button>
 
           {/* Center Large Shutter Button */}
           <button
             type="button"
+            data-tutorial-target="ar-shutter-btn"
             onClick={handleCapture}
-            title="Take Snapshot"
+            title={t('arTryOn.takeSnapshot')}
+            aria-label={t('arTryOn.takeSnapshot')}
             className="w-13 h-13 rounded-full bg-white flex items-center justify-center p-1 border-[3px] border-[#A594FD] shadow-[0_0_20px_rgba(165,148,253,0.6)] active:scale-90 hover:scale-105 transition-all cursor-pointer"
           >
             <div className="w-full h-full rounded-full bg-white shadow-inner" />
           </button>
 
-          {/* Lighting Toggle */}
+          {/* Lighting Toggle / Slider Panel Opener */}
           <button
             type="button"
-            onClick={() => setLighting(!lighting)}
-            title="Toggle Lighting"
+            data-tutorial-target="ar-lighting-btn"
+            onClick={() => setShowLightingPanel((prev) => !prev)}
+            title={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
+            aria-label={t('arTryOn.adjustLighting') || 'Adjust Lighting'}
             className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center shadow-lg active:scale-95 transition-all cursor-pointer ${
-              lighting
+              showLightingPanel || brightness !== 0 || isAutoLighting
                 ? 'bg-[#553BE2] border-white/40 shadow-[#553BE2]/40 text-amber-300'
                 : 'bg-[#111322]/85 hover:bg-[#1C1F36] border-white/15 text-white'
             }`}
@@ -636,23 +1104,26 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       {/* 4. Outfit Selection Section */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-base font-bold text-white">Select Outfit</h2>
+          <h2 className="text-base font-bold text-white">{t('arTryOn.selectOutfit')}</h2>
           <button 
             type="button"
-            onClick={() => onNavigate('wardrobe')}
+            onClick={() => onNavigate('showroom')}
             className="text-xs font-semibold text-[#8B6DFD] hover:text-[#A594FD] flex items-center transition-colors cursor-pointer"
           >
-            View All <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
+            {t('arTryOn.viewAll')} <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
           </button>
         </div>
 
         {/* Horizontal Carousel (Touch-smooth on phone) */}
-        <div className="flex gap-2.5 overflow-x-auto hide-scrollbar touch-pan-x snap-x -mx-1 px-1 pb-1">
-          {garmentsList.map((g) => {
+        <div data-tutorial-target="ar-outfit-carousel" className="flex gap-2.5 overflow-x-auto hide-scrollbar touch-pan-x snap-x -mx-1 px-1 pb-1">
+          {garmentsList.map((g, gIdx) => {
             const isSelected = selectedGarment === g.id;
+            const productId = g.productId;
+            const isWishlisted = productId ? wishlist.includes(productId) : false;
             return (
               <div
                 key={g.id}
+                data-tutorial-target={gIdx === 0 ? "ar-garment-item" : undefined}
                 onClick={() => handleGarmentClick(g)}
                 className={`snap-start shrink-0 w-[90px] rounded-2xl p-2 flex flex-col items-center border transition-all cursor-pointer ${
                   isSelected 
@@ -667,6 +1138,25 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover object-top"
                   />
+                  {g.productId && (
+                    <button
+                      type="button"
+                      aria-label={isWishlisted ? t('wishlist.remove') : t('wishlist.add')}
+                      aria-pressed={isWishlisted}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (productId) onToggleWishlist(productId);
+                      }}
+                      className="absolute top-1 left-1 w-6 h-6 rounded-full bg-[#111322]/85 text-rose-400 flex items-center justify-center shadow-md"
+                    >
+                      <span
+                        className="material-symbols-outlined text-sm leading-none"
+                        style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : undefined }}
+                      >
+                        {isWishlisted ? 'favorite' : 'favorite_border'}
+                      </span>
+                    </button>
+                  )}
                   {isSelected && (
                     <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#6D4AFF] text-white flex items-center justify-center border border-white shadow-sm">
                       <span className="material-symbols-outlined text-[10px] font-bold leading-none">check</span>
@@ -682,6 +1172,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             );
           })}
 
+          {garmentsList.length === 0 && (
+            <p className="py-4 text-xs text-slate-400">
+              {productsLoading ? t('common.loading') : productsError || t('showroom.noProducts')}
+            </p>
+          )}
+
           {/* Upload Card */}
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -691,7 +1187,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
               <span className="material-symbols-outlined text-xl">cloud_upload</span>
             </div>
             <span className="text-[10px] font-semibold text-slate-300 text-center">
-              Upload
+              {t('arTryOn.upload')}
             </span>
           </div>
         </div>
@@ -701,25 +1197,44 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       <section className="grid grid-cols-2 gap-3 pt-0.5">
         <button
           type="button"
-          onClick={handleToggleCamera}
-          disabled={isConnecting}
-          className="w-full py-3.5 px-3 rounded-2xl bg-[#5D3DF2] hover:bg-[#4E30E0] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#5D3DF2]/30 transition-all cursor-pointer disabled:opacity-60"
+          data-tutorial-target="ar-tryon-live-btn"
+          onClick={handlePrimaryAction}
+          className={`w-full py-3.5 px-3 rounded-2xl active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
+            connectionState === 'initializing' || connectionState === 'processing'
+              ? 'bg-[#5D3DF2] hover:bg-[#4E30E0] shadow-[#5D3DF2]/30'
+              : connectionState === 'success'
+              ? 'bg-[#E11D48] hover:bg-[#BE123C] shadow-rose-900/30'
+              : connectionState === 'retryable_error'
+              ? 'bg-[#6D28D9] hover:bg-[#5B21B6] shadow-purple-900/30'
+              : 'bg-[#5D3DF2] hover:bg-[#4E30E0] shadow-[#5D3DF2]/30'
+          }`}
         >
-          {isConnecting ? (
+          {connectionState === 'initializing' || connectionState === 'processing' ? (
             <>
               <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              <span>Connecting...</span>
+              <span>{t('arTryOn.connectingBtn')} ({t('arTryOn.cancelBtn')})</span>
+            </>
+          ) : connectionState === 'success' ? (
+            <>
+              <span className="material-symbols-outlined text-lg leading-none">videocam_off</span>
+              <span>{t('arTryOn.stopLive')}</span>
+            </>
+          ) : connectionState === 'retryable_error' ? (
+            <>
+              <span className="material-symbols-outlined text-lg leading-none">refresh</span>
+              <span>{t('arTryOn.retryBtn')}</span>
             </>
           ) : (
             <>
               <span className="material-symbols-outlined text-lg leading-none">videocam</span>
-              <span>{isVideoLive ? 'Stop Live AR' : 'Try On Live'}</span>
+              <span>{t('arTryOn.tryOnLive')}</span>
             </>
           )}
         </button>
 
         <button
           type="button"
+          data-tutorial-target="ar-save-look-btn"
           onClick={handleSaveLook}
           disabled={isSavingLook}
           className="w-full py-3.5 px-3 rounded-2xl bg-[#111322] hover:bg-[#1A1C30] active:scale-95 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-60"
@@ -727,12 +1242,12 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           {isSavingLook ? (
             <>
               <span className="w-3.5 h-3.5 rounded-full border-2 border-[#A594FD] border-t-transparent animate-spin" />
-              <span>Saving Look...</span>
+              <span>{t('arTryOn.savingLook')}</span>
             </>
           ) : (
             <>
               <span className="material-symbols-outlined text-lg leading-none text-slate-300">bookmark_border</span>
-              <span>Save Look</span>
+              <span>{t('arTryOn.saveLook')}</span>
             </>
           )}
         </button>
@@ -756,7 +1271,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             {/* Title & Message */}
             <div className="space-y-1.5 px-1">
               <h3 className="text-lg font-bold text-white tracking-tight">
-                {savePopup.isError ? 'Save Failed' : 'Look Saved Successfully!'}
+                {savePopup.isError ? t('arTryOn.savedFailTitle') : t('arTryOn.savedSuccessTitle')}
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {savePopup.message}
@@ -785,7 +1300,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                     className="w-full py-3 px-4 rounded-xl bg-[#553BE2] hover:bg-[#4830cb] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#553BE2]/30 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-base">auto_awesome</span>
-                    <span>View Saved Looks</span>
+                    <span>{t('arTryOn.viewInProfile')}</span>
                   </button>
 
                   <button
@@ -793,7 +1308,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                     onClick={() => setSavePopup(null)}
                     className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-slate-300 hover:text-white font-semibold text-xs border border-white/10 transition-all cursor-pointer"
                   >
-                    Continue Try-On
+                    {t('arTryOn.keepTrying')}
                   </button>
                 </>
               ) : (

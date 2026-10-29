@@ -8,6 +8,10 @@ coverage/
 !.env.example
 server_ai/gcp-key.json
 
+# Android release signing artifacts
+android/keystore.properties
+android/release-keystore.jks
+
 # Credentials, secrets, and private keys
 *.keystore
 *.jks

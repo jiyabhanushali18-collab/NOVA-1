@@ -1,4 +1,5 @@
 import { apiUrl, PRODUCTION_API_URL } from './apiClient';
+import { Capacitor } from '@capacitor/core';
 
 export interface LiveTryOnSessionConfig {
   videoElement: HTMLVideoElement;
@@ -6,6 +7,7 @@ export interface LiveTryOnSessionConfig {
   facingMode?: 'user' | 'environment';
   onStatusChange?: (status: string) => void;
   onLocalStream?: (stream: MediaStream) => void;
+  onFacingModeChange?: (facingMode: 'user' | 'environment') => void;
   onError?: (error: Error) => void;
   onConnected?: () => void;
   signal?: AbortSignal;
@@ -16,42 +18,43 @@ export interface LiveTryOnSessionHandle {
   localStream: MediaStream;
   stop: () => void;
   setGarment: (garment: File | Blob | string | null) => Promise<void>;
-  flipCamera: () => Promise<void>;
+  flipCamera: () => Promise<'user' | 'environment'>;
+  getFacingMode: () => 'user' | 'environment';
+  applyExposure: (exposureBias: number) => Promise<boolean>;
+  isHardwareExposureSupported: () => boolean;
 }
 
 // In-memory cache for processed garment blobs so switching garments is instant
 const garmentCache = new Map<string, Blob | string>();
 const publicAsset = (assetPath: string) => `${import.meta.env.BASE_URL}${assetPath}`;
+
 let liveConnectQueue: Promise<void> = Promise.resolve();
-let queuedLiveConnects = 0;
+let isLiveConnectInProgress = false;
 
 async function runSerializedLiveConnect<T>(
   signal: AbortSignal | undefined,
   onWaiting: () => void,
   connect: () => Promise<T>
 ): Promise<T> {
+  if (signal?.aborted) {
+    throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
+  }
+
   const previousConnect = liveConnectQueue;
   let releaseQueue!: () => void;
   liveConnectQueue = new Promise<void>((resolve) => {
     releaseQueue = resolve;
   });
-  const wasQueued = queuedLiveConnects > 0;
-  queuedLiveConnects += 1;
-  let acquiredQueue = false;
-  let abortListener: (() => void) | undefined;
 
   try {
-    if (wasQueued) {
+    if (isLiveConnectInProgress) {
       onWaiting();
       if (signal) {
-        if (signal.aborted) {
-          throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
-        }
         await Promise.race([
           previousConnect,
           new Promise<void>((_, reject) => {
-            abortListener = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
-            signal.addEventListener('abort', abortListener, { once: true });
+            const onAbort = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
+            signal.addEventListener('abort', onAbort, { once: true });
           }),
         ]);
       } else {
@@ -61,28 +64,35 @@ async function runSerializedLiveConnect<T>(
       await previousConnect;
     }
 
-    acquiredQueue = true;
     if (signal?.aborted) {
       throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
     }
 
-    return await connect();
-  } finally {
-    if (abortListener) signal?.removeEventListener('abort', abortListener);
-    queuedLiveConnects -= 1;
-    if (acquiredQueue) {
-      releaseQueue();
+    isLiveConnectInProgress = true;
+    if (signal) {
+      return await Promise.race([
+        connect(),
+        new Promise<T>((_, reject) => {
+          const onAbort = () => reject(new DOMException('The live try-on connection was cancelled.', 'AbortError'));
+          signal.addEventListener('abort', onAbort, { once: true });
+        }),
+      ]);
     } else {
-      void previousConnect.then(releaseQueue);
+      return await connect();
     }
+  } finally {
+    isLiveConnectInProgress = false;
+    releaseQueue();
   }
 }
 
-// Keep credential metadata for failure feedback, never reuse the client token.
+// Keep credential metadata for failure feedback
 let activeTokenState: {
   credentialId: string | null;
   feedbackEndpoint: string;
 } | null = null;
+
+let inFlightTokenPromise: Promise<string> | null = null;
 
 export function invalidateLiveTryOnToken(): void {
   activeTokenState = null;
@@ -142,81 +152,79 @@ export const DEFAULT_MODELS: Record<string, string> = {
 };
 
 /**
- * Fetch a mint client session token with multi-tier fallback, caching,
- * and retry handling to eliminate "fetch failed" on slow connections or cold starts.
+ * Fetch a fresh mint client session token with single-flight deduplication
+ * and multi-tier fallback to eliminate duplicate requests and connection hangs.
+ * A fresh token is minted per connection attempt as required by Decart WebRTC.
  */
 export async function getLiveTryOnToken(): Promise<string> {
-  const candidateEndpoints: string[] = [];
-
-  // 1. In browser, local endpoints (and relative URL) first so local server rotation pool is used
-  if (typeof window !== 'undefined') {
-    candidateEndpoints.push('/api/vton/token');
-    const port = window.location.port;
-    if (port && port !== '3000') {
-      candidateEndpoints.push(`http://${window.location.hostname}:3000/api/vton/token`);
-    }
-    candidateEndpoints.push('http://localhost:3000/api/vton/token');
-    candidateEndpoints.push('http://127.0.0.1:3000/api/vton/token');
+  if (inFlightTokenPromise) {
+    return inFlightTokenPromise;
   }
 
-  // 2. Configured / platform apiUrl
-  const standardUrl = apiUrl('/api/vton/token');
-  if (standardUrl) candidateEndpoints.push(standardUrl);
+  inFlightTokenPromise = (async () => {
+    try {
+      const candidateEndpoints: string[] = [];
+      const primaryUrl = apiUrl('/api/vton/token');
+      if (primaryUrl) candidateEndpoints.push(primaryUrl);
+      if (primaryUrl !== `${PRODUCTION_API_URL}/api/vton/token`) {
+        candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
+      }
 
-  // 3. Production Render cloud backend (always available & has CORS enabled)
-  candidateEndpoints.push(`${PRODUCTION_API_URL}/api/vton/token`);
+      let lastError: any = null;
 
-  const uniqueEndpoints = Array.from(new Set(candidateEndpoints.filter(Boolean)));
-  let lastError: any = null;
+      for (const endpoint of candidateEndpoints) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutMs = attempt === 0 ? 15000 : 25000;
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  for (const endpoint of uniqueEndpoints) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutMs = attempt === 0 ? 12000 : 25000;
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+            const response = await fetch(endpoint, {
+              signal: controller.signal,
+              headers: { Accept: 'application/json' },
+            });
+            clearTimeout(timer);
 
-        const response = await fetch(endpoint, {
-          signal: controller.signal,
-          headers: { Accept: 'application/json' },
-        });
-        clearTimeout(timer);
+            if (!response.ok) {
+              const errorJson = await response.json().catch(() => ({}));
+              throw new Error(errorJson.error || `Server HTTP ${response.status}`);
+            }
 
-        if (!response.ok) {
-          const errorJson = await response.json().catch(() => ({}));
-          throw new Error(errorJson.error || `Server HTTP ${response.status}`);
-        }
+            const data = await response.json();
+            const token = data.apiKey || data.token;
+            if (!token) {
+              throw new Error('Server returned empty token');
+            }
 
-        const data = await response.json();
-        const token = data.apiKey || data.token;
-        if (!token) {
-          throw new Error('Server returned empty token');
-        }
+            activeTokenState = {
+              credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
+              feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
+            };
 
-        // The SDK calls its provider for every dial; retain only feedback metadata.
-        activeTokenState = {
-          credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
-          feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
-        };
-
-        return token;
-      } catch (err: any) {
-        lastError = err;
-        if (attempt === 0) {
-          await new Promise((r) => setTimeout(r, 600));
+            return token;
+          } catch (err: any) {
+            lastError = err;
+            if (attempt === 0) {
+              await new Promise((r) => setTimeout(r, 400));
+            }
+          }
         }
       }
+
+      const friendlyMessage =
+        lastError?.name === 'AbortError'
+          ? 'AI server is warming up. Tap Retry to connect.'
+          : lastError?.message && !lastError.message.includes('fetch')
+          ? lastError.message
+          : 'Unable to connect to AI server. Tap Retry to connect.';
+
+      throw new Error(friendlyMessage);
+    } finally {
+      inFlightTokenPromise = null;
     }
-  }
+  })();
 
-  const friendlyMessage =
-    lastError?.name === 'AbortError'
-      ? 'AI server is warming up. Tap Try On Live to retry.'
-      : lastError?.message && !lastError.message.includes('fetch')
-      ? lastError.message
-      : 'Unable to connect to AI server. Tap to retry.';
-
-  throw new Error(friendlyMessage);
+  return inFlightTokenPromise;
 }
 
 /**
@@ -416,6 +424,148 @@ export function captureVideoFrame(video: HTMLVideoElement): string | null {
 }
 
 /**
+ * Test whether the current video track supports hardware exposure compensation.
+ */
+export function isHardwareExposureSupported(track?: MediaStreamTrack | null): boolean {
+  if (!track || typeof (track as any).getCapabilities !== 'function') return false;
+  try {
+    const caps: any = (track as any).getCapabilities();
+    return Boolean(caps && 'exposureCompensation' in caps);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Apply hardware exposure compensation (EV bias) to the video track if supported.
+ */
+export async function applyTrackExposure(track: MediaStreamTrack, exposureBias: number): Promise<boolean> {
+  try {
+    if (!isHardwareExposureSupported(track)) return false;
+    const caps: any = (track as any).getCapabilities();
+    const min = caps.exposureCompensation.min ?? -2;
+    const max = caps.exposureCompensation.max ?? 2;
+    const step = caps.exposureCompensation.step ?? 0.1;
+    const clamped = Math.max(min, Math.min(max, Math.round(exposureBias / step) * step));
+    await track.applyConstraints({
+      advanced: [{ exposureCompensation: clamped } as any],
+    });
+    return true;
+  } catch (err) {
+    console.warn('Track exposure apply error:', err);
+    return false;
+  }
+}
+
+/**
+ * Enumerate available video input cameras on the device.
+ */
+export async function getCameraDevices(): Promise<{
+  frontCameras: MediaDeviceInfo[];
+  rearCameras: MediaDeviceInfo[];
+  total: number;
+}> {
+  try {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      return { frontCameras: [], rearCameras: [], total: 0 };
+    }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+    const frontCameras = videoInputs.filter((d) => /front|user|selfie/i.test(d.label));
+    const rearCameras = videoInputs.filter((d) => /back|rear|environment/i.test(d.label));
+    return { frontCameras, rearCameras, total: videoInputs.length };
+  } catch {
+    return { frontCameras: [], rearCameras: [], total: 0 };
+  }
+}
+
+/**
+ * Cross-device resilient camera acquisition with native Capacitor permission preflight
+ * and tiered constraint fallbacks for diverse Android/iOS hardware.
+ */
+export async function acquireCameraStream(
+  facingMode: 'user' | 'environment' = 'user',
+  idealFps = 30
+): Promise<MediaStream> {
+  // 1. Android APK native permission preflight via Capacitor Camera
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Camera } = await import('@capacitor/camera');
+      const check = await Camera.checkPermissions();
+      if (check.camera !== 'granted') {
+        const req = await Camera.requestPermissions({ permissions: ['camera'] });
+        if (req.camera !== 'granted') {
+          const permError = new DOMException('Camera permission was denied.', 'NotAllowedError');
+          throw permError;
+        }
+      }
+    } catch (e: any) {
+      if (e?.name === 'NotAllowedError') throw e;
+      console.warn('Native permission check note:', e);
+    }
+  }
+
+  // 2. Progressive constraint tiers to ensure compatibility on all Android & iOS cameras
+  const tiers: MediaStreamConstraints[] = [
+    // Tier 1: Optimal 720p 30fps with ideal facingMode
+    {
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: idealFps },
+      },
+      audio: false,
+    },
+    // Tier 2: Mobile 480p 24fps with ideal facingMode
+    {
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: 720 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 24 },
+      },
+      audio: false,
+    },
+    // Tier 3: Facing mode exact (for devices strictly indexing front/back)
+    {
+      video: {
+        facingMode: { exact: facingMode },
+      },
+      audio: false,
+    },
+    // Tier 4: Facing mode direct string fallback
+    {
+      video: { facingMode },
+      audio: false,
+    },
+    // Tier 5: Minimal video capture fallback (when facingMode unsupported or single camera)
+    {
+      video: true,
+      audio: false,
+    },
+  ];
+
+  let lastErr: any = null;
+  for (const constraints of tiers) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (stream && stream.getVideoTracks().length > 0) {
+        return stream;
+      }
+    } catch (err: any) {
+      lastErr = err;
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+        throw err;
+      }
+      console.warn('Camera tier constraints rejected, trying next tier:', err?.name || err?.message);
+    }
+  }
+
+  throw lastErr || new Error('Could not access device camera');
+}
+
+/**
  * Start a real-time Virtual Try-On session.
  * Connects WebRTC FIRST with zero payload to prevent handshake timeouts.
  * Sends garment asynchronously once the channel is established.
@@ -423,6 +573,9 @@ export function captureVideoFrame(video: HTMLVideoElement): string | null {
 export async function startLiveTryOnSession(
   config: LiveTryOnSessionConfig
 ): Promise<LiveTryOnSessionHandle> {
+  const sessionId = 'ar-' + Math.random().toString(36).slice(2, 8);
+  console.log(`[AR:${sessionId}] Initiating live try-on session...`);
+
   const throwIfAborted = () => {
     if (config.signal?.aborted) {
       throw new DOMException('The live try-on connection was cancelled.', 'AbortError');
@@ -437,20 +590,14 @@ export async function startLiveTryOnSession(
   const model = models.realtime('lucy-vton-latest');
   const captureFps = typeof model.fps === 'number' ? model.fps : (model.fps?.ideal || 30);
 
-  // Match model dimensions
-  let localStream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: currentFacingMode,
-      width: model.width || 1280,
-      height: model.height || 720,
-      frameRate: captureFps,
-    },
-  });
+  // Cross-device resilient camera acquisition
+  let localStream = await acquireCameraStream(currentFacingMode, captureFps);
   if (config.signal?.aborted) {
     localStream.getTracks().forEach((track) => track.stop());
     throwIfAborted();
   }
 
+  console.log(`[AR:${sessionId}] Camera acquired (${currentFacingMode})`);
   config.videoElement.srcObject = localStream;
   config.videoElement.play().catch((err) => {
     console.warn('Camera preview play error:', err);
@@ -468,20 +615,25 @@ export async function startLiveTryOnSession(
 
   let isDestroyed = false;
   let hasConnected = false;
+  let isFlippingCamera = false;
 
-  // Connect WebRTC stream without a large initial payload; let the SDK retry
-  // transient network and capacity failures using its bounded defaults.
-  let realtimeClient;
+  // Single-flight connection with bounded SDK retry budget.
+  let realtimeClient: any;
   try {
     throwIfAborted();
     const connectionOptions = {
       model,
+      retries: 3,
+      // Disable client-side MediaStreamTrackProcessor/VideoFrame transform pump which crashes in mobile WebViews.
+      mirror: false,
       capacityRetryBudgetMs: 30000,
-      onCapacityWait: ({ retryAfterMs }) => {
+      onCapacityWait: ({ retryAfterMs }: { retryAfterMs: number }) => {
+        console.warn(`[AR:${sessionId}] Server busy, waiting ${retryAfterMs}ms`);
         config.onStatusChange?.(`AI server busy - retrying in ${Math.ceil(retryAfterMs / 1000)} seconds...`);
       },
       onRemoteStream: (transformedStream: MediaStream) => {
         if (isDestroyed) return;
+        console.log(`[AR:${sessionId}] Received transformed remote stream`);
         if (!hasConnected) {
           hasConnected = true;
           config.onConnected?.();
@@ -492,8 +644,9 @@ export async function startLiveTryOnSession(
         });
         config.onStatusChange?.('Live AI Active');
       },
-      onConnectionChange: (state) => {
+      onConnectionChange: (state: string) => {
         if (isDestroyed) return;
+        console.log(`[AR:${sessionId}] WebRTC state change:`, state);
         if (state === 'connected' || state === 'generating') {
           if (!hasConnected) {
             hasConnected = true;
@@ -517,32 +670,31 @@ export async function startLiveTryOnSession(
         }
       },
     };
+
     let connectAttempts = 0;
     while (!realtimeClient && connectAttempts < 3) {
       connectAttempts++;
       try {
         throwIfAborted();
-        const activeClient = connectAttempts === 1 ? client : createVtonClient({
-          apiKeyProvider: getLiveTryOnToken,
-          logger,
-        });
         realtimeClient = await runSerializedLiveConnect(
           config.signal,
-          () => config.onStatusChange?.('Waiting for the previous AI connection to close...'),
-          () => activeClient.realtime.connect(localStream, connectionOptions)
+          () => config.onStatusChange?.('Waiting for previous AI connection to close...'),
+          () => client.realtime.connect(localStream, connectionOptions)
         );
-      } catch (error: any) {
-        if (config.signal?.aborted) throw error;
-        const msg = typeof error?.message === 'string' ? error.message : String(error || '');
-        const isStale = msg.includes('Stale connect attempt') || error?.name === 'AbortError';
-        if (isStale && connectAttempts < 3) {
-          config.onStatusChange?.('AI connection was interrupted - retrying...');
-          await new Promise((resolve) => setTimeout(resolve, 400));
+      } catch (err: any) {
+        const msg = typeof err?.message === 'string' ? err.message : String(err || '');
+        const isStale = msg.toLowerCase().includes('stale connect attempt');
+        if (isStale && !config.signal?.aborted && connectAttempts < 3) {
+          console.warn(`[AR:${sessionId}] Stale connect attempt detected; auto-retrying with fresh session...`);
+          config.onStatusChange?.('Connecting to AI (re-syncing)...');
+          invalidateLiveTryOnToken();
+          await new Promise((r) => setTimeout(r, 500));
           continue;
         }
-        throw error;
+        throw err;
       }
     }
+
     if (config.signal?.aborted) {
       realtimeClient?.disconnect();
       localStream.getTracks().forEach((track) => track.stop());
@@ -550,8 +702,9 @@ export async function startLiveTryOnSession(
     }
   } catch (error: any) {
     const errorMsg = typeof error?.message === 'string' ? error.message : String(error || '');
-    const isCancelled = config.signal?.aborted || error?.name === 'AbortError' || errorMsg.includes('cancelled');
-    if (isCancelled) {
+    const isExplicitAbort = config.signal?.aborted;
+    console.error(`[AR:${sessionId}] Connection error (aborted: ${isExplicitAbort}):`, errorMsg);
+    if (isExplicitAbort) {
       localStream.getTracks().forEach((track) => track.stop());
       if (config.videoElement.srcObject === localStream) {
         config.videoElement.srcObject = null;
@@ -591,7 +744,7 @@ export async function startLiveTryOnSession(
   let pendingGarment: File | Blob | string | null = null;
 
   const setGarment = async (garment: File | Blob | string | null) => {
-    if (isDestroyed || !realtimeClient.isConnected()) return;
+    if (isDestroyed) return;
 
     pendingGarment = garment;
     if (isUpdatingGarment) {
@@ -600,7 +753,17 @@ export async function startLiveTryOnSession(
 
     isUpdatingGarment = true;
     try {
-      while (pendingGarment !== null && !isDestroyed && realtimeClient.isConnected()) {
+      while (pendingGarment !== null && !isDestroyed) {
+        if (!realtimeClient.isConnected()) {
+          // Wait briefly for connection if it is transitioning
+          for (let i = 0; i < 30 && !realtimeClient.isConnected() && !isDestroyed; i++) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+          if (!realtimeClient.isConnected()) {
+            break;
+          }
+        }
+
         const nextGarment = pendingGarment;
         pendingGarment = null;
 
@@ -614,7 +777,7 @@ export async function startLiveTryOnSession(
         config.onStatusChange?.('Live AI Active');
       }
     } catch (err: any) {
-      console.warn('Error updating garment:', err);
+      console.warn(`[AR:${sessionId}] Error updating garment:`, err);
       config.onStatusChange?.('Live AI Active');
     } finally {
       isUpdatingGarment = false;
@@ -623,11 +786,9 @@ export async function startLiveTryOnSession(
 
   // If a garment was requested at start, send it once WebRTC connection is active
   if (config.garmentImage) {
-    setTimeout(() => {
-      if (!isDestroyed && realtimeClient.isConnected()) {
-        setGarment(config.garmentImage);
-      }
-    }, 250);
+    setGarment(config.garmentImage).catch((err) => {
+      console.warn(`[AR:${sessionId}] Initial garment apply warning:`, err);
+    });
   }
 
   const stop = () => {
@@ -650,32 +811,85 @@ export async function startLiveTryOnSession(
     config.onStatusChange?.('Camera ready');
   };
 
-  const flipCamera = async () => {
-    if (isDestroyed) return;
-    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-    config.onStatusChange?.('Flipping camera...');
+  const flipCamera = async (): Promise<'user' | 'environment'> => {
+    if (isDestroyed || isFlippingCamera) return currentFacingMode;
+    isFlippingCamera = true;
+    const previousFacingMode = currentFacingMode;
+    const nextFacingMode = previousFacingMode === 'user' ? 'environment' : 'user';
+    config.onStatusChange?.(`Switching to ${nextFacingMode === 'environment' ? 'rear' : 'front'} camera...`);
+    let newStream: MediaStream | null = null;
+    let cameraReleased = false;
 
     try {
-      localStream.getVideoTracks().forEach((t) => t.stop());
+      const devices = await navigator.mediaDevices?.enumerateDevices?.().catch(() => []) || [];
+      const videoInputs = devices.filter((device) => device.kind === 'videoinput');
+      if (videoInputs.length === 1 && videoInputs[0].label) {
+        const error = new Error('This device has only one camera, so it cannot switch cameras.');
+        error.name = 'CameraUnavailableError';
+        throw error;
+      }
 
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: currentFacingMode,
-          width: model.width || 1280,
-          height: model.height || 720,
-          frameRate: captureFps,
-        },
-      });
+      localStream.getTracks().forEach((track) => track.stop());
+      cameraReleased = true;
+      newStream = await acquireCameraStream(nextFacingMode, captureFps);
 
       const newTrack = newStream.getVideoTracks()[0];
-      if (newTrack) {
-        await realtimeClient.replaceVideoTrack(newTrack);
-        localStream = newStream;
-        config.onStatusChange?.('Live AI Active');
+      if (!newTrack) {
+        throw new Error('The selected camera did not provide a video track.');
       }
-    } catch (err: any) {
+
+      if (realtimeClient && typeof realtimeClient.replaceVideoTrack === 'function') {
+        await realtimeClient.replaceVideoTrack(newTrack);
+      }
+      localStream = newStream;
+      currentFacingMode = nextFacingMode;
+
+      // Update the video element display if showing local preview or if remote stream is pending
+      if (!hasConnected || config.videoElement.srcObject === null) {
+        config.videoElement.srcObject = newStream;
+        config.videoElement.play().catch((playErr) => console.warn('Preview play error on flip:', playErr));
+      }
+
+      config.onLocalStream?.(newStream);
+      config.onFacingModeChange?.(nextFacingMode);
+      config.onStatusChange?.('Live AI Active');
+
+      return nextFacingMode;
+    } catch (err) {
+      newStream?.getTracks().forEach((track) => track.stop());
       console.error('Failed to flip camera:', err);
-      config.onError?.(err);
+
+      if (!cameraReleased) {
+        throw err;
+      }
+
+      try {
+        const restoredStream = await acquireCameraStream(previousFacingMode, captureFps);
+        const restoredTrack = restoredStream.getVideoTracks()[0];
+        if (!restoredTrack) {
+          restoredStream.getTracks().forEach((track) => track.stop());
+          throw new Error('The previous camera did not provide a video track.');
+        }
+        if (realtimeClient && typeof realtimeClient.replaceVideoTrack === 'function') {
+          await realtimeClient.replaceVideoTrack(restoredTrack);
+        }
+        localStream = restoredStream;
+        currentFacingMode = previousFacingMode;
+        if (!hasConnected) {
+          config.videoElement.srcObject = restoredStream;
+          config.videoElement.play().catch(() => {});
+        }
+        config.onLocalStream?.(restoredStream);
+        config.onFacingModeChange?.(previousFacingMode);
+        config.onStatusChange?.('Could not switch camera. Restored the previous camera.');
+      } catch (restoreError) {
+        console.error('Could not restore the previous camera after a failed flip:', restoreError);
+        config.onStatusChange?.('Camera switch failed. Restart live try-on to reconnect the camera.');
+      }
+
+      throw err;
+    } finally {
+      isFlippingCamera = false;
     }
   };
 
@@ -685,5 +899,14 @@ export async function startLiveTryOnSession(
     stop,
     setGarment,
     flipCamera,
+    getFacingMode: () => currentFacingMode,
+    applyExposure: async (exposureBias: number) => {
+      const track = localStream.getVideoTracks()[0];
+      return track ? applyTrackExposure(track, exposureBias) : false;
+    },
+    isHardwareExposureSupported: () => {
+      const track = localStream.getVideoTracks()[0];
+      return isHardwareExposureSupported(track);
+    },
   };
 }

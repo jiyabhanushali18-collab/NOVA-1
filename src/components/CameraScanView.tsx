@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource, CameraDirection } from '@capacitor/camera';
-import { ProductItem, ScreenId } from '../types';
+import { OutfitScanRecord, ProductItem, ScreenId } from '../types';
 import { CameraScanResult, ScanImageSource, ScanProductResult, runCameraScan } from '../services/cameraScanService';
-import { saveOutfitScan } from '../services/scanHistoryService';
+import { getScanHistory, saveOutfitScan } from '../services/scanHistoryService';
 import { useI18n } from '../i18n';
 
 interface CameraScanViewProps {
@@ -48,8 +48,22 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasSelectedImage, setHasSelectedImage] = useState(false);
+  const [isLiveCameraActive, setIsLiveCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [isFlashOn, setIsFlashOn] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [scanHistory, setScanHistory] = useState<OutfitScanRecord[]>(() => getScanHistory(userId));
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    const updateScanHistory = () => setScanHistory(getScanHistory(userId));
+    updateScanHistory();
+    window.addEventListener('nova:scan_history_updated', updateScanHistory);
+    return () => window.removeEventListener('nova:scan_history_updated', updateScanHistory);
+  }, [userId]);
 
   useEffect(() => {
     if (!scanResult?.results?.length) {
@@ -78,6 +92,40 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
 
   const isNative = Capacitor.getPlatform?.() !== 'web';
 
+  const stopLiveCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsLiveCameraActive(false);
+    setIsFlashOn(false);
+  }, []);
+
+  // Cleanup camera stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
+  // Ensure stream stays bound to video element if active
+  useEffect(() => {
+    if (isLiveCameraActive && streamRef.current && videoRef.current) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch((err) => {
+          console.warn('Video play warning:', err);
+        });
+      }
+    }
+  }, [isLiveCameraActive]);
+
   const createFileFromDataUrl = async (dataUrl: string, fileName = 'camera-scan.jpg'): Promise<File> => {
     const response = await fetch(dataUrl);
     const blob = await response.blob();
@@ -104,8 +152,144 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       const message = error instanceof Error
         ? error.message
         : 'Unable to open camera.';
-      setErrorMessage(message.includes('Permission') ? 'Camera permission denied. Please enable camera access.' : 'Could not open native camera. Using upload instead.');
+      setErrorMessage(message.includes('Permission') ? t('cameraScan.permissionDenied') : 'Could not open native camera. Using upload instead.');
       setShowSourceSheet(true);
+    }
+  };
+
+  const startLiveCamera = async (targetFacingMode: 'environment' | 'user' = facingMode) => {
+    setErrorMessage(null);
+    setShowSourceSheet(false);
+    setScanResult(null);
+
+    // Stop existing stream if running
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (isNative) {
+      try {
+        const status = await Camera.checkPermissions();
+        if (status.camera !== 'granted') {
+          const req = await Camera.requestPermissions({ permissions: ['camera'] });
+          if (req.camera !== 'granted') {
+            throw new Error('Camera permission denied');
+          }
+        }
+      } catch (permErr: any) {
+        console.warn('Capacitor camera permission check warning:', permErr);
+      }
+    }
+
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: targetFacingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      setFacingMode(targetFacingMode);
+      setIsLiveCameraActive(true);
+      setHasSelectedImage(false);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn('Video play warning:', playErr);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to open live camera:', err);
+      stopLiveCamera();
+
+      if (isNative) {
+        try {
+          await openNativeCamera();
+          return;
+        } catch (nativeErr) {
+          console.error('Fallback to native camera failed:', nativeErr);
+        }
+      }
+
+      const isPermissionError =
+        err?.name === 'NotAllowedError' ||
+        err?.name === 'PermissionDeniedError' ||
+        err?.message?.toLowerCase().includes('permission');
+
+      if (isPermissionError) {
+        setErrorMessage(t('cameraScan.permissionDenied'));
+      } else {
+        setErrorMessage(t('cameraScan.cameraError'));
+      }
+      setShowSourceSheet(true);
+    }
+  };
+
+  const flipCamera = async () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    await startLiveCamera(nextMode);
+  };
+
+  const toggleTorch = async () => {
+    if (!streamRef.current) return;
+    const track = streamRef.current.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const capabilities = (track.getCapabilities?.() || {}) as any;
+      if (capabilities.torch) {
+        const nextFlash = !isFlashOn;
+        await (track as any).applyConstraints({
+          advanced: [{ torch: nextFlash }],
+        });
+        setIsFlashOn(nextFlash);
+        return;
+      }
+    } catch (e) {
+      console.warn('Torch constraint error:', e);
+    }
+    setIsFlashOn((prev) => !prev);
+  };
+
+  const captureFrame = async () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+
+    setIsCapturing(true);
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not create canvas rendering context');
+
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      stopLiveCamera();
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      const file = await createFileFromDataUrl(dataUrl, `camera-scan-${Date.now()}.jpg`);
+      await handleFileSelected('camera', file);
+    } catch (err: any) {
+      console.error('Frame capture failed:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not capture image from camera.');
+      stopLiveCamera();
+    } finally {
+      setIsCapturing(false);
     }
   };
 
@@ -113,14 +297,13 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
     setScanSource(source);
     setShowSourceSheet(false);
 
-    if (source === 'camera' && isNative) {
-      openNativeCamera();
+    if (source === 'camera') {
+      startLiveCamera('environment');
       return;
     }
 
     requestAnimationFrame(() => {
-      if (source === 'camera') cameraInputRef.current?.click();
-      else galleryInputRef.current?.click();
+      galleryInputRef.current?.click();
     });
   };
 
@@ -191,8 +374,11 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
     setErrorMessage(null);
     setScanResult(null);
     setHasSelectedImage(false);
-    if (scanSource === 'camera') cameraInputRef.current?.click();
-    else galleryInputRef.current?.click();
+    if (scanSource === 'camera') {
+      startLiveCamera('environment');
+    } else {
+      galleryInputRef.current?.click();
+    }
   };
 
   const handleViewDetails = () => {
@@ -293,56 +479,145 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
       </div>
 
       {/* Camera scan framing viewfinder card */}
-      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-black">
-        {/* Underlay canvas image: Lavender Hoodie on organic hanger */}
+      <section data-tutorial-target="scan-viewfinder" className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-black">
+        {/* Live Video Feed */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            isLiveCameraActive ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'
+          } ${facingMode === 'user' ? '-scale-x-100' : ''}`}
+        />
+
+        {/* Software Lighting overlay if torch or flash active */}
+        {isLiveCameraActive && isFlashOn && (
+          <div className="absolute inset-0 bg-white/15 mix-blend-screen pointer-events-none z-15" />
+        )}
+
+        {/* Shutter snap flash animation */}
+        {isCapturing && (
+          <div className="absolute inset-0 bg-white z-40 pointer-events-none animate-pulse" />
+        )}
+
+        {/* Underlay canvas image: Lavender Hoodie on organic hanger or scanned image */}
         <div 
-          className="absolute inset-0 bg-cover bg-center"
+          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-300 ${
+            isLiveCameraActive ? 'opacity-0' : 'opacity-100'
+          }`}
           style={{
             backgroundImage: hasSelectedImage ? `url('${scanResult?.compressedImageUrl || previewImage}')` : 'none'
           }}
         />
-        {!hasSelectedImage && (
+        {!hasSelectedImage && !isLiveCameraActive && (
           <div className="absolute inset-0 bg-gradient-to-br from-[#131426] via-[#2B245A] to-[#553BE2]/70 flex items-center justify-center">
             <button
-              onClick={() => setShowSourceSheet(true)}
-              className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-lg"
+              type="button"
+              onClick={() => startLiveCamera('environment')}
+              className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-lg hover:scale-105 active:scale-95 transition-all"
             >
-              <span className="material-symbols-outlined text-3xl">add_a_photo</span>
+              <span className="material-symbols-outlined text-3xl">photo_camera</span>
             </button>
           </div>
         )}
 
         {/* Viewfinder ambient dark filter */}
-        <div className="absolute inset-0 bg-black/25"></div>
+        <div className={`absolute inset-0 ${isLiveCameraActive ? 'bg-black/10' : 'bg-black/25'} pointer-events-none z-12`}></div>
 
         {/* Framing target elements */}
-        <div className="absolute inset-4 rounded-2xl overflow-hidden border border-white/15">
+        <div className="absolute inset-4 rounded-2xl overflow-hidden border border-white/15 z-20 pointer-events-none">
           <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white rounded-tl"></div>
           <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white rounded-tr"></div>
           <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white rounded-bl"></div>
           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white rounded-br"></div>
 
           {/* Quick HUD controls */}
-          <div className="absolute top-3 left-3 right-3 flex justify-between">
-            <button className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60">
-              <span className="material-symbols-outlined text-base">bolt</span>
-            </button>
-            <button
-              onClick={() => setShowSourceSheet(true)}
-              className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60"
-            >
-              <span className="material-symbols-outlined text-base">photo_library</span>
-            </button>
+          <div className="absolute top-3 left-3 right-3 flex justify-between pointer-events-auto">
+            {isLiveCameraActive ? (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleTorch}
+                  title={t('cameraScan.toggleFlash')}
+                  className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center text-white border border-white/20 transition-all ${
+                    isFlashOn ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30' : 'bg-black/40 hover:bg-black/60'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">{isFlashOn ? 'bolt' : 'flash_off'}</span>
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={flipCamera}
+                    title={t('cameraScan.flipCamera')}
+                    className="w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/20 transition-all active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-lg">flip_camera_ios</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopLiveCamera}
+                    title={t('cameraScan.closeCamera')}
+                    className="w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/20 transition-all active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => startLiveCamera('environment')}
+                  title={t('cameraScan.openCamera')}
+                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60"
+                >
+                  <span className="material-symbols-outlined text-base">photo_camera</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSourceSheet(true)}
+                  title={t('cameraScan.chooseSource')}
+                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-black/60"
+                >
+                  <span className="material-symbols-outlined text-base">photo_library</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Scanning line animation laser with pulse glow */}
-          {scanning && (
-            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#553BE2] to-transparent top-1/2 shadow-[0_0_12px_#ECE7FF] scan-line-animation" />
+          {(scanning || isLiveCameraActive) && (
+            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#553BE2] to-transparent top-1/2 shadow-[0_0_12px_#ECE7FF] scan-line-animation pointer-events-none" />
           )}
 
-          {scanResult && scanResult.results.length > 1 && (
-            <div className="absolute bottom-4 inset-x-4 flex justify-between items-center">
+          {/* Live scan bottom shutter controls */}
+          {isLiveCameraActive && (
+            <div className="absolute bottom-4 inset-x-0 flex flex-col items-center justify-center gap-2 pointer-events-auto">
+              <span className="text-[11px] font-semibold text-white/90 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/15">
+                {t('cameraScan.alignOutfit')}
+              </span>
               <button
+                type="button"
+                data-tutorial-target="scan-shutter-btn"
+                onClick={captureFrame}
+                disabled={isCapturing}
+                title={t('cameraScan.captureScan')}
+                className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:scale-105 active:scale-95 transition-transform shadow-2xl group cursor-pointer"
+              >
+                <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#553BE2] to-[#A594FD] flex items-center justify-center text-white shadow-inner group-hover:scale-105 transition-transform">
+                  <span className="material-symbols-outlined text-2xl">center_focus_strong</span>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Result item pagination if multiple items found */}
+          {!isLiveCameraActive && scanResult && scanResult.results.length > 1 && (
+            <div className="absolute bottom-4 inset-x-4 flex justify-between items-center pointer-events-auto">
+              <button
+                type="button"
                 onClick={goToPreviousItem}
                 disabled={activeItemIndex === 0}
                 className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 disabled:opacity-40"
@@ -353,6 +628,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
                 {activeItemIndex + 1}/{scanResult.results.length}
               </div>
               <button
+                type="button"
                 onClick={goToNextItem}
                 disabled={activeItemIndex === scanResult.results.length - 1}
                 className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 disabled:opacity-40"
@@ -363,7 +639,7 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
           )}
 
           {/* Lens focus factor */}
-          {(!scanResult || scanResult.results.length <= 1) && (
+          {!isLiveCameraActive && (!scanResult || scanResult.results.length <= 1) && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
               <div className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-bold border border-white/20">
                 1x
@@ -500,14 +776,59 @@ export const CameraScanView: React.FC<CameraScanViewProps> = ({ onNavigate, onPr
           </div>
         ) : (
           <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
-            <button
-              onClick={() => setShowSourceSheet(true)}
-              className="w-12 h-12 rounded-full bg-[#553BE2] text-white flex items-center justify-center shadow-md shadow-[#553BE2]/20"
-            >
-              <span className="material-symbols-outlined text-2xl">photo_camera</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => startLiveCamera('environment')}
+                title={t('cameraScan.openCamera')}
+                className="w-12 h-12 rounded-full bg-[#553BE2] text-white flex items-center justify-center shadow-md shadow-[#553BE2]/20 hover:scale-105 active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-2xl">photo_camera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openSource('gallery')}
+                title={t('cameraScan.uploadGallery')}
+                className="w-12 h-12 rounded-full bg-[#F2EEFF] border border-[#E4DFF5] text-[#553BE2] flex items-center justify-center shadow-sm hover:scale-105 active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-2xl">image</span>
+              </button>
+            </div>
             <p className="text-xs font-bold text-[#553BE2] tracking-wide">{t('cameraScan.chooseImage')}</p>
             <p className="text-[10px] text-[#5E667A]">{t('cameraScan.samePipeline')}</p>
+          </div>
+        )}
+      </section>
+
+      <section className="glass-panel rounded-3xl p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-[#131426]">{t('cameraScan.scanHistory')}</h2>
+            <p className="mt-0.5 text-[11px] text-[#5E667A]">{scanHistory.length} {t('cameraScan.savedScans')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('scan-outfit')}
+            className="shrink-0 text-xs font-semibold text-[#553BE2] hover:underline"
+          >
+            {t('cameraScan.viewScanHistory')}
+          </button>
+        </div>
+        {scanHistory.length === 0 ? (
+          <p className="py-2 text-xs text-[#7A8194]">{t('cameraScan.emptyScanHistory')}</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {scanHistory.slice(0, 3).map((scan) => (
+              <button
+                type="button"
+                key={scan.id}
+                onClick={() => onNavigate('scan-outfit')}
+                className="min-w-0 overflow-hidden rounded-xl border border-[#E4DFF5] bg-white text-left"
+              >
+                <img src={scan.imageUrl} alt={scan.name} className="aspect-square w-full object-cover" loading="lazy" />
+                <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-[#131426]">{scan.name}</span>
+              </button>
+            ))}
           </div>
         )}
       </section>

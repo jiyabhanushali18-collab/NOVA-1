@@ -3,11 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Camera, Images, RefreshCw, Sparkles, Upload, WandSparkles } from 'lucide-react';
 import { NovaAnalysisProfile, NovaStyleAnalysisResult } from '../types';
 import { analyzeSelfie } from '../services/analysisService';
+import { useI18n } from '../i18n';
 
 interface ProfileAnalysisViewProps {
   userName: string;
   userId: string;
   onComplete: (profile: NovaAnalysisProfile) => void;
+  onSkip?: () => void;
 }
 
 type AnalysisStep = 'upload' | 'scanning' | 'results';
@@ -132,7 +134,13 @@ const recommendationCards = [
   }
 ];
 
-export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userName, userId, onComplete }) => {
+export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({
+  userName,
+  userId,
+  onComplete,
+  onSkip
+}) => {
+  const { t } = useI18n();
   const [step, setStep] = useState<AnalysisStep>('upload');
   const [imagePreview, setImagePreview] = useState<string>('');
   const [progress, setProgress] = useState(0);
@@ -140,6 +148,14 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const displayName = userName?.trim() || 'NOVA member';
+
+  const handleSkip = () => {
+    if (onSkip) {
+      onSkip();
+    } else {
+      onComplete(buildAnalysisProfile(undefined, undefined));
+    }
+  };
 
   const particles = useMemo(
     () =>
@@ -244,8 +260,17 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#5E667A]">Optical Vision Assistant</p>
             </div>
           </div>
-          <div className="rounded-full border border-[#E4DFF5] bg-white px-4 py-2 text-xs font-bold text-[#553BE2] shadow-sm">
-            AI Profile Lab
+          <div className="flex items-center gap-2">
+            <div className="rounded-full border border-[#E4DFF5] bg-white px-4 py-2 text-xs font-bold text-[#553BE2] shadow-sm">
+              {t('profileAnalysis.labBadge')}
+            </div>
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="rounded-full border border-[#E4DFF5] bg-white px-3.5 py-2 text-xs font-bold text-[#5E667A] hover:text-[#553BE2] hover:border-[#553BE2]/35 shadow-sm transition-all cursor-pointer active:scale-95"
+            >
+              {t('common.skip')}
+            </button>
           </div>
         </header>
 
@@ -261,11 +286,13 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               <div className="mb-8 max-w-[560px]">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#E4DFF5] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#553BE2] shadow-sm">
                   <Sparkles className="h-4 w-4 fill-[#553BE2] text-[#553BE2]" />
-                  Personalized AI Analysis
+                  {t('profileAnalysis.personalizedBadge')}
                 </p>
-                <h1 className="text-[34px] font-black leading-tight text-[#131426] sm:text-[48px]">Upload a Selfie for AI Analysis</h1>
+                <h1 className="text-[34px] font-black leading-tight text-[#131426] sm:text-[48px]">
+                  {t('profileAnalysis.title')}
+                </h1>
                 <p className="mx-auto mt-4 max-w-[500px] text-base font-medium leading-7 text-[#5E667A]">
-                  {displayName}, let NOVA understand your features and personalize your experience.
+                  {t('profileAnalysis.subtitle', { name: displayName })}
                 </p>
               </div>
 
@@ -282,22 +309,33 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                 </span>
               </button>
 
-              <div className="mt-9 grid w-full max-w-[440px] grid-cols-2 gap-3">
+              <div className="mt-9 flex w-full max-w-[440px] flex-col items-center gap-3">
+                <div className="grid w-full grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-[#E4DFF5] bg-white text-sm font-black text-[#131426] shadow-sm hover:border-[#553BE2]/35 transition-all cursor-pointer"
+                  >
+                    <Camera className="h-5 w-5 text-[#553BE2]" />
+                    {t('cameraScan.camera')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="flex h-14 items-center justify-center gap-2 rounded-[14px] bg-[#553BE2] hover:bg-[#462CC9] text-sm font-black text-white shadow-[0_16px_36px_rgba(85, 59, 226,0.25)] transition-all cursor-pointer"
+                  >
+                    <Images className="h-5 w-5" />
+                    {t('cameraScan.gallery')}
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-[#E4DFF5] bg-white text-sm font-black text-[#131426] shadow-sm hover:border-[#553BE2]/35"
+                  onClick={handleSkip}
+                  className="mt-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-full text-xs font-bold text-[#5E667A] hover:text-[#553BE2] hover:bg-white/80 transition-all cursor-pointer active:scale-95 uppercase tracking-wider"
                 >
-                  <Camera className="h-5 w-5 text-[#553BE2]" />
-                  Camera
-                </button>
-                <button
-                  type="button"
-                  onClick={() => galleryInputRef.current?.click()}
-                  className="flex h-14 items-center justify-center gap-2 rounded-[14px] bg-[#553BE2] hover:bg-[#462CC9] text-sm font-black text-white shadow-[0_16px_36px_rgba(85, 59, 226,0.25)]"
-                >
-                  <Images className="h-5 w-5" />
-                  Gallery
+                  <span>{t('profileAnalysis.skip')}</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
 
@@ -315,7 +353,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
             >
               <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#E4DFF5] bg-white px-5 py-3 text-sm font-black text-[#553BE2] shadow-sm">
                 <WandSparkles className="h-5 w-5 fill-[#553BE2] text-[#553BE2]" />
-                Analyzing Your Features
+                {t('profileAnalysis.analyzing')}
               </div>
 
               <div className="relative mb-8 h-[252px] w-[252px] sm:h-[300px] sm:w-[300px]">
@@ -336,7 +374,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
 
               <div className="w-full max-w-[560px] rounded-[18px] border border-[#E4DFF5] bg-white p-5 text-left shadow-sm">
                 <div className="mb-4 flex items-center justify-between gap-4">
-                  <span className="text-xs font-black uppercase tracking-[0.16em] text-[#5E667A]">Estimated time: 5-10 seconds</span>
+                  <span className="text-xs font-black uppercase tracking-[0.16em] text-[#5E667A]">{t('profileAnalysis.estimatedTime')}</span>
                   <span className="text-sm font-black text-[#553BE2]">{progress}%</span>
                 </div>
                 <div className="mb-5 h-2 overflow-hidden rounded-full bg-[#ECE7FF]">
@@ -367,9 +405,9 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
               <div className="mb-7 text-center">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#E4DFF5] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#553BE2] shadow-sm">
                   <Sparkles className="h-4 w-4 fill-[#553BE2] text-[#553BE2]" />
-                  NOVA Analysis Complete
+                  {t('profileAnalysis.complete')}
                 </p>
-                <h1 className="text-[30px] font-black leading-tight text-[#131426] sm:text-[44px]">Here is what NOVA got from your selfie</h1>
+                <h1 className="text-[30px] font-black leading-tight text-[#131426] sm:text-[44px]">{t('profileAnalysis.resultsTitle')}</h1>
               </div>
 
               <div className="relative mx-auto mb-7 min-h-[410px] max-w-[720px]">
@@ -392,7 +430,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
 
               <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="rounded-[18px] border border-[#E4DFF5] bg-white p-5 shadow-sm">
-                  <h2 className="mb-4 text-lg font-black text-[#131426]">AI Confidence Score</h2>
+                  <h2 className="mb-4 text-lg font-black text-[#131426]">{t('profileAnalysis.confidenceScore')}</h2>
                   {analysisError && (
                     <div className="mb-4 rounded-[14px] border border-rose-100 bg-rose-50/80 p-3 text-xs font-bold leading-5 text-rose-700">
                       {analysisError}
@@ -422,7 +460,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                   className="flex h-14 items-center justify-center gap-3 rounded-[14px] bg-[#553BE2] hover:bg-[#462CC9] text-sm font-black text-white shadow-[0_18px_42px_rgba(85, 59, 226,0.25)]"
                 >
                   <Sparkles className="h-5 w-5" />
-                  Continue to NOVA Profile
+                  {t('profileAnalysis.continue')}
                   <ArrowRight className="h-5 w-5" />
                 </button>
                 <button
@@ -431,7 +469,7 @@ export const ProfileAnalysisView: React.FC<ProfileAnalysisViewProps> = ({ userNa
                   className="flex h-14 items-center justify-center gap-2 rounded-[14px] border border-[#E4DFF5] bg-white px-6 text-sm font-black text-[#553BE2] shadow-sm hover:bg-[#F2EEFF]"
                 >
                   <RefreshCw className="h-5 w-5" />
-                  Retake Analysis
+                  {t('profileAnalysis.retake')}
                 </button>
               </div>
             </motion.section>

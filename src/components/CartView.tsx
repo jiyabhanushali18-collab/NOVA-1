@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import React, { useEffect, useState } from 'react';
 import { ScreenId, CartItem, DeliveryAddress, OrderRecord } from '../types';
 import { analytics } from '../services/analyticsService';
@@ -49,6 +50,7 @@ export const CartView: React.FC<CartViewProps> = ({
   onSaveAddress,
   onOrderPlaced
 }) => {
+  const { t } = useI18n();
   const effectiveIsGuest = isGuestIdentity(userId, isGuest);
   const [step, setStep] = useState<'cart' | 'address' | 'payment' | 'completed'>('cart');
   const [couponCode, setCouponCode] = useState('');
@@ -350,9 +352,9 @@ export const CartView: React.FC<CartViewProps> = ({
         </div>
 
         <div className="space-y-2">
-          <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>Order Confirmed!</h2>
+          <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{t('cart.orderConfirmed')}</h2>
           <p className={`text-xs leading-normal max-w-xs mx-auto ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-            Thank you for purchasing. Your styling coordinates have been saved, and your parcel is being packed by hand!
+            {t('cart.orderThanks')}
           </p>
         </div>
 
@@ -363,14 +365,14 @@ export const CartView: React.FC<CartViewProps> = ({
             : 'bg-white border-[#E4DFF5]'
         }`}>
           <div className="flex justify-between text-xs font-bold font-mono">
-            <span className={isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}>ORDER NO.</span>
+            <span className={isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}>{t('cart.orderNo')}</span>
             <span className={isDarkMode ? 'text-slate-100' : 'text-[#131426]'}>{confirmedOrder?.orderId || `#NV-${1000 + Math.floor(Math.random() * 9000)}`}</span>
           </div>
           <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
 
           <div className="space-y-1">
             <p className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-              DELIVERY ADDRESS ({orderDisplayAddr.label || 'Home'})
+              {t('cart.deliveryTo')} ({orderDisplayAddr.label || 'Home'})
             </p>
             <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>
               {orderDisplayAddr.fullName} • {orderDisplayAddr.phone}
@@ -394,14 +396,14 @@ export const CartView: React.FC<CartViewProps> = ({
             onClick={() => onNavigate('home')}
             className="flex-1 py-3 text-xs font-bold text-[#5E667A] bg-white border border-[#E4DFF5] hover:bg-[#F2EEFF] hover:text-[#131426] transition-colors rounded-xl"
           >
-            Home
+            {t('cart.homeBtn')}
           </button>
           
           <button 
             onClick={() => { setStep('cart'); onNavigate('chat'); }}
             className="flex-1 py-3 text-xs font-bold text-white bg-[#553BE2] hover:opacity-95 transition-opacity rounded-xl shadow-md shadow-[#553BE2]/15"
           >
-            Style Consultancy
+            {t('cart.stylistBtn')}
           </button>
         </div>
       </div>
@@ -420,7 +422,7 @@ export const CartView: React.FC<CartViewProps> = ({
           <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${step === 'cart' ? 'bg-[#553BE2] text-white shadow' : 'bg-green-100 text-green-700 font-extrabold'}`}>
             {step !== 'cart' ? '✓' : '1'}
           </div>
-          <span className={`text-[10px] font-bold ${step === 'cart' ? 'text-[#553BE2]' : isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>Bag</span>
+          <span className={`text-[10px] font-bold ${step === 'cart' ? 'text-[#553BE2]' : isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>{t('cart.stepBag')}</span>
         </div>
         
         <div className={`flex-1 h-px mx-2 ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
@@ -431,7 +433,7 @@ export const CartView: React.FC<CartViewProps> = ({
           }`}>
             {['payment', 'completed'].includes(step) ? '✓' : '2'}
           </div>
-          <span className={`text-[10px] font-bold ${step === 'address' ? 'text-[#553BE2]' : isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>Address</span>
+          <span className={`text-[10px] font-bold ${step === 'address' ? 'text-[#553BE2]' : isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>{t('cart.stepAddress')}</span>
         </div>
 
         <div className={`flex-1 h-px mx-2 ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
@@ -440,7 +442,7 @@ export const CartView: React.FC<CartViewProps> = ({
           <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${step === 'payment' ? 'bg-[#553BE2] text-white shadow' : 'bg-[#ECE7FF] text-[#5E667A]'}`}>
             3
           </div>
-          <span className={`text-[10px] font-bold ${step === 'payment' ? 'text-[#553BE2]' : isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>Payment</span>
+          <span className={`text-[10px] font-bold ${step === 'payment' ? 'text-[#553BE2]' : isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>{t('cart.stepPayment')}</span>
         </div>
       </section>
 
@@ -452,12 +454,12 @@ export const CartView: React.FC<CartViewProps> = ({
               isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'
             }`}>
               <span className="material-symbols-outlined text-5xl opacity-40">shopping_bag</span>
-              <p className="text-xs font-bold max-w-[180px] mx-auto">Your Shopping bag is empty.</p>
+              <p className="text-xs font-bold max-w-[180px] mx-auto">{t('cart.empty')}</p>
               <button 
                 onClick={() => onNavigate('home')}
                 className="py-2.5 px-6 rounded-full border border-[#553BE2] text-[#553BE2] text-xs font-bold leading-none hover:bg-[#F2EEFF]"
               >
-                Continue Shopping
+                {t('cart.continueShopping')}
               </button>
             </div>
           ) : (
@@ -483,13 +485,13 @@ export const CartView: React.FC<CartViewProps> = ({
                       <p className={`text-xs font-bold truncate ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>{item.product.name}</p>
                       
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[10px] font-extrabold uppercase ${isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>Color:</span>
+                        <span className={`text-[10px] font-extrabold uppercase ${isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>{t('cart.color')}</span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none border ${
                           isDarkMode
                             ? 'text-slate-200 bg-slate-800/40 border-slate-700/30'
                             : 'text-[#131426] bg-[#F2EEFF] border-[#E4DFF5]'
                         }`}>{item.color}</span>
-                        <span className={`text-[10px] font-extrabold uppercase ml-2 ${isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>Size:</span>
+                        <span className={`text-[10px] font-extrabold uppercase ml-2 ${isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}`}>{t('cart.size')}</span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none border ${
                           isDarkMode
                             ? 'text-slate-200 bg-slate-800/40 border-slate-700/30'
@@ -884,7 +886,7 @@ export const CartView: React.FC<CartViewProps> = ({
               className="flex-[2] py-3.5 rounded-xl bg-[#553BE2] hover:opacity-95 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-[#553BE2]/20"
             >
               <span className="material-symbols-outlined text-base">shopping_cart_checkout</span>{' '}
-              {isPlacingOrder ? 'Placing Order...' : 'Securely Place Order'}
+              {isPlacingOrder ? t('cart.placingOrder') : t('cart.placeOrder')}
             </button>
           </div>
         </div>

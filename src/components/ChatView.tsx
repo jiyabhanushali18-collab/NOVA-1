@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ScreenId, ChatMessage, ProductItem } from '../types';
+import { useI18n } from '../i18n';
 
 interface ChatViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -8,15 +9,12 @@ interface ChatViewProps {
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName, products = {} }) => {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'init',
       role: 'assistant',
-      content: `Hello ${userName}! I'm NOVA, your digital style curation oracle. 
-
-Are you looking to design a balanced streetwear aesthetic today, combine outfit layers, or inspect matching style palettes for your Lavender Hoodie? 
-
-Ask me anything—I'm ready to craft suggestions!`,
+      content: t('chat.greeting', { name: userName }),
       timestamp: 'Just now'
     }
   ]);
@@ -100,7 +98,7 @@ Ask me anything—I'm ready to craft suggestions!`,
   return (
     <div className="flex flex-col h-[calc(100vh-160px)] -mx-4">
       {/* Scrollable messages container area */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+      <div data-tutorial-target="chat-messages" className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
         {messages.map((m) => {
           const isUser = m.role === 'user';
           return (
@@ -111,7 +109,7 @@ Ask me anything—I'm ready to craft suggestions!`,
             >
               {/* Message Header info */}
               <div className={`flex justify-between items-center gap-4 mb-1.5 pb-1 text-[9px] font-bold uppercase tracking-widest opacity-80 border-b ${isUser ? 'border-white/25' : 'border-[#E4DFF5]'}`}>
-                <span>{isUser ? userName : 'NOVA Curation Engine'}</span>
+                <span>{isUser ? userName : t('chat.engineName')}</span>
                 <span>{m.timestamp}</span>
               </div>
               
@@ -122,7 +120,7 @@ Ask me anything—I'm ready to craft suggestions!`,
               {m.isPairingResult && m.pairingProducts && (
                 <div className={`mt-4 pt-3.5 border-t flex flex-col gap-2.5 ${isUser ? 'border-white/20' : 'border-[#E4DFF5]'}`}>
                   <div className={`text-[10px] font-bold ${isUser ? 'text-white/80' : 'text-[#553BE2]'} uppercase tracking-wide flex items-center gap-1`}>
-                    <span className="material-symbols-outlined text-[13px] leading-none">mall</span> Click to Shop suggestions
+                    <span className="material-symbols-outlined text-[13px] leading-none">mall</span> {t('chat.shopSuggestions')}
                   </div>
                   <div className="overflow-x-auto flex gap-2 hide-scrollbar py-0.5">
                     {m.pairingProducts.map((p, pIdx) => (
@@ -157,7 +155,7 @@ Ask me anything—I'm ready to craft suggestions!`,
               <div className="w-2 h-2 rounded-full bg-[#553BE2] animate-bounce [animation-delay:0.2s]"></div>
               <div className="w-2 h-2 rounded-full bg-[#553BE2] animate-bounce [animation-delay:0.4s]"></div>
             </div>
-            <span className="text-[10px] font-bold tracking-wide uppercase">NOVA is styling...</span>
+            <span className="text-[10px] font-bold tracking-wide uppercase">{t('chat.stylingIndicator')}</span>
           </div>
         )}
         <div ref={scrollRef}></div>
@@ -165,8 +163,8 @@ Ask me anything—I'm ready to craft suggestions!`,
 
       {/* Suggested prompts chips block */}
       {messages.length === 1 && (
-        <div className="px-4 py-2 border-t border-[#E4DFF5] bg-[#ECE7FF]/50">
-          <p className="text-[10px] font-bold text-[#5E667A] uppercase tracking-widest mb-1.5">Suggested Prompts</p>
+        <div data-tutorial-target="chat-quick-prompts" className="px-4 py-2 border-t border-[#E4DFF5] bg-[#ECE7FF]/50">
+          <p className="text-[10px] font-bold text-[#5E667A] uppercase tracking-widest mb-1.5">{t('chat.suggestedPrompts')}</p>
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             {quickPrompts.map((p) => (
               <button
@@ -182,13 +180,13 @@ Ask me anything—I'm ready to craft suggestions!`,
       )}
 
       {/* Chat text area input block */}
-      <div className="p-3 bg-white border-t border-[#E4DFF5] flex items-center gap-2">
+      <div data-tutorial-target="chat-input-bar" className="p-3 bg-white border-t border-[#E4DFF5] flex items-center gap-2">
         <input 
           type="text" 
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSend(inputVal); }}
-          placeholder="Ask about style matches, items, colors..."
+          placeholder={t('chat.placeholder')}
           className="flex-1 p-3 bg-[#F2EEFF] border border-[#E4DFF5] rounded-xl text-xs font-semibold text-[#131426] placeholder:text-[#5E667A] focus:outline-none focus:border-[#553BE2]"
           disabled={sending}
         />
