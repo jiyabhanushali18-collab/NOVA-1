@@ -209,7 +209,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {t('home.splash')}
           </button>
           <button 
-            onClick={() => onNavigate('onboarding')}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('nova:open_tutorial_welcome'));
+            }}
             className="nova-interactive bg-[#553BE2] hover:bg-[#462CC9] text-[9px] text-white py-2 px-3 rounded-xl font-black uppercase shadow-sm shadow-[#553BE2]/25 whitespace-nowrap cursor-pointer"
           >
             {t('home.tour')}
