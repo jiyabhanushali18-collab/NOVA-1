@@ -1881,7 +1881,14 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    replaceScreen('onboarding');
+    const hasCompletedIntro = localStorage.getItem('onboarding_completed') === 'true';
+    if (!hasCompletedIntro) {
+      replaceScreen('onboarding');
+    } else if (!isLoggedIn) {
+      replaceScreen('login');
+    } else {
+      resetScreenHistory('home');
+    }
   };
 
   const handleOnboardingComplete = () => {
@@ -2318,8 +2325,28 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  // Onboarding Slides Guard (Intro)
+  // Onboarding Screen Guard
+  // - When logged in (e.g. tapped "Tour" on Home), displays the Interactive Feature Tour Guide from the pull
+  // - When unauthenticated / first launch, displays the full NOVA Smart Mirror intro slides
   if (screen === 'onboarding') {
+    if (isLoggedIn) {
+      return (
+        <TutorialProvider currentScreen={screen} onNavigate={navigate}>
+          <OnboardingWelcome
+            fullscreen
+            onStartTour={(featureId: TutorialFeatureId) => {
+              resetScreenHistory('home');
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('nova:start_tutorial', { detail: { featureId } }));
+              }, 100);
+            }}
+            onDismiss={() => {
+              resetScreenHistory('home');
+            }}
+          />
+        </TutorialProvider>
+      );
+    }
     return <OnboardingView onComplete={handleOnboardingComplete} />;
   }
 
