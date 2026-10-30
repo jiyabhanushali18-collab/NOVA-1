@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc, getDoc, writeBatch } from 'firebase/firestore';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
 import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
@@ -1091,8 +1091,11 @@ export default function App() {
     });
   }, [productReviews]);
 
-  const handleSubmitProductReview = async (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product') => {
-    if (!productId || rating <= 0 || !text.trim()) return;
+  const handleSubmitProductReview = async (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product', color?: string) => {
+    if (!productId) throw new Error('This product could not be identified. Please reopen it and try again.');
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Choose a rating from 1 to 5 stars.');
+    if (!text.trim()) throw new Error('Write a short review before submitting.');
+    if (text.trim().length > 1000) throw new Error('Keep your review under 1,000 characters.');
 
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) {
@@ -1101,21 +1104,76 @@ export default function App() {
 
     const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';
     const reviewText = text.trim();
+    const prod = productsData[productId] || products[productId];
     let savedReviewId: string;
     try {
-      const reviewRef = await addDoc(collection(db, 'product_reviews'), {
-        productId,
-        reviewer: reviewerName,
-        userName: reviewerName,
-        rating,
-        text: reviewText,
-        comment: reviewText,
-        date: new Date().toLocaleDateString(),
-        source,
-        accountUid: firebaseUser.uid,
-        createdAt: serverTimestamp()
-      });
-      savedReviewId = reviewRef.id;
+      const createdAt = serverTimestamp();
+      if (source === 'tryon') {
+        // Resolve ownership from Firestore; the vendor portal rules verify this ID
+        // against the same product document before accepting the write.
+        const productSnapshot = await getDoc(doc(db, 'products', productId));
+        if (!productSnapshot.exists()) throw new Error('This product could not be verified. Please reopen it from the showroom and try again.');
+        const trustedProduct = productSnapshot.data();
+        const vendorId = typeof trustedProduct.vendorId === 'string' ? trustedProduct.vendorId.trim() : '';
+        if (!vendorId) throw new Error('This product is not linked to a vendor, so its try-on feedback cannot be routed.');
+        const productName = String(trustedProduct.name || trustedProduct.productName || prod?.name || 'NOVA product');
+        const feedbackRef = doc(collection(db, 'reviews'));
+        const customerReviewRef = doc(db, 'product_reviews', feedbackRef.id);
+        const batch = writeBatch(db);
+        batch.set(feedbackRef, {
+          productId,
+          productName,
+          vendorId,
+          arTryOn: true,
+          arRating: rating,
+          rating,
+          comment: reviewText,
+          feedback: reviewText,
+          author: reviewerName,
+          customerName: reviewerName,
+          userName: reviewerName,
+          userId: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          ...(color ? { color, variantColor: color } : {}),
+          createdAt
+        });
+        batch.set(customerReviewRef, {
+          productId,
+          vendorProductId: trustedProduct.productId || productId,
+          vendorId,
+          vendorName: trustedProduct.vendorName || trustedProduct.brandName || null,
+          productName,
+          reviewer: reviewerName,
+          userName: reviewerName,
+          rating,
+          text: reviewText,
+          comment: reviewText,
+          date: new Date().toLocaleDateString(),
+          source,
+          accountUid: firebaseUser.uid,
+          createdAt
+        });
+        await batch.commit();
+        savedReviewId = feedbackRef.id;
+      } else {
+        const reviewRef = await addDoc(collection(db, 'product_reviews'), {
+          productId,
+          vendorProductId: prod?.productId || productId,
+          vendorId: prod?.vendorId || null,
+          vendorName: prod?.vendorName || null,
+          productName: prod?.name || null,
+          reviewer: reviewerName,
+          userName: reviewerName,
+          rating,
+          text: reviewText,
+          comment: reviewText,
+          date: new Date().toLocaleDateString(),
+          source,
+          accountUid: firebaseUser.uid,
+          createdAt
+        });
+        savedReviewId = reviewRef.id;
+      }
     } catch (error) {
       console.error('Error saving review to Firestore:', error);
       throw new Error('Your review could not be saved. Check your connection and Firestore permissions, then try again.');
@@ -1124,6 +1182,7 @@ export default function App() {
     const savedReview: ProductReview = {
       id: savedReviewId,
       productId,
+      vendorId: prod?.vendorId,
       reviewer: reviewerName,
       userName: reviewerName,
       rating,
@@ -1143,7 +1202,6 @@ export default function App() {
       return nextReviews;
     });
 
-    const prod = productsData[productId] || products[productId];
     if (prod) {
       const updatedAggregate = calculateRatingFromReviews(prod, [savedReview, ...(productReviewsRef.current[productId] || [])]);
       setProductsData((current) => ({
@@ -1180,6 +1238,8 @@ export default function App() {
           if (productId) {
             const review: ProductReview = {
               id: doc.id,
+              productId: String(data.productId || ''),
+              vendorId: data.vendorId ? String(data.vendorId) : undefined,
               reviewer: String(data.reviewer || data.userName || 'Guest'),
               userName: String(data.userName || data.reviewer || 'Guest'),
               rating: Number(data.rating || 0),

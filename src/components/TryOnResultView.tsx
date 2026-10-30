@@ -10,7 +10,7 @@ interface TryOnResultViewProps {
   setSelectedColor: (color: string) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
   selectedProductId?: string;
-  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => Promise<void>;
+  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon', color?: string) => Promise<void>;
   capturedImage?: string | null;
   garmentName?: string;
   isLiveTryOnImage?: boolean;
@@ -384,6 +384,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         <textarea
           value={reviewText}
           onChange={(e) => setReviewText(e.target.value)}
+          maxLength={1000}
           className="w-full rounded-3xl border border-[#E4DFF5] bg-[#F2EEFF] px-4 py-3 text-sm text-[#131426] placeholder:text-[#5E667A] min-h-[110px] focus:outline-none focus:border-[#553BE2]"
           placeholder={t('tryOnResult.reviewPlaceholder')}
         />
@@ -399,7 +400,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
             }
             setIsSubmittingReview(true);
             try {
-              await onSubmitReview(currentProduct.id, reviewRating, reviewText, 'tryon');
+              await onSubmitReview(currentProduct.id, reviewRating, reviewText, 'tryon', selectedColor);
               setReviewRating(0);
               setReviewText('');
               setToastMessage('Your try-on review was saved.');
