@@ -6,7 +6,7 @@ import {
 export interface EmailSchedulerConfig {
   enabled: boolean;
   morningTime: { hour: number; minute: number }; // Default 10:00 AM
-  eveningTime: { hour: number; minute: number }; // Default 7:30 PM (19:30)
+  eveningTime: { hour: number; minute: number }; // Default 7:00 PM (19:00)
   defaultTimezone: string; // 'Asia/Kolkata'
   lastMorningRunDate: string | null;
   lastEveningRunDate: string | null;
@@ -15,13 +15,14 @@ export interface EmailSchedulerConfig {
 const config: EmailSchedulerConfig = {
   enabled: true,
   morningTime: { hour: 10, minute: 0 },
-  eveningTime: { hour: 19, minute: 30 },
+  eveningTime: { hour: 19, minute: 0 },
   defaultTimezone: 'Asia/Kolkata',
   lastMorningRunDate: null,
   lastEveningRunDate: null
 };
 
 let schedulerTimer: NodeJS.Timeout | null = null;
+let checkInProgress = false;
 
 function getTimeInTimezone(timezone: string): { hour: number; minute: number; dateStr: string } {
   try {
@@ -60,7 +61,18 @@ function getTimeInTimezone(timezone: string): { hour: number; minute: number; da
 }
 
 async function checkAndTriggerEmailCampaigns(): Promise<void> {
-  if (!config.enabled) return;
+  if (!config.enabled || checkInProgress) return;
+  checkInProgress = true;
+  try {
+    await checkDueCampaigns();
+  } catch (err) {
+    console.error('[Marketing Email Scheduler] Schedule check failed:', err);
+  } finally {
+    checkInProgress = false;
+  }
+}
+
+async function checkDueCampaigns(): Promise<void> {
 
   const { hour, minute, dateStr } = getTimeInTimezone(config.defaultTimezone);
 
@@ -69,8 +81,7 @@ async function checkAndTriggerEmailCampaigns(): Promise<void> {
     hour === config.morningTime.hour &&
     Math.abs(minute - config.morningTime.minute) <= 2;
 
-  if (isMorningWindow && config.lastMorningRunDate !== dateStr) {
-    config.lastMorningRunDate = dateStr;
+  if (isMorningWindow) {
     console.log(
       `[Marketing Email Scheduler] Triggering automated MORNING email campaign at ${hour}:${minute} (${config.defaultTimezone})...`
     );
@@ -81,13 +92,12 @@ async function checkAndTriggerEmailCampaigns(): Promise<void> {
     }
   }
 
-  // 2. Evening Email Campaign (7:30 PM / 19:30)
+  // 2. Evening Email Campaign (7:00 PM / 19:00)
   const isEveningWindow =
     hour === config.eveningTime.hour &&
     Math.abs(minute - config.eveningTime.minute) <= 2;
 
-  if (isEveningWindow && config.lastEveningRunDate !== dateStr) {
-    config.lastEveningRunDate = dateStr;
+  if (isEveningWindow) {
     console.log(
       `[Marketing Email Scheduler] Triggering automated EVENING email campaign at ${hour}:${minute} (${config.defaultTimezone})...`
     );
@@ -106,8 +116,10 @@ export function startMarketingEmailScheduler(): void {
     `[Marketing Email Scheduler] Initialized: Morning at ${config.morningTime.hour}:${String(config.morningTime.minute).padStart(2, '0')}, Evening at ${config.eveningTime.hour}:${String(config.eveningTime.minute).padStart(2, '0')} (${config.defaultTimezone}).`
   );
 
-  // Check every 45 seconds for scheduled window
-  schedulerTimer = setInterval(checkAndTriggerEmailCampaigns, 45000);
+  // A persistent Firestore campaign claim makes checks safe across restarts and instances.
+  // The narrow window deliberately skips missed campaigns instead of catching up in a burst.
+  void checkAndTriggerEmailCampaigns();
+  schedulerTimer = setInterval(() => void checkAndTriggerEmailCampaigns(), 30000);
 }
 
 export function stopMarketingEmailScheduler(): void {

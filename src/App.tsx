@@ -443,6 +443,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
   const isNativeApp = Capacitor.isNativePlatform();
   const pendingDeepLinkRef = useRef<DeepLinkDestination | null>(null);
+  const postGuideDestinationRef = useRef<ScreenId>('home');
   const [showWebAppBanner, setShowWebAppBanner] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     const hasDeepLinkParam =
@@ -990,7 +991,7 @@ export default function App() {
         return;
       }
 
-      if (screenRef.current !== 'home' && screenRef.current !== 'splash' && screenRef.current !== 'onboarding') {
+      if (screenRef.current !== 'home' && screenRef.current !== 'splash' && screenRef.current !== 'onboarding' && screenRef.current !== 'onboarding-tour') {
         screenHistoryRef.current = ['home'];
         screenRef.current = 'home';
         setScreen('home');
@@ -1483,7 +1484,10 @@ export default function App() {
   };
 
   const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string }) => {
-    const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id;
+    const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id || garment.id;
+    if (productId) {
+      setSelectedProductId(productId);
+    }
     const product = productId ? productsData[productId] || products[productId] : undefined;
     const productImage = product?.mainImage || product?.imageUrl || product?.imageUrls?.[0] || garment.imageUrl;
     awardNovaPoints(25, `Tried on ${garment.name}`, productImage, productId);
@@ -1538,6 +1542,7 @@ export default function App() {
     if (!product?.id) return;
     setProductsData((current) => current[product.id] ? current : { ...current, [product.id]: product });
     setSelectedProductId(product.id);
+    setSelectedGarment(product.id);
     setSelectedColor(getDefaultProductColor(product));
   };
 
@@ -1651,6 +1656,7 @@ export default function App() {
             onNavigate={navigate} 
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
+            onSelectProductId={(id) => setSelectedProductId(id)}
             onCaptureImage={(captured, isLiveTryOn) => {
               setCapturedTryOnImage(captured);
               setCapturedTryOnIsLive(isLiveTryOn);
@@ -1660,7 +1666,7 @@ export default function App() {
             userId={activeUid || userEmail}
             userEmail={userEmail}
             userName={userName}
-            products={Object.values(productsData)}
+            products={Object.values({ ...products, ...productsData })}
             productsLoading={productsLoading}
             productsError={productsError}
             wishlist={wishlist}
@@ -1675,6 +1681,7 @@ export default function App() {
             setSelectedColor={setSelectedColor}
             onAddToCart={handleAddToCart}
             selectedProductId={selectedProductId}
+            products={{ ...products, ...productsData }}
             onSubmitReview={handleSubmitProductReview}
             capturedImage={capturedTryOnImage}
             garmentName={selectedGarment}
@@ -1881,20 +1888,14 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    if (!tutorialService.hasCompletedOnboardingWelcome()) {
-      replaceScreen('onboarding');
-    } else {
-      if (!isLoggedIn) {
-        replaceScreen('login');
-      } else {
-        resetScreenHistory('home');
-      }
-    }
+    replaceScreen('onboarding-tour');
   };
 
   const handleOnboardingComplete = () => {
+    localStorage.setItem('nova_tour_slides_seen', 'true');
     localStorage.setItem('onboarding_completed', 'true');
-    if (!isLoggedIn) {
+    const isRegisteredUser = isLoggedIn && localStorage.getItem('novaSessionType') === 'registered';
+    if (!isRegisteredUser) {
       replaceScreen('login');
     } else {
       resetScreenHistory('home');
@@ -2081,7 +2082,12 @@ export default function App() {
       console.error('Failed to manage account:', err);
     }
 
-    resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+    if (isSignUp) {
+      postGuideDestinationRef.current = 'setup-preferences';
+      resetScreenHistory('onboarding');
+    } else {
+      resetScreenHistory('home');
+    }
   };
 
   const handleLoginSuccess = (
@@ -2199,8 +2205,11 @@ export default function App() {
         setSelectedProductId(dest.productId);
       }
       resetScreenHistory(dest.screen);
+    } else if (isSignUp) {
+      postGuideDestinationRef.current = 'setup-preferences';
+      resetScreenHistory('onboarding');
     } else {
-      resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+      resetScreenHistory('home');
     }
   };
 
@@ -2279,7 +2288,8 @@ export default function App() {
       }
       resetScreenHistory(dest.screen);
     } else {
-      resetScreenHistory('home');
+      postGuideDestinationRef.current = 'home';
+      resetScreenHistory('onboarding');
     }
   };
 
@@ -2326,27 +2336,26 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  // Interactive Onboarding Experience Guard
+  // Onboarding Tour Slides Guard (4-slide feature carousel)
+  if (screen === 'onboarding-tour') {
+    return <OnboardingView onComplete={handleOnboardingComplete} />;
+  }
+
+  // Interactive Onboarding Guide Guard (feature selection tutorial)
   if (screen === 'onboarding') {
     return (
       <TutorialProvider currentScreen={screen} onNavigate={navigate}>
         <OnboardingWelcome
           fullscreen
           onStartTour={(featureId: TutorialFeatureId) => {
-            if (!isLoggedIn) {
-              handleGuestContinue();
-            }
             resetScreenHistory('home');
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('nova:start_tutorial', { detail: { featureId } }));
             }, 100);
           }}
           onDismiss={() => {
-            if (!isLoggedIn) {
-              replaceScreen('login');
-            } else {
-              resetScreenHistory('home');
-            }
+            const destination = postGuideDestinationRef.current || 'home';
+            resetScreenHistory(destination);
           }}
         />
       </TutorialProvider>
@@ -2370,7 +2379,7 @@ export default function App() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn || screen === 'login') {
     return (
       <div className="min-h-screen bg-[#F2EEFF] nova-page-wash flex flex-col justify-center max-w-md mx-auto relative shadow-2xl overflow-hidden font-sans border-x border-[#E4DFF5] text-[#131426]">
         {!isNativeApp && showWebAppBanner && (

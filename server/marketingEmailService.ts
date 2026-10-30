@@ -43,7 +43,7 @@ export interface EmailCampaignResult {
   failedSends: number;
   skippedDueToSuppression: number;
   executedAt: string;
-  providerStatus: 'brevo_delivered' | 'simulated_local' | 'failed';
+  providerStatus: 'brevo_accepted' | 'simulated_local' | 'failed';
 }
 
 export interface MarketingEmailMetrics {
@@ -109,7 +109,7 @@ export async function suppressEmail(email: string, reason: string = 'user_unsubs
       await batch.commit();
 
       // Also record in a dedicated suppression collection
-      await adminDb.collection('marketing_suppressions').doc(normalized).set({
+      await adminDb.collection('marketing_suppressions').doc(crypto.createHash('sha256').update(normalized).digest('hex')).set({
         email: normalized,
         suppressedAt: new Date().toISOString(),
         reason
@@ -127,16 +127,8 @@ export async function unsuppressEmail(email: string): Promise<void> {
 
   if (adminDb) {
     try {
-      const snapshot = await adminDb.collection('users').where('email', '==', normalized).get();
-      const batch = adminDb.batch();
-      snapshot.forEach((doc: any) => {
-        batch.update(doc.ref, {
-          marketingEmailOptIn: true,
-          unsubscribedAt: null
-        });
-      });
-      await batch.commit();
-      await adminDb.collection('marketing_suppressions').doc(normalized).delete().catch(() => {});
+      // Removing an operational suppression must never manufacture user consent.
+      await adminDb.collection('marketing_suppressions').doc(crypto.createHash('sha256').update(normalized).digest('hex')).delete().catch(() => {});
     } catch {}
   }
 }
@@ -144,9 +136,10 @@ export async function unsuppressEmail(email: string): Promise<void> {
 // ----------------------------------------------------------------------------
 // 2. Unsubscribe Token Security
 // ----------------------------------------------------------------------------
-const UNPUB_SECRET = process.env.NOVA_SESSION_SECRET || 'nova-marketing-secret-token-2026';
+const UNPUB_SECRET = process.env.NOVA_SESSION_SECRET;
 
 export function generateUnsubscribeToken(email: string): string {
+  if (!UNPUB_SECRET) throw new Error('NOVA_SESSION_SECRET is required for secure unsubscribe links');
   return crypto
     .createHmac('sha256', UNPUB_SECRET)
     .update(email.toLowerCase().trim())
@@ -155,7 +148,7 @@ export function generateUnsubscribeToken(email: string): string {
 }
 
 export function verifyUnsubscribeToken(email: string, token: string): boolean {
-  if (!email || !token) return false;
+  if (!email || !token || !UNPUB_SECRET) return false;
   const expected = generateUnsubscribeToken(email);
   const expectedBuf = Buffer.from(expected);
   const tokenBuf = Buffer.from(token);
@@ -228,13 +221,18 @@ export async function getEligibleMarketingRecipients(): Promise<EmailRecipient[]
   if (adminDb) {
     try {
       const usersSnap = await adminDb.collection('users').get();
+      const suppressionDocs = await adminDb.collection('marketing_suppressions').get();
+      const firestoreSuppressions = new Set<string>();
+      suppressionDocs.forEach((doc: any) => {
+        const email = doc.data()?.email;
+        if (typeof email === 'string') firestoreSuppressions.add(email.toLowerCase().trim());
+      });
       usersSnap.forEach((doc: any) => {
         const data = doc.data();
         const rawEmail = data?.email || data?.userEmail;
-        if (typeof rawEmail === 'string' && rawEmail.includes('@')) {
+        if (typeof rawEmail === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail.trim())) {
           const email = rawEmail.toLowerCase().trim();
-          // Strict consent rule: only registered users whose marketingEmailOptIn is explicitly true
-          if (data.marketingEmailOptIn !== true || isEmailSuppressed(email)) {
+          if (data.emailVerified !== true || data.marketingEmailOptIn !== true || isEmailSuppressed(email) || firestoreSuppressions.has(email)) {
             return;
           }
           recipientsMap.set(email, {
@@ -250,33 +248,26 @@ export async function getEligibleMarketingRecipients(): Promise<EmailRecipient[]
     }
   }
 
-  // 2. Check local registered users file fallback
-  const localUsersFile = path.resolve(DATA_DIR, 'registered_users.json');
-  if (fs.existsSync(localUsersFile)) {
-    try {
-      const localUsers = JSON.parse(fs.readFileSync(localUsersFile, 'utf8'));
-      if (Array.isArray(localUsers)) {
-        for (const u of localUsers) {
-          if (u.email && u.email.includes('@')) {
-            const email = u.email.toLowerCase().trim();
-            if (u.marketingEmailOptIn !== true || isEmailSuppressed(email)) {
-              continue;
-            }
-            if (!recipientsMap.has(email)) {
-              recipientsMap.set(email, {
-                uid: u.uid || `local_${email}`,
-                email,
-                name: u.name,
-                marketingOptIn: true
-              });
-            }
-          }
-        }
-      }
-    } catch {}
-  }
+  // Do not fall back to a local file: it cannot establish verified Firebase identity.
 
   return Array.from(recipientsMap.values());
+}
+
+async function isRecipientCurrentlyEligible(user: EmailRecipient): Promise<boolean> {
+  if (!adminDb || user.marketingOptIn !== true || isEmailSuppressed(user.email)) return false;
+  try {
+    const userRef = adminDb.collection('users').doc(user.uid);
+    const suppressionRef = adminDb.collection('marketing_suppressions')
+      .doc(crypto.createHash('sha256').update(user.email.toLowerCase().trim()).digest('hex'));
+    const [userSnap, suppressionSnap] = await Promise.all([userRef.get(), suppressionRef.get()]);
+    const data = userSnap.data();
+    return userSnap.exists && !suppressionSnap.exists && data?.emailVerified === true &&
+      data?.marketingEmailOptIn === true && typeof data?.email === 'string' &&
+      data.email.toLowerCase().trim() === user.email;
+  } catch {
+    // Consent and suppression state cannot be verified; fail closed.
+    return false;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -295,6 +286,9 @@ export async function sendBrevoEmail(payload: {
 
   // If Brevo is not configured in environment, simulate cleanly for local testing & development
   if (!apiKey || !fromEmail) {
+    if (process.env.NODE_ENV === 'production') {
+      return { ok: false, error: 'Brevo is not configured in production' };
+    }
     console.log('[Marketing Email] Simulated delivery (Brevo API key or sender email not present in environment):', {
       recipient: payload.toEmail.replace(/^(.).+(@.+)$/, '$1***$2'),
       subject: payload.subject
@@ -353,10 +347,28 @@ export async function executeScheduledMarketingEmailCampaign(
   slot: MarketingSlot,
   baseUrl: string = getPublicAppUrl()
 ): Promise<EmailCampaignResult> {
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const campaignId = `email_${slot}_${dateStr}`;
 
   console.log(`[Marketing Email] Starting scheduled ${slot.toUpperCase()} campaign: ${campaignId}...`);
+
+  // One atomic, persistent claim per scheduled slot prevents parallel instances
+  // and restarts from dispatching the same scheduled campaign twice.
+  if (!adminDb) {
+    console.warn('[Marketing Email] Persistent campaign store unavailable; scheduled send skipped.');
+    return { campaignId, slot, templateId: 'none', subject: '', eligibleRecipients: 0, sendAttempts: 0, successfulSends: 0, failedSends: 0, skippedDueToSuppression: 0, executedAt: new Date().toISOString(), providerStatus: 'failed' };
+  }
+  const executionRef = adminDb.collection('marketing_email_campaigns').doc(campaignId);
+  const claimed = await adminDb.runTransaction(async (tx: any) => {
+    const snap = await tx.get(executionRef);
+    if (snap.exists) return false;
+    tx.create(executionRef, { campaignId, slot, scheduledDate: dateStr, timezone: 'Asia/Kolkata', status: 'running', startedAt: new Date().toISOString() });
+    return true;
+  });
+  if (!claimed) {
+    console.log(`[Marketing Email] Persistent claim already exists for ${campaignId}; skipping.`);
+    return { campaignId, slot, templateId: 'already_claimed', subject: '', eligibleRecipients: 0, sendAttempts: 0, successfulSends: 0, failedSends: 0, skippedDueToSuppression: 0, executedAt: new Date().toISOString(), providerStatus: 'failed' };
+  }
 
   // 1. Select rotating marketing message template
   const recentTemplates = campaignHistory.slice(-4).map((c) => c.templateId);
@@ -369,7 +381,7 @@ export async function executeScheduledMarketingEmailCampaign(
   let successfulSends = 0;
   let failedSends = 0;
   let skippedDueToSuppression = 0;
-  let providerStatus: 'brevo_delivered' | 'simulated_local' | 'failed' = 'brevo_delivered';
+  let providerStatus: 'brevo_accepted' | 'simulated_local' | 'failed' = 'brevo_accepted';
 
   // 3. Batch dispatch with rate-limiting
   const BATCH_SIZE = 5;
@@ -380,17 +392,39 @@ export async function executeScheduledMarketingEmailCampaign(
 
     for (const user of batch) {
       // Recheck consent and suppression status immediately before sending each email
-      if (isEmailSuppressed(user.email) || user.marketingOptIn !== true) {
+      if (!(await isRecipientCurrentlyEligible(user))) {
         skippedDueToSuppression++;
         continue;
       }
 
+      const recipientRef = adminDb.collection('marketing_email_deliveries').doc(crypto.createHash('sha256').update(`${user.uid}:${dateStr}:${slot}`).digest('hex'));
+      const recipientClaim = await adminDb.runTransaction(async (tx: any) => {
+        const snap = await tx.get(recipientRef);
+        if (snap.exists) return false;
+        tx.create(recipientRef, { campaignId, uid: user.uid, recipient: user.email, slot, scheduledDate: dateStr, status: 'sending', selectedTemplateId: template.id, subject: template.subject, startedAt: new Date().toISOString() });
+        return true;
+      });
+      if (!recipientClaim) { skippedDueToSuppression++; continue; }
+
+      const allUserTemplates = MARKETING_EMAIL_TEMPLATES.filter((item) => item.slot === slot);
+      const previousDeliveries = await adminDb.collection('marketing_email_deliveries')
+        .where('uid', '==', user.uid).where('slot', '==', slot).limit(8).get();
+      const recentlyUsed = new Set<string>();
+      previousDeliveries.forEach((doc: any) => {
+        const data = doc.data();
+        if (data.scheduledDate !== dateStr && typeof data.selectedTemplateId === 'string') recentlyUsed.add(data.selectedTemplateId);
+      });
+      const cooledTemplates = allUserTemplates.filter((item) => !recentlyUsed.has(item.id));
+      const userTemplatePool = cooledTemplates.length ? cooledTemplates : allUserTemplates;
+      const userSeed = crypto.createHash('sha256').update(`${user.uid}:${dateStr}:${slot}`).digest();
+      const userTemplate = userTemplatePool[userSeed.readUInt32BE(0) % userTemplatePool.length] || template;
+
       sendAttempts++;
       const token = generateUnsubscribeToken(user.email);
-      const unsubscribeUrl = `${baseUrl.replace(/\/$/, '')}/api/marketing/unsubscribe?email=${encodeURIComponent(user.email)}&token=${token}`;
+      const unsubscribeUrl = buildUnsubscribeUrl(user.email, token);
 
       const html = generateMarketingEmailHtml({
-        template,
+        template: userTemplate,
         recipientName: user.name,
         recipientEmail: user.email,
         baseUrl,
@@ -400,9 +434,9 @@ export async function executeScheduledMarketingEmailCampaign(
       const res = await sendBrevoEmail({
         toEmail: user.email,
         toName: user.name,
-        subject: template.subject,
+        subject: userTemplate.subject,
         htmlContent: html,
-        textContent: `${template.headline}\n\n${template.bodyText}\n\nVisit NOVA: ${baseUrl}${template.ctaPath}\n\nUnsubscribe: ${unsubscribeUrl}`
+        textContent: `${userTemplate.headline}\n\n${userTemplate.bodyText}\n\nVisit NOVA: ${baseUrl}${userTemplate.ctaPath}\n\nUnsubscribe: ${unsubscribeUrl}`
       });
 
       if (res.ok) {
@@ -413,6 +447,7 @@ export async function executeScheduledMarketingEmailCampaign(
       } else {
         failedSends++;
       }
+      await recipientRef.set({ status: res.ok ? (res.simulated ? 'simulated' : 'accepted_by_brevo') : 'failed', messageId: res.messageId || null, error: res.error || null, completedAt: new Date().toISOString() }, { merge: true });
     }
 
     if (i + BATCH_SIZE < recipients.length) {
@@ -440,6 +475,7 @@ export async function executeScheduledMarketingEmailCampaign(
 
   campaignHistory.push(result);
   saveCampaignHistory();
+  await executionRef.set({ status: failedSends > 0 ? (successfulSends > 0 ? 'completed_with_failures' : 'failed') : 'completed', eligibleRecipients: recipients.length, sendAttempts, acceptedByBrevo: successfulSends, failedSends, completedAt: result.executedAt, templateId: template.id, subject: template.subject }, { merge: true });
 
   console.log(`[Marketing Email] Campaign ${campaignId} completed:`, {
     eligible: recipients.length,

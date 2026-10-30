@@ -21,7 +21,7 @@ import { MARKETING_EMAIL_TEMPLATES } from './marketingEmailLibrary';
 const router = express.Router();
 
 const getAdminSecret = (): string =>
-  (process.env.NOVA_ADMIN_SECRET || process.env.DECART_ADMIN_SECRET || 'nova-admin-secret-2026').trim();
+  (process.env.NOVA_ADMIN_SECRET || process.env.DECART_ADMIN_SECRET || '').trim();
 
 const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = getAdminSecret();
@@ -39,7 +39,7 @@ const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  if (candidate === adminSecret || candidate === 'nova-admin-secret-2026') {
+  if (adminSecret && candidate === adminSecret) {
     return next();
   }
 
@@ -72,7 +72,7 @@ router.get('/marketing/unsubscribe', async (req: Request, res: Response) => {
   // Verify HMAC signature token
   const isValid = verifyUnsubscribeToken(rawEmail, token);
   if (!isValid) {
-    console.warn('[Marketing Email] Invalid unsubscribe token for email:', rawEmail);
+    return res.status(403).send('This unsubscribe link is invalid or expired.');
   }
 
   // Process unsubscribe
@@ -171,7 +171,7 @@ router.post('/marketing/unsubscribe', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Email is required' });
   }
 
-  if (token && !verifyUnsubscribeToken(email, token)) {
+  if (!token || !verifyUnsubscribeToken(email, token)) {
     return res.status(403).json({ success: false, error: 'Invalid security token' });
   }
 
@@ -185,8 +185,7 @@ router.post('/marketing/resubscribe', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Email is required' });
   }
 
-  await unsuppressEmail(email);
-  return res.json({ success: true, message: `Email ${email} has been re-subscribed to marketing campaigns.` });
+  return res.status(409).json({ success: false, error: 'To subscribe again, update marketing email consent in your NOVA account settings.' });
 });
 
 // ----------------------------------------------------------------------------

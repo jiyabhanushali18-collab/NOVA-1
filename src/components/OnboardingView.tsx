@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Sparkles, Check, Smartphone, BarChart3, HelpCircle, ShieldCheck, Heart, Layout, Tag, MessageSquare, Compass, Info, Scale, CheckSquare } from 'lucide-react';
+import { ArrowRight, Sparkles, Check, ShieldCheck, CheckSquare } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 interface OnboardingProps {
@@ -19,15 +19,8 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
   const { t } = useI18n();
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Features list of the smart mirror to show around mockups (Slide 1)
-  const features = [
-    { label: 'Virtual Try-On', icon: 'view_in_ar', color: 'indigo' },
-    { label: 'Inventory Tracking', icon: 'inventory', color: 'slate' },
-    { label: 'Size Availability', icon: 'straighten', color: 'amber' },
-    { label: 'Digital Coupons', icon: 'percent', color: 'rose' },
-    { label: 'Smart Suggestions', icon: 'lightbulb', color: 'indigo' },
-    { label: 'Hygiene Friendly', icon: 'hygiene', color: 'emerald' },
-  ];
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
 
   const slides: OnboardSlide[] = [
     {
@@ -222,7 +215,7 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
             {/* Visual list of safe items */}
             <div className="bg-white rounded-xl border border-[#E4DFF5] shadow-sm p-3 flex gap-3 items-center">
               <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <ShieldCheck className="w-5.5 h-5.5" />
+                <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="flex-1 text-left">
                 <h4 className="text-[11px] font-black text-[#131426] uppercase tracking-wide leading-none">Hygiene Certified 100%</h4>
@@ -232,7 +225,7 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
 
             <div className="bg-white rounded-xl border border-[#E4DFF5] shadow-sm p-3 flex gap-3 items-center">
               <div className="w-10 h-10 rounded-full bg-[#F2EEFF] text-[#553BE2] flex items-center justify-center font-bold">
-                <CheckSquare className="w-5.5 h-5.5" />
+                <CheckSquare className="w-5 h-5" />
               </div>
               <div className="flex-1 text-left">
                 <h4 className="text-[11px] font-black text-[#131426] uppercase tracking-wide leading-none">Smart Fit Checker</h4>
@@ -247,21 +240,46 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
   ];
 
   const handleNext = () => {
-    if (activeSlide < slides.length - 1) {
-      setActiveSlide(activeSlide + 1);
-    } else {
+    setActiveSlide((prev) => {
+      if (prev < slides.length - 1) {
+        return prev + 1;
+      }
       onComplete();
-    }
+      return prev;
+    });
   };
 
   const handleBack = () => {
-    if (activeSlide > 0) {
-      setActiveSlide(activeSlide - 1);
+    setActiveSlide((prev) => (prev > 0 ? prev - 1 : 0));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
+      if (deltaX < 0) {
+        handleNext();
+      } else {
+        handleBack();
+      }
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between max-w-md mx-auto relative bg-[#F2EEFF] nova-page-wash overflow-hidden font-sans border-x border-[#E4DFF5] shadow-2xl">
+    <div 
+      className="min-h-screen flex flex-col justify-between max-w-md mx-auto relative bg-[#F2EEFF] nova-page-wash overflow-hidden font-sans border-x border-[#E4DFF5] shadow-2xl"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       
       {/* 1. Header Toolbar branding display */}
       <header className="px-6 pt-5 flex items-center justify-between shrink-0">
@@ -271,21 +289,24 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
           <div className="leading-none text-left">
             <span className="text-sm font-black tracking-tight text-[#131426] block">NOVA</span>
-            {/* subtitle removed to display only NOVA */}
           </div>
         </div>
 
-        {/* Skip button allows the user directly navigate into home screen */}
+        {/* Skip button allows the user directly navigate into next screen */}
         <button 
-          onClick={onComplete}
-          className="text-xs font-bold text-[#5E667A] hover:text-[#553BE2] transition-colors uppercase tracking-widest outline-none"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete();
+          }}
+          className="text-xs font-bold text-[#5E667A] hover:text-[#553BE2] transition-colors uppercase tracking-widest outline-none py-2 px-3 rounded-lg"
         >
           Skip
         </button>
       </header>
 
       {/* 2. Interactive Body slider */}
-      <main className="flex-1 px-6 flex flex-col justify-center mt-3 mb-4">
+      <main className="flex-1 px-6 flex flex-col justify-center mt-3 mb-4 select-none">
         
         {/* Carousel slide contents with dynamic container */}
         <AnimatePresence mode="wait">
@@ -294,7 +315,7 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: 'easeInOut' }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="flex flex-col gap-4 text-center"
           >
             {/* Slide Category Badge top */}
@@ -326,7 +347,7 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
 
       </main>
 
-      {/* 3. Bottom dots indicator and "Next / Let's Go" navigation buttons */}
+      {/* 3. Bottom dots indicator and "Next / Get Started" navigation buttons */}
       <footer className="px-6 pb-12 pt-3 flex flex-col gap-5 shrink-0 border-t border-[#E4DFF5] bg-white/75 backdrop-blur-md">
         
         <div className="flex items-center justify-between">
@@ -336,8 +357,12 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
             {slides.map((_, idx) => (
               <button
                 key={idx}
-                onClick={() => setActiveSlide(idx)}
-                className={`h-2 rounded-full transition-all duration-350 ${idx === activeSlide ? 'w-6 bg-[#553BE2]' : 'w-2 bg-[#E4DFF5]'}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveSlide(idx);
+                }}
+                className={`h-2 rounded-full transition-all duration-300 ${idx === activeSlide ? 'w-6 bg-[#553BE2]' : 'w-2 bg-[#E4DFF5]'}`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
             ))}
@@ -347,7 +372,11 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div className="flex items-center gap-2">
             {activeSlide > 0 && (
               <button
-                onClick={handleBack}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBack();
+                }}
                 className="py-2.5 px-4 rounded-xl text-xs font-bold text-[#5E667A] hover:text-[#131426] transition-colors uppercase outline-none"
               >
                 Back
@@ -355,7 +384,11 @@ export const OnboardingView: React.FC<OnboardingProps> = ({ onComplete }) => {
             )}
 
             <button
-              onClick={handleNext}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNext();
+              }}
               className="py-3 px-6 rounded-xl bg-[#553BE2] hover:bg-[#462CC9] text-white text-xs font-extrabold shadow-lg shadow-[#553BE2]/30 transition-all flex items-center gap-1.5 cursor-pointer outline-none active:scale-95 text-center leading-none uppercase tracking-wider"
             >
               {activeSlide === slides.length - 1 ? (

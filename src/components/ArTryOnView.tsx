@@ -36,10 +36,11 @@ export type ArTryOnState =
   | 'cancelled';
 
 interface ArTryOnViewProps {
-  onNavigate: (screen: ScreenId) => void;
+  onNavigate: (screen: ScreenId, opts?: { productId?: string; product?: ProductItem }) => void;
   onBack?: () => void;
   selectedGarment: string;
   setSelectedGarment: (garment: string) => void;
+  onSelectProductId?: (productId: string) => void;
   onCaptureImage?: (imageDataUrl: string, isLiveTryOn: boolean) => void;
   onTryOnSuccess?: (garment: { id: string; productId?: string; name: string; imageUrl: string }) => void;
   initialGarmentImage?: string | null;
@@ -230,6 +231,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   onNavigate,
   selectedGarment,
   setSelectedGarment,
+  onSelectProductId,
   onCaptureImage,
   onTryOnSuccess,
   initialGarmentImage,
@@ -262,6 +264,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const isAutoLightingRef = useRef(false);
   isAutoLightingRef.current = isAutoLighting;
   const [isHardwareExposure, setIsHardwareExposure] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [personDetection, setPersonDetection] = useState<PersonDetectionResult | null>(null);
   const [availableCameras, setAvailableCameras] = useState<{ front: number; rear: number; total: number }>({ front: 1, rear: 1, total: 2 });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -285,6 +288,15 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const garmentsList = [...catalogGarments, ...uploadedGarments];
 
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!isPreviewExpanded) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsPreviewExpanded(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPreviewExpanded]);
   const sessionRef = useRef<LiveTryOnSessionHandle | null>(null);
   const localPreviewStreamRef = useRef<MediaStream | null>(null);
   const isConnectingRef = useRef(false);
@@ -568,6 +580,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const handleGarmentClick = (item: GarmentItem) => {
     const prev = selectedGarment;
     setSelectedGarment(item.id);
+    if (onSelectProductId && (item.productId || item.id)) {
+      onSelectProductId(item.productId || item.id);
+    }
     if (prev !== item.id) {
       analytics.trackArTryOnProductChanged(item.id, prev);
     }
@@ -600,6 +615,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
     setUploadedGarments((prev) => [newGarment, ...prev]);
     setSelectedGarment(customId);
+    if (onSelectProductId) {
+      onSelectProductId(customId);
+    }
 
     // Warm up compression in background
     prepareGarmentForLiveTryOn(file).catch(() => {});
@@ -720,7 +738,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       setFlash(false);
       if (!isTutorial) {
         stopLiveSession();
-        onNavigate('tryon-result');
+        const activeProdId = activeGarmentObj?.productId || activeGarmentObj?.id || selectedGarment;
+        onNavigate('tryon-result', activeProdId ? { productId: activeProdId } : undefined);
       }
     }, 300);
   };
@@ -911,7 +930,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       </section>
 
       {/* 3. Camera Preview Area (Optimized for Mobile Phone Visibility) */}
-      <section data-tutorial-target="ar-camera-preview" className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
+      <section data-tutorial-target="ar-camera-preview" className={`relative w-full overflow-hidden bg-slate-950 shadow-2xl group ${isPreviewExpanded ? 'fixed inset-0 z-[100] h-[100dvh] min-h-0 max-h-none rounded-none border-0' : 'aspect-[3/4] max-h-[44vh] min-h-[300px] rounded-[24px] border border-white/15'}`}>
         {/* Hardware-accelerated Video Layer */}
         <LiveTryOnViewport
           videoRef={videoRef}
@@ -951,6 +970,16 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         </div>
 
         {/* Top Status Pill: Camera ready / Live status */}
+        <button
+          type="button"
+          onClick={() => setIsPreviewExpanded((expanded) => !expanded)}
+          className="absolute top-3 right-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-[#111322]/85 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-[#1C1F36] active:scale-95"
+          title={isPreviewExpanded ? 'Exit full screen' : 'Full screen camera'}
+          aria-label={isPreviewExpanded ? 'Exit full screen camera' : 'View camera full screen'}
+        >
+          <span className="material-symbols-outlined text-lg">{isPreviewExpanded ? 'fullscreen_exit' : 'fullscreen'}</span>
+        </button>
+
         <div className="absolute top-3 inset-x-0 flex justify-center z-30 pointer-events-none">
           <div className="max-w-[calc(100%-1rem)] bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
             <span
@@ -1105,13 +1134,6 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       <section>
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-base font-bold text-white">{t('arTryOn.selectOutfit')}</h2>
-          <button 
-            type="button"
-            onClick={() => onNavigate('showroom')}
-            className="text-xs font-semibold text-[#8B6DFD] hover:text-[#A594FD] flex items-center transition-colors cursor-pointer"
-          >
-            {t('arTryOn.viewAll')} <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
-          </button>
         </div>
 
         {/* Horizontal Carousel (Touch-smooth on phone) */}

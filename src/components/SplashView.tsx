@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -10,24 +10,36 @@ interface SplashViewProps {
 export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
   const { t } = useI18n();
   const [progressReady, setProgressReady] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const completedRef = useRef(false);
+
+  const triggerComplete = () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onCompleteRef.current();
+  };
 
   useEffect(() => {
     const progressStart = window.setTimeout(() => {
       setProgressReady(true);
-    }, 250);
+    }, 150);
 
     const timeout = setTimeout(() => {
-      onComplete();
-    }, 3200);
+      triggerComplete();
+    }, 2800);
 
     return () => {
       clearTimeout(progressStart);
       clearTimeout(timeout);
     };
-  }, [onComplete]);
+  }, []);
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-[linear-gradient(180deg,#ECE7FF_0%,#F2EEFF_48%,#F2EEFF_100%)] font-sans text-[#131426]">
+    <div
+      onClick={triggerComplete}
+      className="min-h-screen w-full relative overflow-hidden bg-[linear-gradient(180deg,#ECE7FF_0%,#F2EEFF_48%,#F2EEFF_100%)] font-sans text-[#131426] cursor-pointer select-none"
+    >
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(85, 59, 226,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(85, 59, 226,0.08)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40"></div>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.45)_26%,rgba(234,229,255,0.28)_54%,transparent_76%)]"></div>
       <div className="absolute left-1/2 bottom-[-24vh] h-[48vh] w-[130vw] max-w-[980px] -translate-x-1/2 rounded-[50%_50%_0_0] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.72)_46%,rgba(234,229,255,0.52)_72%,rgba(85, 59, 226,0.12)_100%)] shadow-[0_-18px_70px_rgba(255,255,255,0.92)]"></div>

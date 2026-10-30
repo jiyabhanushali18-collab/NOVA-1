@@ -7,6 +7,25 @@
  */
 
 export const DEFAULT_PRODUCTION_URL = 'https://nova.nova-fashion.workers.dev';
+// The public web app is hosted on Cloudflare; API routes are served by the
+// long-running Render backend. Keep unsubscribe actions on the API origin.
+export const DEFAULT_PRODUCTION_API_URL = 'https://nova-1-1.onrender.com';
+
+export function getPublicApiUrl(): string {
+  const envUrl = process.env.PUBLIC_API_URL?.trim();
+  const candidate = envUrl || DEFAULT_PRODUCTION_API_URL;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'https:' || parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+      console.warn('[AppUrlConfig] Ignoring non-production PUBLIC_API_URL; using configured production backend.');
+      return DEFAULT_PRODUCTION_API_URL;
+    }
+    return parsed.origin;
+  } catch {
+    console.warn('[AppUrlConfig] Invalid PUBLIC_API_URL; using configured production backend.');
+    return DEFAULT_PRODUCTION_API_URL;
+  }
+}
 
 /**
  * Returns the validated public application URL.
@@ -77,7 +96,7 @@ export function buildMarketingCtaUrl(ctaPath: string = '/?screen=home', params?:
  * Build CAN-SPAM / GDPR compliant unsubscribe URL.
  */
 export function buildUnsubscribeUrl(email: string, token: string): string {
-  const base = getPublicAppUrl();
+  const base = getPublicApiUrl();
   return `${base}/api/marketing/unsubscribe?email=${encodeURIComponent(email.trim().toLowerCase())}&token=${encodeURIComponent(token)}`;
 }
 

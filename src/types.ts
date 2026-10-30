@@ -19,6 +19,7 @@ export type ScreenId =
   | 'email-verification'
   | 'splash'
   | 'onboarding'
+  | 'onboarding-tour'
   | 'setup-preferences'
   | 'profile-analysis'
   | 'terms'
