@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ScreenId, ChatMessage, ProductItem } from '../types';
 import { useI18n } from '../i18n';
+import { apiUrl } from '../services/apiClient';
 
 interface ChatViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -53,7 +54,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNavigate, userName, produc
         content: m.content,
       }));
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

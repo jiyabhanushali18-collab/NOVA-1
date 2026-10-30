@@ -1,3 +1,4 @@
+import { apiUrl } from './apiClient';
 import { NovaStyleAnalysisResult } from '../types';
 
 interface AnalyzeSelfiePayload {
@@ -31,7 +32,7 @@ export const analyzeSelfie = async ({
       throw new Error('Please upload a supported image file so NOVA can send the selfie to Gemini.');
     }
 
-    const response = await fetch('/api/analyze-selfie', {
+    const response = await fetch(apiUrl('/api/analyze-selfie'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageDataUrl, userId, forceRefresh })

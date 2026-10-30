@@ -554,5 +554,6 @@
   "profile.editProfile.changePhoto": "Change Photo",
   "profile.editProfile.uploadPhoto": "Upload Photo",
   "profile.editProfile.removePhoto": "Remove Photo",
-  "profile.settings.faq": "Frequently Asked Questions"
+  "profile.settings.faq": "Frequently Asked Questions",
+  "profile.settings.interactiveGuides": "Tutorial Guide"
 }

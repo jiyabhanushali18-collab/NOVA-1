@@ -23,3 +23,5 @@ serviceAccount.json
 
 # Temporary audit output and scratch scripts
 scratch/
+
+server/data/

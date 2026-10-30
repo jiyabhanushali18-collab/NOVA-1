@@ -554,5 +554,6 @@
   "profile.editProfile.changePhoto": "फोटो बदलें",
   "profile.editProfile.uploadPhoto": "फोटो अपलोड करें",
   "profile.editProfile.removePhoto": "फोटो हटाएं",
-  "profile.settings.faq": "अक्सर पूछे जाने वाले प्रश्न (FAQ)"
+  "profile.settings.faq": "अक्सर पूछे जाने वाले प्रश्न (FAQ)",
+  "profile.settings.interactiveGuides": "Tutorial Guide"
 }

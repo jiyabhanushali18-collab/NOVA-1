@@ -2673,26 +2673,40 @@ export default function App() {
                   const defaultColor = getDefaultProductColor(prod);
                   const defaultSize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : 'One Size';
                   return (
-                    <div key={productId} className={`flex items-center gap-3 p-2 rounded-xl border ${isDarkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-[#E4DFF5] hover:bg-[#F2EEFF]'}`}>
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#F2EEFF] border border-[#E2DBF8]">
-                        <img alt={prod.name} src={prod.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{prod.name}</div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>â‚¹{prod.price}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                    <div key={productId} className={`flex items-center justify-between gap-3 p-2 rounded-xl border transition-colors ${isDarkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-[#E4DFF5] hover:bg-[#F2EEFF]'}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsWishlistOpen(false);
+                          navigate('product-details', { productId, product: prod });
+                        }}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer group bg-transparent border-0 p-0 focus:outline-none"
+                        title={prod.name}
+                      >
+                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#F2EEFF] border border-[#E2DBF8] shrink-0">
+                          <img alt={prod.name} src={prod.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" referrerPolicy="no-referrer" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-xs font-bold truncate group-hover:text-[#553BE2] transition-colors ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{prod.name}</div>
+                          <div className={`text-[11px] font-semibold mt-0.5 ${isDarkMode ? 'text-slate-300' : 'text-[#553BE2]'}`}>₹{Number(prod.price || 0).toLocaleString('en-IN')}</div>
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleAddToCart(productId, defaultColor, defaultSize);
                           }}
-                          className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold"
+                          className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold active:scale-95 transition-transform"
                         >{t('wishlist.add')}</button>
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleToggleWishlist(productId);
                           }}
-                          className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100"
+                          className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100 hover:bg-red-100 active:scale-95 transition-transform"
                         >{t('wishlist.remove')}</button>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createDecartClient, models } from '@decartai/sdk';
 import type { RealTimeClient } from '@decartai/sdk';
+import { apiUrl } from '../services/apiClient';
 
 interface DecartTryOnViewProps {
   onBack?: () => void;
@@ -48,7 +49,7 @@ export const DecartTryOnView: React.FC<DecartTryOnViewProps> = ({ onBack }) => {
       setStatus('Connecting to Decart AI...');
       const client = createDecartClient({
         apiKeyProvider: async () => {
-          const res = await fetch('/api/token');
+          const res = await fetch(apiUrl('/api/vton/token'));
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to fetch token');

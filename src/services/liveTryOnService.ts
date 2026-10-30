@@ -190,6 +190,11 @@ export async function getLiveTryOnToken(): Promise<string> {
               throw new Error(errorJson.error || `Server HTTP ${response.status}`);
             }
 
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+              throw new Error(`Server returned non-JSON response (${contentType || 'empty'})`);
+            }
+
             const data = await response.json();
             const token = data.apiKey || data.token;
             if (!token) {

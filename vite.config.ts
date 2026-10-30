@@ -41,7 +41,7 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {
         // ignore large native/android build trees to avoid dep-scan restarts
-        ignored: ['**/android/**', '**/android/*/**', '**/build/**', '**/android/app/build/**']
+        ignored: ['**/android/**', '**/android/*/**', '**/build/**', '**/android/app/build/**', '**/server/data/**', '**/scratch/**']
       },
     },
   };
