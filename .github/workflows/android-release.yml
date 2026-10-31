@@ -128,7 +128,7 @@ keyPassword=$ANDROID_KEY_PASSWORD
 EOF
 
       - name: Sync Capacitor Android
-        run: npx cap sync android
+        run: npx cap copy android
 
       - name: Build signed release APK
         working-directory: android
