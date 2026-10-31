@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ScreenId, ProductItem, NovaAiPersonalProfile, NovaAiProductRecommendation } from '../types';
 import { apiUrl } from '../services/apiClient';
 
@@ -27,8 +27,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
   const [recommendations, setRecommendations] = useState<NovaAiProductRecommendation[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [recommendationsError, setRecommendationsError] = useState('');
+  const [currentRecIndex, setCurrentRecIndex] = useState(0);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const activeAnalysisAbortRef = useRef<AbortController | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
 
   /**
    * Client-side image validation and downscaling via Canvas
@@ -80,13 +83,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
     });
   };
 
-  const activeAnalysisAbortRef = useRef<AbortController | null>(null);
-
   const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Reset previous analysis state and abort ongoing request
     if (activeAnalysisAbortRef.current) {
       activeAnalysisAbortRef.current.abort();
       activeAnalysisAbortRef.current = null;
@@ -96,6 +96,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
     setAnalysisStatus('idle');
     setProfile(null);
     setRecommendations([]);
+    setCurrentRecIndex(0);
 
     try {
       const { base64, mimeType } = await processImageFile(file);
@@ -120,6 +121,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
     setProfile(null);
     setRecommendations([]);
     setAnalysisError('');
+    setCurrentRecIndex(0);
     if (photoInputRef.current) photoInputRef.current.value = '';
   };
 
@@ -143,8 +145,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
       const data = await res.json();
       if (data.success && Array.isArray(data.recommendations)) {
         setRecommendations(data.recommendations);
+        setCurrentRecIndex(0);
       } else {
         setRecommendations([]);
+        setCurrentRecIndex(0);
       }
     } catch (err: any) {
       console.error('Error fetching recommendations:', err);
@@ -155,7 +159,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
   };
 
   /**
-   * Invokes Gemini image analysis for personal profile
+   * Invokes NOVA AI image analysis for personal profile
    */
   const handleAnalyzePhoto = async () => {
     if (!photoBase64 || analysisStatus === 'loading') return;
@@ -191,7 +195,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
       }
 
       if (!res.ok || !data.success || !data.profile) {
-        throw new Error(data.error || 'Gemini visual analysis could not determine profile attributes.');
+        throw new Error(data.error || 'NOVA AI visual analysis could not determine profile attributes.');
       }
 
       const newProfile: NovaAiPersonalProfile = {
@@ -232,11 +236,57 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
     await fetchRecommendations(updated);
   };
 
+  // Carousel Stepper Handlers
+  const handlePrevRec = () => {
+    if (recommendations.length <= 1) return;
+    setCurrentRecIndex((prev) => (prev > 0 ? prev - 1 : recommendations.length - 1));
+  };
+
+  const handleNextRec = () => {
+    if (recommendations.length <= 1) return;
+    setCurrentRecIndex((prev) => (prev < recommendations.length - 1 ? prev + 1 : 0));
+  };
+
+  // Mobile Touch Swipe Handling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handleNextRec();
+      } else {
+        handlePrevRec();
+      }
+    }
+    touchStartXRef.current = null;
+  };
+
+  // Keyboard Navigation for Looks
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (recommendations.length <= 1) return;
+      if (e.key === 'ArrowLeft') {
+        handlePrevRec();
+      } else if (e.key === 'ArrowRight') {
+        handleNextRec();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [recommendations.length]);
+
   const effectiveBodyShape = profile?.userConfirmedBodyShape || profile?.bodyShape;
   const effectiveSkinTone = profile?.userConfirmedSkinTone || profile?.skinTone;
   const effectiveUndertone = profile?.userConfirmedUndertone || profile?.undertone;
   const effectiveSize = profile?.userConfirmedSize || profile?.suggestedSize;
   const isSizeConfirmed = Boolean(profile?.userConfirmedSize);
+
+  const safeIndex = Math.min(Math.max(0, currentRecIndex), Math.max(0, recommendations.length - 1));
+  const activeRec = recommendations[safeIndex];
 
   return (
     <div className="nova-ai-shell flex flex-col min-h-screen pb-24 -mx-4 px-3 sm:px-5 bg-[#0D1527] text-white">
@@ -250,14 +300,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
           {userName ? `Welcome, ${userName}` : 'Your Style, Understood.'}
         </h1>
         <p className="text-sm text-slate-300 mt-2 max-w-lg leading-relaxed">
-          Upload your photo to run Gemini visual analysis on your body proportions and undertones, unlocking tailored clothing recommendations from the catalogue.
+          Upload your photo to run NOVA AI visual analysis on your body proportions and undertones, unlocking tailored clothing recommendations from the catalogue.
         </p>
       </header>
 
-      {/* 2. Photo Upload & Gemini Analysis Panel */}
+      {/* 2. Photo Upload & Profile Analysis Panel */}
       <section className="nova-profile-panel rounded-2xl p-5 mb-5 bg-[#14182E] border border-violet-500/30 shadow-lg">
         {/* Upload Row */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-black/40 border-2 border-violet-500/30 shrink-0 flex items-center justify-center shadow-inner group">
               {photoPreview ? (
@@ -267,25 +317,25 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-white flex items-center gap-2">
-                NOVA AI Personal Profile
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-bold text-white">NOVA AI Personal Profile</p>
                 {profile && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                     Analyzed
                   </span>
                 )}
-              </p>
-              <p className="text-xs text-slate-400 truncate">
+              </div>
+              <p className="text-xs text-slate-400 truncate mt-0.5">
                 {photoPreview
                   ? profile
                     ? 'Visual attributes active for product recommendations'
-                    : 'Photo loaded — ready for Gemini visual analysis'
+                    : 'Photo loaded — ready for NOVA AI visual analysis'
                   : 'Upload a clear full-length or upper-body photograph'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
             <input
               ref={photoInputRef}
               type="file"
@@ -327,20 +377,20 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
 
         {/* Action Button: Analyse Photo */}
         {photoPreview && !profile && (
-          <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+          <div className="mt-4 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-xs text-slate-300">
-              Gemini will identify your body shape, skin tone and undertone, and tentative clothing size.
+              NOVA AI will identify your body shape, skin tone and undertone, and tentative clothing size.
             </p>
             <button
               type="button"
               onClick={handleAnalyzePhoto}
               disabled={analysisStatus === 'loading'}
-              className="shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-xs font-bold text-white shadow-lg shadow-violet-600/40 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-xs font-bold text-white shadow-lg shadow-violet-600/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
             >
               {analysisStatus === 'loading' ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Analysing with Gemini…</span>
+                  <span>Analysing with NOVA AI…</span>
                 </>
               ) : (
                 <>
@@ -372,36 +422,36 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
         )}
 
         {/* Profile Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
           {/* 1. Body Shape */}
-          <div className="rounded-xl p-3.5 bg-black/30 border border-white/10 flex flex-col justify-between">
+          <div className="rounded-2xl p-4 bg-black/30 border border-white/10 flex flex-col justify-between min-w-0 shadow-sm">
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
                 <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Body Shape</p>
                 {profile && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold shrink-0">
                     {profile.bodyShapeConfidence}% confidence
                   </span>
                 )}
               </div>
-              <p className="text-sm font-bold text-white mt-1.5">
+              <p className="text-base font-extrabold text-white mt-1.5">
                 {effectiveBodyShape || (analysisStatus === 'loading' ? 'Detecting proportions…' : analysisStatus === 'error' ? 'Analysis failed' : 'Awaiting analysis')}
               </p>
               {profile && (
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
                   {profile.bodyShapeExplanation}
                 </p>
               )}
             </div>
 
             {profile && (
-              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
-                <span className="text-[10px] text-slate-500">Correct if needed:</span>
+              <div className="mt-4 pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-400 shrink-0">Correct if needed:</span>
                 <select
                   value={effectiveBodyShape}
                   onChange={(e) => handleUpdateProfileAttribute({ userConfirmedBodyShape: e.target.value })}
                   aria-label="Select body shape"
-                  className="text-xs bg-[#1A1D36] border border-violet-500/40 rounded-lg px-2 py-1 text-violet-200 focus:outline-none"
+                  className="text-xs bg-[#1A1D36] border border-violet-500/40 rounded-lg px-2.5 py-1.5 text-violet-200 focus:outline-none w-full sm:w-auto"
                 >
                   {BODY_SHAPE_OPTIONS.map((shape) => (
                     <option key={shape} value={shape}>{shape}</option>
@@ -412,17 +462,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
           </div>
 
           {/* 2. Skin Tone & Undertone */}
-          <div className="rounded-xl p-3.5 bg-black/30 border border-white/10 flex flex-col justify-between">
+          <div className="rounded-2xl p-4 bg-black/30 border border-white/10 flex flex-col justify-between min-w-0 shadow-sm">
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
                 <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Skin Tone & Undertone</p>
                 {profile && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold shrink-0">
                     {profile.skinToneConfidence}% confidence
                   </span>
                 )}
               </div>
-              <p className="text-sm font-bold text-white mt-1.5">
+              <p className="text-base font-extrabold text-white mt-1.5">
                 {profile
                   ? `${effectiveSkinTone} • ${effectiveUndertone} Undertone`
                   : analysisStatus === 'loading'
@@ -432,45 +482,48 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
                   : 'Awaiting analysis'}
               </p>
               {profile && (
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
                   {profile.skinToneExplanation}
                 </p>
               )}
             </div>
 
             {profile && (
-              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-1">
-                <select
-                  value={effectiveSkinTone}
-                  onChange={(e) => handleUpdateProfileAttribute({ userConfirmedSkinTone: e.target.value })}
-                  aria-label="Select skin tone"
-                  className="text-xs bg-[#1A1D36] border border-violet-500/40 rounded-lg px-2 py-1 text-violet-200 focus:outline-none"
-                >
-                  {SKIN_TONE_OPTIONS.map((tone) => (
-                    <option key={tone} value={tone}>{tone}</option>
-                  ))}
-                </select>
-                <select
-                  value={effectiveUndertone}
-                  onChange={(e) => handleUpdateProfileAttribute({ userConfirmedUndertone: e.target.value })}
-                  aria-label="Select undertone"
-                  className="text-xs bg-[#1A1D36] border border-violet-500/40 rounded-lg px-2 py-1 text-violet-200 focus:outline-none"
-                >
-                  {UNDERTONE_OPTIONS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
+              <div className="mt-4 pt-3 border-t border-white/10 flex flex-col gap-1.5">
+                <span className="text-[10px] text-slate-400">Correct if needed:</span>
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <select
+                    value={effectiveSkinTone}
+                    onChange={(e) => handleUpdateProfileAttribute({ userConfirmedSkinTone: e.target.value })}
+                    aria-label="Select skin tone"
+                    className="text-xs bg-[#1A1D36] border border-violet-500/40 rounded-lg px-2 py-1.5 text-violet-200 focus:outline-none truncate"
+                  >
+                    {SKIN_TONE_OPTIONS.map((tone) => (
+                      <option key={tone} value={tone}>{tone}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={effectiveUndertone}
+                    onChange={(e) => handleUpdateProfileAttribute({ userConfirmedUndertone: e.target.value })}
+                    aria-label="Select undertone"
+                    className="text-xs bg-[#1A1D36] border border-violet-500/40 rounded-lg px-2 py-1.5 text-violet-200 focus:outline-none truncate"
+                  >
+                    {UNDERTONE_OPTIONS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
           </div>
 
           {/* 3. Clothing Size */}
-          <div className="rounded-xl p-3.5 bg-black/30 border border-white/10 flex flex-col justify-between">
+          <div className="rounded-2xl p-4 bg-black/30 border border-white/10 flex flex-col justify-between min-w-0 shadow-sm">
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
                 <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Clothing Size</p>
                 {profile && (
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${
                     isSizeConfirmed
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
@@ -479,7 +532,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
                   </span>
                 )}
               </div>
-              <p className="text-sm font-bold text-white mt-1.5">
+              <p className="text-base font-extrabold text-white mt-1.5">
                 {profile
                   ? effectiveSize && effectiveSize !== 'unknown'
                     ? `Size ${effectiveSize}`
@@ -491,25 +544,25 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
                   : 'Awaiting analysis'}
               </p>
               {profile && (
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
                   {profile.sizeExplanation}
                 </p>
               )}
             </div>
 
             {profile && (
-              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
-                <span className="text-[10px] text-slate-500">Confirm size:</span>
-                <div className="flex gap-1">
+              <div className="mt-4 pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-400 shrink-0">Confirm size:</span>
+                <div className="flex items-center gap-1.5">
                   {SIZE_OPTIONS.map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => handleUpdateProfileAttribute({ userConfirmedSize: s })}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         effectiveSize === s
-                          ? 'bg-violet-600 text-white shadow-sm'
-                          : 'bg-white/5 text-slate-400 hover:text-white'
+                          ? 'bg-violet-600 text-white shadow-sm ring-1 ring-violet-400'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                       }`}
                     >
                       {s}
@@ -522,14 +575,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
         </div>
       </section>
 
-      {/* 3. Personalized Individual Product Recommendations Feed */}
+      {/* 3. Personalized Single Product Recommendation Feed */}
       {profile ? (
         <section className="nova-recommendations-section mb-6">
-          <div className="flex items-center justify-between mb-4 px-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-1">
             <div>
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-violet-400 text-lg">auto_awesome</span>
-                <h2 className="text-lg font-black text-white tracking-tight">Personalized Clothing Recommendations</h2>
+                <span className="material-symbols-outlined text-violet-400 text-xl">auto_awesome</span>
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Personalized Clothing Recommendations</h2>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Curated for your {effectiveBodyShape} silhouette, {effectiveUndertone.toLowerCase()} undertones, and size {effectiveSize}.
@@ -539,7 +592,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
               type="button"
               onClick={() => fetchRecommendations(profile)}
               disabled={recommendationsLoading}
-              className="text-xs text-violet-300 hover:text-white flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors disabled:opacity-50 cursor-pointer"
+              className="self-start sm:self-auto text-xs text-violet-300 hover:text-white flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <span className={`material-symbols-outlined text-sm ${recommendationsLoading ? 'animate-spin' : ''}`}>
                 refresh
@@ -553,7 +606,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
             <div className="p-10 rounded-3xl bg-[#14182E] border border-violet-500/20 text-center shadow-lg">
               <div className="w-9 h-9 mx-auto border-3 border-violet-500 border-t-transparent rounded-full animate-spin mb-3.5" />
               <p className="text-sm font-bold text-violet-200">NOVA AI curating products from catalogue…</p>
-              <p className="text-xs text-slate-400 mt-1">Evaluating silhouette compatibility, color harmony & size availability</p>
+              <p className="text-xs text-slate-400 mt-1">Evaluating silhouette compatibility, color harmony &amp; size availability</p>
             </div>
           )}
 
@@ -564,123 +617,226 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
             </div>
           )}
 
-          {/* Product Cards Feed matching reference styling */}
-          {!recommendationsLoading && recommendations.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {recommendations.map((rec) => {
-                const catalogueMatch = products[rec.productId] || Object.values(products).find((p) => p.id === rec.productId);
+          {/* Single Product Card View (Show only one product at a time) */}
+          {!recommendationsLoading && recommendations.length > 0 && activeRec && (
+            <div className="space-y-4">
+              {/* Stepper Navigation & Dots Bar */}
+              <div className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-[#14182E] border border-violet-500/20 shadow-md">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-violet-300">
+                    Look {safeIndex + 1} of {recommendations.length}
+                  </span>
+                  <span className="hidden sm:inline text-[11px] text-slate-400">
+                    • {activeRec.matchScore}% Match
+                  </span>
+                </div>
 
-                return (
-                  <article
-                    key={rec.productId}
-                    className="overflow-hidden rounded-3xl bg-[#14182E] border border-violet-500/25 hover:border-violet-500/60 transition-all duration-300 flex flex-col justify-between shadow-xl group"
+                {/* Clickable Pagination Dots */}
+                <div className="flex items-center gap-1.5">
+                  {recommendations.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentRecIndex(idx)}
+                      aria-label={`Go to look ${idx + 1}`}
+                      className={`h-2 transition-all duration-300 rounded-full cursor-pointer ${
+                        idx === safeIndex
+                          ? 'w-6 bg-gradient-to-r from-violet-500 to-indigo-500 shadow-sm shadow-violet-500/50'
+                          : 'w-2 bg-white/20 hover:bg-white/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Previous & Next Header Arrow Buttons */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handlePrevRec}
+                    aria-label="Previous recommendation"
+                    className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
                   >
-                    <div>
-                      {/* Image container */}
-                      <div className="relative w-full h-64 sm:h-72 bg-[#0C1022] overflow-hidden flex items-center justify-center p-3">
-                        <img
-                          src={rec.imageUrl}
-                          alt={rec.name}
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                        />
-                        {/* Top-Right: Match Percentage Badge */}
-                        <div className="absolute top-3.5 right-3.5 px-3 py-1 rounded-full bg-[#0D1527]/90 backdrop-blur-md border border-violet-400/50 text-violet-200 text-xs font-black shadow-lg">
-                          {rec.matchScore}% Match
-                        </div>
-                        {/* Top-Left: Recommended Size Badge */}
-                        <div className={`absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-[#0D1527]/90 backdrop-blur-md border text-xs font-bold shadow-lg ${
-                          rec.sizeStatus === 'user_confirmed'
-                            ? 'border-emerald-400/50 text-emerald-300'
-                            : 'border-amber-400/50 text-amber-300'
-                        }`}>
-                          Size {rec.recommendedSize} • {rec.sizeStatus === 'user_confirmed' ? 'User confirmed' : 'Estimated'}
+                    <span className="material-symbols-outlined text-base">chevron_left</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextRec}
+                    aria-label="Next recommendation"
+                    className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-base">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Focused Single Product Card */}
+              <article
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className="overflow-hidden rounded-3xl bg-[#14182E] border border-violet-500/30 hover:border-violet-500/60 transition-all duration-300 shadow-2xl flex flex-col group"
+              >
+                {/* Large Product Hero Showcase Image */}
+                <div className="relative w-full h-80 sm:h-96 bg-[#0C1022] overflow-hidden flex items-center justify-center p-4">
+                  <img
+                    src={activeRec.imageUrl}
+                    alt={activeRec.name}
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                  />
+
+                  {/* Top-Right: Match Percentage Badge */}
+                  <div className="absolute top-4 right-4 px-3.5 py-1.5 rounded-full bg-[#0D1527]/90 backdrop-blur-md border border-violet-400/50 text-violet-200 text-xs font-black shadow-lg flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-violet-400">auto_awesome</span>
+                    {activeRec.matchScore}% Match
+                  </div>
+
+                  {/* Top-Left: Recommended Size Badge */}
+                  <div className={`absolute top-4 left-4 px-3.5 py-1.5 rounded-full bg-[#0D1527]/90 backdrop-blur-md border text-xs font-bold shadow-lg ${
+                    activeRec.sizeStatus === 'user_confirmed'
+                      ? 'border-emerald-400/50 text-emerald-300'
+                      : 'border-amber-400/50 text-amber-300'
+                  }`}>
+                    Size {activeRec.recommendedSize} • {activeRec.sizeStatus === 'user_confirmed' ? 'User confirmed' : 'Estimated'}
+                  </div>
+
+                  {/* Side Navigation Buttons (Hover/Tap) */}
+                  <button
+                    type="button"
+                    onClick={handlePrevRec}
+                    aria-label="Previous look"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#0D1527]/80 hover:bg-[#0D1527] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all opacity-80 hover:opacity-100 hover:scale-110 shadow-lg cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-xl">chevron_left</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextRec}
+                    aria-label="Next look"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#0D1527]/80 hover:bg-[#0D1527] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all opacity-80 hover:opacity-100 hover:scale-110 shadow-lg cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-xl">chevron_right</span>
+                  </button>
+                </div>
+
+                {/* Content Details */}
+                <div className="p-5 sm:p-7">
+                  {/* Category & Price */}
+                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span className="uppercase font-bold tracking-wider text-violet-300 text-xs px-2.5 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/20">
+                      {activeRec.category}
+                    </span>
+                    <span className="font-extrabold text-white text-2xl">
+                      ₹{activeRec.price.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  {/* Product Title */}
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                    {activeRec.name}
+                  </h3>
+
+                  {/* Attribute Badges */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {activeRec.primaryColor && (
+                      <span className="text-xs px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-violet-400 inline-block" />
+                        {activeRec.primaryColor}
+                      </span>
+                    )}
+                    {activeRec.fit && (
+                      <span className="text-xs px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold">
+                        {activeRec.fit} fit
+                      </span>
+                    )}
+                    {activeRec.subcategory && (
+                      <span className="text-xs px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold">
+                        {activeRec.subcategory}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* NOVA AI Styling Analysis Box */}
+                  <div className="mt-5 p-4 sm:p-5 rounded-2xl border border-[#30264e] bg-[#0e0f1e]/90 text-slate-300 shadow-inner">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="material-symbols-outlined text-base text-[#a855f7]">psychology</span>
+                      <span className="text-xs font-black uppercase tracking-wider text-[#a855f7]">
+                        NOVA AI Styling Analysis
+                      </span>
+                    </div>
+                    <div className="space-y-3 text-xs sm:text-sm leading-relaxed text-slate-300">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-[#a855f7] font-bold text-base leading-none mt-0.5">•</span>
+                        <div>
+                          <strong className="text-white font-semibold">Silhouette Harmony:</strong>{' '}
+                          <span className="text-slate-300">{activeRec.reasoning.silhouetteHarmonies}</span>
                         </div>
                       </div>
-
-                      {/* Content Section */}
-                      <div className="p-5">
-                        <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-                          <span className="uppercase font-bold tracking-wider text-violet-300 text-[11px]">{rec.category}</span>
-                          <span className="font-extrabold text-white text-base">₹{rec.price.toLocaleString('en-IN')}</span>
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-[#a855f7] font-bold text-base leading-none mt-0.5">•</span>
+                        <div>
+                          <strong className="text-white font-semibold">Colour Harmony:</strong>{' '}
+                          <span className="text-slate-300">{activeRec.reasoning.colorHarmonies}</span>
                         </div>
-                        <h3 className="text-base font-extrabold text-white tracking-tight line-clamp-1">{rec.name}</h3>
-
-                        {/* Attribute Badges */}
-                        <div className="flex flex-wrap gap-2 mt-2.5">
-                          {rec.primaryColor && (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
-                              {rec.primaryColor}
-                            </span>
-                          )}
-                          {rec.fit && (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold">
-                              {rec.fit} fit
-                            </span>
-                          )}
-                          {rec.subcategory && (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-slate-200 font-semibold">
-                              {rec.subcategory}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* NOVA AI Styling Analysis Box (Reference Styling) */}
-                        <div className="mt-4 p-4 rounded-2xl border border-[#30264e] bg-[#0e0f1e]/80 text-slate-300 text-xs">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="material-symbols-outlined text-sm text-[#a855f7]">psychology</span>
-                            <span className="text-xs font-black uppercase tracking-wider text-[#a855f7]">
-                              NOVA AI Styling Analysis
-                            </span>
-                          </div>
-                          <div className="space-y-1.5 text-xs leading-relaxed text-slate-300">
-                            <p className="flex items-start gap-2">
-                              <span className="text-[#a855f7] font-bold">•</span>
-                              <span><strong className="text-white">Silhouette:</strong> {rec.reasoning.silhouetteHarmonies}</span>
-                            </p>
-                            <p className="flex items-start gap-2">
-                              <span className="text-[#a855f7] font-bold">•</span>
-                              <span><strong className="text-white">Colour:</strong> {rec.reasoning.colorHarmonies}</span>
-                            </p>
-                            <p className="flex items-start gap-2">
-                              <span className="text-[#a855f7] font-bold">•</span>
-                              <span><strong className="text-white">Fit &amp; Size:</strong> {rec.sizeReason}</span>
-                            </p>
-                          </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-[#a855f7] font-bold text-base leading-none mt-0.5">•</span>
+                        <div>
+                          <strong className="text-white font-semibold">Fit &amp; Size Guidance:</strong>{' '}
+                          <span className="text-slate-300">{activeRec.sizeReason}</span>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Card Action Footer */}
-                    <div className="p-5 pt-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (catalogueMatch && onSelectProduct) {
-                            onSelectProduct(catalogueMatch);
-                          } else if (onSelectProduct) {
-                            onSelectProduct({
-                              id: rec.productId,
-                              name: rec.name,
-                              price: rec.price,
-                              imageUrl: rec.imageUrl,
-                              category: rec.category,
-                              subcategory: rec.subcategory,
-                              sizes: rec.availableSizes,
-                              colors: rec.colors,
-                              inStock: true
-                            } as any);
-                          }
-                        }}
-                        className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-violet-600/30 cursor-pointer active:scale-[0.99]"
-                      >
-                        <span className="material-symbols-outlined text-base">visibility</span>
-                        View Product Details
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+                  {/* Primary CTA Button */}
+                  <div className="mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const catalogueMatch = products[activeRec.productId] || Object.values(products).find((p) => p.id === activeRec.productId);
+                        if (catalogueMatch && onSelectProduct) {
+                          onSelectProduct(catalogueMatch);
+                        } else if (onSelectProduct) {
+                          onSelectProduct({
+                            id: activeRec.productId,
+                            name: activeRec.name,
+                            price: activeRec.price,
+                            imageUrl: activeRec.imageUrl,
+                            category: activeRec.category,
+                            subcategory: activeRec.subcategory,
+                            sizes: activeRec.availableSizes,
+                            colors: activeRec.colors,
+                            inStock: true
+                          } as any);
+                        }
+                      }}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-600/30 cursor-pointer active:scale-[0.99]"
+                    >
+                      <span className="material-symbols-outlined text-lg">visibility</span>
+                      View Product Details
+                    </button>
+                  </div>
+
+                  {/* Bottom Navigation Buttons */}
+                  <div className="mt-3.5 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePrevRec}
+                      className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 border border-white/10 cursor-pointer active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-base">arrow_back</span>
+                      Previous Look
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextRec}
+                      className="flex-1 py-3 rounded-xl bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 hover:text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 border border-violet-500/30 cursor-pointer active:scale-95"
+                    >
+                      Next Look
+                      <span className="material-symbols-outlined text-base">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
+              </article>
             </div>
           )}
 
@@ -701,7 +857,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
           </div>
           <h2 className="text-lg font-black text-white">Unlock Your NOVA AI Style Analysis</h2>
           <p className="text-xs text-slate-400 mt-1.5 max-w-md mx-auto leading-relaxed">
-            Upload a photo above to run Gemini visual analysis and receive personalized clothing recommendations with grounded styling explanations.
+            Upload a photo above to run NOVA AI visual analysis and receive personalized clothing recommendations with grounded styling explanations.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5 max-w-lg mx-auto">
             {['Body Shape Analysis', 'Skin Undertone Matching', 'Recommended Size XS–L', 'NOVA AI Styling Analysis'].map((item) => (
