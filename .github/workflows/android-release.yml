@@ -84,10 +84,11 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install Android SDK packages
         run: |
+          yes | sdkmanager --licenses || true
           sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Validate release version ordering
@@ -125,6 +126,9 @@ storePassword=$ANDROID_KEYSTORE_PASSWORD
 keyAlias=$ANDROID_KEY_ALIAS
 keyPassword=$ANDROID_KEY_PASSWORD
 EOF
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
 
       - name: Build signed release APK
         working-directory: android
