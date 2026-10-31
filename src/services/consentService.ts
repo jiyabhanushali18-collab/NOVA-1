@@ -1,3 +1,4 @@
+import { apiUrl } from './apiClient';
 import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -68,7 +69,7 @@ export const recordUserConsent = async (
 
   // 1. Record via backend endpoint (/api/auth/consent)
   try {
-    const response = await fetch('/api/auth/consent', {
+    const response = await fetch(apiUrl('/api/auth/consent'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -150,7 +151,7 @@ export const verifyUserConsentStatus = async (
   // 1. Check backend API first
   try {
     const response = await fetch(
-      `/api/auth/consent/${encodeURIComponent(lookupId)}`
+      apiUrl(`/api/auth/consent/${encodeURIComponent(lookupId)}`)
     );
     if (response.ok) {
       const data = await response.json();

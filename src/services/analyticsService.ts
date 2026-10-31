@@ -1,3 +1,4 @@
+import { apiUrl } from './apiClient';
 import { ProductItem, CartItem, OrderRecord } from '../types';
 
 export type AnalyticsEventType =
@@ -181,7 +182,7 @@ class AnalyticsService {
     if (this.queue.length === 0 || this.isFlushing) return true;
 
     const batch = [...this.queue];
-    const endpoint = '/api/analytics/events/batch';
+    const endpoint = apiUrl('/api/analytics/events/batch');
 
     // When page is unloading, try sendBeacon if supported
     if (useBeacon && typeof navigator !== 'undefined' && navigator.sendBeacon) {

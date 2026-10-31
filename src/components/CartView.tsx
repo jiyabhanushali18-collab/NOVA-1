@@ -1,6 +1,8 @@
 import { useI18n } from '../i18n';
+import { useBackHandler } from '../services/backButtonService';
 import React, { useEffect, useState } from 'react';
 import { ScreenId, CartItem, DeliveryAddress, OrderRecord } from '../types';
+import { getGarmentColorImage } from '../utils/arTryOnColors';
 import { analytics } from '../services/analyticsService';
 import {
   createOrderSnapshot,
@@ -53,6 +55,28 @@ export const CartView: React.FC<CartViewProps> = ({
   const { t } = useI18n();
   const effectiveIsGuest = isGuestIdentity(userId, isGuest);
   const [step, setStep] = useState<'cart' | 'address' | 'payment' | 'completed'>('cart');
+
+  // Priority 2: Navigate back through checkout steps before exiting Cart
+  useBackHandler('cart-steps', () => {
+    if (step === 'completed') {
+      setStep('cart');
+      onNavigate('home');
+      return true;
+    }
+    if (step === 'payment') {
+      setStep('address');
+      return true;
+    }
+    if (step === 'address') {
+      setStep('cart');
+      return true;
+    }
+    if (step === 'cart') {
+      onNavigate('home');
+      return true;
+    }
+    return false;
+  }, 40, true);
   const [couponCode, setCouponCode] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
   const [addressChoice, setAddressChoice] = useState<'home' | 'work'>('home');
@@ -477,7 +501,11 @@ export const CartView: React.FC<CartViewProps> = ({
                     
                     {/* Item Thumbnail */}
                     <div className="w-16 h-20 rounded-xl bg-[#F2EEFF] overflow-hidden shrink-0 border border-[#E4DFF5]">
-                      <img alt={item.product.name} className="w-full h-full object-cover" src={item.product.imageUrl} />
+                      <img
+                        alt={`${item.product.name} in ${item.color}`}
+                        className="w-full h-full object-cover"
+                        src={getGarmentColorImage(item.product, item.color) || item.product.imageUrl}
+                      />
                     </div>
 
                     {/* Details content row */}

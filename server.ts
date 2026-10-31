@@ -106,7 +106,15 @@ async function start() {
       server: {
         middlewareMode: true,
         allowedHosts: ['nova-1-1.onrender.com', 'nova-1-7ec7.onrender.com'],
-        hmr: { server }
+        hmr: { server },
+        watch: {
+          ignored: [
+            '**/server/data/**',
+            '**/scratch/**',
+            '**/android/**',
+            '**/firebase-export/**'
+          ]
+        }
       }
     });
 

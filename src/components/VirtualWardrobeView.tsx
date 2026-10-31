@@ -50,6 +50,7 @@ import {
   requestGarmentAnalysis
 } from '../services/wardrobeService';
 import { generateWardrobeOutfits } from '../services/wardrobeOutfitEngine';
+import { useBackHandler } from '../services/backButtonService';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -295,6 +296,24 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
   const [editDraft, setEditDraft] = useState<WardrobeItem | null>(null);
   const [outfitSeed, setOutfitSeed] = useState<WardrobeItem | null>(null);
   const [outfitPartnerId, setOutfitPartnerId] = useState<string>('');
+  // Priority 1: Close active item details, editing draft, or outfit seed overlays
+  const hasWardrobeOverlay = Boolean(selectedItem || editDraft || outfitSeed);
+  useBackHandler('virtual-wardrobe-overlays', () => {
+    if (editDraft) {
+      setEditDraft(null);
+      return true;
+    }
+    if (selectedItem) {
+      setSelectedItem(null);
+      return true;
+    }
+    if (outfitSeed) {
+      setOutfitSeed(null);
+      return true;
+    }
+    return false;
+  }, 100, hasWardrobeOverlay);
+
   const [savedOutfitCount, setSavedOutfitCount] = useState<number>(() => {
     return readLocalWardrobeOutfits({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail }).length;
   });

@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { ScreenId } from '../types';
-import { swatchImages, swipeModels } from '../data';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ProductItem, ScreenId } from '../types';
+import { products as defaultProducts, swipeModels } from '../data';
 import { getTryOnStyleScore, TryOnStyleScore } from '../services/tryOnScoreService';
 import { useI18n } from '../i18n';
 
 interface TryOnResultViewProps {
-  onNavigate: (screen: ScreenId) => void;
+  onNavigate: (screen: ScreenId, opts?: { productId?: string; product?: ProductItem }) => void;
   selectedColor: string;
   setSelectedColor: (color: string) => void;
   onAddToCart: (prodId: string, color: string, size: string) => void;
   selectedProductId?: string;
-  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon') => Promise<void>;
+  onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon', color?: string) => Promise<void>;
   capturedImage?: string | null;
   garmentName?: string;
   isLiveTryOnImage?: boolean;
+  products?: Record<string, ProductItem> | ProductItem[];
 }
 
 export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
@@ -21,11 +22,12 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   selectedColor,
   setSelectedColor,
   onAddToCart,
-  selectedProductId = 'lavender-hoodie',
+  selectedProductId,
   onSubmitReview,
   capturedImage,
   garmentName = '',
-  isLiveTryOnImage = false
+  isLiveTryOnImage = false,
+  products
 }) => {
   const { t } = useI18n();
   const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -37,18 +39,56 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   const [styleScoreError, setStyleScoreError] = useState<string | null>(null);
   const [scoreRequest, setScoreRequest] = useState(0);
 
-  const swatches = [
-    { name: 'Lavender', text: 'Lavender' },
-    { name: 'Mint Green', text: 'Mint Green' },
-    { name: 'Beige', text: 'Beige' },
-    { name: 'Black', text: 'Black' },
-    { name: 'Sky Blue', text: 'Sky Blue' }
+  // Camera tool features state: Rotate, Zoom, and Background
+  const [rotation, setRotation] = useState<number>(0);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [bgIndex, setBgIndex] = useState<number>(0);
+
+  const backgroundThemes = [
+    { name: 'Studio', class: 'bg-[#ECE7FF]' },
+    { name: 'Vibrant', class: 'bg-gradient-to-tr from-[#553BE2]/20 via-[#ECE7FF] to-pink-100' },
+    { name: 'Minimal', class: 'bg-slate-100' },
+    { name: 'Dark', class: 'bg-slate-900' }
   ];
 
-  // Get matching model preview based on selected color or fallback to lavender
-  const currentPreviewImg = capturedImage || swipeModels[selectedColor] || swipeModels['Lavender'];
+  // Resolve active product dynamically to prevent defaulting to Lavender Hoodie
+  const currentProduct: ProductItem = useMemo(() => {
+    const list: ProductItem[] = Array.isArray(products)
+      ? products
+      : products
+      ? Object.values(products)
+      : Object.values(defaultProducts);
+
+    if (selectedProductId) {
+      const match = list.find((p) => p.id === selectedProductId || p.productId === selectedProductId);
+      if (match) return match;
+    }
+
+    if (garmentName) {
+      const match = list.find(
+        (p) =>
+          p.id === garmentName ||
+          p.productId === garmentName ||
+          p.name.toLowerCase() === garmentName.toLowerCase() ||
+          garmentName.toLowerCase().includes(p.name.toLowerCase()) ||
+          p.name.toLowerCase().includes(garmentName.toLowerCase())
+      );
+      if (match) return match;
+    }
+
+    return list[0] || defaultProducts['lavender-hoodie'];
+  }, [products, selectedProductId, garmentName]);
+
+  // Preview image: captured image, or matched model preview, or product image
+  const currentPreviewImg =
+    capturedImage ||
+    swipeModels[selectedColor] ||
+    swipeModels[currentProduct?.name || ''] ||
+    currentProduct?.imageUrl ||
+    swipeModels['Lavender'];
 
   useEffect(() => {
+    const targetGarmentName = currentProduct?.name || garmentName;
     if (!isLiveTryOnImage || !capturedImage?.startsWith('data:image/')) {
       setStyleScore(null);
       setStyleScoreError(null);
@@ -58,7 +98,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
     const controller = new AbortController();
     setStyleScore(null);
     setStyleScoreError(null);
-    getTryOnStyleScore(capturedImage, garmentName, controller.signal)
+    getTryOnStyleScore(capturedImage, targetGarmentName, controller.signal)
       .then(setStyleScore)
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
@@ -67,12 +107,34 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
       });
 
     return () => controller.abort();
-  }, [capturedImage, garmentName, isLiveTryOnImage, scoreRequest]);
+  }, [capturedImage, garmentName, currentProduct?.name, isLiveTryOnImage, scoreRequest]);
+
+  // Rotate camera tool handler
+  const handleRotate = () => {
+    setRotation((prev) => (prev + 90) % 360);
+  };
+
+  // Zoom camera tool handler (cycles 1x -> 1.35x -> 1.7x -> 2.0x -> 1x)
+  const handleZoom = () => {
+    setZoomLevel((prev) => {
+      if (prev === 1) return 1.35;
+      if (prev === 1.35) return 1.7;
+      if (prev === 1.7) return 2.0;
+      return 1;
+    });
+  };
+
+  // Reset camera tools handler
+  const handleReset = () => {
+    setRotation(0);
+    setZoomLevel(1);
+    setBgIndex(0);
+  };
 
   const handleShare = async () => {
     const shareData = {
-      title: 'My NOVA AR Look',
-      text: `Check out my custom Lavender Hoodie look in ${selectedColor} curated by NOVA Next-Gen Optical Vision Assistant!`,
+      title: `My NOVA AR Look - ${currentProduct.name}`,
+      text: `Check out my custom ${currentProduct.name} look curated by NOVA Next-Gen Optical Vision Assistant!`,
       url: window.location.href
     };
 
@@ -86,7 +148,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
     } catch (err) {
       try {
         await navigator.clipboard.writeText(
-          `My NOVA AR Look (${selectedColor}): Check out my custom curated style outfit! ${window.location.origin}`
+          `My NOVA AR Look: Check out my custom ${currentProduct.name} look! ${window.location.origin}`
         );
         setShareStatus('✓ Link copied to clipboard!');
       } catch (clipErr) {
@@ -100,7 +162,19 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   };
 
   const handleBuyNow = () => {
-    onNavigate('product-details');
+    if (currentProduct) {
+      onNavigate('product-details', { productId: currentProduct.id, product: currentProduct });
+    } else {
+      onNavigate('product-details');
+    }
+  };
+
+  const handleAddToCartClick = () => {
+    const colorToAdd = selectedColor || currentProduct.colors?.[0] || 'Default';
+    const sizeToAdd = currentProduct.sizes?.[0] || 'M';
+    onAddToCart(currentProduct.id, colorToAdd, sizeToAdd);
+    setToastMessage(`✓ Added 1x ${currentProduct.name} to Cart!`);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   return (
@@ -112,14 +186,21 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         </div>
       )}
 
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#131426]/95 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-2 border border-emerald-500/30 backdrop-blur-md max-w-[320px] text-center">
+          <span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span>
+          <span className="truncate">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Header */}
       <section className="pt-2">
         <div className="flex items-start justify-between gap-4">
           <div>
-          <h1 className="text-2xl font-bold text-[#131426] leading-tight">{t('tryOnResult.title')}</h1>
-          <p className="text-xs text-[#5E667A] mt-1">
-            {t('tryOnResult.description')}
-          </p>
+            <h1 className="text-2xl font-bold text-[#131426] leading-tight">{t('tryOnResult.title')}</h1>
+            <p className="text-xs text-[#5E667A] mt-1">
+              {t('tryOnResult.description')}
+            </p>
           </div>
           <div className="shrink-0 text-center" aria-live="polite">
             <span className="block text-[9px] font-bold text-[#5E667A] uppercase tracking-widest mb-1">{t('tryOnResult.scoreTitle')}</span>
@@ -159,128 +240,130 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         </div>
       </section>
 
-      {/* Main Preview Model Frame Card */}
-      <section className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] bg-[#ECE7FF]">
-        <img 
-          alt="Lavender Hoodie tryon comparison preview" 
-          className="w-full h-full object-cover transition-opacity duration-300"
-          referrerPolicy="no-referrer"
-          src={currentPreviewImg}
-        />
-        
+      {/* Main Preview Model Frame Card with working Rotate, Zoom, Reset, and Background */}
+      <section className={`relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-lg border border-[#E4DFF5] transition-colors duration-300 ${backgroundThemes[bgIndex].class}`}>
+        <div className="w-full h-full flex items-center justify-center overflow-hidden">
+          <img 
+            alt={`${currentProduct.name} tryon comparison preview`} 
+            className="w-full h-full object-cover select-none pointer-events-none"
+            style={{
+              transform: `scale(${zoomLevel}) rotate(${rotation}deg)`,
+              transformOrigin: 'center center',
+              transition: 'transform 0.3s ease-out'
+            }}
+            referrerPolicy="no-referrer"
+            src={currentPreviewImg}
+          />
+        </div>
         
         {/* Holographic scanner camera corners */}
-        <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl"></div>
-        <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr"></div>
-        <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl"></div>
-        <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br"></div>
+        <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl pointer-events-none"></div>
+        <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr pointer-events-none"></div>
+        <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl pointer-events-none"></div>
+        <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br pointer-events-none"></div>
 
-        {/* Side Floating Camera Tools */}
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-3 bg-white/85 backdrop-blur-xl p-1.5 rounded-2xl border border-[#E4DFF5] shadow-md">
-          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#131426] hover:text-[#553BE2] transition-colors">
+        {/* Side Floating Camera Tools - fully functional Rotate, Zoom, Reset */}
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-3 bg-white/90 backdrop-blur-xl p-1.5 rounded-2xl border border-[#E4DFF5] shadow-lg z-10">
+          <button 
+            type="button"
+            onClick={handleRotate}
+            title={`Rotate image (${rotation}°)`}
+            aria-label="Rotate preview image"
+            className={`w-9 h-9 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer ${
+              rotation !== 0 ? 'bg-[#553BE2] text-white shadow-sm' : 'text-[#131426] hover:text-[#553BE2] hover:bg-[#F2EEFF]'
+            }`}
+          >
             <span className="material-symbols-outlined text-base">rotate_right</span>
-            <span className="text-[7px] font-bold mt-0.5">Rotate</span>
+            <span className="text-[7px] font-bold mt-0.5">{rotation !== 0 ? `${rotation}°` : 'Rotate'}</span>
           </button>
-          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#131426] hover:text-[#553BE2] transition-colors">
+          <button 
+            type="button"
+            onClick={handleZoom}
+            title={`Zoom image (${zoomLevel}x)`}
+            aria-label="Zoom preview image"
+            className={`w-9 h-9 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer ${
+              zoomLevel !== 1 ? 'bg-[#553BE2] text-white shadow-sm' : 'text-[#131426] hover:text-[#553BE2] hover:bg-[#F2EEFF]'
+            }`}
+          >
             <span className="material-symbols-outlined text-base">zoom_in</span>
-            <span className="text-[7px] font-bold mt-0.5">Zoom</span>
+            <span className="text-[7px] font-bold mt-0.5">{zoomLevel !== 1 ? `${zoomLevel}x` : 'Zoom'}</span>
           </button>
-          <button className="w-8 h-8 flex flex-col items-center justify-center text-[#131426] hover:text-[#553BE2] transition-colors">
+          <button 
+            type="button"
+            onClick={handleReset}
+            title="Reset rotation and zoom"
+            aria-label="Reset adjustments"
+            className="w-9 h-9 flex flex-col items-center justify-center rounded-xl text-[#131426] hover:text-[#553BE2] hover:bg-[#F2EEFF] transition-all cursor-pointer"
+          >
             <span className="material-symbols-outlined text-base">refresh</span>
             <span className="text-[7px] font-bold mt-0.5">Reset</span>
           </button>
         </div>
 
         {/* Background Toggle Banner */}
-        <button className="absolute bottom-4 right-4 bg-white/85 backdrop-blur-xl px-3 py-1.5 rounded-full border border-[#E4DFF5] flex items-center gap-1 hover:bg-white transition-colors shadow-sm text-[10px] font-semibold text-[#131426]">
+        <button 
+          type="button"
+          onClick={() => setBgIndex((prev) => (prev + 1) % backgroundThemes.length)}
+          className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-xl px-3 py-1.5 rounded-full border border-[#E4DFF5] flex items-center gap-1 hover:bg-white transition-colors shadow-sm text-[10px] font-semibold text-[#131426] cursor-pointer z-10"
+        >
           <span className="material-symbols-outlined text-sm leading-none">image</span>
-          Background
+          <span>{backgroundThemes[bgIndex].name}</span>
         </button>
       </section>
 
-      {/* Change Color Palette selection swatches row */}
-      <section className="glass-card rounded-2xl p-4">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-sm font-bold text-[#131426] flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[#553BE2] text-base leading-none">palette</span>
-            {t('tryOnResult.selectShade')}
-          </h3>
-          <button 
-            onClick={() => onNavigate('product-details')}
-            className="text-xs font-semibold text-[#553BE2] hover:underline"
-          >
-            Details
-          </button>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 hide-scrollbar">
-          {swatches.map((s) => {
-            const isActive = selectedColor === s.name;
-            const swatchImg = swatchImages[s.name] || swatchImages['Lavender'];
-
-            return (
-              <div key={s.name} className="flex flex-col items-center gap-1 shrink-0">
-                <button 
-                  onClick={() => setSelectedColor(s.name)}
-                  className={`w-14 h-14 rounded-2xl border-2 p-0.5 relative overflow-hidden transition-all duration-200 active:scale-95 ${
-                    isActive ? 'border-[#553BE2] scale-105 shadow-md shadow-[#553BE2]/20' : 'border-[#E4DFF5] opacity-80'
-                  }`}
-                >
-                  <img 
-                    alt={`${s.name} color swatch swatch`} 
-                    className="w-full h-full object-cover rounded-xl"
-                    referrerPolicy="no-referrer"
-                    src={swatchImg}
-                  />
-                  {isActive && (
-                    <div className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow-sm">
-                      <span className="material-symbols-outlined text-[10px] text-[#553BE2] font-bold leading-none">check</span>
-                    </div>
-                  )}
-                </button>
-                <span className={`text-[10px] font-medium ${isActive ? 'text-[#553BE2] font-bold' : 'text-[#5E667A]'}`}>{s.text}</span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Mini Product Card details banner */}
+      {/* Mini Product Card details banner - Dynamic for the selected product */}
       <section className="glass-card rounded-3xl p-4 flex gap-4 items-center">
         <div className="w-16 h-20 rounded-xl bg-[#F2EEFF] overflow-hidden shrink-0 border border-[#E4DFF5] p-0.5">
           <img 
-            alt="Lavender hoodie organic fleece thumbnail" 
+            alt={currentProduct.name} 
             className="w-full h-full object-cover rounded-lg"
             referrerPolicy="no-referrer"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMoZyQ6gB17ndV4j-uYbFV_L4ip-VktpJmHPFNU0X6Avq5c7QDrjTiBmWdw2JzwBNVm6NKdhYcGpei7mfRO3u4qijtf1m1UvQAg-IYYiPthR2Tb-XsMcrxTl8yRn6k9epyqclwbvm1GP2-PeqkKHBvTyR6GdJARVxrvUCA7sR_RDgkXcFEV6JKCwgdNuCi6PtxZyBiOJ9dD-8d7zTP4dEkODC2O4C1KLmg5OyoOnWfgnH49MSvNkArF53siLur3AC9hmKZPuW4etG3"
+            src={currentProduct.imageUrl || currentProduct.imageUrls?.[0] || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=600&q=80'}
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-bold text-[#131426] truncate">Lavender Hoodie</h4>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F2EEFF] text-[#553BE2] inline-block mt-0.5">Streetwear Classic</span>
+          <h4 className="text-sm font-bold text-[#131426] truncate">{currentProduct.name}</h4>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F2EEFF] text-[#553BE2] inline-block mt-0.5 truncate max-w-full">
+            {currentProduct.badge || currentProduct.category || 'Curated Style'}
+          </span>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-sm font-extrabold text-[#553BE2]">₹1,499</span>
+            <span className="text-sm font-extrabold text-[#553BE2]">
+              ₹{Number(currentProduct.price || 0).toLocaleString('en-IN')}
+            </span>
             <span className="text-[10px] text-[#5E667A] flex items-center font-semibold">
               <span className="material-symbols-outlined text-[11px] text-amber-500 mr-0.5 leading-none">star</span>
-              4.6 (128)
+              {currentProduct.rating || 4.6} ({currentProduct.reviewsCount || 128})
             </span>
           </div>
         </div>
-        <button 
-          onClick={handleBuyNow}
-          className="py-2.5 px-3 rounded-xl border border-[#553BE2] text-[#553BE2] text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#F2EEFF] transition-colors"
-        >
-          <span className="material-symbols-outlined text-sm leading-none">local_mall</span>
-          Details
-        </button>
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <button 
+            type="button"
+            onClick={handleBuyNow}
+            className="py-2 px-3 rounded-xl bg-[#553BE2] text-white text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#4830cb] transition-colors shadow-sm cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm leading-none">shopping_cart</span>
+            Buy Now
+          </button>
+          <button 
+            type="button"
+            onClick={handleAddToCartClick}
+            className="py-1.5 px-3 rounded-xl border border-[#553BE2] text-[#553BE2] text-[11px] font-bold flex items-center justify-center gap-1 hover:bg-[#F2EEFF] transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-xs leading-none">add_shopping_cart</span>
+            Add to Cart
+          </button>
+        </div>
       </section>
 
+      {/* Review Section */}
       <section className="rounded-3xl bg-white p-4 shadow-sm border border-[#E4DFF5]">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-bold text-[#131426]">{t('tryOnResult.reviewTitle')}</h3>
             <p className="text-[11px] text-[#5E667A]">{t('tryOnResult.reviewSubtitle')}</p>
           </div>
-          <span className="text-xs font-semibold text-[#5E667A]">{selectedColor}</span>
+          <span className="text-xs font-semibold text-[#5E667A] truncate max-w-[120px]">{currentProduct.name}</span>
         </div>
 
         <div className="flex gap-2 mb-3">
@@ -301,6 +384,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
         <textarea
           value={reviewText}
           onChange={(e) => setReviewText(e.target.value)}
+          maxLength={1000}
           className="w-full rounded-3xl border border-[#E4DFF5] bg-[#F2EEFF] px-4 py-3 text-sm text-[#131426] placeholder:text-[#5E667A] min-h-[110px] focus:outline-none focus:border-[#553BE2]"
           placeholder={t('tryOnResult.reviewPlaceholder')}
         />
@@ -316,7 +400,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
             }
             setIsSubmittingReview(true);
             try {
-              await onSubmitReview(selectedProductId, reviewRating, reviewText, 'tryon');
+              await onSubmitReview(currentProduct.id, reviewRating, reviewText, 'tryon', selectedColor);
               setReviewRating(0);
               setReviewText('');
               setToastMessage('Your try-on review was saved.');
@@ -328,7 +412,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
             }
           }}
           disabled={isSubmittingReview}
-          className="mt-4 w-full rounded-2xl bg-[#553BE2] text-white py-3 text-sm font-semibold hover:opacity-95 transition-opacity"
+          className="mt-4 w-full rounded-2xl bg-[#553BE2] text-white py-3 text-sm font-semibold hover:opacity-95 transition-opacity cursor-pointer"
         >
           {isSubmittingReview ? t('tryOnResult.reviewSubmitting') : t('tryOnResult.reviewSubmit')}
         </button>
@@ -343,9 +427,12 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
           <span className="material-symbols-outlined text-base">share</span>
           {t('tryOnResult.shareLook')}
         </button>
-        <button className="flex-1 py-3 rounded-2xl border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] hover:shadow transition-all font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95">
-          <span className="material-symbols-outlined text-base">bookmark_border</span>
-          {t('common.save')}
+        <button 
+          onClick={handleBuyNow}
+          className="flex-1 py-3 rounded-2xl border border-[#E4DFF5] text-[#131426] bg-white hover:bg-[#F2EEFF] hover:shadow transition-all font-bold flex items-center justify-center gap-1.5 text-xs shadow-sm active:scale-95 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-base">info</span>
+          Details
         </button>
         <button 
           onClick={() => onNavigate('ar-tryon')}

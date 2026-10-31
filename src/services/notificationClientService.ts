@@ -104,8 +104,23 @@ export function trackPushTap(campaignId: string, deepLink: string): void {
 }
 
 /**
- * Sync updated notification preferences with backend.
+ * Sync marketing email preference (opt-in / opt-out) with backend.
  */
+export async function syncMarketingEmailPreference(email: string, marketingEmailOptIn: boolean): Promise<void> {
+  if (!email || !email.includes('@') || email.endsWith('@guest.nova.ai')) return;
+  try {
+    await fetch(apiUrl('/api/marketing/preferences'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        marketingEmailOptIn
+      })
+    });
+  } catch (err) {
+    console.warn('[Marketing Email] Preference sync notice:', err);
+  }
+}
 export async function syncPreferencesUpdate(prefs: Partial<PushPreferences>, userId?: string): Promise<void> {
   try {
     const token = getStoredDeviceToken();

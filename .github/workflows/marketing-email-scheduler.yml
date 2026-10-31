@@ -1,0 +1,70 @@
+name: NOVA Marketing Email Automated Scheduler
+
+on:
+  schedule:
+    # 10:00 AM IST = 04:30 AM UTC
+    - cron: '30 4 * * *'
+    # 07:00 PM IST = 01:30 PM UTC
+    - cron: '30 13 * * *'
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'Campaign slot to execute (morning | evening)'
+        required: true
+        default: 'morning'
+        type: choice
+        options:
+          - morning
+          - evening
+
+jobs:
+  dispatch-marketing-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Determine Campaign Slot
+        id: determine_slot
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SLOT="${{ github.event.inputs.slot }}"
+          else
+            UTC_HOUR=$(date -u +%H)
+            if [ "$UTC_HOUR" -lt 10 ]; then
+              SLOT="morning"
+            else
+              SLOT="evening"
+            fi
+          fi
+          echo "slot=$SLOT" >> $GITHUB_OUTPUT
+          echo "Executing NOVA automated $SLOT campaign..."
+
+      - name: Wake Up Backend & Dispatch Campaign
+        env:
+          ADMIN_KEY: ${{ secrets.NOVA_ADMIN_SECRET }}
+          SLOT: ${{ steps.determine_slot.outputs.slot }}
+        run: |
+          if [ -z "$ADMIN_KEY" ]; then
+            echo "❌ Error: NOVA_ADMIN_SECRET repository secret is not configured in GitHub repository settings."
+            exit 1
+          fi
+
+          echo "Step 1: Pinging NOVA backend health status..."
+          curl -s -f "https://nova-1-1.onrender.com/api/marketing/status" || true
+          
+          echo "Step 2: Dispatching automated marketing campaign for slot: $SLOT..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://nova-1-1.onrender.com/api/marketing/cron/dispatch?slot=$SLOT" \
+            -H "x-admin-key: $ADMIN_KEY" \
+            -H "Content-Type: application/json")
+          
+          HTTP_BODY=$(echo "$RESPONSE" | sed '$d')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          
+          echo "HTTP Response Code: $HTTP_CODE"
+          echo "Response Body: $HTTP_BODY"
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Successfully dispatched $SLOT marketing email campaign."
+          else
+            echo "❌ Failed to dispatch campaign (HTTP $HTTP_CODE)."
+            exit 1
+          fi

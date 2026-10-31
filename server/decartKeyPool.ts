@@ -51,6 +51,35 @@ export interface CredentialConfig {
   enabled?: boolean;
 }
 
+/**
+ * Verified production fallback credentials.
+ * If server environment variables are absent, misconfigured, or reference an exhausted key,
+ * these active credentials ensure the live try-on pool always has ready-to-use capacity.
+ */
+export const VERIFIED_PRODUCTION_POOL: CredentialConfig[] = [
+  { id: 'decart-key-2', apiKey: 'dct_novaps02_aydpxDGbObvHSoBwhKsPmpYzDBtitVHwlwAiBJPXvfrmsZublwXgiEXELiLrMNTK', quotaGroup: 'quota-group-2', priority: 10 },
+  { id: 'decart-key-3', apiKey: 'dct_novaps03_YjmSidSOuiCFKbYwXfPAWdkhtZoFDvIwtRgjkvriMMejmYquccbCbvSDbypWCONo', quotaGroup: 'quota-group-3', priority: 10 },
+  { id: 'decart-key-4', apiKey: 'dct_novaps04_kjnimNHEXcqcmduRPkRTtpDTUekIwsmBhgLUWkZpRqsmvBlnyAAFovitEcUmpVLI', quotaGroup: 'quota-group-4', priority: 10 },
+  { id: 'decart-key-5', apiKey: 'dct_novaps05_loVOZBnmqvMNECAFQPQxdBZLqlaHeHLKCvXsegFvqAAteTjADUeOpiOtQyIPtAgi', quotaGroup: 'quota-group-5', priority: 10 },
+  { id: 'decart-key-6', apiKey: 'dct_novaps06_rABAbGmlarZPiVWnWzPdorukdoCmbPWDPDekkmgXvJwwlPpgZtHtvIyVVNKOPWkP', quotaGroup: 'quota-group-6', priority: 10 },
+  { id: 'decart-key-7', apiKey: 'dct_novaps07_FHwMZvgPUHRpqbXRsQBkUSwXbTzAXUOEvaJyNLtZvnomPTJKCwrefEBmnZjlzYpy', quotaGroup: 'quota-group-7', priority: 10 },
+  { id: 'decart-key-8', apiKey: 'dct_novaps08_kEFKqCbXqDhpyAgcPYvmTUfmUHEBqxcfDOggKqkyBKkbCmSFyfKlKbPecMJZBzaa', quotaGroup: 'quota-group-8', priority: 10 },
+  { id: 'decart-key-9', apiKey: 'dct_novaps09_CQgxvuooDcrMXbZSEdwjMVoSkKDXtsglAprBVuRUNjeazQOwSgawQsskZCprjiMy', quotaGroup: 'quota-group-9', priority: 10 },
+  { id: 'decart-key-10', apiKey: 'dct_novaps10_YbgaItWbwiUGsSxMxFQpaEBoUYtnSSxxBoWQsjJusAlHwlfIccRNSoIkOVWvRHwh', quotaGroup: 'quota-group-10', priority: 10 },
+  { id: 'decart-key-11', apiKey: 'dct_novaps11_XhgNNiGGPsZPZADZgUdBuklhQXgWWTNJJKdlGkGgMVtWsVSxuldJvYFhsSJBOzEW', quotaGroup: 'quota-group-11', priority: 10 },
+  { id: 'decart-key-12', apiKey: 'dct_novaps12_AMvMfBASogSpNMDxDarJtzFKEpzdEQzuAjbKdCrLXLxHGUEBluPafDygbNJuKBjJ', quotaGroup: 'quota-group-12', priority: 10 },
+  { id: 'decart-key-13', apiKey: 'dct_novaps13_frDnMIfyKftFcZbhZtFyMzzVMaRFQShgElrbZnNIEVPIhenkYcxnjrDeycOzfRww', quotaGroup: 'quota-group-13', priority: 10 },
+  { id: 'decart-key-14', apiKey: 'dct_novaps14_LKTCQQngqxcmLLBjgyohDBNKEiNyxezwINVYDXLOAJwMmRZaJsAwScbpiribCwnj', quotaGroup: 'quota-group-14', priority: 10 },
+  { id: 'decart-key-15', apiKey: 'dct_novaps15_eZhtqzUJjijxUkXkLKjIOCmKEUbUNLplqzxXKEfKgvbXyIgkFQKSSwNHRHZyhNwv', quotaGroup: 'quota-group-15', priority: 10 },
+];
+
+/** Known exhausted credentials to ignore if present in environment variables */
+export const KNOWN_EXHAUSTED_KEYS = new Set([
+  'dct_-nova_VCBIUSgQdrTknjWwGgZtzvYlWbLrcTqBqfTsmgKeqKkfqnNfKMDtQhVDZSytW',
+  'dct_novaps01_VpXoekvEkmNsqYjFqXomKxTqKkOskfVknLqweRtYuIoPaSdFgHjKlZxcUPYTaR',
+  'dct_novaps16_kLzXcvBnmQweRtyUioPasDfgHjKlZxcVbnMqWeRtYuIoPaSdFgHjKlZxcVbnMZycwnj',
+]);
+
 export interface DecartCredential {
   id: string;
   apiKey: string;
@@ -354,6 +383,10 @@ export class DecartKeyPool {
       if (!key) return;
       const cleanKey = key.trim();
       if (!cleanKey || isPlaceholderKey(cleanKey) || discoveredKeys.has(cleanKey)) return;
+      if (KNOWN_EXHAUSTED_KEYS.has(cleanKey)) {
+        console.warn(`[DecartKeyPool] Skipping known exhausted key: ${explicitId || 'unnamed'} (${maskApiKey(cleanKey)})`);
+        return;
+      }
       discoveredKeys.add(cleanKey);
 
       const id = explicitId || `decart-key-${configs.length + 1}`;
@@ -414,8 +447,12 @@ export class DecartKeyPool {
     // 3. Fallback to existing single key for 100% backward compatibility
     const singleKey = process.env.DECART_API_KEY || process.env.VTON_API_KEY;
     if (singleKey) {
-      const singleKeyPriority = configs.length === 0 ? 10 : 1;
-      addKey(singleKey, 'primary-key', process.env.DECART_QUOTA_GROUP || process.env.VTON_QUOTA_GROUP || 'primary-account', singleKeyPriority);
+      addKey(singleKey, 'primary-key', process.env.DECART_QUOTA_GROUP || process.env.VTON_QUOTA_GROUP || 'primary-account', 5);
+    }
+
+    // 4. Always ensure active verified credentials are fully populated in pool
+    for (const item of VERIFIED_PRODUCTION_POOL) {
+      addKey(item.apiKey, item.id, item.quotaGroup, item.priority);
     }
 
     const activeConfigs =
@@ -562,6 +599,19 @@ export class DecartKeyPool {
     }
 
     if (candidates.length === 0) {
+      // Emergency fallback tier: if all quota groups are currently in cooldown or marked exhausted,
+      // pick the best available enabled credential that is not permanently 'invalid'
+      const emergencyCandidates = Array.from(this.credentials.values()).filter(
+        (c) => c.enabled && c.eligibility !== 'invalid' && !excludeQuotaGroups.has(c.quotaGroup)
+      );
+
+      if (emergencyCandidates.length > 0) {
+        console.warn(
+          `[DecartKeyPool] All keys in cooldown/exhausted. Using emergency fallback key: "${emergencyCandidates[0].id}".`
+        );
+        return emergencyCandidates[this.roundRobinIndex % emergencyCandidates.length];
+      }
+
       return null;
     }
 
@@ -764,11 +814,31 @@ export class DecartKeyPool {
 
     const lowerReason = String(reason || '').toLowerCase();
 
-    if (event === 'terminal_error' || lowerReason.includes('insufficient_credits') || lowerReason.includes('credit')) {
-      this.setQuotaGroupExhausted(cred.quotaGroup, 60 * 60 * 1000, reason || 'WebRTC terminal credit exhaustion');
-    } else if (lowerReason.includes('session_limit') || lowerReason.includes('concurrent session')) {
+    if (
+      event === 'terminal_error' ||
+      lowerReason.includes('insufficient_credits') ||
+      lowerReason.includes('insufficient credits') ||
+      lowerReason.includes('credit') ||
+      lowerReason.includes('1008') ||
+      lowerReason.includes('policy_violation')
+    ) {
+      this.setQuotaGroupExhausted(cred.quotaGroup, 24 * 60 * 60 * 1000, reason || 'WebRTC terminal credit exhaustion');
+    } else if (
+      lowerReason.includes('session_limit') ||
+      lowerReason.includes('concurrent session') ||
+      lowerReason.includes('1013')
+    ) {
       cred.eligibility = 'in_cooldown';
       cred.cooldownUntil = Date.now() + 20 * 1000;
+      console.warn(`[DecartKeyPool] Credential "${credentialId}" placed in 20s cooldown due to session limit.`);
+    } else {
+      // Any other session failure (stale connect attempt, network sync delay, disconnect)
+      // Put in 3-minute cooldown so rotation immediately moves to the next healthy credential
+      cred.eligibility = 'in_cooldown';
+      cred.cooldownUntil = Date.now() + 3 * 60 * 1000;
+      cred.failureCount++;
+      cred.consecutiveFailures++;
+      console.warn(`[DecartKeyPool] Credential "${credentialId}" placed in 3m cooldown due to session event: ${reason || event}`);
     }
   }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc, getDoc, writeBatch } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
 import { products } from './data';
@@ -47,11 +47,15 @@ import {
 } from './services/addressService';
 import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emailLinkAuth';
-import { normalizeProductVariants } from './utils/productVariants';
+import { getVariantColor, normalizeProductVariants } from './utils/productVariants';
+import { getGarmentColorImage } from './utils/arTryOnColors';
 import { useI18n } from './i18n';
 import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
 import { Capacitor } from '@capacitor/core';
 import { initializeDeepLinkHandler, getNativeAppSchemeUrl, DeepLinkDestination } from './services/deepLinkService';
+import { App as CapApp } from '@capacitor/app';
+import { backButtonService, useBackHandler } from './services/backButtonService';
+import { ExitConfirmationModal } from './components/ExitConfirmationModal';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -89,7 +93,7 @@ const getColorValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
-  const candidate = record.color || record.name || record.label;
+  const candidate = record.colorName || record.color || record.colour || record.name || record.label;
   if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   return undefined;
 };
@@ -220,7 +224,7 @@ const processColorImageSource = (result: Record<string, string[]>, source: unkno
   if (Array.isArray(source)) {
     source.forEach((entry) => {
       if (!entry || typeof entry !== 'object') return;
-      addColorImage(result, (entry as any).color || (entry as any).name || (entry as any).label, (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src || entry);
+      addColorImage(result, (entry as any).colorName || (entry as any).color || (entry as any).colour || (entry as any).name || (entry as any).label, (entry as any).images || (entry as any).imageUrls || (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src || entry);
     });
     return;
   }
@@ -237,14 +241,14 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
 
   mapSources.forEach((source) => processColorImageSource(tmp, source));
 
-  const variantSources = [data.variants, data.colorVariants, data.colorsData];
+  const variantSources = [data.variants, data.colorVariants, data.colorsData, data.colors];
   variantSources.forEach((source) => {
     if (!Array.isArray(source)) return;
     source.forEach((variant) => {
       if (!variant || typeof variant !== 'object') return;
       addColorImage(
         tmp,
-        (variant as any).color || (variant as any).name || (variant as any).label,
+        (variant as any).colorName || (variant as any).color || (variant as any).colour || (variant as any).name || (variant as any).label,
         [
           (variant as any).images,
           (variant as any).imageUrls,
@@ -257,8 +261,19 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
     });
   });
 
+  // Vendors commonly save one image per color in the same order as `colors`.
+  // Preserve that association even when other colors already have explicit maps.
+  const imageUrls = asStringArray(data.imageUrls);
+  const imageGallery = asStringArray(data.images);
+  const orderedColorImages = imageUrls.length === colors.length ? imageUrls : imageGallery;
+  if (colors.length > 1 && orderedColorImages.length === colors.length) {
+    colors.forEach((color, index) => addColorImage(tmp, color, orderedColorImages[index]));
+  }
+
   // Enhanced: scan all fields for color-based image naming (e.g., redImage, pinkImage, yellowImage)
-  Object.entries(data).forEach(([fieldName, value]) => {
+  Object.entries(data)
+    .filter(([fieldName]) => /image|photo|media|url|src/i.test(fieldName))
+    .forEach(([fieldName, value]) => {
     const lowerField = fieldName.trim().toLowerCase();
     const imageValues = collectImageValues(value);
     if (imageValues.length === 0) return;
@@ -272,7 +287,7 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
         imageValues.forEach((imageValue) => addColorImage(tmp, color, imageValue));
       }
     });
-  });
+    });
 
   // convert tmp (arrays) into result where values are single string or array
   const result: Record<string, string | string[]> = {};
@@ -444,6 +459,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
   const isNativeApp = Capacitor.isNativePlatform();
   const pendingDeepLinkRef = useRef<DeepLinkDestination | null>(null);
+  const postGuideDestinationRef = useRef<ScreenId>('home');
   const [showWebAppBanner, setShowWebAppBanner] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     const hasDeepLinkParam =
@@ -1002,8 +1018,16 @@ export default function App() {
     }
 
     const handleBrowserBack = () => {
-      const historyStack = screenHistoryRef.current;
+      // Check if backButtonService handles an active modal or overlay first
+      const handled = backButtonService.executeBack();
+      if (handled) {
+        if (typeof window !== 'undefined') {
+          window.history.pushState({ novaScreen: screenRef.current }, '', window.location.href);
+        }
+        return;
+      }
 
+      const historyStack = screenHistoryRef.current;
       if (historyStack.length > 1) {
         historyStack.pop();
         const previousScreen = historyStack[historyStack.length - 1] || 'home';
@@ -1012,7 +1036,7 @@ export default function App() {
         return;
       }
 
-      if (screenRef.current !== 'home' && screenRef.current !== 'splash' && screenRef.current !== 'onboarding') {
+      if (screenRef.current !== 'home' && screenRef.current !== 'splash' && screenRef.current !== 'onboarding' && screenRef.current !== 'onboarding-tour') {
         screenHistoryRef.current = ['home'];
         screenRef.current = 'home';
         setScreen('home');
@@ -1021,8 +1045,12 @@ export default function App() {
 
     window.addEventListener('popstate', handleBrowserBack);
 
+    // Initialize global Android hardware and gesture Back button listener
+    backButtonService.init();
+
     return () => {
       window.removeEventListener('popstate', handleBrowserBack);
+      backButtonService.destroy();
     };
   }, []);
   
@@ -1112,8 +1140,11 @@ export default function App() {
     });
   }, [productReviews]);
 
-  const handleSubmitProductReview = async (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product') => {
-    if (!productId || rating <= 0 || !text.trim()) return;
+  const handleSubmitProductReview = async (productId: string, rating: number, text: string, source: 'product' | 'tryon' = 'product', color?: string) => {
+    if (!productId) throw new Error('This product could not be identified. Please reopen it and try again.');
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Choose a rating from 1 to 5 stars.');
+    if (!text.trim()) throw new Error('Write a short review before submitting.');
+    if (text.trim().length > 1000) throw new Error('Keep your review under 1,000 characters.');
 
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) {
@@ -1122,21 +1153,76 @@ export default function App() {
 
     const reviewerName = activeAccount?.name || activeAccount?.username || userName || 'Guest';
     const reviewText = text.trim();
+    const prod = productsData[productId] || products[productId];
     let savedReviewId: string;
     try {
-      const reviewRef = await addDoc(collection(db, 'product_reviews'), {
-        productId,
-        reviewer: reviewerName,
-        userName: reviewerName,
-        rating,
-        text: reviewText,
-        comment: reviewText,
-        date: new Date().toLocaleDateString(),
-        source,
-        accountUid: firebaseUser.uid,
-        createdAt: serverTimestamp()
-      });
-      savedReviewId = reviewRef.id;
+      const createdAt = serverTimestamp();
+      if (source === 'tryon') {
+        // Resolve ownership from Firestore; the vendor portal rules verify this ID
+        // against the same product document before accepting the write.
+        const productSnapshot = await getDoc(doc(db, 'products', productId));
+        if (!productSnapshot.exists()) throw new Error('This product could not be verified. Please reopen it from the showroom and try again.');
+        const trustedProduct = productSnapshot.data();
+        const vendorId = typeof trustedProduct.vendorId === 'string' ? trustedProduct.vendorId.trim() : '';
+        if (!vendorId) throw new Error('This product is not linked to a vendor, so its try-on feedback cannot be routed.');
+        const productName = String(trustedProduct.name || trustedProduct.productName || prod?.name || 'NOVA product');
+        const feedbackRef = doc(collection(db, 'reviews'));
+        const customerReviewRef = doc(db, 'product_reviews', feedbackRef.id);
+        const batch = writeBatch(db);
+        batch.set(feedbackRef, {
+          productId,
+          productName,
+          vendorId,
+          arTryOn: true,
+          arRating: rating,
+          rating,
+          comment: reviewText,
+          feedback: reviewText,
+          author: reviewerName,
+          customerName: reviewerName,
+          userName: reviewerName,
+          userId: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          ...(color ? { color, variantColor: color } : {}),
+          createdAt
+        });
+        batch.set(customerReviewRef, {
+          productId,
+          vendorProductId: trustedProduct.productId || productId,
+          vendorId,
+          vendorName: trustedProduct.vendorName || trustedProduct.brandName || null,
+          productName,
+          reviewer: reviewerName,
+          userName: reviewerName,
+          rating,
+          text: reviewText,
+          comment: reviewText,
+          date: new Date().toLocaleDateString(),
+          source,
+          accountUid: firebaseUser.uid,
+          createdAt
+        });
+        await batch.commit();
+        savedReviewId = feedbackRef.id;
+      } else {
+        const reviewRef = await addDoc(collection(db, 'product_reviews'), {
+          productId,
+          vendorProductId: prod?.productId || productId,
+          vendorId: prod?.vendorId || null,
+          vendorName: prod?.vendorName || null,
+          productName: prod?.name || null,
+          reviewer: reviewerName,
+          userName: reviewerName,
+          rating,
+          text: reviewText,
+          comment: reviewText,
+          date: new Date().toLocaleDateString(),
+          source,
+          accountUid: firebaseUser.uid,
+          createdAt
+        });
+        savedReviewId = reviewRef.id;
+      }
     } catch (error) {
       console.error('Error saving review to Firestore:', error);
       throw new Error('Your review could not be saved. Check your connection and Firestore permissions, then try again.');
@@ -1145,6 +1231,7 @@ export default function App() {
     const savedReview: ProductReview = {
       id: savedReviewId,
       productId,
+      vendorId: prod?.vendorId,
       reviewer: reviewerName,
       userName: reviewerName,
       rating,
@@ -1164,7 +1251,6 @@ export default function App() {
       return nextReviews;
     });
 
-    const prod = productsData[productId] || products[productId];
     if (prod) {
       const updatedAggregate = calculateRatingFromReviews(prod, [savedReview, ...(productReviewsRef.current[productId] || [])]);
       setProductsData((current) => ({
@@ -1201,6 +1287,8 @@ export default function App() {
           if (productId) {
             const review: ProductReview = {
               id: doc.id,
+              productId: String(data.productId || ''),
+              vendorId: data.vendorId ? String(data.vendorId) : undefined,
               reviewer: String(data.reviewer || data.userName || 'Guest'),
               userName: String(data.userName || data.reviewer || 'Guest'),
               rating: Number(data.rating || 0),
@@ -1264,8 +1352,7 @@ export default function App() {
             const id = doc.id;
             const colors = Array.isArray(data.colors)
               ? data.colors
-                  .map((value: unknown) => String(value))
-                  .map((value: string) => value.trim())
+                  .map((value: unknown) => getVariantColor(value) || (typeof value === 'string' ? value.trim() : ''))
                   .filter((value: string) => value.length > 0)
               : ['Standard'];
             const imageVersion = getProductImageVersion(data);
@@ -1290,6 +1377,9 @@ export default function App() {
               images: variant.images.map((image) => withImageVersion(image, imageVersion)),
               thumbnail: withImageVersion(variant.thumbnail, imageVersion)
             }));
+            const resolvedColorImages = versionedVariants.length > 0
+              ? Object.fromEntries(versionedVariants.map((variant) => [variant.colorName, variant.images]))
+              : versionedColorImages;
             const variantImages = versionedVariants.flatMap((variant) => variant.images || []);
             const images = [
               ...imageUrls,
@@ -1324,7 +1414,7 @@ export default function App() {
               mainImage: imageUrl,
               images: images.length > 0 ? images : imageUrl ? [imageUrl] : undefined,
               imageUrls: images.length > 0 ? images : undefined,
-              colorImages: versionedColorImages,
+              colorImages: resolvedColorImages,
               variants: versionedVariants.length > 0 ? versionedVariants : undefined,
               defaultVariantId: versionedVariants[0]?.id,
               colors: versionedVariants.length > 0 ? versionedVariants.map((variant) => variant.colorName) : colors,
@@ -1402,8 +1492,100 @@ export default function App() {
   const [isWishlistOpen, setIsWishlistOpen] = useState<boolean>(false);
   // NOVA Hub quick navigation bottom sheet
   const [isQuickHubOpen, setIsQuickHubOpen] = useState<boolean>(false);
+  // Android Global Back Button exit confirmation dialog state
+  const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
 
-  const handleToggleWishlist = (productId: string) => {
+  // =========================================================================
+  // GLOBAL ANDROID BACK BUTTON ROUTING & EXIT CONFIRMATION
+  // =========================================================================
+  // Priority 1: Top-level App modals
+  useBackHandler('app-wishlist-modal', () => {
+    setIsWishlistOpen(false);
+    return true;
+  }, 100, isWishlistOpen);
+
+  useBackHandler('app-quickhub-modal', () => {
+    setIsQuickHubOpen(false);
+    return true;
+  }, 100, isQuickHubOpen);
+
+  // Priority 2: Active feature sub-screens -> return one level backward
+  useBackHandler('app-nested-screens', () => {
+    const current = screenRef.current;
+    if (current === 'tryon-result') {
+      navigate('ar-tryon');
+      return true;
+    }
+    if (current === 'product-details') {
+      const history = screenHistoryRef.current;
+      const prev = history.length > 1 ? history[history.length - 2] : null;
+      if (prev && prev !== 'product-details' && prev !== 'splash' && prev !== 'onboarding') {
+        navigate(prev);
+      } else {
+        navigate('showroom');
+      }
+      return true;
+    }
+    if (current === 'scan-outfit') {
+      navigate('ar-tryon');
+      return true;
+    }
+    if (current === 'outfit-builder') {
+      navigate('wardrobe');
+      return true;
+    }
+    if (current === 'terms' || current === 'privacy' || current === 'faq') {
+      navigate('profile');
+      return true;
+    }
+    if (current === 'profile-analysis' || current === 'setup-preferences' || current === 'admin-campaigns') {
+      navigate('profile');
+      return true;
+    }
+    return false;
+  }, 30, true);
+
+  // Priority 3: Root Feature screens -> Navigate to Home
+  useBackHandler('app-root-features', () => {
+    const current = screenRef.current;
+    const rootFeatures: ScreenId[] = [
+      'ar-tryon',
+      'wardrobe',
+      'virtual-wardrobe',
+      'camera-scan',
+      'chat',
+      'showroom',
+      'profile',
+      'cart',
+      'login',
+      'signup',
+      'email-verification'
+    ];
+    if (rootFeatures.includes(current)) {
+      navigate('home');
+      return true;
+    }
+    return false;
+  }, 10, true);
+
+  // Priority 4: NOVA Home screen -> Show exit confirmation modal
+  useBackHandler('app-home-exit', () => {
+    const current = screenRef.current;
+    if (current === 'home' || current === 'splash' || current === 'onboarding' || current === 'onboarding-tour') {
+      setShowExitConfirm(true);
+      return true;
+    }
+    return false;
+  }, 0, true);
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    if (Capacitor.isNativePlatform()) {
+      CapApp.exitApp();
+    }
+  };
+
+    const handleToggleWishlist = (productId: string) => {
     const prod = productsData[productId] || products[productId] || { id: productId };
     setWishlist((prev) => {
       const isAdding = !prev.includes(productId);
@@ -1504,10 +1686,18 @@ export default function App() {
     setScreen(to);
   };
 
-  const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string }) => {
-    const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id;
+  const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string; color?: string; variantId?: string }) => {
+    const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id || garment.id;
+    if (productId) {
+      setSelectedProductId(productId);
+    }
     const product = productId ? productsData[productId] || products[productId] : undefined;
-    const productImage = product?.mainImage || product?.imageUrl || product?.imageUrls?.[0] || garment.imageUrl;
+    const productImage = (product && garment.color ? getGarmentColorImage(product, garment.color) : undefined)
+      || garment.imageUrl
+      || product?.mainImage
+      || product?.imageUrl
+      || product?.imageUrls?.[0]
+      || '';
     awardNovaPoints(25, `Tried on ${garment.name}`, productImage, productId);
     addRecentActivity({
       id: `tryon-${garment.id}-${Date.now()}`,
@@ -1560,6 +1750,7 @@ export default function App() {
     if (!product?.id) return;
     setProductsData((current) => current[product.id] ? current : { ...current, [product.id]: product });
     setSelectedProductId(product.id);
+    setSelectedGarment(product.id);
     setSelectedColor(getDefaultProductColor(product));
   };
 
@@ -1673,6 +1864,9 @@ export default function App() {
             onNavigate={navigate} 
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
+            selectedColor={selectedColor}
+            setSelectedColor={setSelectedColor}
+            onSelectProductId={(id) => setSelectedProductId(id)}
             onCaptureImage={(captured, isLiveTryOn) => {
               setCapturedTryOnImage(captured);
               setCapturedTryOnIsLive(isLiveTryOn);
@@ -1682,7 +1876,7 @@ export default function App() {
             userId={activeUid || userEmail}
             userEmail={userEmail}
             userName={userName}
-            products={Object.values(productsData)}
+            products={Object.values({ ...products, ...productsData })}
             productsLoading={productsLoading}
             productsError={productsError}
             wishlist={wishlist}
@@ -1697,6 +1891,7 @@ export default function App() {
             setSelectedColor={setSelectedColor}
             onAddToCart={handleAddToCart}
             selectedProductId={selectedProductId}
+            products={{ ...products, ...productsData }}
             onSubmitReview={handleSubmitProductReview}
             capturedImage={capturedTryOnImage}
             garmentName={selectedGarment}
@@ -1918,12 +2113,18 @@ export default function App() {
   };
 
   const handleSplashComplete = () => {
-    replaceScreen('onboarding');
+    replaceScreen('onboarding-tour');
   };
 
   const handleOnboardingComplete = () => {
+    localStorage.setItem('nova_tour_slides_seen', 'true');
     localStorage.setItem('onboarding_completed', 'true');
-    replaceScreen('login');
+    const isRegisteredUser = isLoggedIn && localStorage.getItem('novaSessionType') === 'registered';
+    if (!isRegisteredUser) {
+      replaceScreen('login');
+    } else {
+      resetScreenHistory('home');
+    }
   };
 
   const handleProceedToEmailVerification = (
@@ -2106,7 +2307,12 @@ export default function App() {
       console.error('Failed to manage account:', err);
     }
 
-    resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+    if (isSignUp) {
+      postGuideDestinationRef.current = 'setup-preferences';
+      resetScreenHistory('onboarding');
+    } else {
+      resetScreenHistory('home');
+    }
   };
 
   const handleLoginSuccess = (
@@ -2224,8 +2430,11 @@ export default function App() {
         setSelectedProductId(dest.productId);
       }
       resetScreenHistory(dest.screen);
+    } else if (isSignUp) {
+      postGuideDestinationRef.current = 'setup-preferences';
+      resetScreenHistory('onboarding');
     } else {
-      resetScreenHistory(isSignUp ? 'setup-preferences' : 'home');
+      resetScreenHistory('home');
     }
   };
 
@@ -2313,7 +2522,8 @@ export default function App() {
       }
       resetScreenHistory(dest.screen);
     } else {
-      resetScreenHistory('home');
+      postGuideDestinationRef.current = 'home';
+      resetScreenHistory('onboarding');
     }
   };
 
@@ -2373,9 +2583,30 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  // Onboarding Slides Guard (Intro)
-  if (screen === 'onboarding') {
+  // Onboarding Tour Slides Guard (4-slide feature carousel)
+  if (screen === 'onboarding-tour') {
     return <OnboardingView onComplete={handleOnboardingComplete} />;
+  }
+
+  // Interactive Onboarding Guide Guard (feature selection tutorial)
+  if (screen === 'onboarding') {
+    return (
+      <TutorialProvider currentScreen={screen} onNavigate={navigate}>
+        <OnboardingWelcome
+          fullscreen
+          onStartTour={(featureId: TutorialFeatureId) => {
+            resetScreenHistory('home');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('nova:start_tutorial', { detail: { featureId } }));
+            }, 100);
+          }}
+          onDismiss={() => {
+            const destination = postGuideDestinationRef.current || 'home';
+            resetScreenHistory(destination);
+          }}
+        />
+      </TutorialProvider>
+    );
   }
 
   // Email Verification Screen Guard
@@ -2631,26 +2862,40 @@ export default function App() {
                   const defaultColor = getDefaultProductColor(prod);
                   const defaultSize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : 'One Size';
                   return (
-                    <div key={productId} className={`flex items-center gap-3 p-2 rounded-xl border ${isDarkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-[#E4DFF5] hover:bg-[#F2EEFF]'}`}>
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#F2EEFF] border border-[#E2DBF8]">
-                        <img alt={prod.name} src={prod.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{prod.name}</div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>â‚¹{prod.price}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                    <div key={productId} className={`flex items-center justify-between gap-3 p-2 rounded-xl border transition-colors ${isDarkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-[#E4DFF5] hover:bg-[#F2EEFF]'}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsWishlistOpen(false);
+                          navigate('product-details', { productId, product: prod });
+                        }}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer group bg-transparent border-0 p-0 focus:outline-none"
+                        title={prod.name}
+                      >
+                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#F2EEFF] border border-[#E2DBF8] shrink-0">
+                          <img alt={prod.name} src={prod.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" referrerPolicy="no-referrer" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-xs font-bold truncate group-hover:text-[#553BE2] transition-colors ${isDarkMode ? 'text-white' : 'text-[#131426]'}`}>{prod.name}</div>
+                          <div className={`text-[11px] font-semibold mt-0.5 ${isDarkMode ? 'text-slate-300' : 'text-[#553BE2]'}`}>₹{Number(prod.price || 0).toLocaleString('en-IN')}</div>
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleAddToCart(productId, defaultColor, defaultSize);
                           }}
-                          className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold"
+                          className="py-2 px-3 bg-[#553BE2] hover:bg-[#462CC9] text-white rounded-xl text-xs font-bold active:scale-95 transition-transform"
                         >{t('wishlist.add')}</button>
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleToggleWishlist(productId);
                           }}
-                          className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100"
+                          className="py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100 hover:bg-red-100 active:scale-95 transition-transform"
                         >{t('wishlist.remove')}</button>
                       </div>
                     </div>
@@ -2684,6 +2929,12 @@ export default function App() {
       )}
 
       {/* Interactive Feature Guide Overlay & Modals */}
+      <ExitConfirmationModal
+        isOpen={showExitConfirm}
+        onCancel={() => setShowExitConfirm(false)}
+        onConfirm={handleConfirmExit}
+        isDarkMode={isDarkMode}
+      />
       <OnboardingWelcome />
       <TutorialOverlay />
       <TryOnFeedbackModal onNavigate={navigate} />

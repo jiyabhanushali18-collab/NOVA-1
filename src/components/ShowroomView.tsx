@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db, firebaseProjectId, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
-import { normalizeProductVariants } from '../utils/productVariants';
+import { buildProductColorImages, getVariantColor, normalizeProductVariants } from '../utils/productVariants';
 import { analytics } from '../services/analyticsService';
 import { useI18n } from '../i18n';
 
@@ -26,6 +26,19 @@ type ProductSortOption = 'recommended' | 'price-low-high' | 'price-high-low' | '
 
 const ALL_VENDORS = 'all';
 const VENDOR_STORAGE_KEY = 'nova_showroom_selected_vendor';
+const HIDDEN_VENDOR_KEYS = new Set([
+  'kickslab',
+  'nordicapparel',
+  'urbanstylestudios',
+  'vendorkickslab',
+  'vendornordicapparel',
+  'vendorurbanstyle'
+]);
+const normalizeVendorKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+const isHiddenVendor = (vendor: VendorItem) =>
+  HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(vendor.vendorName))
+  || HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(vendor.vendorId))
+  || HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(vendor.id));
 let cachedVendors: VendorItem[] | null = null;
 
 const fallbackImage = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80';
@@ -128,12 +141,16 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
   const vendorId = data.vendorId ? String(data.vendorId) : undefined;
   const vendor = vendorId ? vendorsById[vendorId] : undefined;
   const stock = data.stock !== undefined ? Number(data.stock) : undefined;
-  const colors = Array.isArray(data.colors) ? data.colors.map(String).filter(Boolean) : ['Standard'];
-  const variants = normalizeProductVariants(data, colors).map((variant) => ({
+  const colors = Array.isArray(data.colors) ? data.colors.map(getVariantColor).filter(Boolean) : ['Standard'];
+  const colorImages = buildProductColorImages(data, colors);
+  const variants = normalizeProductVariants(data, colors, colorImages).map((variant) => ({
     ...variant,
     images: variant.images.map((image) => withImageVersion(image, imageVersion)),
     thumbnail: withImageVersion(variant.thumbnail, imageVersion)
   }));
+  const resolvedColorImages = variants.length > 0
+    ? Object.fromEntries(variants.map((variant) => [variant.colorName, variant.images]))
+    : colorImages;
   const allImages = [
     ...images,
     ...variants.flatMap((variant) => variant.images || [])
@@ -158,6 +175,7 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
     mainImage: imageUrl,
     images: allImages.length > 0 ? allImages : [imageUrl],
     imageUrls: allImages.length > 0 ? allImages : [imageUrl],
+    colorImages: resolvedColorImages,
     variants: variants.length > 0 ? variants : undefined,
     defaultVariantId: variants[0]?.id,
     colors: variants.length > 0 ? variants.map((variant) => variant.colorName) : colors,
@@ -387,7 +405,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
         isVerified: false
       });
     });
-    return Array.from(map.values()).sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+    return Array.from(map.values())
+      .filter((vendor) => !isHiddenVendor(vendor))
+      .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
   }, [collectionProducts, products]);
 
   const marketplaceVendors = useMemo(() => {
@@ -396,7 +416,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     derivedVendors.forEach((vendor) => {
       if (!map.has(vendor.vendorId)) map.set(vendor.vendorId, vendor);
     });
-    return Array.from(map.values()).sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+    return Array.from(map.values())
+      .filter((vendor) => !isHiddenVendor(vendor))
+      .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
   }, [derivedVendors, vendors]);
 
   const firebaseVendorsById = useMemo(() => {

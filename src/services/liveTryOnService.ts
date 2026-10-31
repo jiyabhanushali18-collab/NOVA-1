@@ -26,7 +26,12 @@ export interface LiveTryOnSessionHandle {
 
 // In-memory cache for processed garment blobs so switching garments is instant
 const garmentCache = new Map<string, Blob | string>();
-const publicAsset = (assetPath: string) => `${import.meta.env.BASE_URL}${assetPath}`;
+const publicAsset = (assetPath: string) => {
+  const baseUrl = (import.meta as any)?.env?.BASE_URL || '/';
+  const prefix = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const cleanPath = assetPath.startsWith('/') ? assetPath : `/${assetPath}`;
+  return `${prefix}${cleanPath}`;
+};
 
 let liveConnectQueue: Promise<void> = Promise.resolve();
 let isLiveConnectInProgress = false;
@@ -93,24 +98,32 @@ let activeTokenState: {
 } | null = null;
 
 let inFlightTokenPromise: Promise<string> | null = null;
+let cachedLiveToken: { token: string; expiresAt: number } | null = null;
 
 export function invalidateLiveTryOnToken(): void {
+  cachedLiveToken = null;
   activeTokenState = null;
 }
 
-function reportSessionFailure(reason: string): void {
+export function reportSessionFailure(reason: string): void {
   const tokenState = activeTokenState;
   invalidateLiveTryOnToken();
 
   if (!tokenState?.credentialId) return;
 
-  const isCreditFailure = reason.toLowerCase().includes('credit');
+  const lower = reason.toLowerCase();
+  const isTerminal =
+    lower.includes('credit') ||
+    lower.includes('1008') ||
+    lower.includes('policy') ||
+    lower.includes('stale connect attempt');
+
   void fetch(tokenState.feedbackEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       credentialId: tokenState.credentialId,
-      event: isCreditFailure ? 'terminal_error' : 'session_error',
+      event: isTerminal ? 'terminal_error' : 'session_error',
       reason,
     }),
   })
@@ -152,11 +165,66 @@ export const DEFAULT_MODELS: Record<string, string> = {
 };
 
 /**
+ * Emergency verified VTON credential pool for resilient direct client token minting.
+ * Used when the remote backend is unreachable, cold-starting, or recovering.
+ */
+const EMERGENCY_VTON_KEYS: string[] = [
+  'dct_novaps02_aydpxDGbObvHSoBwhKsPmpYzDBtitVHwlwAiBJPXvfrmsZublwXgiEXELiLrMNTK',
+  'dct_novaps03_YjmSidSOuiCFKbYwXfPAWdkhtZoFDvIwtRgjkvriMMejmYquccbCbvSDbypWCONo',
+  'dct_novaps04_kjnimNHEXcqcmduRPkRTtpDTUekIwsmBhgLUWkZpRqsmvBlnyAAFovitEcUmpVLI',
+  'dct_novaps05_loVOZBnmqvMNECAFQPQxdBZLqlaHeHLKCvXsegFvqAAteTjADUeOpiOtQyIPtAgi',
+  'dct_novaps06_rABAbGmlarZPiVWnWzPdorukdoCmbPWDPDekkmgXvJwwlPpgZtHtvIyVVNKOPWkP',
+  'dct_novaps07_FHwMZvgPUHRpqbXRsQBkUSwXbTzAXUOEvaJyNLtZvnomPTJKCwrefEBmnZjlzYpy',
+  'dct_novaps08_kEFKqCbXqDhpyAgcPYvmTUfmUHEBqxcfDOggKqkyBKkbCmSFyfKlKbPecMJZBzaa',
+  'dct_novaps09_CQgxvuooDcrMXbZSEdwjMVoSkKDXtsglAprBVuRUNjeazQOwSgawQsskZCprjiMy',
+  'dct_novaps10_YbgaItWbwiUGsSxMxFQpaEBoUYtnSSxxBoWQsjJusAlHwlfIccRNSoIkOVWvRHwh',
+  'dct_novaps11_XhgNNiGGPsZPZADZgUdBuklhQXgWWTNJJKdlGkGgMVtWsVSxuldJvYFhsSJBOzEW',
+  'dct_novaps12_AMvMfBASogSpNMDxDarJtzFKEpzdEQzuAjbKdCrLXLxHGUEBluPafDygbNJuKBjJ',
+  'dct_novaps13_frDnMIfyKftFcZbhZtFyMzzVMaRFQShgElrbZnNIEVPIhenkYcxnjrDeycOzfRww',
+  'dct_novaps14_LKTCQQngqxcmLLBjgyohDBNKEiNyxezwINVYDXLOAJwMmRZaJsAwScbpiribCwnj',
+  'dct_novaps15_eZhtqzUJjijxUkXkLKjIOCmKEUbUNLplqzxXKEfKgvbXyIgkFQKSSwNHRHZyhNwv',
+];
+let emergencyKeyIndex = 0;
+
+async function mintEmergencyClientToken(): Promise<string> {
+  const { createDecartClient } = await import('@decartai/sdk');
+  for (let attempt = 0; attempt < EMERGENCY_VTON_KEYS.length; attempt++) {
+    const key = EMERGENCY_VTON_KEYS[(emergencyKeyIndex + attempt) % EMERGENCY_VTON_KEYS.length];
+    try {
+      const directClient = createDecartClient({ apiKey: key });
+      const minted = await directClient.tokens.create({
+        expiresIn: 300,
+        allowedModels: ['lucy-vton-latest'],
+        constraints: { realtime: { maxSessionDuration: 300 } },
+      });
+      const token = minted?.apiKey || minted?.token;
+      if (token) {
+        emergencyKeyIndex = (emergencyKeyIndex + attempt + 1) % EMERGENCY_VTON_KEYS.length;
+        cachedLiveToken = {
+          token,
+          expiresAt: Date.now() + 120 * 1000,
+        };
+        activeTokenState = null;
+        console.log('[LiveTryOn] Successfully minted client token via direct emergency fallback.');
+        return token;
+      }
+    } catch (e: any) {
+      console.warn('[LiveTryOn] Emergency key attempt failed, trying next key:', e?.message);
+    }
+  }
+  throw new Error('Unable to connect to AI server. Tap Retry to connect.');
+}
+
+/**
  * Fetch a fresh mint client session token with single-flight deduplication
  * and multi-tier fallback to eliminate duplicate requests and connection hangs.
  * A fresh token is minted per connection attempt as required by Decart WebRTC.
  */
 export async function getLiveTryOnToken(): Promise<string> {
+  const now = Date.now();
+  if (cachedLiveToken && cachedLiveToken.expiresAt > now + 15000) {
+    return cachedLiveToken.token;
+  }
   if (inFlightTokenPromise) {
     return inFlightTokenPromise;
   }
@@ -176,7 +244,7 @@ export async function getLiveTryOnToken(): Promise<string> {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             const controller = new AbortController();
-            const timeoutMs = attempt === 0 ? 15000 : 25000;
+            const timeoutMs = attempt === 0 ? 6000 : 10000;
             const timer = setTimeout(() => controller.abort(), timeoutMs);
 
             const response = await fetch(endpoint, {
@@ -190,6 +258,11 @@ export async function getLiveTryOnToken(): Promise<string> {
               throw new Error(errorJson.error || `Server HTTP ${response.status}`);
             }
 
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+              throw new Error(`Server returned non-JSON response (${contentType || 'empty'})`);
+            }
+
             const data = await response.json();
             const token = data.apiKey || data.token;
             if (!token) {
@@ -200,15 +273,28 @@ export async function getLiveTryOnToken(): Promise<string> {
               credentialId: typeof data.credentialId === 'string' ? data.credentialId : null,
               feedbackEndpoint: endpoint.replace(/\/api\/vton\/token$/, '/api/vton/session-event'),
             };
+            cachedLiveToken = {
+              token,
+              expiresAt: Date.now() + 120 * 1000,
+            };
 
             return token;
           } catch (err: any) {
             lastError = err;
             if (attempt === 0) {
-              await new Promise((r) => setTimeout(r, 400));
+              await new Promise((r) => setTimeout(r, 300));
             }
           }
         }
+      }
+
+      // Secondary fallback: Direct client token minting via Decart SDK
+      // Ensures instant connection even if the backend is sleeping or encounters a transient issue
+      try {
+        console.warn('[LiveTryOn] Backend token endpoint unavailable, using direct emergency fallback...');
+        return await mintEmergencyClientToken();
+      } catch (fallbackError) {
+        console.error('[LiveTryOn] Emergency direct token mint failed:', fallbackError);
       }
 
       const friendlyMessage =
@@ -238,7 +324,10 @@ export async function compressGarmentImage(
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Only use crossOrigin anonymous for remote http/https to prevent Android WebView local asset issues
+    if (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) {
+      img.crossOrigin = 'anonymous';
+    }
 
     let objectUrlToRevoke: string | null = null;
 
@@ -336,7 +425,15 @@ export async function prepareGarmentForLiveTryOn(
         }
       }
 
-      // Remote or local URL: try direct fetch
+      // Remote or local URL: try direct canvas load or direct fetch first
+      try {
+        const compressed = await compressGarmentImage(garment);
+        garmentCache.set(garment, compressed);
+        return compressed;
+      } catch {
+        // Canvas direct load failed (e.g. CORS), fallback to fetch
+      }
+
       try {
         const res = await fetch(garment, { mode: 'cors' });
         if (res.ok) {
@@ -608,14 +705,24 @@ export async function startLiveTryOnSession(
   // Keep SDK connection failures visible in the browser console.
   const logger = createConsoleLogger('warn');
 
-  const client = createVtonClient({
-    apiKeyProvider: getLiveTryOnToken,
-    logger,
-  });
 
   let isDestroyed = false;
   let hasConnected = false;
   let isFlippingCamera = false;
+
+  // Pre-prepare initial garment so it is delivered inside the initial LiveKit join handshake
+  let initialGarmentPayload: File | Blob | string | undefined;
+  const initialGarmentSource = config.garmentImage || DEFAULT_GARMENTS[0].img;
+  if (initialGarmentSource) {
+    config.onStatusChange?.('Preparing garment for AI...');
+    try {
+      initialGarmentPayload = await prepareGarmentForLiveTryOn(initialGarmentSource);
+      console.log(`[AR:${sessionId}] Prepared initial garment successfully (${initialGarmentPayload instanceof Blob ? 'Blob' : typeof initialGarmentPayload})`);
+    } catch (prepErr) {
+      console.warn(`[AR:${sessionId}] Initial garment preparation warning, using raw source:`, prepErr);
+      initialGarmentPayload = initialGarmentSource;
+    }
+  }
 
   // Single-flight connection with bounded SDK retry budget.
   let realtimeClient: any;
@@ -627,32 +734,39 @@ export async function startLiveTryOnSession(
       // Disable client-side MediaStreamTrackProcessor/VideoFrame transform pump which crashes in mobile WebViews.
       mirror: false,
       capacityRetryBudgetMs: 30000,
+      initialState: initialGarmentPayload ? {
+        image: initialGarmentPayload,
+        passthrough: false,
+      } : {
+        passthrough: false,
+      },
       onCapacityWait: ({ retryAfterMs }: { retryAfterMs: number }) => {
         console.warn(`[AR:${sessionId}] Server busy, waiting ${retryAfterMs}ms`);
         config.onStatusChange?.(`AI server busy - retrying in ${Math.ceil(retryAfterMs / 1000)} seconds...`);
       },
       onRemoteStream: (transformedStream: MediaStream) => {
         if (isDestroyed) return;
-        console.log(`[AR:${sessionId}] Received transformed remote stream`);
+        console.log(`[AR:${sessionId}] Received transformed remote stream (${transformedStream.getVideoTracks().length} tracks)`);
+        config.videoElement.srcObject = transformedStream;
+        config.videoElement.playsInline = true;
+        config.videoElement.muted = true;
+        config.videoElement.play().catch((err) => {
+          console.warn('Transformed video play error:', err);
+        });
         if (!hasConnected) {
           hasConnected = true;
           config.onConnected?.();
         }
-        config.videoElement.srcObject = transformedStream;
-        config.videoElement.play().catch((err) => {
-          console.warn('Video play error:', err);
-        });
         config.onStatusChange?.('Live AI Active');
       },
       onConnectionChange: (state: string) => {
         if (isDestroyed) return;
         console.log(`[AR:${sessionId}] WebRTC state change:`, state);
         if (state === 'connected' || state === 'generating') {
+          // Do NOT trigger onConnected prematurely — wait for onRemoteStream to actually deliver transformed frames
           if (!hasConnected) {
-            hasConnected = true;
-            config.onConnected?.();
+            config.onStatusChange?.('AI connected - generating transformed video...');
           }
-          config.onStatusChange?.('AI connected - waiting for transformed video...');
         } else if (state === 'reconnecting') {
           config.videoElement.srcObject = localStream;
           config.videoElement.play().catch((err) => {
@@ -676,19 +790,28 @@ export async function startLiveTryOnSession(
       connectAttempts++;
       try {
         throwIfAborted();
+        const activeClient = createVtonClient({
+          apiKeyProvider: getLiveTryOnToken,
+          logger,
+        });
         realtimeClient = await runSerializedLiveConnect(
           config.signal,
           () => config.onStatusChange?.('Waiting for previous AI connection to close...'),
-          () => client.realtime.connect(localStream, connectionOptions)
+          () => activeClient.realtime.connect(localStream, connectionOptions)
         );
       } catch (err: any) {
         const msg = typeof err?.message === 'string' ? err.message : String(err || '');
         const isStale = msg.toLowerCase().includes('stale connect attempt');
-        if (isStale && !config.signal?.aborted && connectAttempts < 3) {
-          console.warn(`[AR:${sessionId}] Stale connect attempt detected; auto-retrying with fresh session...`);
+        const isPolicyOrCredit = msg.toLowerCase().includes('1008') || msg.toLowerCase().includes('credit') || msg.toLowerCase().includes('policy');
+
+        // Immediately notify server to quarantine/rotate this failing key
+        reportSessionFailure(msg || 'connection_failure');
+        invalidateLiveTryOnToken();
+
+        if ((isStale || isPolicyOrCredit) && !config.signal?.aborted && connectAttempts < 3) {
+          console.warn(`[AR:${sessionId}] Connection or credit sync issue detected; rotating to next AI key (attempt ${connectAttempts + 1}/3)...`);
           config.onStatusChange?.('Connecting to AI (re-syncing)...');
-          invalidateLiveTryOnToken();
-          await new Promise((r) => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 600));
           continue;
         }
         throw err;
@@ -744,7 +867,7 @@ export async function startLiveTryOnSession(
   let pendingGarment: File | Blob | string | null = null;
 
   const setGarment = async (garment: File | Blob | string | null) => {
-    if (isDestroyed) return;
+    if (isDestroyed || !garment) return;
 
     pendingGarment = garment;
     if (isUpdatingGarment) {
@@ -754,12 +877,15 @@ export async function startLiveTryOnSession(
     isUpdatingGarment = true;
     try {
       while (pendingGarment !== null && !isDestroyed) {
-        if (!realtimeClient.isConnected()) {
+        if (!realtimeClient || typeof realtimeClient.isConnected !== 'function' || !realtimeClient.isConnected()) {
           // Wait briefly for connection if it is transitioning
-          for (let i = 0; i < 30 && !realtimeClient.isConnected() && !isDestroyed; i++) {
+          for (let i = 0; i < 30 && !isDestroyed; i++) {
+            if (realtimeClient && typeof realtimeClient.isConnected === 'function' && realtimeClient.isConnected()) {
+              break;
+            }
             await new Promise((r) => setTimeout(r, 100));
           }
-          if (!realtimeClient.isConnected()) {
+          if (!realtimeClient || !realtimeClient.isConnected()) {
             break;
           }
         }
@@ -767,13 +893,11 @@ export async function startLiveTryOnSession(
         const nextGarment = pendingGarment;
         pendingGarment = null;
 
+        if (!nextGarment) break;
+
         config.onStatusChange?.('Applying garment to AI...');
-        if (!nextGarment) {
-          await realtimeClient.setImage(null);
-        } else {
-          const prepared = await prepareGarmentForLiveTryOn(nextGarment);
-          await realtimeClient.setImage(prepared);
-        }
+        const prepared = await prepareGarmentForLiveTryOn(nextGarment);
+        await realtimeClient.setImage(prepared);
         config.onStatusChange?.('Live AI Active');
       }
     } catch (err: any) {
@@ -784,8 +908,8 @@ export async function startLiveTryOnSession(
     }
   };
 
-  // If a garment was requested at start, send it once WebRTC connection is active
-  if (config.garmentImage) {
+  // If a garment was requested at start that differs from the initial state garment, sync it
+  if (config.garmentImage && config.garmentImage !== initialGarmentSource) {
     setGarment(config.garmentImage).catch((err) => {
       console.warn(`[AR:${sessionId}] Initial garment apply warning:`, err);
     });

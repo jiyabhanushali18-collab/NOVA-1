@@ -1,7 +1,16 @@
 import { useI18n } from '../i18n';
-import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { ProductItem, ScreenId } from '../types';
 import { analytics } from '../services/analyticsService';
+import { useBackHandler } from '../services/backButtonService';
+import { MinimalColorSelector } from './MinimalColorSelector';
+import {
+  getProductColorOptions,
+  getGarmentColorImage,
+  getGarmentColorModelBg,
+  GarmentColorOption,
+} from '../utils/arTryOnColors';
+import { normalizeColorKey } from '../utils/colors';
 import { Capacitor } from '@capacitor/core';
 import {
   saveImageToDeviceGallery,
@@ -19,6 +28,7 @@ import {
   applyTrackExposure,
   isHardwareExposureSupported,
   getCameraDevices,
+  invalidateLiveTryOnToken,
 } from '../services/liveTryOnService';
 import {
   PersonDetectionResult,
@@ -36,12 +46,15 @@ export type ArTryOnState =
   | 'cancelled';
 
 interface ArTryOnViewProps {
-  onNavigate: (screen: ScreenId) => void;
+  onNavigate: (screen: ScreenId, opts?: { productId?: string; product?: ProductItem }) => void;
   onBack?: () => void;
   selectedGarment: string;
   setSelectedGarment: (garment: string) => void;
+  selectedColor?: string;
+  setSelectedColor?: (color: string) => void;
+  onSelectProductId?: (productId: string) => void;
   onCaptureImage?: (imageDataUrl: string, isLiveTryOn: boolean) => void;
-  onTryOnSuccess?: (garment: { id: string; productId?: string; name: string; imageUrl: string }) => void;
+  onTryOnSuccess?: (garment: { id: string; productId?: string; name: string; imageUrl: string; color?: string; variantId?: string }) => void;
   initialGarmentImage?: string | null;
   isDarkMode?: boolean;
   userId?: string;
@@ -230,6 +243,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   onNavigate,
   selectedGarment,
   setSelectedGarment,
+  selectedColor: selectedColorProp,
+  setSelectedColor: setSelectedColorProp,
+  onSelectProductId,
   onCaptureImage,
   onTryOnSuccess,
   initialGarmentImage,
@@ -262,6 +278,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const isAutoLightingRef = useRef(false);
   isAutoLightingRef.current = isAutoLighting;
   const [isHardwareExposure, setIsHardwareExposure] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [personDetection, setPersonDetection] = useState<PersonDetectionResult | null>(null);
   const [availableCameras, setAvailableCameras] = useState<{ front: number; rear: number; total: number }>({ front: 1, rear: 1, total: 2 });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -272,6 +289,31 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     isError?: boolean;
   } | null>(null);
   const [uploadedGarments, setUploadedGarments] = useState<GarmentItem[]>([]);
+
+  // Priority 1: Dismiss open overlays and popups within AR Try-On
+  const hasArOverlay = Boolean(savePopup?.isOpen || showLightingPanel || isPreviewExpanded);
+  useBackHandler('ar-tryon-overlays', () => {
+    if (savePopup?.isOpen) {
+      setSavePopup(null);
+      return true;
+    }
+    if (showLightingPanel) {
+      setShowLightingPanel(false);
+      return true;
+    }
+    if (isPreviewExpanded) {
+      setIsPreviewExpanded(false);
+      return true;
+    }
+    return false;
+  }, 100, hasArOverlay);
+
+  // Priority 3: When Back is pressed at root of AR Try-On, safely stop camera & WebRTC and navigate to Home
+  useBackHandler('ar-tryon-root-exit', () => {
+    stopLiveSession(true);
+    onNavigate('home');
+    return true;
+  }, 20, true);
   const catalogGarments: GarmentItem[] = products
     .filter((product) => product.imageUrl)
     .sort((first, second) => Number(wishlist.includes(second.id)) - Number(wishlist.includes(first.id)))
@@ -285,6 +327,15 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const garmentsList = [...catalogGarments, ...uploadedGarments];
 
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!isPreviewExpanded) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsPreviewExpanded(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPreviewExpanded]);
   const sessionRef = useRef<LiveTryOnSessionHandle | null>(null);
   const localPreviewStreamRef = useRef<MediaStream | null>(null);
   const isConnectingRef = useRef(false);
@@ -294,8 +345,51 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   const sessionStartTimeRef = useRef<number | null>(null);
   const lastActionTimeRef = useRef<number>(0);
 
-  const activeModelBg = DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS['Lavender'];
+  // Active product item matching selected garment (if in catalog)
+  const selectedProduct = useMemo(() => {
+    return products.find((p) => p.id === selectedGarment || p.productId === selectedGarment);
+  }, [products, selectedGarment]);
+
+  // Available in-stock colour options for the selected product (only if it has variants/colours)
+  const availableColorVariants = useMemo(() => {
+    return getProductColorOptions(selectedProduct);
+  }, [selectedProduct]);
+
+  // Internal color state fallback if selectedColorProp is not provided
+  const [internalSelectedColor, setInternalSelectedColor] = useState<string>(selectedColorProp || 'Lavender');
+  const effectiveColorName = selectedColorProp !== undefined ? selectedColorProp : internalSelectedColor;
+
+  // Keep colour synchronized: when switching garments or when variants change,
+  // ensure the selected colour exists in the garment's options (or default to first available)
+  useEffect(() => {
+    if (availableColorVariants.length > 0) {
+      const hasMatch = availableColorVariants.some(
+        (c) => normalizeColorKey(c.name) === normalizeColorKey(effectiveColorName)
+      );
+      if (!hasMatch) {
+        const defaultColor = availableColorVariants[0].name;
+        setInternalSelectedColor(defaultColor);
+        setSelectedColorProp?.(defaultColor);
+      }
+    }
+  }, [availableColorVariants, effectiveColorName, setSelectedColorProp]);
+
   const activeGarmentObj = garmentsList.find((g) => g.id === selectedGarment) || garmentsList[0];
+
+  // Effective garment image URL respecting the selected colour variant
+  const effectiveGarmentImage = useMemo(() => {
+    if (selectedProduct && effectiveColorName) {
+      const variantImg = getGarmentColorImage(selectedProduct, effectiveColorName);
+      if (variantImg) return variantImg;
+    }
+    return activeGarmentObj?.file || activeGarmentObj?.img || initialGarmentImage || '';
+  }, [selectedProduct, effectiveColorName, activeGarmentObj, initialGarmentImage]);
+
+  // Model background matching selected colour if known, otherwise default model
+  const effectiveModelBg = useMemo(() => {
+    const colorModelBg = getGarmentColorModelBg(effectiveColorName);
+    return colorModelBg || DEFAULT_MODELS[selectedGarment] || DEFAULT_MODELS[effectiveColorName] || DEFAULT_MODELS['Lavender'];
+  }, [effectiveColorName, selectedGarment]);
 
   useEffect(() => {
     if (
@@ -312,6 +406,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   selectedGarmentRef.current = selectedGarment;
   const activeGarmentObjRef = useRef(activeGarmentObj);
   activeGarmentObjRef.current = activeGarmentObj;
+  const effectiveGarmentImageRef = useRef(effectiveGarmentImage);
+  effectiveGarmentImageRef.current = effectiveGarmentImage;
+  const effectiveColorNameRef = useRef(effectiveColorName);
+  effectiveColorNameRef.current = effectiveColorName;
   const initialGarmentImageRef = useRef(initialGarmentImage);
   initialGarmentImageRef.current = initialGarmentImage;
   const garmentsListRef = useRef(garmentsList);
@@ -439,6 +537,10 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     if (isConnectingRef.current || isLiveRef.current || pendingConnectControllerRef.current) return;
     if (!videoRef.current) return;
 
+    if (connectionState === 'retryable_error') {
+      invalidateLiveTryOnToken();
+    }
+
     if (localPreviewStreamRef.current) {
       localPreviewStreamRef.current.getTracks().forEach((track) => track.stop());
       localPreviewStreamRef.current = null;
@@ -457,7 +559,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     const currentGarmentId = selectedGarmentRef.current;
     analytics.trackArTryOnStarted(currentGarmentId, currentGarment?.name, 'ar_tryon');
 
-    const garmentSource = initialGarmentImageRef.current || currentGarment?.file || currentGarment?.img;
+    const garmentSource = initialGarmentImageRef.current || effectiveGarmentImageRef.current || currentGarment?.file || currentGarment?.img;
 
     try {
       const handle = await startLiveTryOnSession({
@@ -491,11 +593,16 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
           const durationMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : undefined;
           analytics.trackArTryOnSucceeded(selectedGarmentRef.current, activeGarmentObjRef.current?.name, durationMs);
           if (activeGarmentObjRef.current) {
+            const activeColor = effectiveColorNameRef.current;
+            const finalImg = typeof effectiveGarmentImageRef.current === 'string' && !effectiveGarmentImageRef.current.startsWith('blob:')
+              ? effectiveGarmentImageRef.current
+              : (activeGarmentObjRef.current.img.startsWith('blob:') ? '' : activeGarmentObjRef.current.img);
             onTryOnSuccess?.({
               id: activeGarmentObjRef.current.id,
               productId: activeGarmentObjRef.current.productId,
-              name: activeGarmentObjRef.current.name,
-              imageUrl: activeGarmentObjRef.current.img.startsWith('blob:') ? '' : activeGarmentObjRef.current.img,
+              name: activeColor ? `${activeGarmentObjRef.current.name} (${activeColor})` : activeGarmentObjRef.current.name,
+              imageUrl: finalImg,
+              color: activeColor,
             });
           }
         },
@@ -564,18 +671,52 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     }
   }, [onTryOnSuccess, stopLiveSession, t]);
 
+  // Colour variant selection handler with live WebRTC Decart stream synchronization
+  const handleColorSelect = useCallback((color: GarmentColorOption) => {
+    setInternalSelectedColor(color.name);
+    setSelectedColorProp?.(color.name);
+
+    const newImg = color.imageUrl || (selectedProduct ? getGarmentColorImage(selectedProduct, color.name) : undefined) || activeGarmentObj?.img;
+    if (sessionRef.current && isLiveRef.current && newImg) {
+      sessionRef.current.setGarment(newImg).catch((err) => {
+        console.warn('Real-time garment color update error:', err);
+      });
+    }
+  }, [selectedProduct, activeGarmentObj?.img, setSelectedColorProp]);
+
   // Garment selection: instant dispatch via cached blob/file without tearing down camera stream
   const handleGarmentClick = (item: GarmentItem) => {
     const prev = selectedGarment;
     setSelectedGarment(item.id);
+    if (onSelectProductId && (item.productId || item.id)) {
+      onSelectProductId(item.productId || item.id);
+    }
+
+    let resolvedColor = effectiveColorName;
     if (prev !== item.id) {
       analytics.trackArTryOnProductChanged(item.id, prev);
+
+      // Adapt colour selection to new garment's available variants
+      const newProduct = products.find((p) => p.id === item.productId || p.id === item.id);
+      const newColors = getProductColorOptions(newProduct);
+      if (newColors.length > 0) {
+        const hasCurrent = newColors.some(
+          (c) => normalizeColorKey(c.name) === normalizeColorKey(effectiveColorName)
+        );
+        if (!hasCurrent) {
+          resolvedColor = newColors[0].name;
+          setInternalSelectedColor(resolvedColor);
+          setSelectedColorProp?.(resolvedColor);
+        }
+      }
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('nova:tutorial:outfit_selected', { detail: { garmentId: item.id } }));
     }
     if (sessionRef.current && isLiveRef.current) {
-      const payload = item.file || item.img;
+      const newProduct = products.find((p) => p.id === item.productId || p.id === item.id);
+      const variantImg = newProduct ? getGarmentColorImage(newProduct, resolvedColor) : undefined;
+      const payload = item.file || variantImg || item.img;
       sessionRef.current.setGarment(payload).catch((err) => {
         console.warn('Garment update error:', err);
       });
@@ -600,6 +741,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
 
     setUploadedGarments((prev) => [newGarment, ...prev]);
     setSelectedGarment(customId);
+    if (onSelectProductId) {
+      onSelectProductId(customId);
+    }
 
     // Warm up compression in background
     prepareGarmentForLiveTryOn(file).catch(() => {});
@@ -711,7 +855,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         onCaptureImage(frame, isLiveRef.current);
       }
     } else if (onCaptureImage) {
-      onCaptureImage(activeModelBg, false);
+      onCaptureImage(effectiveModelBg, false);
     }
 
     const isTutorial = typeof window !== 'undefined' && (window as any).__nova_tutorial_active === 'ar-tryon';
@@ -720,7 +864,8 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       setFlash(false);
       if (!isTutorial) {
         stopLiveSession();
-        onNavigate('tryon-result');
+        const activeProdId = activeGarmentObj?.productId || activeGarmentObj?.id || selectedGarment;
+        onNavigate('tryon-result', activeProdId ? { productId: activeProdId } : undefined);
       }
     }, 300);
   };
@@ -737,7 +882,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         videoElement: videoRef.current,
         isVideoLive,
         isCameraActive,
-        fallbackImageUrl: activeModelBg,
+        fallbackImageUrl: effectiveModelBg,
       });
 
       if (!captureResult || !captureResult.dataUrl) {
@@ -911,15 +1056,15 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       </section>
 
       {/* 3. Camera Preview Area (Optimized for Mobile Phone Visibility) */}
-      <section data-tutorial-target="ar-camera-preview" className="relative aspect-[3/4] max-h-[44vh] min-h-[300px] w-full rounded-[24px] overflow-hidden bg-slate-950 border border-white/15 shadow-2xl group">
+      <section data-tutorial-target="ar-camera-preview" className={`relative w-full overflow-hidden bg-slate-950 shadow-2xl group ${isPreviewExpanded ? 'fixed inset-0 z-[100] h-[100dvh] min-h-0 max-h-none rounded-none border-0' : 'aspect-[3/4] max-h-[44vh] min-h-[300px] rounded-[24px] border border-white/15'}`}>
         {/* Hardware-accelerated Video Layer */}
         <LiveTryOnViewport
           videoRef={videoRef}
           isCameraActive={isCameraActive}
           isVideoLive={isVideoLive}
           lighting={lighting}
-          fallbackImg={activeModelBg}
-          garmentImg={activeGarmentObj?.img}
+          fallbackImg={effectiveModelBg}
+          garmentImg={typeof effectiveGarmentImage === 'string' ? effectiveGarmentImage : activeGarmentObj?.img}
           facingMode={facingMode}
           brightness={brightness}
           isFlipping={isFlipping}
@@ -951,6 +1096,16 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
         </div>
 
         {/* Top Status Pill: Camera ready / Live status */}
+        <button
+          type="button"
+          onClick={() => setIsPreviewExpanded((expanded) => !expanded)}
+          className="absolute top-3 right-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-[#111322]/85 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-[#1C1F36] active:scale-95"
+          title={isPreviewExpanded ? 'Exit full screen' : 'Full screen camera'}
+          aria-label={isPreviewExpanded ? 'Exit full screen camera' : 'View camera full screen'}
+        >
+          <span className="material-symbols-outlined text-lg">{isPreviewExpanded ? 'fullscreen_exit' : 'fullscreen'}</span>
+        </button>
+
         <div className="absolute top-3 inset-x-0 flex justify-center z-30 pointer-events-none">
           <div className="max-w-[calc(100%-1rem)] bg-[#111322]/85 border border-white/15 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md">
             <span
@@ -1105,13 +1260,6 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
       <section>
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-base font-bold text-white">{t('arTryOn.selectOutfit')}</h2>
-          <button 
-            type="button"
-            onClick={() => onNavigate('showroom')}
-            className="text-xs font-semibold text-[#8B6DFD] hover:text-[#A594FD] flex items-center transition-colors cursor-pointer"
-          >
-            {t('arTryOn.viewAll')} <span className="material-symbols-outlined text-sm ml-0.5 leading-none">chevron_right</span>
-          </button>
         </div>
 
         {/* Horizontal Carousel (Touch-smooth on phone) */}
@@ -1134,9 +1282,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
                 <div className="w-full aspect-square rounded-xl overflow-hidden bg-slate-900/80 mb-1.5 relative border border-white/5">
                   <img
                     alt={g.name}
-                    src={g.img}
+                    src={isSelected && typeof effectiveGarmentImage === 'string' && effectiveGarmentImage ? effectiveGarmentImage : g.img}
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover object-top"
+                    className="w-full h-full object-cover object-top transition-all duration-300"
                   />
                   {g.productId && (
                     <button
@@ -1191,6 +1339,14 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Minimal Garment Colour Selector (Conditional: only shown when multiple colours exist) */}
+        <MinimalColorSelector
+          colors={availableColorVariants}
+          selectedColorName={effectiveColorName}
+          onSelectColor={handleColorSelect}
+          className="mt-2.5"
+        />
       </section>
 
       {/* 5. Action Buttons: Try On Live & Save Look */}

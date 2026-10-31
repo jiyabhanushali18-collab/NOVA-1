@@ -2,11 +2,12 @@ import {
   MarketingSlot,
   executeScheduledMarketingEmailCampaign
 } from './marketingEmailService';
+import { adminDb } from './firebaseAdmin';
 
 export interface EmailSchedulerConfig {
   enabled: boolean;
-  morningTime: { hour: number; minute: number }; // Default 10:00 AM
-  eveningTime: { hour: number; minute: number }; // Default 7:30 PM (19:30)
+  morningTime: { hour: number; minute: number }; // 10:00 AM IST
+  eveningTime: { hour: number; minute: number }; // 7:00 PM IST (19:00)
   defaultTimezone: string; // 'Asia/Kolkata'
   lastMorningRunDate: string | null;
   lastEveningRunDate: string | null;
@@ -15,15 +16,21 @@ export interface EmailSchedulerConfig {
 const config: EmailSchedulerConfig = {
   enabled: true,
   morningTime: { hour: 10, minute: 0 },
-  eveningTime: { hour: 19, minute: 30 },
+  eveningTime: { hour: 19, minute: 0 },
   defaultTimezone: 'Asia/Kolkata',
   lastMorningRunDate: null,
   lastEveningRunDate: null
 };
 
 let schedulerTimer: NodeJS.Timeout | null = null;
+let checkInProgress = false;
 
-function getTimeInTimezone(timezone: string): { hour: number; minute: number; dateStr: string } {
+export function getTimeInTimezone(timezone: string = config.defaultTimezone): {
+  hour: number;
+  minute: number;
+  dateStr: string;
+  isoString: string;
+} {
   try {
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -48,31 +55,62 @@ function getTimeInTimezone(timezone: string): { hour: number; minute: number; da
     }
 
     const dateStr = `${year}-${month}-${day}`;
-    return { hour, minute, dateStr };
+    return { hour, minute, dateStr, isoString: now.toISOString() };
   } catch {
-    const fallback = new Date();
-    return {
-      hour: fallback.getHours(),
-      minute: fallback.getMinutes(),
-      dateStr: fallback.toISOString().split('T')[0]
-    };
+    // Robust mathematical fallback for Asia/Kolkata (UTC + 5:30)
+    const now = new Date();
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffsetMs);
+    const hour = istDate.getUTCHours();
+    const minute = istDate.getUTCMinutes();
+    const dateStr = istDate.toISOString().split('T')[0];
+    return { hour, minute, dateStr, isoString: now.toISOString() };
   }
 }
 
-async function checkAndTriggerEmailCampaigns(): Promise<void> {
-  if (!config.enabled) return;
+export async function isCampaignAlreadyExecutedPersistently(slot: MarketingSlot, dateStr: string): Promise<boolean> {
+  if (adminDb) {
+    try {
+      const doc = await adminDb.collection('marketing_campaign_executions').doc(`${slot}_${dateStr}`).get();
+      if (doc.exists) {
+        const data = doc.data();
+        if (data?.status === 'completed' || data?.status === 'completed_with_failures') return true;
+        if (data?.status === 'running') {
+          const startedAt = new Date(data.startedAt || 0).getTime();
+          // If within the last 15 minutes, consider it currently active
+          if (Date.now() - startedAt < 15 * 60 * 1000) return true;
+        }
+      }
+    } catch {}
+  }
+  return false;
+}
 
+export async function checkAndTriggerEmailCampaigns(): Promise<void> {
+  if (!config.enabled || checkInProgress) return;
+  checkInProgress = true;
+  try {
+    await checkDueCampaigns();
+  } catch (err) {
+    console.error('[Marketing Email Scheduler] Schedule check failed:', err);
+  } finally {
+    checkInProgress = false;
+  }
+}
+
+async function checkDueCampaigns(): Promise<void> {
   const { hour, minute, dateStr } = getTimeInTimezone(config.defaultTimezone);
 
-  // 1. Morning Email Campaign (10:00 AM)
+  // 1. Morning Campaign Window (10:00 AM IST, window 10:00 - 10:04)
   const isMorningWindow =
     hour === config.morningTime.hour &&
-    Math.abs(minute - config.morningTime.minute) <= 2;
+    minute >= config.morningTime.minute &&
+    minute <= config.morningTime.minute + 4;
 
   if (isMorningWindow && config.lastMorningRunDate !== dateStr) {
     config.lastMorningRunDate = dateStr;
     console.log(
-      `[Marketing Email Scheduler] Triggering automated MORNING email campaign at ${hour}:${minute} (${config.defaultTimezone})...`
+      `[Marketing Email Scheduler] Triggering automated MORNING email campaign at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} (${config.defaultTimezone})...`
     );
     try {
       await executeScheduledMarketingEmailCampaign('morning');
@@ -81,15 +119,16 @@ async function checkAndTriggerEmailCampaigns(): Promise<void> {
     }
   }
 
-  // 2. Evening Email Campaign (7:30 PM / 19:30)
+  // 2. Evening Campaign Window (7:00 PM IST / 19:00, window 19:00 - 19:04)
   const isEveningWindow =
     hour === config.eveningTime.hour &&
-    Math.abs(minute - config.eveningTime.minute) <= 2;
+    minute >= config.eveningTime.minute &&
+    minute <= config.eveningTime.minute + 4;
 
   if (isEveningWindow && config.lastEveningRunDate !== dateStr) {
     config.lastEveningRunDate = dateStr;
     console.log(
-      `[Marketing Email Scheduler] Triggering automated EVENING email campaign at ${hour}:${minute} (${config.defaultTimezone})...`
+      `[Marketing Email Scheduler] Triggering automated EVENING email campaign at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} (${config.defaultTimezone})...`
     );
     try {
       await executeScheduledMarketingEmailCampaign('evening');
@@ -103,11 +142,19 @@ export function startMarketingEmailScheduler(): void {
   if (schedulerTimer) return;
 
   console.log(
-    `[Marketing Email Scheduler] Initialized: Morning at ${config.morningTime.hour}:${String(config.morningTime.minute).padStart(2, '0')}, Evening at ${config.eveningTime.hour}:${String(config.eveningTime.minute).padStart(2, '0')} (${config.defaultTimezone}).`
+    `[Marketing Email Scheduler] Initialized: Morning at ${String(config.morningTime.hour).padStart(2, '0')}:${String(config.morningTime.minute).padStart(2, '0')} IST, Evening at ${String(config.eveningTime.hour).padStart(2, '0')}:${String(config.eveningTime.minute).padStart(2, '0')} IST (${config.defaultTimezone}).`
   );
 
-  // Check every 45 seconds for scheduled window
-  schedulerTimer = setInterval(checkAndTriggerEmailCampaigns, 45000);
+  // A persistent Firestore campaign claim makes checks safe across restarts and instances.
+  // The narrow window deliberately skips missed campaigns instead of catching up in a burst.
+  setTimeout(() => {
+    void checkAndTriggerEmailCampaigns();
+  }, 3000);
+
+  // Check every 30 seconds for scheduled window
+  schedulerTimer = setInterval(() => {
+    void checkAndTriggerEmailCampaigns();
+  }, 30000);
 }
 
 export function stopMarketingEmailScheduler(): void {
@@ -142,4 +189,33 @@ export function resumeMarketingEmailScheduler(): void {
 export async function triggerManualEmailCampaign(slot: MarketingSlot) {
   console.log(`[Marketing Email Scheduler] Manually triggering ${slot} campaign...`);
   return await executeScheduledMarketingEmailCampaign(slot);
+}
+
+export function getNextCampaignTiming(): {
+  currentTimeIST: string;
+  nextMorningCampaign: string;
+  nextEveningCampaign: string;
+} {
+  const { hour, minute, dateStr } = getTimeInTimezone(config.defaultTimezone);
+  const currentTimeIST = `${dateStr} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} IST`;
+
+  // Morning: 10:00
+  let nextMorningDate = dateStr;
+  if (hour > 10 || (hour === 10 && minute > 0)) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    nextMorningDate = tomorrow.toLocaleDateString('en-CA', { timeZone: config.defaultTimezone });
+  }
+  const nextMorningCampaign = `${nextMorningDate} 10:00 AM IST`;
+
+  // Evening: 19:00
+  let nextEveningDate = dateStr;
+  if (hour > 19 || (hour === 19 && minute > 0)) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    nextEveningDate = tomorrow.toLocaleDateString('en-CA', { timeZone: config.defaultTimezone });
+  }
+  const nextEveningCampaign = `${nextEveningDate} 07:00 PM IST`;
+
+  return { currentTimeIST, nextMorningCampaign, nextEveningCampaign };
 }

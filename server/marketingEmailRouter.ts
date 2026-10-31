@@ -7,24 +7,40 @@ import {
   isEmailSuppressed,
   getMarketingEmailMetrics,
   sendTestMarketingEmail,
-  getEligibleMarketingRecipients
+  getEligibleMarketingRecipients,
+  executeScheduledMarketingEmailCampaign,
+  MarketingSlot
 } from './marketingEmailService';
 import {
   getMarketingSchedulerConfig,
   updateMarketingSchedulerConfig,
   pauseMarketingEmailScheduler,
   resumeMarketingEmailScheduler,
-  triggerManualEmailCampaign
+  triggerManualEmailCampaign,
+  getNextCampaignTiming,
+  getTimeInTimezone
 } from './marketingEmailScheduler';
-import { MARKETING_EMAIL_TEMPLATES } from './marketingEmailLibrary';
+import {
+  MARKETING_EMAIL_TEMPLATES,
+  MARKETING_CONTENT_VARIANTS
+} from './marketingEmailLibrary';
+import { adminDb } from './firebaseAdmin';
 
 const router = express.Router();
 
 const getAdminSecret = (): string =>
-  (process.env.NOVA_ADMIN_SECRET || process.env.DECART_ADMIN_SECRET || 'nova-admin-secret-2026').trim();
+  (process.env.NOVA_ADMIN_SECRET || process.env.DECART_ADMIN_SECRET || '').trim();
 
-const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
+export const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
   const adminSecret = getAdminSecret();
+  if (!adminSecret) {
+    console.error('[Marketing Admin] Administrative secret is not configured in environment variables.');
+    return res.status(500).json({
+      success: false,
+      error: 'Server configuration error: Administrative credential not set.'
+    });
+  }
+
   const headerSecret = String(req.headers['x-admin-key'] || '').trim();
   const authHeader = String(req.headers['authorization'] || '').trim();
   const bearerToken = authHeader.toLowerCase().startsWith('bearer ')
@@ -39,7 +55,7 @@ const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  if (candidate === adminSecret || candidate === 'nova-admin-secret-2026') {
+  if (adminSecret && candidate === adminSecret) {
     return next();
   }
 
@@ -72,10 +88,10 @@ router.get('/marketing/unsubscribe', async (req: Request, res: Response) => {
   // Verify HMAC signature token
   const isValid = verifyUnsubscribeToken(rawEmail, token);
   if (!isValid) {
-    console.warn('[Marketing Email] Invalid unsubscribe token for email:', rawEmail);
+    return res.status(403).send('This unsubscribe link is invalid or expired.');
   }
 
-  // Process unsubscribe
+  // Process immediate suppression
   await suppressEmail(rawEmail, 'user_link_unsubscribe');
 
   const appBaseUrl = getPublicAppUrl();
@@ -163,7 +179,7 @@ router.get('/marketing/unsubscribe', async (req: Request, res: Response) => {
 });
 
 // ----------------------------------------------------------------------------
-// 2. Programmatic API Unsubscribe & Preference Endpoints
+// 2. Programmatic API Unsubscribe, Resubscribe & Preferences Endpoints
 // ----------------------------------------------------------------------------
 router.post('/marketing/unsubscribe', async (req: Request, res: Response) => {
   const { email, token } = req.body;
@@ -171,7 +187,7 @@ router.post('/marketing/unsubscribe', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Email is required' });
   }
 
-  if (token && !verifyUnsubscribeToken(email, token)) {
+  if (!token || !verifyUnsubscribeToken(email, token)) {
     return res.status(403).json({ success: false, error: 'Invalid security token' });
   }
 
@@ -185,42 +201,112 @@ router.post('/marketing/resubscribe', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Email is required' });
   }
 
-  await unsuppressEmail(email);
-  return res.json({ success: true, message: `Email ${email} has been re-subscribed to marketing campaigns.` });
+  return res.status(409).json({ success: false, error: 'To subscribe again, update marketing email consent in your NOVA account settings.' });
+});
+
+router.post('/marketing/preferences', async (req: Request, res: Response) => {
+  try {
+    const { email, marketingEmailOptIn } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    if (typeof marketingEmailOptIn !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'marketingEmailOptIn boolean is required' });
+    }
+
+    if (marketingEmailOptIn) {
+      await unsuppressEmail(email);
+    } else {
+      await suppressEmail(email, 'user_profile_toggle');
+    }
+
+    return res.json({
+      success: true,
+      message: `Marketing email preference set to ${marketingEmailOptIn} for ${email}`
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err?.message || 'Failed to update preferences' });
+  }
 });
 
 // ----------------------------------------------------------------------------
-// 3. Public Health Status
+// 3. External Persistent Cron / Dispatcher Endpoint (for GitHub Actions / Webhooks)
+// ----------------------------------------------------------------------------
+router.post('/marketing/cron/dispatch', verifyAdminAccess, async (req: Request, res: Response) => {
+  try {
+    const querySlot = req.query.slot as string;
+    const bodySlot = req.body?.slot as string;
+    let slot: MarketingSlot;
+
+    if (querySlot === 'evening' || bodySlot === 'evening') {
+      slot = 'evening';
+    } else if (querySlot === 'morning' || bodySlot === 'morning') {
+      slot = 'morning';
+    } else {
+      // Auto-detect based on current time in IST
+      const { hour } = getTimeInTimezone();
+      slot = hour >= 15 ? 'evening' : 'morning';
+    }
+
+    console.log(`[Marketing Cron] External dispatch received for slot: ${slot}`);
+    const result = await executeScheduledMarketingEmailCampaign(slot);
+
+    return res.json({
+      success: true,
+      source: 'external_cron',
+      slot,
+      result
+    });
+  } catch (err: any) {
+    console.error('[Marketing Cron] Error during cron dispatch:', err);
+    return res.status(500).json({ success: false, error: err?.message || 'External cron dispatch failed' });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 4. Public Health Status
 // ----------------------------------------------------------------------------
 router.get('/marketing/status', async (_req: Request, res: Response) => {
   const metrics = getMarketingEmailMetrics();
   const config = getMarketingSchedulerConfig();
   const eligible = await getEligibleMarketingRecipients();
+  const timings = getNextCampaignTiming();
 
   return res.json({
     success: true,
     status: 'healthy',
     channel: 'email',
+    provider: process.env.BREVO_API_KEY ? 'brevo_configured' : 'simulation_mode',
+    senderEmail: process.env.BREVO_SENDER_EMAIL || null,
+    senderName: process.env.BREVO_SENDER_NAME || 'NOVA',
     eligibleRegisteredRecipients: eligible.length,
     schedulerEnabled: config.enabled,
-    morningTime: config.morningTime,
-    eveningTime: config.eveningTime,
+    morningSchedule: '10:00 AM IST (10:00)',
+    eveningSchedule: '07:00 PM IST (19:00)',
     timezone: config.defaultTimezone,
+    currentServerTimeIST: timings.currentTimeIST,
+    nextMorningCampaign: timings.nextMorningCampaign,
+    nextEveningCampaign: timings.nextEveningCampaign,
+    lastMorningRunDate: config.lastMorningRunDate,
+    lastEveningRunDate: config.lastEveningRunDate,
     metrics
   });
 });
 
 // ----------------------------------------------------------------------------
-// 4. Protected Admin Endpoints
+// 5. Protected Admin Endpoints
 // ----------------------------------------------------------------------------
 router.get('/marketing/admin/config', verifyAdminAccess, async (_req: Request, res: Response) => {
   const config = getMarketingSchedulerConfig();
   const metrics = getMarketingEmailMetrics();
   const eligible = await getEligibleMarketingRecipients();
+  const timings = getNextCampaignTiming();
 
   return res.json({
     success: true,
     config,
+    timings,
     metrics,
     eligibleRecipientsCount: eligible.length
   });
@@ -268,17 +354,25 @@ router.post('/marketing/admin/trigger', verifyAdminAccess, async (req: Request, 
 
 router.post('/marketing/admin/test-send', verifyAdminAccess, async (req: Request, res: Response) => {
   try {
-    const { toEmail, templateId } = req.body;
+    const { toEmail, templateId, slot } = req.body;
     if (!toEmail || typeof toEmail !== 'string' || !toEmail.includes('@')) {
       return res.status(400).json({ success: false, error: 'Valid recipient email required' });
     }
 
-    const result = await sendTestMarketingEmail({ toEmail, templateId });
+    const result = await sendTestMarketingEmail({ toEmail, templateId, slot });
     return res.json({
       success: result.ok,
       messageId: result.messageId,
-      templateUsed: result.templateUsed.id,
-      subject: result.templateUsed.subject,
+      providerStatus: result.providerStatus,
+      personalizedUsed: {
+        templateId: result.personalizedUsed.templateId,
+        slot: result.personalizedUsed.slot,
+        subject: result.personalizedUsed.subject,
+        headline: result.personalizedUsed.headline,
+        ctaText: result.personalizedUsed.ctaText,
+        ctaPath: result.personalizedUsed.ctaPath,
+        featuredProduct: result.personalizedUsed.featuredProduct?.name
+      },
       error: result.error
     });
   } catch (err: any) {
@@ -286,11 +380,42 @@ router.post('/marketing/admin/test-send', verifyAdminAccess, async (req: Request
   }
 });
 
+router.get('/marketing/admin/history', verifyAdminAccess, async (_req: Request, res: Response) => {
+  try {
+    const metrics = getMarketingEmailMetrics();
+    let firestoreCampaigns: any[] = [];
+
+    if (adminDb) {
+      try {
+        const snap = await adminDb.collection('marketing_campaigns').orderBy('startedAt', 'desc').limit(20).get();
+        snap.forEach((d: any) => firestoreCampaigns.push(d.data()));
+      } catch {}
+    }
+
+    return res.json({
+      success: true,
+      metrics,
+      firestoreCampaigns,
+      localHistory: metrics.recentCampaigns
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err?.message || 'Failed to fetch history' });
+  }
+});
+
 router.get('/marketing/admin/templates', verifyAdminAccess, (_req: Request, res: Response) => {
   return res.json({
     success: true,
-    count: MARKETING_EMAIL_TEMPLATES.length,
-    templates: MARKETING_EMAIL_TEMPLATES
+    totalVariants: MARKETING_CONTENT_VARIANTS.length,
+    variants: MARKETING_CONTENT_VARIANTS.map((v) => ({
+      id: v.id,
+      slot: v.slot,
+      category: v.category,
+      subjectSample: v.subjectLines[0],
+      headlineSample: v.headlines[0],
+      ctaSample: v.ctaOptions[0]?.text
+    })),
+    legacyTemplates: MARKETING_EMAIL_TEMPLATES
   });
 });
 

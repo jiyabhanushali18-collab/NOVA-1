@@ -70,7 +70,7 @@ const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
  * Mint a client token for WebRTC connection to Live VTON AI.
  * Uses DecartKeyPool for atomic selection, quota tracking, and automatic fallback.
  */
-router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, async (req: Request, res: Response) => {
+const handleTokenRequest = async (req: Request, res: Response) => {
   const clientOrigin = String(req.headers.origin || req.headers.referer || '');
   const authHeader = String(req.headers.authorization || '');
   const userId = authHeader ? 'authenticated-user' : 'guest-user';
@@ -119,7 +119,10 @@ router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, a
       fallbackCount: error?.fallbackCount || 0
     });
   }
-});
+};
+
+router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, handleTokenRequest);
+router.post(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, handleTokenRequest);
 
 /**
  * Receives client-side session runtime events (such as WebRTC terminal close reasons)
@@ -197,9 +200,20 @@ router.post(['/vton/proxy-image', '/decart/proxy-image'], async (req: Request, r
       return res.json({ dataUrl: imageUrl });
     }
 
-    const response = await axios.get(imageUrl, {
+    let fetchUrl = imageUrl.trim();
+    if (fetchUrl.startsWith('/')) {
+      const publicBase = (process.env.PUBLIC_APP_URL || 'https://nova.nova-fashion.workers.dev').trim().replace(/\/$/, '');
+      fetchUrl = `${publicBase}${fetchUrl}`;
+    }
+
+    if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) {
+      return res.status(400).json({ error: 'Valid HTTP or HTTPS imageUrl is required' });
+    }
+
+    const response = await axios.get(fetchUrl, {
       responseType: 'arraybuffer',
       timeout: 10000,
+      maxContentLength: 10 * 1024 * 1024,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
       }

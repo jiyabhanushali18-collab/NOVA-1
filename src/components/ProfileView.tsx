@@ -11,11 +11,12 @@ import {
   saveUserDeliveryAddress,
   writeCachedUserAddress
 } from '../services/addressService';
-import { syncPreferencesUpdate, requestPushNotificationPermission } from '../services/notificationClientService';
+import { syncPreferencesUpdate, requestPushNotificationPermission, syncMarketingEmailPreference } from '../services/notificationClientService';
 import { useTutorial } from './onboarding';
+import { useBackHandler } from '../services/backButtonService';
 
 interface ProfileViewProps {
-  onNavigate: (screen: ScreenId) => void;
+  onNavigate: (screen: ScreenId, opts?: any) => void;
   userId?: string;
   userName: string;
   setUserName: (name: string) => void;
@@ -466,6 +467,81 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Temporary address inputs states
   const [isAddingAddress, setIsAddingAddress] = useState(false);
+
+  // Global Android Back button integration: Close topmost Profile modal / sub-form first
+  const hasAnyProfileModal = Boolean(
+    isAccountModalOpen ||
+    isEditModalOpen ||
+    isProfileModalOpen ||
+    isPaymentModalOpen ||
+    isAddressesModalOpen ||
+    isPrivacyModalOpen ||
+    isNotificationsModalOpen ||
+    isLanguageModalOpen ||
+    isWishlistModalOpen ||
+    isSavedLooksModalOpen ||
+    selectedLookPreview ||
+    isAddingCard ||
+    isAddingUPI ||
+    isAddingAddress
+  );
+
+  useBackHandler('profile-modals', () => {
+    if (selectedLookPreview) {
+      setSelectedLookPreview(null);
+      return true;
+    }
+    if (isAddingCard || isAddingUPI) {
+      setIsAddingCard(false);
+      setIsAddingUPI(false);
+      return true;
+    }
+    if (isAddingAddress) {
+      setIsAddingAddress(false);
+      return true;
+    }
+    if (isAccountModalOpen) {
+      setIsAccountModalOpen(false);
+      return true;
+    }
+    if (isEditModalOpen) {
+      setIsEditModalOpen(false);
+      return true;
+    }
+    if (isProfileModalOpen) {
+      setIsProfileModalOpen(false);
+      return true;
+    }
+    if (isPaymentModalOpen) {
+      setIsPaymentModalOpen(false);
+      return true;
+    }
+    if (isAddressesModalOpen) {
+      setIsAddressesModalOpen(false);
+      return true;
+    }
+    if (isPrivacyModalOpen) {
+      setIsPrivacyModalOpen(false);
+      return true;
+    }
+    if (isNotificationsModalOpen) {
+      setIsNotificationsModalOpen(false);
+      return true;
+    }
+    if (isLanguageModalOpen) {
+      setIsLanguageModalOpen(false);
+      return true;
+    }
+    if (isWishlistModalOpen) {
+      setIsWishlistModalOpen(false);
+      return true;
+    }
+    if (isSavedLooksModalOpen) {
+      setIsSavedLooksModalOpen(false);
+      return true;
+    }
+    return false;
+  }, 100, hasAnyProfileModal);
   const [addrLabel, setAddrLabel] = useState('Home');
   const [addrName, setAddrName] = useState('');
   const [addrStreet, setAddrStreet] = useState('');
@@ -628,22 +704,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   });
 
-  React.useEffect(() => {
-    localStorage.setItem('notifications_settings', JSON.stringify(notificationsSettings));
-    syncPreferencesUpdate({
-      marketingOptIn: Boolean(notificationsSettings.marketingReminders ?? true),
-      priceDrops: Boolean(notificationsSettings.priceDrops),
-      newArrivals: Boolean(notificationsSettings.newArrivals),
-      stylistReminders: Boolean(notificationsSettings.stylistReminders),
-      orderUpdates: Boolean(notificationsSettings.orderUpdates)
-    }, effectiveUid);
-  }, [notificationsSettings, effectiveUid]);
-
+  // Preferences are only saved and synced when the user explicitly clicks the toggle
   const toggleNotificationField = (field: keyof typeof notificationsSettings, label: string) => {
-    const updated = { ...notificationsSettings, [field]: !notificationsSettings[field] };
+    const nextVal = !notificationsSettings[field];
+    const updated = { ...notificationsSettings, [field]: nextVal };
     setNotificationsSettings(updated);
-    setProfileToast(`🔔 ${label}: ${!notificationsSettings[field] ? 'ENABLED' : 'DISABLED'}`);
+    setProfileToast(`🔔 ${label}: ${nextVal ? 'ENABLED' : 'DISABLED'}`);
     setTimeout(() => setProfileToast(null), 1500);
+
+    try {
+      localStorage.setItem('notifications_settings', JSON.stringify(updated));
+    } catch {}
+
+    syncPreferencesUpdate({
+      marketingOptIn: Boolean(updated.marketingReminders),
+      priceDrops: Boolean(updated.priceDrops),
+      newArrivals: Boolean(updated.newArrivals),
+      stylistReminders: Boolean(updated.stylistReminders),
+      orderUpdates: Boolean(updated.orderUpdates)
+    }, effectiveUid);
+
+    if (field === 'marketingReminders' && userEmail && userEmail.includes('@') && !userEmail.endsWith('@guest.nova.ai')) {
+      void syncMarketingEmailPreference(userEmail, nextVal);
+    }
   };
 
   const [pendingLocale, setPendingLocale] = useState<LocaleCode>(locale);
@@ -1023,11 +1106,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 >
                   <div 
                     onClick={() => {
-                      if (productId === 'lavender-hoodie') {
-                        onNavigate('product-details');
-                      } else {
-                        onNavigate('product-details');
-                      }
+                      onNavigate('product-details', { productId, product: matchedProd });
                     }}
                     className="w-14 h-14 rounded-xl bg-[#F2EEFF] overflow-hidden shrink-0 border border-[#E4DFF5] cursor-pointer flex items-center justify-center relative group"
                   >
@@ -1041,8 +1120,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   
                   <div className="flex-1 min-w-0 leading-tight">
                     <span className="text-[8px] font-bold text-[#5E667A] uppercase tracking-widest block mb-0.5">{matchedProd.category}</span>
-                    <h4 
-                      onClick={() => onNavigate('product-details')}
+                    <h4 onClick={() => onNavigate('product-details', { productId, product: matchedProd })}
                       className="text-xs font-bold text-[#131426] truncate hover:text-[#553BE2] cursor-pointer transition-colors"
                     >
                       {matchedProd.name}
@@ -1203,7 +1281,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             { label: t('profile.settings.terms'), icon: 'gavel', action: () => onNavigate('terms'), extra: `v${TERMS_VERSION}` },
             { label: t('profile.settings.privacyPolicy'), icon: 'policy', action: () => onNavigate('privacy'), extra: `v${PRIVACY_VERSION}` },
             { label: t('profile.settings.faq') || 'Frequently Asked Questions', icon: 'help_outline', action: () => onNavigate('faq') },
-            { label: t('profile.settings.interactiveGuides') || 'Interactive Feature Guides', icon: 'explore', action: () => onOpenTutorialGuides ? onOpenTutorialGuides() : openWelcome() },
+            { label: t('profile.settings.interactiveGuides') === 'profile.settings.interactiveGuides' ? 'Tutorial Guide' : (t('profile.settings.interactiveGuides') || 'Tutorial Guide'), icon: 'explore', action: () => onOpenTutorialGuides ? onOpenTutorialGuides() : openWelcome() },
             { label: t('profile.settings.notifications'), icon: 'notifications', action: () => setIsNotificationsModalOpen(true), extra: `${Object.values(notificationsSettings).filter(Boolean).length} Active` },
             { label: t('profile.settings.language'), icon: 'language', extra: language.label, action: () => setIsLanguageModalOpen(true) }
           ].map((item) => (
@@ -2142,22 +2220,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   return (
                     <div 
                       key={productId}
-                      className="flex items-center gap-3 bg-[#F2EEFF] hover:bg-[#F2EEFF] border border-[#E4DFF5] p-2.5 rounded-2xl relative transition-all"
+                      className="flex items-center gap-3 bg-[#F2EEFF] hover:bg-[#ECE7FF] border border-[#E4DFF5] p-2.5 rounded-2xl relative transition-all"
                     >
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name} 
-                        className="w-14 h-14 object-cover rounded-xl shrink-0"
-                      />
-                      <div className="flex-1 min-w-0 pr-6">
-                        <span className="text-[9px] uppercase font-bold text-[#553BE2] block leading-none mb-0.5">
-                          {item.category}
-                        </span>
-                        <h4 className="text-xs font-bold text-[#131426] truncate">{item.name}</h4>
-                        <div className="flex items-baseline gap-1.5 mt-0.5">
-                          <span className="text-xs font-black text-[#553BE2]">₹{item.price.toLocaleString()}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsWishlistModalOpen(false);
+                          onNavigate('product-details', { productId, product: item });
+                        }}
+                        className="flex items-center gap-3 flex-1 min-w-0 pr-14 text-left cursor-pointer group bg-transparent border-0 p-0 focus:outline-none"
+                      >
+                        <img 
+                          src={item.imageUrl} 
+                          alt={item.name} 
+                          className="w-14 h-14 object-cover rounded-xl shrink-0 group-hover:scale-105 transition-transform duration-200"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-[#553BE2] block leading-none mb-0.5">
+                            {item.category}
+                          </span>
+                          <h4 className="text-xs font-bold text-[#131426] truncate group-hover:text-[#553BE2] transition-colors">{item.name}</h4>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-xs font-black text-[#553BE2]">₹{Number(item.price || 0).toLocaleString('en-IN')}</span>
+                          </div>
                         </div>
-                      </div>
+                      </button>
 
                       {/* Remove item from wishlist */}
                       <button 

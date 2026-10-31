@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { ScreenId, ProductItem, NovaAiPersonalProfile, NovaAiProductRecommendation } from '../types';
+import { apiUrl } from '../services/apiClient';
 
 interface ChatViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -129,7 +130,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
     setRecommendationsLoading(true);
     setRecommendationsError('');
     try {
-      const res = await fetch('/api/chat/recommendations', {
+      const res = await fetch(apiUrl('/api/chat/recommendations'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile: targetProfile, limit: 8 })
@@ -169,7 +170,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
     }, 50000); // 50 seconds client-side ceiling
 
     try {
-      const res = await fetch('/api/chat/analyze-profile', {
+      const res = await fetch(apiUrl('/api/chat/analyze-profile'), {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
