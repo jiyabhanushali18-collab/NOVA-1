@@ -58,7 +58,12 @@ jobs:
         run: |
           echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > local.properties
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          if ! ./gradlew assembleDebug --stacktrace > build.log 2>&1; then
+            cat build.log
+            ERR_MSG=$(grep -E "FAILURE:|What went wrong:|Caused by:|error:" build.log | head -n 5 | tr '\n' ' ' | tr '"' "'")
+            echo "::error title=Gradle Build Error::$ERR_MSG"
+            exit 1
+          fi
 
       - name: Prepare APK artifact
         run: |
