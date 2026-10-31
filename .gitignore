@@ -25,3 +25,13 @@ serviceAccount.json
 scratch/
 
 server/data/
+
+# Virtual environments
+.venv/
+venv/
+fashion_ai/.venv/
+
+# Large model weights / binaries
+models/
+*.gguf
+*.bin
