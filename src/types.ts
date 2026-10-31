@@ -146,7 +146,7 @@ export interface CartItem {
   size: string;
 }
 
-export type NovaClothingPreference = 'women' | 'men' | 'unisex' | 'all';
+export type NovaClothingPreference = 'Female' | 'Male';
 
 export interface NovaAiPersonalProfile {
   bodyShape: 'Hourglass' | 'Pear' | 'Inverted Triangle' | 'Rectangle' | 'Apple' | 'Athletic' | 'Unknown' | string;

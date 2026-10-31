@@ -1,14 +1,14 @@
 import { fetchAndNormalizeCatalogue, NormalizedProduct } from './productIntelligence';
 import type { ValidatedNovaProfile } from './novaAiProfileAnalyzer';
 
-export type NovaClothingPreference = 'women' | 'men' | 'unisex' | 'all';
+export type NovaClothingPreference = 'Female' | 'Male';
 
 export interface NovaAiPersonalProfileInput extends ValidatedNovaProfile {
   userConfirmedBodyShape?: string;
   userConfirmedSkinTone?: string;
   userConfirmedUndertone?: string;
   userConfirmedSize?: 'XS' | 'S' | 'M' | 'L';
-  clothingPreference?: NovaClothingPreference;
+  clothingPreference?: NovaClothingPreference | string;
 }
 
 export interface NovaAiProductRecommendation {
@@ -236,74 +236,62 @@ function evaluateProductMatch(
 }
 
 /**
- * Determines product eligibility according to user's explicit clothing preference.
- * - 'women': returns verified Women's garments and explicitly verified Unisex pieces; strictly excludes Men's and Unknown/Unverified items.
- * - 'men': returns verified Men's garments and explicitly verified Unisex pieces; strictly excludes Women's and Unknown/Unverified items.
- * - 'unisex': returns explicitly verified Unisex pieces only; strictly excludes Men's, Women's, and Unknown/Unverified items.
- * - 'all': returns all catalogue items regardless of category.
+ * Normalizes a product's stored classification to exactly two values: 'Male' or 'Female'.
+ * All Unisex, Unknown, unverified, or ambiguous classifications are resolved to null (excluded).
+ */
+export function getProductGenderTarget(product: NormalizedProduct): 'Male' | 'Female' | null {
+  const raw = product.raw || {};
+  const audienceClass = (raw.aiAttributes as any)?.audienceClassification;
+
+  // 1. Primary Source of Truth: Existing Gemini audience classification stored in Firestore
+  if (audienceClass && typeof audienceClass === 'object') {
+    const classGender = String(audienceClass.gender || '').trim();
+    const classStatus = String(audienceClass.classificationStatus || '').trim().toLowerCase();
+
+    // Only map verified classifications
+    if (classStatus === 'verified') {
+      if (classGender === 'Women' || classGender === 'Female') {
+        return 'Female';
+      }
+      if (classGender === 'Men' || classGender === 'Male') {
+        return 'Male';
+      }
+    }
+    // Explicitly exclude Unisex or Unknown stored in audienceClassification
+    if (classGender === 'Unisex' || classGender === 'Unknown') {
+      return null;
+    }
+  }
+
+  // 2. Fallback to product.gender if verified_women or verified_men
+  if (product.genderVerificationStatus === 'verified_women' || product.gender === 'Women') {
+    return 'Female';
+  }
+  if (product.genderVerificationStatus === 'verified_men' || product.gender === 'Men') {
+    return 'Male';
+  }
+
+  // Everything else (Unisex, Unknown, unverified) is excluded
+  return null;
+}
+
+/**
+ * Determines product eligibility according to user's selected clothing preference.
+ * Simplified strictly to Male / Female:
+ * - If user selects 'Female': Keep ONLY Female products. Filter OUT Male, Unisex, and Unknown products.
+ * - If user selects 'Male': Keep ONLY Male products. Filter OUT Female, Unisex, and Unknown products.
  */
 export function isProductEligibleForPreference(
   product: NormalizedProduct,
-  preference: NovaClothingPreference = 'women'
+  preference: NovaClothingPreference | string = 'Female'
 ): boolean {
-  if (preference === 'all') {
-    return true;
-  }
+  const normPref = String(preference).trim().toLowerCase();
+  const targetPref: 'Female' | 'Male' = (normPref === 'female' || normPref === 'women') ? 'Female' : 'Male';
 
-  const pGender = product.gender; // 'Men' | 'Women' | 'Unisex' | 'Unknown'
-  const isVerified =
-    product.genderVerificationStatus &&
-    product.genderVerificationStatus !== 'unverified' &&
-    pGender !== 'Unknown';
+  const productTarget = getProductGenderTarget(product);
 
-  // Strictly exclude Unknown / Unverified products until classification is resolved
-  if (!isVerified) {
-    return false;
-  }
-
-  const subcat = (product.subcategory || '').toLowerCase();
-  const name = (product.name || '').toLowerCase();
-  const rawAiGender = ((product.raw?.aiAttributes as any)?.visual?.gender || '').toLowerCase();
-
-  const isStrictMale =
-    pGender === 'Men' ||
-    rawAiGender === 'men' ||
-    rawAiGender === 'male' ||
-    /\b(men's|mens|men|gents|male)\b/i.test(name.replace(/\b(women's|womens|women|ladies|female)\b/gi, '')) ||
-    subcat.includes('sherwani') ||
-    subcat.includes('pathani');
-
-  const isStrictFemale =
-    pGender === 'Women' ||
-    rawAiGender === 'women' ||
-    rawAiGender === 'female' ||
-    /\b(women's|womens|women|ladies|female)\b/i.test(name) ||
-    subcat.includes('saree') ||
-    subcat.includes('kurti') ||
-    subcat.includes('crop top') ||
-    subcat.includes('skirt') ||
-    subcat.includes('dress') ||
-    subcat.includes('leggings');
-
-  if (preference === 'women') {
-    // Strictly reject men-only pieces and unverified items
-    if (isStrictMale) return false;
-    return pGender === 'Women' || (pGender === 'Unisex' && product.genderVerificationStatus === 'verified_unisex');
-  }
-
-  if (preference === 'men') {
-    // Strictly reject women-only pieces and unverified items
-    if (isStrictFemale) return false;
-    return pGender === 'Men' || (pGender === 'Unisex' && product.genderVerificationStatus === 'verified_unisex');
-  }
-
-  if (preference === 'unisex') {
-    // Strictly verified unisex pieces (neither explicitly male nor explicitly female)
-    if (isStrictMale || isStrictFemale) return false;
-    return pGender === 'Unisex' && product.genderVerificationStatus === 'verified_unisex';
-  }
-
-  return true;
+  // Exclude all products that do not strictly match the user's selected preference
+  return productTarget === targetPref;
 }
 
 /**
@@ -323,9 +311,13 @@ export async function getNovaAiRecommendations(
   const effectiveSkinTone = profile.userConfirmedSkinTone || profile.skinTone || 'Medium';
   const effectiveUndertone = profile.userConfirmedUndertone || profile.undertone || 'Warm';
   const effectiveSize = profile.userConfirmedSize || (profile.suggestedSize !== 'unknown' ? profile.suggestedSize : undefined);
-  const preference: NovaClothingPreference = profile.clothingPreference || 'women';
+  const rawPref = String(profile.clothingPreference || 'Female').trim().toLowerCase();
+  const preference: NovaClothingPreference = (rawPref === 'male' || rawPref === 'men') ? 'Male' : 'Female';
 
-  // Filter products by usable images, stock, and user-selected clothing preference
+  // STEP 1 & 2: Simple filtering BEFORE NOVA AI ranking
+  // - If Female: Keep only Female products. Filter OUT Male, Unisex, and Unknown products.
+  // - If Male: Keep only Male products. Filter OUT Female, Unisex, and Unknown products.
+  // The filtered candidate set must be the ONLY candidate list passed to NOVA AI ranking.
   const candidateProducts = catalogue.filter((p) => {
     const hasImage = Boolean(p.imageUrl && (p.imageUrl.startsWith('http') || p.imageUrl.startsWith('data:')));
     const isBrokenImage = p.imageUrl.includes('hFNXd6Rj'); // discard dead 503 imgbb placeholders
@@ -334,7 +326,8 @@ export async function getNovaAiRecommendations(
     return hasImage && !isBrokenImage && inStock && matchesPreference;
   });
 
-  // Evaluate candidate products
+  // STEP 3: Pass ONLY eligible products to NOVA AI ranking
+  // Rank using body shape, skin tone, undertone and size
   const scoredCandidates = candidateProducts.map((product) => {
     const evaluation = evaluateProductMatch(product, effectiveBodyShape, effectiveUndertone, effectiveSize);
     return {

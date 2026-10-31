@@ -108,22 +108,18 @@ test('NOVA AI Feature Isolation & Zero Dependency on recommendationEngine.ts or 
   }
 });
 
-test('NOVA AI Clothing Preference Filtering: Eligible Candidate Set Rules', () => {
+test('NOVA AI Clothing Preference Filtering: Strict Male / Female Only Candidate Set Rules', () => {
   const dummyProduct = (
-    gender: 'Men' | 'Women' | 'Unisex' | 'Unknown',
-    name: string,
-    subcategory: string,
-    rawAiGender?: string,
-    verificationStatus?: 'verified_women' | 'verified_men' | 'verified_unisex' | 'unverified'
+    audienceGender?: 'Men' | 'Women' | 'Unisex' | 'Unknown',
+    status: 'verified' | 'unknown' = 'verified',
+    fallbackGender: 'Men' | 'Women' | 'Unisex' | 'Unknown' = 'Unknown'
   ): any => ({
     id: 'test-1',
-    name,
-    gender,
-    genderVerificationStatus:
-      verificationStatus ||
-      (gender === 'Women' ? 'verified_women' : gender === 'Men' ? 'verified_men' : gender === 'Unisex' ? 'verified_unisex' : 'unverified'),
-    subcategory,
+    name: 'Sample Product',
+    gender: fallbackGender,
+    genderVerificationStatus: fallbackGender === 'Women' ? 'verified_women' : fallbackGender === 'Men' ? 'verified_men' : 'unverified',
     category: 'Top Wear',
+    subcategory: 'Shirt',
     price: 1999,
     imageUrl: 'https://example.com/p.jpg',
     colors: ['Beige'],
@@ -131,54 +127,39 @@ test('NOVA AI Clothing Preference Filtering: Eligible Candidate Set Rules', () =
     sizes: ['M'],
     inStock: true,
     raw: {
-      aiAttributes: rawAiGender ? { visual: { gender: rawAiGender } } : undefined
+      aiAttributes: audienceGender
+        ? {
+            audienceClassification: {
+              gender: audienceGender,
+              classificationStatus: status,
+              confidence: 95
+            }
+          }
+        : undefined
     }
   });
 
-  const menHoodie = dummyProduct('Men', 'Printed Hoodie', 'Hoodie', 'men');
-  const menKurta = dummyProduct('Men', "Men's Kurta", 'Kurta', 'men');
-  const womenCropTop = dummyProduct('Women', 'Printed Crop Top', 'Crop Top', 'women');
-  const womenKurti = dummyProduct('Women', 'Printed Kurti', 'Kurti', 'women');
-  const womenSaree = dummyProduct('Women', 'Silk Saree', 'Saree', 'women');
-  const unisexSneakers = dummyProduct('Unisex', 'Classic Sneakers', 'Sneakers', 'unisex');
-  const unisexSunglasses = dummyProduct('Unisex', 'Retro Sunglasses', 'Accessories', 'unisex');
+  const femaleProduct = dummyProduct('Women', 'verified');
+  const maleProduct = dummyProduct('Men', 'verified');
+  const unisexProduct = dummyProduct('Unisex', 'verified');
+  const unknownProduct = dummyProduct('Unknown', 'unknown');
+  const unverifiedFemale = dummyProduct('Women', 'unknown');
 
-  // 1. Women's preference: allows Women and Unisex; strictly rejects Men
-  assert.equal(isProductEligibleForPreference(womenCropTop, 'women'), true, 'Women selection must allow crop top');
-  assert.equal(isProductEligibleForPreference(womenKurti, 'women'), true, 'Women selection must allow kurti');
-  assert.equal(isProductEligibleForPreference(womenSaree, 'women'), true, 'Women selection must allow saree');
-  assert.equal(isProductEligibleForPreference(unisexSneakers, 'women'), true, 'Women selection must allow unisex sneakers');
-  assert.equal(isProductEligibleForPreference(unisexSunglasses, 'women'), true, 'Women selection must allow unisex sunglasses');
-  assert.equal(isProductEligibleForPreference(menHoodie, 'women'), false, 'Women selection must strictly exclude men hoodie');
-  assert.equal(isProductEligibleForPreference(menKurta, 'women'), false, 'Women selection must strictly exclude men kurta');
+  // Female preference tests
+  assert.equal(isProductEligibleForPreference(femaleProduct, 'Female'), true, 'Female preference must include verified Women products');
+  assert.equal(isProductEligibleForPreference(maleProduct, 'Female'), false, 'Female preference must strictly exclude Male products');
+  assert.equal(isProductEligibleForPreference(unisexProduct, 'Female'), false, 'Female preference must strictly exclude Unisex products');
+  assert.equal(isProductEligibleForPreference(unknownProduct, 'Female'), false, 'Female preference must strictly exclude Unknown products');
+  assert.equal(isProductEligibleForPreference(unverifiedFemale, 'Female'), false, 'Female preference must exclude unverified products');
 
-  // 2. Men's preference: allows Men and Unisex; strictly rejects Women
-  assert.equal(isProductEligibleForPreference(menHoodie, 'men'), true, 'Men selection must allow men hoodie');
-  assert.equal(isProductEligibleForPreference(menKurta, 'men'), true, 'Men selection must allow men kurta');
-  assert.equal(isProductEligibleForPreference(unisexSneakers, 'men'), true, 'Men selection must allow unisex sneakers');
-  assert.equal(isProductEligibleForPreference(womenCropTop, 'men'), false, 'Men selection must strictly exclude crop top');
-  assert.equal(isProductEligibleForPreference(womenSaree, 'men'), false, 'Men selection must strictly exclude saree');
-
-  // 3. Unisex preference: allows strictly unisex items
-  assert.equal(isProductEligibleForPreference(unisexSneakers, 'unisex'), true, 'Unisex selection must allow sneakers');
-  assert.equal(isProductEligibleForPreference(unisexSunglasses, 'unisex'), true, 'Unisex selection must allow sunglasses');
-  assert.equal(isProductEligibleForPreference(menHoodie, 'unisex'), false, 'Unisex selection must exclude men hoodie');
-  assert.equal(isProductEligibleForPreference(womenCropTop, 'unisex'), false, 'Unisex selection must exclude women crop top');
-
-  // 4. Show all preference: allows all items
-  assert.equal(isProductEligibleForPreference(menHoodie, 'all'), true, 'Show all must allow men hoodie');
-  assert.equal(isProductEligibleForPreference(womenCropTop, 'all'), true, 'Show all must allow crop top');
-  assert.equal(isProductEligibleForPreference(unisexSneakers, 'all'), true, 'Show all must allow sneakers');
-
-  // 5. Unknown or missing gender metadata must NOT be automatically treated as confirmed Unisex
-  const unconfirmedItem = dummyProduct('Unknown', 'Polo T-Shirt', 'T-Shirt', undefined, 'unverified');
-  assert.equal(isProductEligibleForPreference(unconfirmedItem, 'unisex'), false, 'Unconfirmed gender must NOT be treated as Unisex');
-  assert.equal(isProductEligibleForPreference(unconfirmedItem, 'women'), false, 'Unconfirmed gender must NOT be treated as Women');
-  assert.equal(isProductEligibleForPreference(unconfirmedItem, 'men'), false, 'Unconfirmed gender must NOT be treated as Men');
-  assert.equal(isProductEligibleForPreference(unconfirmedItem, 'all'), true, 'Unconfirmed gender IS permitted under Show All');
+  // Male preference tests
+  assert.equal(isProductEligibleForPreference(maleProduct, 'Male'), true, 'Male preference must include verified Men products');
+  assert.equal(isProductEligibleForPreference(femaleProduct, 'Male'), false, 'Male preference must strictly exclude Female products');
+  assert.equal(isProductEligibleForPreference(unisexProduct, 'Male'), false, 'Male preference must strictly exclude Unisex products');
+  assert.equal(isProductEligibleForPreference(unknownProduct, 'Male'), false, 'Male preference must strictly exclude Unknown products');
 });
 
-test('NOVA AI Regression Test: Polo T-Shirt (ID: polo_tshirt) is strictly excluded from Women recommendations', async () => {
+test('NOVA AI Regression Test: Polo T-Shirt (ID: polo_tshirt) is strictly excluded from Female recommendations', async () => {
   const profile: NovaAiPersonalProfileInput = {
     bodyShape: 'Rectangle',
     bodyShapeConfidence: 80,
@@ -190,16 +171,16 @@ test('NOVA AI Regression Test: Polo T-Shirt (ID: polo_tshirt) is strictly exclud
     suggestedSize: 'M',
     sizeConfidence: 75,
     sizeExplanation: 'Estimate.',
-    clothingPreference: 'women',
+    clothingPreference: 'Female',
     analyzedAt: new Date().toISOString()
   };
 
   const recommendations = await getNovaAiRecommendations(profile, 12);
   const poloRec = recommendations.find((r) => r.productId === 'polo_tshirt');
-  assert.equal(poloRec, undefined, 'Product polo_tshirt must NEVER be recommended for women clothing preference');
+  assert.equal(poloRec, undefined, 'Product polo_tshirt must NEVER be recommended for Female clothing preference');
 });
 
-test('NOVA AI Recommender: Women preference retrieves real Firestore items with zero men items', async () => {
+test('NOVA AI Recommender: Female preference returns zero Male products and zero Unisex products', async () => {
   const profile: NovaAiPersonalProfileInput = {
     bodyShape: 'Rectangle',
     bodyShapeConfidence: 80,
@@ -211,103 +192,53 @@ test('NOVA AI Recommender: Women preference retrieves real Firestore items with 
     suggestedSize: 'M',
     sizeConfidence: 75,
     sizeExplanation: 'Visual estimate.',
-    clothingPreference: 'women',
-    analyzedAt: new Date().toISOString()
-  };
-
-  const recommendations = await getNovaAiRecommendations(profile, 6);
-  assert.ok(recommendations.length > 0, 'Should return women recommendations from real catalogue');
-
-  for (const rec of recommendations) {
-    // Assert none of the returned items are men hoodies or men garments
-    assert.ok(
-      !rec.productId.includes('hoodie'),
-      `Men hoodie should not be recommended for women preference: ${rec.productId}`
-    );
-    assert.ok(
-      !/\b(men|men's|mens|gents|male)\b/i.test(rec.name.replace(/\b(women|women's|womens|female|ladies)\b/gi, '')),
-      `Men's specific garments should not be recommended for women preference: ${rec.name}`
-    );
-  }
-});
-
-test('NOVA AI Recommender: Men preference retrieves real Firestore items with zero women items', async () => {
-  const profile: NovaAiPersonalProfileInput = {
-    bodyShape: 'Rectangle',
-    bodyShapeConfidence: 80,
-    bodyShapeExplanation: 'Balanced shoulder and hip proportions.',
-    skinTone: 'Medium',
-    undertone: 'Warm',
-    skinToneConfidence: 85,
-    skinToneExplanation: 'Warm golden tones.',
-    suggestedSize: 'M',
-    sizeConfidence: 75,
-    sizeExplanation: 'Visual estimate.',
-    clothingPreference: 'men',
-    analyzedAt: new Date().toISOString()
-  };
-
-  const recommendations = await getNovaAiRecommendations(profile, 6);
-  assert.ok(recommendations.length > 0, 'Should return men recommendations from real catalogue');
-
-  for (const rec of recommendations) {
-    const nameLower = rec.name.toLowerCase();
-    const subcatLower = (rec.subcategory || '').toLowerCase();
-    assert.ok(!subcatLower.includes('saree'), `Saree should not be recommended for men: ${rec.name}`);
-    assert.ok(!subcatLower.includes('kurti'), `Kurti should not be recommended for men: ${rec.name}`);
-    assert.ok(!subcatLower.includes('crop top'), `Crop top should not be recommended for men: ${rec.name}`);
-    assert.ok(!nameLower.includes("women's"), `Women's garments should not be recommended for men: ${rec.name}`);
-  }
-});
-
-test('NOVA AI Recommender: Unisex preference retrieves exclusively unisex pieces', async () => {
-  const profile: NovaAiPersonalProfileInput = {
-    bodyShape: 'Rectangle',
-    bodyShapeConfidence: 80,
-    bodyShapeExplanation: 'Balanced shoulder and hip proportions.',
-    skinTone: 'Medium',
-    undertone: 'Warm',
-    skinToneConfidence: 85,
-    skinToneExplanation: 'Warm golden tones.',
-    suggestedSize: 'M',
-    sizeConfidence: 75,
-    sizeExplanation: 'Visual estimate.',
-    clothingPreference: 'unisex',
-    analyzedAt: new Date().toISOString()
-  };
-
-  const recommendations = await getNovaAiRecommendations(profile, 6);
-  assert.ok(recommendations.length > 0, 'Should return unisex recommendations from real catalogue');
-
-  for (const rec of recommendations) {
-    const nameLower = rec.name.toLowerCase();
-    const subcatLower = (rec.subcategory || '').toLowerCase();
-    assert.ok(!subcatLower.includes('saree'), `Saree should not be unisex: ${rec.name}`);
-    assert.ok(!subcatLower.includes('kurti'), `Kurti should not be unisex: ${rec.name}`);
-    assert.ok(!subcatLower.includes('crop top'), `Crop top should not be unisex: ${rec.name}`);
-    assert.ok(!nameLower.includes("women's"), `Women's garments should not be in unisex: ${rec.name}`);
-    assert.ok(!nameLower.includes("men's"), `Men's garments should not be in unisex: ${rec.name}`);
-    assert.ok(!rec.productId.includes('hoodie'), `Men hoodies should not be in unisex: ${rec.productId}`);
-  }
-});
-
-test('NOVA AI Recommender: Show All retrieves across all catalogue categories', async () => {
-  const profile: NovaAiPersonalProfileInput = {
-    bodyShape: 'Hourglass',
-    bodyShapeConfidence: 80,
-    bodyShapeExplanation: 'Hourglass proportions.',
-    skinTone: 'Medium',
-    undertone: 'Warm',
-    skinToneConfidence: 85,
-    skinToneExplanation: 'Warm tones.',
-    suggestedSize: 'M',
-    sizeConfidence: 75,
-    sizeExplanation: 'Estimate.',
-    clothingPreference: 'all',
+    clothingPreference: 'Female',
     analyzedAt: new Date().toISOString()
   };
 
   const recommendations = await getNovaAiRecommendations(profile, 8);
-  assert.ok(recommendations.length > 0, 'Show All should return recommendations');
+  assert.ok(recommendations.length > 0, 'Should return recommendations from Female candidate set');
+
+  for (const rec of recommendations) {
+    // Assert no male products in female recommendations
+    assert.ok(
+      !/\b(men|men's|mens|gents|male)\b/i.test(rec.name.replace(/\b(women|women's|womens|female|ladies)\b/gi, '')),
+      `Men's specific garments should not be recommended for Female preference: ${rec.name}`
+    );
+    // Assert no unisex hoodie in female recommendations
+    assert.ok(
+      !rec.productId.includes('hoodie'),
+      `Unisex hoodies should not appear in Female recommendations: ${rec.productId}`
+    );
+  }
+});
+
+test('NOVA AI Recommender: Male preference returns zero Female products and zero Unisex products', async () => {
+  const profile: NovaAiPersonalProfileInput = {
+    bodyShape: 'Rectangle',
+    bodyShapeConfidence: 80,
+    bodyShapeExplanation: 'Balanced shoulder and hip proportions.',
+    skinTone: 'Medium',
+    undertone: 'Warm',
+    skinToneConfidence: 85,
+    skinToneExplanation: 'Warm golden tones.',
+    suggestedSize: 'M',
+    sizeConfidence: 75,
+    sizeExplanation: 'Visual estimate.',
+    clothingPreference: 'Male',
+    analyzedAt: new Date().toISOString()
+  };
+
+  const recommendations = await getNovaAiRecommendations(profile, 8);
+  assert.ok(recommendations.length > 0, 'Should return recommendations from Male candidate set');
+
+  for (const rec of recommendations) {
+    const nameLower = rec.name.toLowerCase();
+    const subcatLower = (rec.subcategory || '').toLowerCase();
+    assert.ok(!subcatLower.includes('saree'), `Saree should not be recommended for Male: ${rec.name}`);
+    assert.ok(!subcatLower.includes('kurti'), `Kurti should not be recommended for Male: ${rec.name}`);
+    assert.ok(!subcatLower.includes('crop top'), `Crop top should not be recommended for Male: ${rec.name}`);
+    assert.ok(!nameLower.includes("women's"), `Women's garments should not be recommended for Male: ${rec.name}`);
+  }
 });
 

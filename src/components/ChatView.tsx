@@ -14,10 +14,8 @@ const SKIN_TONE_OPTIONS = ['Fair', 'Light', 'Medium', 'Olive', 'Tan', 'Deep'] as
 const UNDERTONE_OPTIONS = ['Warm', 'Cool', 'Neutral'] as const;
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L'] as const;
 const CLOTHING_PREFERENCE_OPTIONS: Array<{ id: NovaClothingPreference; label: string; icon: string }> = [
-  { id: 'women', label: "Women's", icon: 'female' },
-  { id: 'men', label: "Men's", icon: 'male' },
-  { id: 'unisex', label: 'Unisex', icon: 'all_inclusive' },
-  { id: 'all', label: 'Show all', icon: 'apps' }
+  { id: 'Female', label: 'Female', icon: 'female' },
+  { id: 'Male', label: 'Male', icon: 'male' }
 ];
 
 export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onSelectProduct }) => {
@@ -30,12 +28,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
   const [profile, setProfile] = useState<NovaAiPersonalProfile | null>(null);
   const [clothingPreference, setClothingPreference] = useState<NovaClothingPreference>(() => {
     try {
-      const saved = localStorage.getItem('nova_clothing_pref') as NovaClothingPreference;
-      if (saved && ['women', 'men', 'unisex', 'all'].includes(saved)) {
+      const saved = localStorage.getItem('nova_clothing_pref');
+      if (saved === 'Male' || saved === 'Female') {
         return saved;
       }
+      if (saved === 'men') return 'Male';
+      if (saved === 'women') return 'Female';
     } catch {}
-    return 'women';
+    return 'Female';
   });
 
   // Recommendations States
@@ -247,13 +247,18 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
   };
 
   /**
-   * Updates user clothing preference and re-fetches recommendations
+   * Updates user clothing preference and re-fetches recommendations,
+   * clearing stale recommendations immediately.
    */
   const handlePreferenceChange = async (newPref: NovaClothingPreference) => {
     try {
       localStorage.setItem('nova_clothing_pref', newPref);
     } catch {}
     setClothingPreference(newPref);
+    // Clear stale recommendations immediately upon preference change
+    setRecommendations([]);
+    setCurrentRecIndex(0);
+
     if (profile) {
       const updated: NovaAiPersonalProfile = {
         ...profile,
