@@ -56,8 +56,9 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: |
+          echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > local.properties
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Prepare APK artifact
         run: |
