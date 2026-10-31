@@ -17,7 +17,8 @@ export interface NormalizedProduct {
   images: string[];
   vendorId: string;
   vendorName?: string;
-  gender: 'Men' | 'Women' | 'Unisex';
+  gender: 'Men' | 'Women' | 'Unisex' | 'Unknown';
+  genderVerificationStatus: 'verified_women' | 'verified_men' | 'verified_unisex' | 'unverified';
   fabric?: string;
   fit?: string;
   pattern?: string;
@@ -49,7 +50,11 @@ const ALIASES = {
   images: ['images', 'imageUrls', 'imagesList', 'gallery', 'additionalImages'],
   vendorId: ['vendorId', 'vendorId ', 'vendor_id', 'sellerId'],
   vendorName: ['vendorName', 'vendor', 'brand', 'Brand', 'sellerName'],
-  gender: ['gender', 'Gender', 'targetGender'],
+  gender: [
+    'gender', 'Gender', 'targetGender', 'target_gender',
+    'targetAudience', 'target_audience', 'audience', 'genderCategory',
+    'department', 'section', 'for_gender', 'clothing_gender'
+  ],
   fabric: ['fabric', 'material', 'composition', 'Fabric'],
   fit: ['fit', 'Fit', 'silhouette', 'Silhouette'],
   pattern: ['pattern', 'Pattern', 'print'],
@@ -284,17 +289,91 @@ export const normalizeProductRecord = (raw: Record<string, unknown>, id: string)
   const rawSubcategory = safeString(getFirstField(raw, ALIASES.subcategory));
   const { category, subcategory } = inferSubcategoryAndCategory(rawCategory, rawSubcategory, searchableText);
 
-  // Gender
+  // Robust gender resolution supporting Gemini audienceClassification, legacy fields, AI visual metadata, and garment heuristics
+  const audienceClass = (raw.aiAttributes as any)?.audienceClassification;
   const rawGender = safeString(getFirstField(raw, ALIASES.gender)).toLowerCase();
-  let gender: 'Men' | 'Women' | 'Unisex' = 'Unisex';
-  if (rawGender.includes('women') || rawGender.includes('female') || rawGender.includes('ladies')) {
+  const aiVisualGender = safeString((raw.aiAttributes as any)?.visual?.gender).toLowerCase();
+  const subcatLower = (subcategory || '').toLowerCase();
+  const catLower = (category || '').toLowerCase();
+
+  const womenRegex = /\b(women|woman|female|ladies|girls?)\b/i;
+  const menRegex = /\b(men|man|male|gents|boys?)\b/i;
+  const unisexRegex = /\b(unisex|all[- ]?gender|genderless)\b/i;
+
+  const femaleSpecificSubcats = new Set([
+    'saree', 'sari', 'lehenga', 'salwar', 'salwar suit', 'dress', 'maxi dress',
+    'mini dress', 'gown', 'crop top', 'kurti', 'skirt', 'leggings', 'palazzo',
+    'blouse', 'halter neck top', 'bra', 'bralette'
+  ]);
+  const maleSpecificSubcats = new Set([
+    'sherwani', 'pathani', 'pathani suit', "men's kurta", 'mens kurta', 'men kurta'
+  ]);
+
+  let gender: 'Men' | 'Women' | 'Unisex' | 'Unknown' = 'Unknown';
+  let genderVerificationStatus: 'verified_women' | 'verified_men' | 'verified_unisex' | 'unverified' = 'unverified';
+
+  // 1. Primary Source of Truth: Gemini Visual Audience Classification stored in Firestore
+  if (audienceClass && typeof audienceClass === 'object') {
+    const classGender = audienceClass.gender;
+    const classStatus = audienceClass.classificationStatus;
+    if (classStatus === 'verified' && classGender === 'Women') {
+      gender = 'Women';
+      genderVerificationStatus = 'verified_women';
+    } else if (classStatus === 'verified' && classGender === 'Men') {
+      gender = 'Men';
+      genderVerificationStatus = 'verified_men';
+    } else if (classStatus === 'verified' && classGender === 'Unisex') {
+      gender = 'Unisex';
+      genderVerificationStatus = 'verified_unisex';
+    } else {
+      gender = 'Unknown';
+      genderVerificationStatus = 'unverified';
+    }
+  }
+  // 2. Explicit target audience / gender field from Firestore document (if audienceClassification not yet populated)
+  else if (unisexRegex.test(rawGender)) {
+    gender = 'Unisex';
+    genderVerificationStatus = 'verified_unisex';
+  } else if (womenRegex.test(rawGender)) {
     gender = 'Women';
-  } else if (rawGender.includes('men') || rawGender.includes('male') || rawGender.includes('gents')) {
+    genderVerificationStatus = 'verified_women';
+  } else if (menRegex.test(rawGender)) {
     gender = 'Men';
-  } else if (searchableText.includes('women') || searchableText.includes('female')) {
+    genderVerificationStatus = 'verified_men';
+  }
+  // 3. Stored AI visual inspection attributes
+  else if (aiVisualGender === 'women' || aiVisualGender === 'female') {
     gender = 'Women';
-  } else if (searchableText.includes('men') || searchableText.includes('gents')) {
+    genderVerificationStatus = 'verified_women';
+  } else if (aiVisualGender === 'men' || aiVisualGender === 'male') {
     gender = 'Men';
+    genderVerificationStatus = 'verified_men';
+  } else if (aiVisualGender === 'unisex') {
+    gender = 'Unisex';
+    genderVerificationStatus = 'verified_unisex';
+  }
+  // 4. Definitive garment subcategory / design type
+  else if (femaleSpecificSubcats.has(subcatLower) || femaleSpecificSubcats.has(catLower)) {
+    gender = 'Women';
+    genderVerificationStatus = 'verified_women';
+  } else if (maleSpecificSubcats.has(subcatLower) || maleSpecificSubcats.has(catLower)) {
+    gender = 'Men';
+    genderVerificationStatus = 'verified_men';
+  }
+  // 5. Standalone term matching in title / tags / description
+  else if (womenRegex.test(searchableText)) {
+    gender = 'Women';
+    genderVerificationStatus = 'verified_women';
+  } else if (menRegex.test(searchableText)) {
+    gender = 'Men';
+    genderVerificationStatus = 'verified_men';
+  } else if (unisexRegex.test(searchableText)) {
+    gender = 'Unisex';
+    genderVerificationStatus = 'verified_unisex';
+  } else {
+    // Missing or ambiguous gender metadata — MUST NOT automatically become Unisex
+    gender = 'Unknown';
+    genderVerificationStatus = 'unverified';
   }
 
   // Clothing details
@@ -338,6 +417,7 @@ export const normalizeProductRecord = (raw: Record<string, unknown>, id: string)
     vendorId,
     vendorName,
     gender,
+    genderVerificationStatus,
     fabric,
     fit,
     pattern,

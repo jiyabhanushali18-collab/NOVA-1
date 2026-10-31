@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ScreenId, ProductItem, NovaAiPersonalProfile, NovaAiProductRecommendation } from '../types';
+import { ScreenId, ProductItem, NovaAiPersonalProfile, NovaAiProductRecommendation, NovaClothingPreference } from '../types';
 import { apiUrl } from '../services/apiClient';
 
 interface ChatViewProps {
@@ -13,6 +13,12 @@ const BODY_SHAPE_OPTIONS = ['Hourglass', 'Pear', 'Inverted Triangle', 'Rectangle
 const SKIN_TONE_OPTIONS = ['Fair', 'Light', 'Medium', 'Olive', 'Tan', 'Deep'] as const;
 const UNDERTONE_OPTIONS = ['Warm', 'Cool', 'Neutral'] as const;
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L'] as const;
+const CLOTHING_PREFERENCE_OPTIONS: Array<{ id: NovaClothingPreference; label: string; icon: string }> = [
+  { id: 'women', label: "Women's", icon: 'female' },
+  { id: 'men', label: "Men's", icon: 'male' },
+  { id: 'unisex', label: 'Unisex', icon: 'all_inclusive' },
+  { id: 'all', label: 'Show all', icon: 'apps' }
+];
 
 export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onSelectProduct }) => {
   // Photo & Analysis States
@@ -22,6 +28,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
   const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [analysisError, setAnalysisError] = useState<string>('');
   const [profile, setProfile] = useState<NovaAiPersonalProfile | null>(null);
+  const [clothingPreference, setClothingPreference] = useState<NovaClothingPreference>(() => {
+    try {
+      const saved = localStorage.getItem('nova_clothing_pref') as NovaClothingPreference;
+      if (saved && ['women', 'men', 'unisex', 'all'].includes(saved)) {
+        return saved;
+      }
+    } catch {}
+    return 'women';
+  });
 
   // Recommendations States
   const [recommendations, setRecommendations] = useState<NovaAiProductRecommendation[]>([]);
@@ -126,16 +141,24 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
   };
 
   /**
-   * Fetches product recommendations using the active profile
+   * Fetches product recommendations using the active profile and clothing preference
    */
   const fetchRecommendations = async (targetProfile: NovaAiPersonalProfile) => {
     setRecommendationsLoading(true);
     setRecommendationsError('');
     try {
+      const activePref = targetProfile.clothingPreference || clothingPreference;
       const res = await fetch(apiUrl('/api/chat/recommendations'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile: targetProfile, limit: 8 })
+        body: JSON.stringify({
+          profile: {
+            ...targetProfile,
+            clothingPreference: activePref
+          },
+          clothingPreference: activePref,
+          limit: 8
+        })
       });
 
       if (!res.ok) {
@@ -200,7 +223,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
 
       const newProfile: NovaAiPersonalProfile = {
         ...data.profile,
-        photoPreview
+        photoPreview,
+        clothingPreference
       };
 
       setProfile(newProfile);
@@ -219,6 +243,24 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
       } else {
         setAnalysisError(err.message || 'NOVA AI personal visual analysis failed. Please try another clear photograph.');
       }
+    }
+  };
+
+  /**
+   * Updates user clothing preference and re-fetches recommendations
+   */
+  const handlePreferenceChange = async (newPref: NovaClothingPreference) => {
+    try {
+      localStorage.setItem('nova_clothing_pref', newPref);
+    } catch {}
+    setClothingPreference(newPref);
+    if (profile) {
+      const updated: NovaAiPersonalProfile = {
+        ...profile,
+        clothingPreference: newPref
+      };
+      setProfile(updated);
+      await fetchRecommendations(updated);
     }
   };
 
@@ -573,6 +615,40 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
             )}
           </div>
         </div>
+
+        {/* Clothing Preference Selector */}
+        <div className="mt-4 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-sm text-violet-300">checkroom</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Clothing Preference</p>
+              <p className="text-[11px] text-slate-400">Controls catalogue retrieval without guessing your identity</p>
+            </div>
+          </div>
+
+          <div className="inline-flex p-1 bg-black/40 rounded-xl border border-white/10 shrink-0 self-start sm:self-auto flex-wrap gap-1">
+            {CLOTHING_PREFERENCE_OPTIONS.map((opt) => {
+              const isSelected = clothingPreference === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handlePreferenceChange(opt.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xs">{opt.icon}</span>
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       {/* 3. Personalized Single Product Recommendation Feed */}
@@ -585,7 +661,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
                 <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Personalized Clothing Recommendations</h2>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Curated for your {effectiveBodyShape} silhouette, {effectiveUndertone.toLowerCase()} undertones, and size {effectiveSize}.
+                Curated for your {effectiveBodyShape} silhouette, {effectiveUndertone.toLowerCase()} undertones, and size {effectiveSize} ({CLOTHING_PREFERENCE_OPTIONS.find(o => o.id === clothingPreference)?.label} clothing).
               </p>
             </div>
             <button

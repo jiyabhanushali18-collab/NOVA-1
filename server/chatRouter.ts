@@ -54,13 +54,17 @@ router.post("/chat/analyze-profile", async (req, res) => {
  */
 router.post("/chat/recommendations", async (req, res) => {
   try {
-    const { profile, limit } = req.body || {};
+    const { profile, limit, clothingPreference } = req.body || {};
 
     if (!profile || typeof profile !== 'object') {
       return res.status(400).json({
         success: false,
         error: 'A valid personal profile object is required.'
       });
+    }
+
+    if (clothingPreference && !profile.clothingPreference) {
+      profile.clothingPreference = clothingPreference;
     }
 
     const recommendations = await getNovaAiRecommendations(

@@ -146,6 +146,8 @@ export interface CartItem {
   size: string;
 }
 
+export type NovaClothingPreference = 'women' | 'men' | 'unisex' | 'all';
+
 export interface NovaAiPersonalProfile {
   bodyShape: 'Hourglass' | 'Pear' | 'Inverted Triangle' | 'Rectangle' | 'Apple' | 'Athletic' | 'Unknown' | string;
   bodyShapeConfidence: number;
@@ -161,6 +163,7 @@ export interface NovaAiPersonalProfile {
   userConfirmedSkinTone?: string;
   userConfirmedUndertone?: string;
   userConfirmedSize?: 'XS' | 'S' | 'M' | 'L';
+  clothingPreference?: NovaClothingPreference;
   analyzedAt: string;
   photoPreview?: string;
 }

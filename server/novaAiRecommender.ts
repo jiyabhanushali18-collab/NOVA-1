@@ -1,11 +1,14 @@
 import { fetchAndNormalizeCatalogue, NormalizedProduct } from './productIntelligence';
 import type { ValidatedNovaProfile } from './novaAiProfileAnalyzer';
 
+export type NovaClothingPreference = 'women' | 'men' | 'unisex' | 'all';
+
 export interface NovaAiPersonalProfileInput extends ValidatedNovaProfile {
   userConfirmedBodyShape?: string;
   userConfirmedSkinTone?: string;
   userConfirmedUndertone?: string;
   userConfirmedSize?: 'XS' | 'S' | 'M' | 'L';
+  clothingPreference?: NovaClothingPreference;
 }
 
 export interface NovaAiProductRecommendation {
@@ -233,6 +236,77 @@ function evaluateProductMatch(
 }
 
 /**
+ * Determines product eligibility according to user's explicit clothing preference.
+ * - 'women': returns verified Women's garments and explicitly verified Unisex pieces; strictly excludes Men's and Unknown/Unverified items.
+ * - 'men': returns verified Men's garments and explicitly verified Unisex pieces; strictly excludes Women's and Unknown/Unverified items.
+ * - 'unisex': returns explicitly verified Unisex pieces only; strictly excludes Men's, Women's, and Unknown/Unverified items.
+ * - 'all': returns all catalogue items regardless of category.
+ */
+export function isProductEligibleForPreference(
+  product: NormalizedProduct,
+  preference: NovaClothingPreference = 'women'
+): boolean {
+  if (preference === 'all') {
+    return true;
+  }
+
+  const pGender = product.gender; // 'Men' | 'Women' | 'Unisex' | 'Unknown'
+  const isVerified =
+    product.genderVerificationStatus &&
+    product.genderVerificationStatus !== 'unverified' &&
+    pGender !== 'Unknown';
+
+  // Strictly exclude Unknown / Unverified products until classification is resolved
+  if (!isVerified) {
+    return false;
+  }
+
+  const subcat = (product.subcategory || '').toLowerCase();
+  const name = (product.name || '').toLowerCase();
+  const rawAiGender = ((product.raw?.aiAttributes as any)?.visual?.gender || '').toLowerCase();
+
+  const isStrictMale =
+    pGender === 'Men' ||
+    rawAiGender === 'men' ||
+    rawAiGender === 'male' ||
+    /\b(men's|mens|men|gents|male)\b/i.test(name.replace(/\b(women's|womens|women|ladies|female)\b/gi, '')) ||
+    subcat.includes('sherwani') ||
+    subcat.includes('pathani');
+
+  const isStrictFemale =
+    pGender === 'Women' ||
+    rawAiGender === 'women' ||
+    rawAiGender === 'female' ||
+    /\b(women's|womens|women|ladies|female)\b/i.test(name) ||
+    subcat.includes('saree') ||
+    subcat.includes('kurti') ||
+    subcat.includes('crop top') ||
+    subcat.includes('skirt') ||
+    subcat.includes('dress') ||
+    subcat.includes('leggings');
+
+  if (preference === 'women') {
+    // Strictly reject men-only pieces and unverified items
+    if (isStrictMale) return false;
+    return pGender === 'Women' || (pGender === 'Unisex' && product.genderVerificationStatus === 'verified_unisex');
+  }
+
+  if (preference === 'men') {
+    // Strictly reject women-only pieces and unverified items
+    if (isStrictFemale) return false;
+    return pGender === 'Men' || (pGender === 'Unisex' && product.genderVerificationStatus === 'verified_unisex');
+  }
+
+  if (preference === 'unisex') {
+    // Strictly verified unisex pieces (neither explicitly male nor explicitly female)
+    if (isStrictMale || isStrictFemale) return false;
+    return pGender === 'Unisex' && product.genderVerificationStatus === 'verified_unisex';
+  }
+
+  return true;
+}
+
+/**
  * Retrieves real Firestore catalogue products and ranks them using NOVA AI personal profile criteria.
  * Generates tailored personalized styling reasoning using the fine-tuned NOVA AI model where available.
  */
@@ -249,11 +323,15 @@ export async function getNovaAiRecommendations(
   const effectiveSkinTone = profile.userConfirmedSkinTone || profile.skinTone || 'Medium';
   const effectiveUndertone = profile.userConfirmedUndertone || profile.undertone || 'Warm';
   const effectiveSize = profile.userConfirmedSize || (profile.suggestedSize !== 'unknown' ? profile.suggestedSize : undefined);
+  const preference: NovaClothingPreference = profile.clothingPreference || 'women';
 
-  // Filter out products without usable images or stock
+  // Filter products by usable images, stock, and user-selected clothing preference
   const candidateProducts = catalogue.filter((p) => {
     const hasImage = Boolean(p.imageUrl && (p.imageUrl.startsWith('http') || p.imageUrl.startsWith('data:')));
-    return hasImage && p.inStock !== false;
+    const isBrokenImage = p.imageUrl.includes('hFNXd6Rj'); // discard dead 503 imgbb placeholders
+    const inStock = p.inStock !== false;
+    const matchesPreference = isProductEligibleForPreference(p, preference);
+    return hasImage && !isBrokenImage && inStock && matchesPreference;
   });
 
   // Evaluate candidate products
