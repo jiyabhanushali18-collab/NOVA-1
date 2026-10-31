@@ -2,6 +2,7 @@ import { useI18n } from '../i18n';
 import { useBackHandler } from '../services/backButtonService';
 import React, { useEffect, useState } from 'react';
 import { ScreenId, CartItem, DeliveryAddress, OrderRecord } from '../types';
+import { getGarmentColorImage } from '../utils/arTryOnColors';
 import { analytics } from '../services/analyticsService';
 import {
   createOrderSnapshot,
@@ -500,7 +501,11 @@ export const CartView: React.FC<CartViewProps> = ({
                     
                     {/* Item Thumbnail */}
                     <div className="w-16 h-20 rounded-xl bg-[#F2EEFF] overflow-hidden shrink-0 border border-[#E4DFF5]">
-                      <img alt={item.product.name} className="w-full h-full object-cover" src={item.product.imageUrl} />
+                      <img
+                        alt={`${item.product.name} in ${item.color}`}
+                        className="w-full h-full object-cover"
+                        src={getGarmentColorImage(item.product, item.color) || item.product.imageUrl}
+                      />
                     </div>
 
                     {/* Details content row */}

@@ -1,7 +1,7 @@
 import { ProductItem, ProductVariant } from '../types';
 import { normalizeColorKey, getRequiredColorHex, isValidHexColor, isLightColor } from './colors';
 import { findColorImages } from './productVariants';
-import { swatchImages, swipeModels } from '../data';
+import { swipeModels } from '../data';
 
 export interface GarmentColorOption {
   name: string;
@@ -31,11 +31,11 @@ export function getGarmentColorImage(
       return vKey === targetKey;
     });
     if (matched) {
-      if (typeof matched.thumbnail === 'string' && matched.thumbnail.trim()) {
-        return matched.thumbnail.trim();
-      }
       if (Array.isArray(matched.images) && matched.images.length > 0 && typeof matched.images[0] === 'string' && matched.images[0].trim()) {
         return matched.images[0].trim();
+      }
+      if (typeof matched.thumbnail === 'string' && matched.thumbnail.trim()) {
+        return matched.thumbnail.trim();
       }
     }
   }
@@ -48,17 +48,7 @@ export function getGarmentColorImage(
     }
   }
 
-  // 3. Known catalog swatchImages from NOVA design system
-  const exactSwatch = swatchImages[colorName];
-  if (exactSwatch) return exactSwatch;
-  const matchedSwatchKey = Object.keys(swatchImages).find(
-    (k) => normalizeColorKey(k) === targetKey
-  );
-  if (matchedSwatchKey && swatchImages[matchedSwatchKey]) {
-    return swatchImages[matchedSwatchKey];
-  }
-
-  // 4. Parallel arrays: imageUrls and colors
+  // 3. Parallel arrays: imageUrls and colors
   if (
     Array.isArray(product.imageUrls) &&
     Array.isArray(product.colors) &&
@@ -70,7 +60,7 @@ export function getGarmentColorImage(
     }
   }
 
-  // 5. If this is the default/primary color, use product's main imageUrl
+  // 4. If this is the default/primary color, use product's main imageUrl
   if (Array.isArray(product.colors) && product.colors.length > 0) {
     if (normalizeColorKey(product.colors[0]) === targetKey) {
       return product.imageUrl || product.mainImage;
@@ -123,7 +113,7 @@ export function getProductColorOptions(product: ProductItem | undefined): Garmen
       const hex = v.colorHex && isValidHexColor(v.colorHex)
         ? v.colorHex
         : getRequiredColorHex(name);
-      const img = v.thumbnail || (Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : undefined) || getGarmentColorImage(product, name);
+      const img = (Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : undefined) || v.thumbnail || getGarmentColorImage(product, name);
 
       options.push({
         name,

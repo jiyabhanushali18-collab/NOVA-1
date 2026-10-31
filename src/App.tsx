@@ -46,7 +46,8 @@ import {
 } from './services/addressService';
 import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emailLinkAuth';
-import { normalizeProductVariants } from './utils/productVariants';
+import { getVariantColor, normalizeProductVariants } from './utils/productVariants';
+import { getGarmentColorImage } from './utils/arTryOnColors';
 import { useI18n } from './i18n';
 import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
 import { Capacitor } from '@capacitor/core';
@@ -91,7 +92,7 @@ const getColorValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
-  const candidate = record.color || record.name || record.label;
+  const candidate = record.colorName || record.color || record.colour || record.name || record.label;
   if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   return undefined;
 };
@@ -222,7 +223,7 @@ const processColorImageSource = (result: Record<string, string[]>, source: unkno
   if (Array.isArray(source)) {
     source.forEach((entry) => {
       if (!entry || typeof entry !== 'object') return;
-      addColorImage(result, (entry as any).color || (entry as any).name || (entry as any).label, (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src || entry);
+      addColorImage(result, (entry as any).colorName || (entry as any).color || (entry as any).colour || (entry as any).name || (entry as any).label, (entry as any).images || (entry as any).imageUrls || (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src || entry);
     });
     return;
   }
@@ -239,14 +240,14 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
 
   mapSources.forEach((source) => processColorImageSource(tmp, source));
 
-  const variantSources = [data.variants, data.colorVariants, data.colorsData];
+  const variantSources = [data.variants, data.colorVariants, data.colorsData, data.colors];
   variantSources.forEach((source) => {
     if (!Array.isArray(source)) return;
     source.forEach((variant) => {
       if (!variant || typeof variant !== 'object') return;
       addColorImage(
         tmp,
-        (variant as any).color || (variant as any).name || (variant as any).label,
+        (variant as any).colorName || (variant as any).color || (variant as any).colour || (variant as any).name || (variant as any).label,
         [
           (variant as any).images,
           (variant as any).imageUrls,
@@ -259,8 +260,19 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
     });
   });
 
+  // Vendors commonly save one image per color in the same order as `colors`.
+  // Preserve that association even when other colors already have explicit maps.
+  const imageUrls = asStringArray(data.imageUrls);
+  const imageGallery = asStringArray(data.images);
+  const orderedColorImages = imageUrls.length === colors.length ? imageUrls : imageGallery;
+  if (colors.length > 1 && orderedColorImages.length === colors.length) {
+    colors.forEach((color, index) => addColorImage(tmp, color, orderedColorImages[index]));
+  }
+
   // Enhanced: scan all fields for color-based image naming (e.g., redImage, pinkImage, yellowImage)
-  Object.entries(data).forEach(([fieldName, value]) => {
+  Object.entries(data)
+    .filter(([fieldName]) => /image|photo|media|url|src/i.test(fieldName))
+    .forEach(([fieldName, value]) => {
     const lowerField = fieldName.trim().toLowerCase();
     const imageValues = collectImageValues(value);
     if (imageValues.length === 0) return;
@@ -274,7 +286,7 @@ const buildColorImages = (data: Record<string, any>, colors: string[]) => {
         imageValues.forEach((imageValue) => addColorImage(tmp, color, imageValue));
       }
     });
-  });
+    });
 
   // convert tmp (arrays) into result where values are single string or array
   const result: Record<string, string | string[]> = {};
@@ -1318,8 +1330,7 @@ export default function App() {
             const id = doc.id;
             const colors = Array.isArray(data.colors)
               ? data.colors
-                  .map((value: unknown) => String(value))
-                  .map((value: string) => value.trim())
+                  .map((value: unknown) => getVariantColor(value) || (typeof value === 'string' ? value.trim() : ''))
                   .filter((value: string) => value.length > 0)
               : ['Standard'];
             const imageVersion = getProductImageVersion(data);
@@ -1344,6 +1355,9 @@ export default function App() {
               images: variant.images.map((image) => withImageVersion(image, imageVersion)),
               thumbnail: withImageVersion(variant.thumbnail, imageVersion)
             }));
+            const resolvedColorImages = versionedVariants.length > 0
+              ? Object.fromEntries(versionedVariants.map((variant) => [variant.colorName, variant.images]))
+              : versionedColorImages;
             const variantImages = versionedVariants.flatMap((variant) => variant.images || []);
             const images = [
               ...imageUrls,
@@ -1378,7 +1392,7 @@ export default function App() {
               mainImage: imageUrl,
               images: images.length > 0 ? images : imageUrl ? [imageUrl] : undefined,
               imageUrls: images.length > 0 ? images : undefined,
-              colorImages: versionedColorImages,
+              colorImages: resolvedColorImages,
               variants: versionedVariants.length > 0 ? versionedVariants : undefined,
               defaultVariantId: versionedVariants[0]?.id,
               colors: versionedVariants.length > 0 ? versionedVariants.map((variant) => variant.colorName) : colors,
@@ -1650,13 +1664,18 @@ export default function App() {
     setScreen(to);
   };
 
-  const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string }) => {
+  const handleTryOnSuccess = (garment: { id: string; productId?: string; name: string; imageUrl: string; color?: string; variantId?: string }) => {
     const productId = garment.productId || (productsData[garment.id] || products[garment.id])?.id || garment.id;
     if (productId) {
       setSelectedProductId(productId);
     }
     const product = productId ? productsData[productId] || products[productId] : undefined;
-    const productImage = product?.mainImage || product?.imageUrl || product?.imageUrls?.[0] || garment.imageUrl;
+    const productImage = (product && garment.color ? getGarmentColorImage(product, garment.color) : undefined)
+      || garment.imageUrl
+      || product?.mainImage
+      || product?.imageUrl
+      || product?.imageUrls?.[0]
+      || '';
     awardNovaPoints(25, `Tried on ${garment.name}`, productImage, productId);
     addRecentActivity({
       id: `tryon-${garment.id}-${Date.now()}`,

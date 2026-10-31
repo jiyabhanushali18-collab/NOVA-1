@@ -88,6 +88,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'details' | 'material' | 'reviews' | 'delivery'>('details');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number>(0);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -96,7 +97,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const reviewStars = averageRating && averageRating > 0 ? averageRating : (mainProduct?.rating || 0);
   const reviewCountLabel = typeof reviewsCount === 'number' && reviewsCount > 0 ? reviewsCount : (mainProduct?.reviewsCount || (reviews ? reviews.length : 0));
   const variantColors = mainProduct ? getProductColors(mainProduct) : [];
-  const selectedVariant = mainProduct?.variants?.find((variant) => normalizeColor(getVariantLabel(variant)) === normalizeColor(selectedColor)) || mainProduct?.variants?.[0];
+  // Never fall back to the first variant: doing so makes every color selection
+  // keep showing that variant's photo when a color label does not match exactly.
+  const selectedVariant = mainProduct?.variants?.find((variant) => normalizeColor(getVariantLabel(variant)) === normalizeColor(selectedColor));
   const selectedVariantStock = selectedVariant?.stock;
   const currentStock = selectedVariantStock ?? mainProduct?.stockLeft;
   const currentInStock = selectedVariant?.isAvailable ?? (currentStock !== undefined ? currentStock > 0 : (mainProduct?.inStock ?? true));
@@ -136,7 +139,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   // Set default color to first color when product changes
   React.useEffect(() => {
     if (variantColors.length > 0) {
-      if (!selectedColor || !variantColors.includes(selectedColor)) {
+      if (!selectedColor || !variantColors.some((color) => normalizeColor(color) === normalizeColor(selectedColor))) {
         setSelectedColor(variantColors[0]);
       }
     }
@@ -146,6 +149,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   React.useEffect(() => {
     setGalleryIndex(0);
   }, [selectedColor]);
+
+  React.useEffect(() => {
+    setHeroImageLoaded(false);
+  }, [selectedColor, galleryIndex]);
 
   // Track product view in analytics
   React.useEffect(() => {
@@ -158,12 +165,17 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const getSelectedColorImages = () => {
     if (!mainProduct) return [] as string[];
 
-    if (selectedVariant && selectedVariant.images.length > 0) {
-      return selectedVariant.images.filter(Boolean);
-    }
+    // The normalized color map is the authoritative selected-color mapping.
+    // Prefer it over a default/legacy variant object to avoid showing that
+    // variant's photo for a different selected color.
+    const mappedColorImages = findColorImages(mainProduct.colorImages, selectedColor);
+    if (mappedColorImages.length > 0) return mappedColorImages;
 
-    const variantColorImages = findColorImages(mainProduct.colorImages, selectedColor);
-    if (variantColorImages.length > 0) return variantColorImages;
+    if (selectedVariant) {
+      const variantImages = selectedVariant.images.filter(Boolean);
+      if (variantImages.length > 0) return variantImages;
+      if (selectedVariant.thumbnail) return [selectedVariant.thumbnail];
+    }
 
     const colorImage = findColorImage(mainProduct.colorImages, selectedColor);
     if (colorImage) {
@@ -171,18 +183,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     }
 
     if (mainProduct.imageUrls && mainProduct.colors && mainProduct.colors.length > 0 && mainProduct.imageUrls.length === mainProduct.colors.length) {
-      const colorIndex = mainProduct.colors.indexOf(selectedColor);
+      const colorIndex = mainProduct.colors.findIndex((color) => normalizeColor(color) === normalizeColor(selectedColor));
       if (colorIndex !== -1 && mainProduct.imageUrls[colorIndex]) {
         return [mainProduct.imageUrls[colorIndex]];
       }
-    }
-
-    if (mainProduct.imageUrls && mainProduct.imageUrls.length > 0) {
-      return mainProduct.imageUrls.filter(Boolean);
-    }
-
-    if (mainProduct.images && mainProduct.images.length > 0) {
-      return mainProduct.images.filter(Boolean);
     }
 
     return (mainProduct.mainImage || mainProduct.imageUrl) ? [mainProduct.mainImage || mainProduct.imageUrl] : [];
@@ -286,9 +290,19 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         <img 
           key={`${selectedColor}-${galleryIndex}`}
           alt={`${mainProduct.name} in ${getVariantLabel(selectedVariant) || selectedColor}`}
-          className="w-full h-full object-cover object-center absolute inset-0 cursor-pointer"
+          className={`w-full h-full object-cover object-center absolute inset-0 cursor-pointer transition-opacity duration-200 ${heroImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           referrerPolicy="no-referrer"
           src={heroImageUrl}
+          onLoad={() => setHeroImageLoaded(true)}
+          onError={(event) => {
+            const nextGalleryIndex = selectedColorImages.findIndex((image, index) => index > galleryIndex && image !== heroImageUrl);
+            if (nextGalleryIndex >= 0) {
+              setGalleryIndex(nextGalleryIndex);
+              return;
+            }
+            const fallback = mainProduct.mainImage || mainProduct.imageUrl;
+            if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+          }}
           onClick={() => {
             if (selectedColorImages.length <= 1) return;
             setGalleryIndex((p) => (p + 1) % selectedColorImages.length);
@@ -408,7 +422,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               <div className={`mb-2 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold ${isDarkMode ? 'text-slate-200' : 'text-[#131426]'}`}>
                 <span>{t('productDetails.color')}</span>
                 <span className={`text-xs font-normal ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
-                  {getVariantLabel(selectedVariant) || selectedColor}
+                  {selectedVariant ? getVariantLabel(selectedVariant) : selectedColor || 'Default'}
                 </span>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -423,7 +437,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   color: colorName
                 }))).map((variant) => {
                   const colorName = getVariantLabel(variant);
-                  const isActive = selectedColor === colorName;
+                  const isActive = normalizeColor(selectedColor) === normalizeColor(colorName);
                   const colorHex = variant.colorHex || getRequiredColorHex(colorName);
                   return (
                     <button

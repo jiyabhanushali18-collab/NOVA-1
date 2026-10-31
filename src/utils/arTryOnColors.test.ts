@@ -44,6 +44,13 @@ const multiColorProduct: ProductItem = {
   category: 'Streetwear',
   price: 1499,
   imageUrl: 'https://example.com/lavender-hoodie.jpg',
+  imageUrls: [
+    'https://example.com/lavender-hoodie.jpg',
+    'https://example.com/mint-hoodie.jpg',
+    'https://example.com/beige-hoodie.jpg',
+    'https://example.com/black-hoodie.jpg',
+    'https://example.com/sky-blue-hoodie.jpg'
+  ],
   colors: ['Lavender', 'Mint Green', 'Beige', 'Black', 'Sky Blue'],
   sizes: ['M', 'L'],
   inStock: true,

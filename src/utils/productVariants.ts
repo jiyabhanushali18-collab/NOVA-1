@@ -31,7 +31,7 @@ export const uniqueStrings = (values: string[]) => (
     .filter((value, index, array) => value.length > 0 && array.indexOf(value) === index)
 );
 
-const getVariantColor = (value: unknown): string => {
+export const getVariantColor = (value: unknown): string => {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
   const record = value as Record<string, unknown>;
@@ -90,6 +90,81 @@ export const findColorImages = (
   return matchedKey ? collectImageUrls(colorImages[matchedKey]) : [];
 };
 
+export const buildProductColorImages = (
+  data: Record<string, any>,
+  colors: string[]
+): Record<string, string[]> => {
+  const imagesByColor: Record<string, string[]> = {};
+  const add = (colorValue: unknown, imageValue: unknown) => {
+    const color = getVariantColor(colorValue);
+    const key = normalizeColorKey(color);
+    if (!key) return;
+    const urls = collectImageUrls(imageValue);
+    if (!urls.length) return;
+    imagesByColor[key] = uniqueStrings([...(imagesByColor[key] || []), ...urls]);
+  };
+
+  [data.colorImages, data.imagesByColor, data.colorImageUrls].forEach((source) => {
+    if (!source || typeof source !== 'object') return;
+    if (Array.isArray(source)) {
+      source.forEach((entry) => {
+        if (!entry || typeof entry !== 'object') return;
+        const value = entry as Record<string, unknown>;
+        add(value.colorName || value.color || value.colour || value.name || value.label, value);
+      });
+      return;
+    }
+    Object.entries(source as Record<string, unknown>).forEach(([color, value]) => add(color, value));
+  });
+
+  [data.variants, data.colorVariants, data.colorsData, data.colors].forEach((source) => {
+    if (!Array.isArray(source)) return;
+    source.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      const value = entry as Record<string, unknown>;
+      add(value.colorName || value.color || value.colour || value.name || value.label, value);
+    });
+  });
+
+  // Legacy catalog records store images in fields such as BlackImage,
+  // lavenderImage2, or NavyPhoto. Resolve those fields against the actual
+  // product colors so older Firestore products keep their uploaded photos.
+  Object.entries(data)
+    .filter(([fieldName]) => /(image|photo|media|url|src)/i.test(fieldName))
+    .forEach(([fieldName, value]) => {
+    const fieldKey = normalizeColorKey(fieldName);
+    if (!fieldKey) return;
+    colors.forEach((color) => {
+      const colorKey = normalizeColorKey(color);
+      if (colorKey && fieldKey.includes(colorKey)) add(color, value);
+    });
+    });
+
+
+  // Some existing catalog records store one image per color in parallel arrays.
+  const orderedImages = collectImageUrls(data.imageUrls).length === colors.length
+    ? collectImageUrls(data.imageUrls)
+    : collectImageUrls(data.images);
+  if (colors.length > 1 && orderedImages.length === colors.length) {
+    colors.forEach((color, index) => add(color, orderedImages[index]));
+  }
+
+  // Older products often use imageUrl/imageUrl2 for the primary color while
+  // naming the remaining color photos explicitly. Assign those generic image
+  // fields only to colors that still have no mapped image.
+  const unmappedColors = colors.filter((color) => !imagesByColor[normalizeColorKey(color)]?.length);
+  const genericImages = Object.entries(data)
+    .filter(([fieldName]) => /^(?:mainimage|image|imageurl|image\d+|imageurl\d+)$/i.test(fieldName))
+    .flatMap(([, value]) => collectImageUrls(value));
+  if (unmappedColors.length === 1 && genericImages.length > 0) {
+    add(unmappedColors[0], genericImages);
+  } else if (unmappedColors.length > 1 && genericImages.length === unmappedColors.length) {
+    unmappedColors.forEach((color, index) => add(color, genericImages[index]));
+  }
+
+  return imagesByColor;
+};
+
 export const normalizeProductVariants = (
   data: Record<string, any>,
   colors: string[],
@@ -107,7 +182,7 @@ export const normalizeProductVariants = (
       const stock = getVariantStock(variant);
       const displayOrder = getVariantDisplayOrder(variant, index);
       const thumbnail = collectImageUrls(variantRecord.thumbnail)[0] || images[0];
-      const colorHex = getRequiredColorHex(color, variantRecord.colorHex || variantRecord.hex);
+      const colorHex = getRequiredColorHex(color, variantRecord.colorHex || variantRecord.colorCode || variantRecord.hex);
       const isAvailable = variantRecord.isAvailable !== undefined
         ? Boolean(variantRecord.isAvailable)
         : stock !== undefined
@@ -129,7 +204,26 @@ export const normalizeProductVariants = (
     .filter((variant): variant is ProductVariant => Boolean(variant));
 
   if (variants.length > 0) {
-    const merged = mergeVariants(variants).sort(sortVariants);
+    const explicitColors = new Set(variants.map((variant) => normalizeColorKey(variant.colorName || variant.color)));
+    const imageOnlyVariants: ProductVariant[] = colors
+      .map((color, index): ProductVariant | null => {
+        const key = normalizeColorKey(color);
+        if (!key || explicitColors.has(key)) return null;
+        const images = findColorImages(colorImages, color);
+        if (!images.length) return null;
+        return {
+          id: `${key}-${index}`,
+          colorName: color,
+          colorHex: getRequiredColorHex(color),
+          images,
+          thumbnail: images[0],
+          isAvailable: true,
+          displayOrder: index,
+          color
+        };
+      })
+      .filter((variant): variant is ProductVariant => Boolean(variant));
+    const merged = mergeVariants([...variants, ...imageOnlyVariants]).sort(sortVariants);
     const defaultVariant = merged.find((variant) => {
       const source = explicitVariants.find((item: any) => normalizeColorKey(getVariantColor(item)) === normalizeColorKey(variant.colorName));
       return source && typeof source === 'object' ? isVariantDefault(source as Record<string, unknown>, data, variant.colorName) : false;
