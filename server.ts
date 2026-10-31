@@ -57,6 +57,7 @@ async function start() {
       { default: notificationAdminRouter },
       { default: addressRouter },
       { default: marketingEmailRouter },
+      { default: wardrobeAnalyzerRouter },
       { startNotificationScheduler },
       { startMarketingEmailScheduler }
     ] = await Promise.all([
@@ -71,6 +72,7 @@ async function start() {
       import('./server/notificationAdminRouter.ts'),
       import('./server/addressRouter.ts'),
       import('./server/marketingEmailRouter.ts'),
+      import('./server/wardrobeAnalyzer.ts'),
       import('./server/notificationScheduler.ts'),
       import('./server/marketingEmailScheduler.ts')
     ]);
@@ -86,6 +88,7 @@ async function start() {
     app.use('/api', notificationAdminRouter);
     app.use('/api', addressRouter);
     app.use('/api', marketingEmailRouter);
+    app.use('/api', wardrobeAnalyzerRouter);
     startNotificationScheduler();
     startMarketingEmailScheduler();
 

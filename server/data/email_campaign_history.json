@@ -1,0 +1,15 @@
+[
+  {
+    "campaignId": "email_evening_2026-10-30",
+    "slot": "evening",
+    "templateId": "email_eve_002",
+    "subject": "Tomorrow's fit isn't going to plan itself 🌙",
+    "eligibleRecipients": 0,
+    "sendAttempts": 0,
+    "successfulSends": 0,
+    "failedSends": 0,
+    "skippedDueToSuppression": 0,
+    "executedAt": "2026-10-30T13:59:41.890Z",
+    "providerStatus": "brevo_delivered"
+  }
+]

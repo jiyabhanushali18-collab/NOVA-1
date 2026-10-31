@@ -14,6 +14,16 @@ import {
   QueryConstraint
 } from 'firebase/firestore';
 import { firestore } from './firebase';
+import {
+  fetchAndNormalizeCatalogue,
+  fetchNormalizedProductById,
+  NormalizedProduct
+} from './productIntelligence';
+import {
+  rankProductsForGarment,
+  GarmentRecommendationQuery
+} from './recommendationEngine';
+import { consultAiStylist } from './aiStylist';
 
 const router = express.Router();
 
@@ -159,6 +169,245 @@ router.get('/products', async (req: Request, res: Response) => {
       success: false,
       error: error.message || 'Failed to fetch products'
     });
+  }
+});
+
+const extractGarmentQuery = (input: any): GarmentRecommendationQuery => {
+  if (!input || typeof input !== 'object') return {};
+
+  const canonical = input.canonical || (input.visual ? input : null);
+  const attributes = input.attributes || {};
+
+  if (canonical) {
+    return {
+      category: canonical.category,
+      subcategory: canonical.subcategory,
+      primaryColor: canonical.visual?.primaryColor || attributes.primaryColor,
+      secondaryColor: canonical.visual?.secondaryColor || attributes.secondaryColor,
+      pattern: canonical.visual?.pattern || attributes.pattern,
+      fit: canonical.construction?.fit || attributes.fit,
+      sleeveType: canonical.construction?.sleeveType || attributes.sleeveType,
+      neckType: canonical.construction?.neckType || attributes.neckType,
+      fabric: canonical.material?.fabric || attributes.fabric,
+      style: canonical.style?.primary || attributes.style,
+      styles: canonical.style?.tags || (attributes.style ? [attributes.style] : []),
+      occasion: canonical.usage?.occasions?.[0] || attributes.occasion,
+      occasions: canonical.usage?.occasions || (attributes.occasion ? [attributes.occasion] : []),
+      season: canonical.usage?.seasons?.[0] || attributes.season,
+      gender: canonical.gender || input.gender
+    };
+  }
+
+  return {
+    category: input.category || attributes.category,
+    subcategory: input.subcategory || attributes.subcategory,
+    primaryColor: input.primaryColor || attributes.primaryColor,
+    secondaryColor: input.secondaryColor || attributes.secondaryColor,
+    pattern: input.pattern || attributes.pattern,
+    fit: input.fit || attributes.fit,
+    sleeveType: input.sleeveType || attributes.sleeveType,
+    neckType: input.neckType || attributes.neckType,
+    fabric: input.fabric || attributes.fabric,
+    style: input.style || attributes.style,
+    styles: input.styles || (input.style ? [input.style] : []),
+    occasion: input.occasion || attributes.occasion,
+    occasions: input.occasions || (input.occasion ? [input.occasion] : []),
+    season: input.season || attributes.season,
+    gender: input.gender
+  };
+};
+
+/**
+ * GET /api/products/normalized - Standardized product discovery with consistent schema
+ */
+router.get('/products/normalized', async (req: Request, res: Response) => {
+  try {
+    const {
+      category,
+      subcategory,
+      gender,
+      search,
+      minPrice,
+      maxPrice,
+      inStockOnly,
+      limit = 50,
+      offset = 0,
+      refresh = 'false'
+    } = req.query;
+
+    let catalogue = await fetchAndNormalizeCatalogue(refresh === 'true');
+
+    if (category && typeof category === 'string') {
+      const catLower = category.toLowerCase();
+      catalogue = catalogue.filter((p) => p.category.toLowerCase().includes(catLower));
+    }
+
+    if (subcategory && typeof subcategory === 'string') {
+      const subLower = subcategory.toLowerCase();
+      catalogue = catalogue.filter((p) => p.subcategory.toLowerCase().includes(subLower));
+    }
+
+    if (gender && typeof gender === 'string' && gender.toLowerCase() !== 'unisex') {
+      const gLower = gender.toLowerCase();
+      catalogue = catalogue.filter((p) => p.gender.toLowerCase() === 'unisex' || p.gender.toLowerCase() === gLower);
+    }
+
+    if (search && typeof search === 'string') {
+      const searchTerms = search.toLowerCase().split(' ').filter(Boolean);
+      catalogue = catalogue.filter((p) =>
+        searchTerms.every((term) => p.searchableText.includes(term))
+      );
+    }
+
+    if (minPrice) {
+      const min = Number(minPrice);
+      if (!isNaN(min)) catalogue = catalogue.filter((p) => p.price >= min);
+    }
+
+    if (maxPrice) {
+      const max = Number(maxPrice);
+      if (!isNaN(max)) catalogue = catalogue.filter((p) => p.price <= max);
+    }
+
+    if (inStockOnly === 'true') {
+      catalogue = catalogue.filter((p) => p.inStock);
+    }
+
+    const total = catalogue.length;
+    const paginated = catalogue.slice(Number(offset), Number(offset) + Number(limit));
+
+    res.json({
+      success: true,
+      total,
+      count: paginated.length,
+      products: paginated
+    });
+  } catch (err: any) {
+    console.error('Error in GET /products/normalized:', err);
+    res.status(500).json({ success: false, error: err.message || 'Failed to fetch normalized products' });
+  }
+});
+
+/**
+ * POST /api/products/recommendations/wardrobe-match
+ * Recommends catalogue products to complete an outfit for a given Virtual Wardrobe garment
+ */
+router.post('/products/recommendations/wardrobe-match', async (req: Request, res: Response) => {
+  try {
+    const { garment, targetCategory, limit = 10, minPrice, maxPrice, inStockOnly = true } = req.body;
+
+    if (!garment) {
+      return res.status(400).json({
+        success: false,
+        error: 'garment object is required for outfit recommendation matching'
+      });
+    }
+
+    const queryGarment = extractGarmentQuery(garment);
+    const catalogue = await fetchAndNormalizeCatalogue();
+
+    const recommendations = rankProductsForGarment(queryGarment, catalogue, {
+      targetCategory: typeof targetCategory === 'string' ? targetCategory : undefined,
+      limit: Number(limit) || 10,
+      minPrice: minPrice !== undefined ? Number(minPrice) : undefined,
+      maxPrice: maxPrice !== undefined ? Number(maxPrice) : undefined,
+      inStockOnly: inStockOnly !== false
+    });
+
+    res.json({
+      success: true,
+      sourceGarment: {
+        category: queryGarment.category,
+        subcategory: queryGarment.subcategory,
+        primaryColor: queryGarment.primaryColor,
+        style: queryGarment.style,
+        fit: queryGarment.fit
+      },
+      count: recommendations.length,
+      recommendations
+    });
+  } catch (err: any) {
+    console.error('Error in /products/recommendations/wardrobe-match:', err);
+    res.status(500).json({ success: false, error: err.message || 'Failed to generate recommendations' });
+  }
+});
+
+/**
+ * POST /api/products/recommendations/paired
+ * Recommends complementary pairings for a catalogue product or product attributes
+ */
+router.post('/products/recommendations/paired', async (req: Request, res: Response) => {
+  try {
+    const { productId, category, subcategory, primaryColor, style, occasion, limit = 6 } = req.body;
+
+    let queryGarment: GarmentRecommendationQuery = {};
+
+    if (productId && typeof productId === 'string') {
+      const product = await fetchNormalizedProductById(productId);
+      if (product) {
+        queryGarment = {
+          category: product.category,
+          subcategory: product.subcategory,
+          primaryColor: product.primaryColor,
+          secondaryColor: product.secondaryColor,
+          style: product.styles[0],
+          occasion: product.occasions[0],
+          fit: product.fit,
+          gender: product.gender
+        };
+      }
+    }
+
+    if (!queryGarment.category && category) {
+      queryGarment = {
+        category,
+        subcategory,
+        primaryColor: primaryColor || 'Black',
+        style,
+        occasion
+      };
+    }
+
+    const catalogue = await fetchAndNormalizeCatalogue();
+    // Exclude the source product itself if productId provided
+    const filteredCatalogue = productId ? catalogue.filter((p) => p.id !== productId) : catalogue;
+
+    const recommendations = rankProductsForGarment(queryGarment, filteredCatalogue, {
+      limit: Number(limit) || 6
+    });
+
+    res.json({
+      success: true,
+      recommendations
+    });
+  } catch (err: any) {
+    console.error('Error in /products/recommendations/paired:', err);
+    res.status(500).json({ success: false, error: err.message || 'Failed to generate paired recommendations' });
+  }
+});
+
+/**
+ * POST /api/products/recommendations/ai-stylist
+ * Uses Gemini AI to understand fashion query intent + deterministic catalogue ranking
+ */
+router.post('/products/recommendations/ai-stylist', async (req: Request, res: Response) => {
+  try {
+    const { query, wardrobeGarment, limit = 8 } = req.body;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'query string is required for AI Stylist consultation'
+      });
+    }
+
+    const parsedGarment = wardrobeGarment ? extractGarmentQuery(wardrobeGarment) : undefined;
+    const result = await consultAiStylist(query, parsedGarment, Number(limit) || 8);
+
+    res.json(result);
+  } catch (err: any) {
+    console.error('Error in /products/recommendations/ai-stylist:', err);
+    res.status(500).json({ success: false, error: err.message || 'AI Stylist consultation failed' });
   }
 });
 

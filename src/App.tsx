@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where, setDoc, doc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import { ScreenId, CartItem, Measurement, NovaAnalysisProfile, Preference, ProductItem, ProductReview, LegalConsentRecord, DeliveryAddress, NovaAccount } from './types';
 import { products } from './data';
 import { auth, db, firebaseProjectId, saveUserToFirestore, waitForFirebaseAuthReady } from './firebase';
@@ -455,10 +456,10 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenId>('splash');
   const screenRef = useRef<ScreenId>('splash');
   const screenHistoryRef = useRef<ScreenId[]>(['splash']);
-  const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || 'Arjun Mehta');
-  const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
-  const [userContactEmail, setUserContactEmail] = useState<string>(() => localStorage.getItem('userContactEmail') || localStorage.getItem('userEmail') || 'arjun.mehta@gmail.com');
-  const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '+91 98765 43210');
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem('userName') || '');
+  const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem('userEmail') || '');
+  const [userContactEmail, setUserContactEmail] = useState<string>(() => localStorage.getItem('userContactEmail') || localStorage.getItem('userEmail') || '');
+  const [userPhone, setUserPhone] = useState<string>(() => localStorage.getItem('userPhone') || '');
   const [userAddress, setUserAddress] = useState<string>(() => localStorage.getItem('userAddress') || '');
   const [userPinCode, setUserPinCode] = useState<string>(() => localStorage.getItem('userPinCode') || '');
   const [userDeliveryAddress, setUserDeliveryAddress] = useState<DeliveryAddress | null>(null);
@@ -564,8 +565,8 @@ export default function App() {
   const { activeUid, activeAccount, setActiveAccountUid } = useActiveAccount({
     onAccountSwitched: (acc) => {
       if (acc) {
-        const nextName = acc.name || acc.username || '';
-        const nextEmail = acc.email || '';
+        const nextName = acc.name || acc.username || (acc.isGuest ? 'Guest User' : '');
+        const nextEmail = acc.email || (acc.isGuest ? `${acc.uid}@guest.nova.ai` : '');
         const nextContactEmail = acc.contactEmail || nextEmail;
         const nextPhone = getAccountPhone(acc);
         const nextAddr = acc.address || (acc.deliveryAddress ? formatDeliveryAddress(acc.deliveryAddress) : '');
@@ -578,6 +579,7 @@ export default function App() {
         setUserPinCode(nextPin);
         setUserDeliveryAddress(acc.deliveryAddress || null);
         setUserSavedAddresses(acc.savedAddresses || (acc.deliveryAddress ? [acc.deliveryAddress] : []));
+        setUserProfilePhoto(acc.profilePhoto || '');
         setIsLoggedIn(true);
         try {
           localStorage.setItem('userName', nextName);
@@ -586,7 +588,27 @@ export default function App() {
           localStorage.setItem('userPhone', nextPhone);
           localStorage.setItem('userAddress', nextAddr);
           localStorage.setItem('userPinCode', nextPin);
+          if (acc.isGuest) {
+            localStorage.setItem('novaSessionType', 'guest');
+            localStorage.setItem('novaGuestId', acc.uid);
+            localStorage.removeItem('novaSelectedAccountUid');
+            signOut(auth).catch(() => {});
+          } else {
+            localStorage.setItem('novaSessionType', 'registered');
+            localStorage.setItem('novaSelectedAccountUid', acc.uid);
+            localStorage.removeItem('novaGuestId');
+          }
         } catch {}
+      } else {
+        setUserName('');
+        setUserEmail('');
+        setUserContactEmail('');
+        setUserPhone('');
+        setUserAddress('');
+        setUserPinCode('');
+        setUserDeliveryAddress(null);
+        setUserSavedAddresses([]);
+        setUserProfilePhoto('');
       }
     }
   });
@@ -1851,9 +1873,24 @@ export default function App() {
       case 'scan-outfit':
         return <ScanOutfitView onNavigate={navigate} isDarkMode={isDarkMode} userId={activeUid || userEmail} recentActivity={recentActivityState} />;
       case 'wardrobe':
-        return <VirtualWardrobeView onNavigate={navigate} userEmail={userEmail} userName={userName} userId={activeUid || auth.currentUser?.uid} isDarkMode={isDarkMode} />;
+        return (
+          <VirtualWardrobeView
+            key={isGuestSession ? 'wardrobe_guest' : `wardrobe_${activeUid || auth.currentUser?.uid || 'user'}`}
+            onNavigate={navigate}
+            userEmail={userEmail}
+            userName={userName}
+            userId={activeUid || auth.currentUser?.uid}
+            isGuest={isGuestSession}
+            isDarkMode={isDarkMode}
+          />
+        );
       case 'chat':
-        return <ChatView userName={userName} onNavigate={navigate} products={productsData} />;
+        return <ChatView userName={userName} onNavigate={navigate} products={{ ...products, ...productsData }} onSelectProduct={(product) => {
+          setProductsData((current) => ({ ...current, [product.id]: product }));
+          setSelectedProductId(product.id);
+          setSelectedColor(getDefaultProductColor(product));
+          navigate('product-details', { productId: product.id, product });
+        }} />;
       case 'cart':
         return (
           <CartView 
@@ -2214,10 +2251,15 @@ export default function App() {
   };
 
   const handleGuestContinue = () => {
+    // Follow existing Firebase Auth implementation to sign out any active Firebase user (Requirement 8)
+    signOut(auth).catch((err) => console.warn('Firebase sign out on guest switch:', err));
+
     const guestId = `guest_${Date.now()}`;
     const guestName = 'Guest User';
     const guestEmail = `${guestId}@guest.nova.ai`;
 
+    // Clear stale account identity state (Requirement 3, 8)
+    localStorage.removeItem('novaSelectedAccountUid');
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('novaSessionType', 'guest');
     localStorage.setItem('novaGuestId', guestId);
@@ -2227,6 +2269,8 @@ export default function App() {
     localStorage.setItem('userPhone', '');
     localStorage.removeItem('userAddress');
     localStorage.removeItem('userPinCode');
+    localStorage.removeItem('userProfilePhoto');
+    localStorage.removeItem('nova_analysis_profile');
     localStorage.setItem('novaGuestProfile', JSON.stringify({
       guestId,
       profileType: 'anonymous',
@@ -2243,6 +2287,8 @@ export default function App() {
     setUserPinCode('');
     setUserDeliveryAddress(null);
     setUserSavedAddresses([]);
+    setUserProfilePhoto('');
+    setAnalysisProfile(null);
     setIsLoggedIn(true);
 
     try {
@@ -2272,10 +2318,19 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    // Follow existing Firebase Auth implementation to sign out (Requirement 8)
+    signOut(auth).catch((err) => console.warn('Firebase sign out error:', err));
+
+    // Clear stale account identity state (Requirement 8)
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('novaSessionType');
     localStorage.removeItem('novaGuestId');
     localStorage.removeItem('novaGuestProfile');
+    localStorage.removeItem('novaSelectedAccountUid');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userContactEmail');
+    localStorage.removeItem('userPhone');
     localStorage.removeItem('userAddress');
     localStorage.removeItem('userPinCode');
     accountService.setActiveLocalAccount(undefined);
@@ -2283,6 +2338,10 @@ export default function App() {
     localStorage.removeItem('userProfilePhoto');
     localStorage.removeItem('nova_analysis_profile');
     setIsLoggedIn(false);
+    setUserName('');
+    setUserEmail('');
+    setUserContactEmail('');
+    setUserPhone('');
     setUserAddress('');
     setUserPinCode('');
     setUserDeliveryAddress(null);

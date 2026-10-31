@@ -1,25 +1,71 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { collection, deleteDoc, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { ScreenId, WardrobeDetectedAttributes, WardrobeGender, WardrobeItem, WardrobeProfile, WardrobeScanMethod, WardrobeSize } from '../types';
+import {
+  ScreenId,
+  WardrobeDetectedAttributes,
+  WardrobeGender,
+  WardrobeItem,
+  WardrobeProfile,
+  WardrobeScanMethod,
+  WardrobeSize,
+  CanonicalGarmentData,
+  CANONICAL_COLORS,
+  CANONICAL_PATTERNS,
+  CANONICAL_FABRICS,
+  CANONICAL_SLEEVE_TYPES,
+  CANONICAL_NECK_TYPES,
+  CANONICAL_FITS,
+  CANONICAL_STYLES,
+  CANONICAL_OCCASIONS,
+  CANONICAL_SEASONS,
+  CANONICAL_FORMALITIES,
+  SUBCATEGORY_TO_DISPLAY_MAP,
+  DISPLAY_TO_SUBCATEGORY_MAP,
+  SUBCATEGORY_TO_BODY_SECTION_MAP,
+  canonicalToDisplayAttributes,
+  resolveDisplayCategory
+} from '../types';
 import accountService from '../services/accountService';
 import aiService from "../services/aiService";
 import { resolveColorHex } from '../utils/colors';
 import { useI18n } from '../i18n';
+import {
+  GUEST_WARDROBE_KEY,
+  GUEST_PROFILE_KEY,
+  GUEST_OUTFITS_KEY,
+  isGuestAccount,
+  getWardrobeStorageKey,
+  getWardrobeProfileKey,
+  getWardrobeOutfitsKey,
+  readLocalWardrobeItems,
+  saveLocalWardrobeItems,
+  readLocalWardrobeProfile,
+  saveLocalWardrobeProfile,
+  readLocalWardrobeOutfits,
+  saveLocalWardrobeOutfits,
+  mergeWardrobeItems,
+  sanitizeForFirestore,
+  requestGarmentAnalysis
+} from '../services/wardrobeService';
+import { generateWardrobeOutfits } from '../services/wardrobeOutfitEngine';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
-  userEmail: string;
+  userEmail?: string;
   userName?: string;
   isDarkMode?: boolean;
   userId?: string;
+  isGuest?: boolean;
 }
 
 const sizes: WardrobeSize[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-const maleCategories = ['T-Shirt', 'Shirt', 'Polo', 'Hoodie', 'Sweatshirt', 'Jacket', 'Jeans', 'Trousers', 'Shorts', 'Ethnic Wear', 'Blazer'];
-const femaleCategories = ['Kurti', 'Co-ord Set', 'Saree', 'Crop Top', 'T-Shirt', 'Shirt', 'Leggings', 'Jeans', 'Palazzo', 'Dress', 'Jacket', 'Hoodie'];
+const maleCategories = ['Top', 'T-Shirt', 'Shirt', 'Polo', 'Hoodie', 'Sweatshirt', 'Jacket', 'Jeans', 'Trousers', 'Shorts', 'Ethnic Wear', 'Blazer'];
+const femaleCategories = ['Top', 'Blouse', 'Crop Top', 'T-Shirt', 'Shirt', 'Kurti', 'Co-ord Set', 'Saree', 'Dress', 'Jacket', 'Hoodie', 'Jeans', 'Leggings', 'Palazzo'];
 const categoryIcons: Record<string, string> = {
+  Top: 'apparel',
+  Blouse: 'styler',
   'T-Shirt': 'apparel',
   Shirt: 'styler',
   Polo: 'apparel',
@@ -40,12 +86,9 @@ const categoryIcons: Record<string, string> = {
   Dress: 'styler'
 };
 
-const storageKey = (userId: string) => `nova_wardrobe_${userId}`;
-const profileKey = (userId: string) => `nova_wardrobe_profile_${userId}`;
-const outfitsKey = (userId: string) => `nova_wardrobe_outfits_${userId}`;
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const topCategories = ['T-Shirt', 'Shirt', 'Polo', 'Hoodie', 'Sweatshirt', 'Jacket', 'Blazer', 'Kurti', 'Crop Top'];
+const topCategories = ['Top', 'Blouse', 'T-Shirt', 'Shirt', 'Polo', 'Hoodie', 'Sweatshirt', 'Jacket', 'Blazer', 'Kurti', 'Crop Top'];
 const bottomCategories = ['Jeans', 'Trousers', 'Shorts', 'Leggings', 'Palazzo'];
 const isBottomWear = (category: string) => bottomCategories.includes(category);
 
@@ -132,24 +175,52 @@ const validateAndNormalizeImage = async (file: File): Promise<NormalizedUpload> 
   });
 };
 
-export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavigate, userEmail, userName, isDarkMode = false, userId: propUserId }) => {
+export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
+  onNavigate,
+  userEmail = '',
+  userName,
+  isDarkMode = false,
+  userId: propUserId,
+  isGuest
+}) => {
   const { t } = useI18n();
-  const currentUid = auth.currentUser?.uid || propUserId || null;
-  const legacyUserId = accountService.getUserDocId(userEmail);
-  const userId = currentUid || legacyUserId;
-  const username = userEmail ? userEmail.split('@')[0] : (userName || userId);
-  const [profile, setProfile] = useState<WardrobeProfile>(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem(profileKey(userId)) ||
-        localStorage.getItem(profileKey(legacyUserId)) ||
-        '{}'
-      );
-    } catch {
-      return {};
-    }
+
+  // 1. Determine if current session is Guest mode (Requirement 1, 3)
+  const isGuestMode = isGuestAccount({
+    isGuest,
+    uid: propUserId,
+    email: userEmail
   });
-  const [items, setItems] = useState<WardrobeItem[]>([]);
+
+  // 2. Primary storage identity for registered users: Firebase Auth UID (Requirement 2)
+  const registeredUid = !isGuestMode
+    ? (auth.currentUser && !auth.currentUser.isAnonymous ? auth.currentUser.uid : (propUserId && !propUserId.startsWith('guest_') ? propUserId : null))
+    : null;
+
+  // 3. Never use a stale email or legacy doc ID as Guest identity (Requirement 3)
+  const effectiveIdentity = isGuestMode ? 'guest' : (registeredUid || 'unknown');
+
+  // 4. Firestore reads/writes scoped strictly to authenticated user's UID (Requirement 6)
+  const authenticatedUid = (!isGuestMode && auth.currentUser && !auth.currentUser.isAnonymous && auth.currentUser.uid === registeredUid)
+    ? auth.currentUser.uid
+    : null;
+
+  // 5. Legacy doc ID for registered users only (Requirement 9, 10)
+  const legacyUserId = (!isGuestMode && userEmail && !userEmail.toLowerCase().endsWith('@guest.nova.ai'))
+    ? accountService.getUserDocId(userEmail)
+    : null;
+
+  const username = userEmail && !isGuestMode ? userEmail.split('@')[0] : (userName || (isGuestMode ? 'Guest' : effectiveIdentity));
+
+  const activeIdentityRef = useRef(effectiveIdentity);
+  activeIdentityRef.current = effectiveIdentity;
+
+  const [profile, setProfile] = useState<WardrobeProfile>(() => {
+    return readLocalWardrobeProfile({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail });
+  });
+  const [items, setItems] = useState<WardrobeItem[]>(() => {
+    return readLocalWardrobeItems({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail });
+  });
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [scanMethod, setScanMethod] = useState<WardrobeScanMethod>('Upload Photo');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -160,6 +231,58 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [useOriginalFallback, setUseOriginalFallback] = useState(false);
   const [garmentCategory, setGarmentCategory] = useState<string>('');
   const [garmentColor, setGarmentColor] = useState<string>('Custom');
+
+  // Gemini Garment Intelligence State
+  const [isAnalyzingGarment, setIsAnalyzingGarment] = useState(false);
+  const isAnalyzingRef = useRef(false);
+  const [garmentAiError, setGarmentAiError] = useState<string | null>(null);
+  const [detectedGarment, setDetectedGarment] = useState<CanonicalGarmentData | null>(null);
+  const [analysisSuccess, setAnalysisSuccess] = useState(false);
+
+  // Editable Canonical Form Attributes
+  const [formPrimaryColor, setFormPrimaryColor] = useState<string>('');
+  const [formSecondaryColor, setFormSecondaryColor] = useState<string>('—');
+  const [formPattern, setFormPattern] = useState<string>('');
+  const [formFabric, setFormFabric] = useState<string>('');
+  const [formSleeveType, setFormSleeveType] = useState<string>('');
+  const [formNeckType, setFormNeckType] = useState<string>('');
+  const [formFit, setFormFit] = useState<string>('');
+  const [formStyle, setFormStyle] = useState<string>('');
+  const [formOccasions, setFormOccasions] = useState<string[]>([]);
+  const [formSeasons, setFormSeasons] = useState<string[]>(['All Season']);
+  const [formFormality, setFormFormality] = useState<string>('Casual');
+  const [formDescription, setFormDescription] = useState<string>('');
+  const [formSize, setFormSize] = useState<string>('');
+
+  const resetGarmentForm = () => {
+    setSelectedCategory(null);
+    setUploadedImage(null);
+    setUploadedFile(null);
+    setProcessedImage(null);
+    setIsRemovingBg(false);
+    setBgRemovalError(null);
+    setUseOriginalFallback(false);
+    setIsAnalyzingGarment(false);
+    setGarmentAiError(null);
+    setDetectedGarment(null);
+    setAnalysisSuccess(false);
+    setGarmentCategory('');
+    setGarmentColor('');
+    setFormPrimaryColor('');
+    setFormSecondaryColor('—');
+    setFormPattern('');
+    setFormFabric('');
+    setFormSleeveType('');
+    setFormNeckType('');
+    setFormFit('');
+    setFormStyle('');
+    setFormOccasions([]);
+    setFormSeasons(['All Season']);
+    setFormFormality('Casual');
+    setFormDescription('');
+    setFormSize('');
+  };
+
   const [selectedItem, setSelectedItem] = useState<WardrobeItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -168,34 +291,30 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [patternFilter, setPatternFilter] = useState('All');
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [outfitIndex, setOutfitIndex] = useState(0);
+  const [outfitOccasionFilter, setOutfitOccasionFilter] = useState('All');
   const [editDraft, setEditDraft] = useState<WardrobeItem | null>(null);
   const [outfitSeed, setOutfitSeed] = useState<WardrobeItem | null>(null);
   const [outfitPartnerId, setOutfitPartnerId] = useState<string>('');
-  const [savedOutfitCount, setSavedOutfitCount] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem(outfitsKey(userId)) ||
-        localStorage.getItem(outfitsKey(legacyUserId)) ||
-        '[]'
-      ).length;
-    } catch {
-      return 0;
-    }
+  const [savedOutfitCount, setSavedOutfitCount] = useState<number>(() => {
+    return readLocalWardrobeOutfits({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail }).length;
   });
 
-  const sanitizeForFirestore = (item: WardrobeItem) => {
-    const { originalScan, ...rest } = item;
-    return {
-      ...rest,
-      // Do not store base64 data URLs in Firestore to keep document size well under 1MB (Task 8)
-      generatedImage: item.generatedImage?.startsWith('data:') ? '' : (item.generatedImage || ''),
-      gender: item.gender || 'unisex',
-      attributes: item.attributes || {},
-      tags: Array.isArray(item.tags) ? item.tags : [],
-      colors: Array.isArray(item.colors) ? item.colors : [],
-      timesWorn: item.timesWorn || 0
-    };
-  };
+  // Reset transient wardrobe state when active account changes (Requirement 4)
+  useEffect(() => {
+    setSelectedItem(null);
+    setEditDraft(null);
+    setOutfitSeed(null);
+    setOutfitPartnerId('');
+    resetGarmentForm();
+    setSaveStatus(null);
+    setOutfitIndex(0);
+    setOutfitOccasionFilter('All');
+
+    const freshProfile = readLocalWardrobeProfile({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail });
+    setProfile(freshProfile);
+    const freshOutfits = readLocalWardrobeOutfits({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail });
+    setSavedOutfitCount(freshOutfits.length);
+  }, [effectiveIdentity, isGuestMode, userEmail]);
 
   useEffect(() => {
     const testConnection = async () => {
@@ -209,57 +328,95 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     testConnection();
   }, []);
 
+  // Async wardrobe loading with cancellation (Requirement 5, 6, 7)
   useEffect(() => {
+    let isCancelled = false;
+    const targetIdentity = effectiveIdentity;
+    const targetIsGuest = isGuestMode;
+    const targetAuthUid = authenticatedUid;
+
     const loadWardrobe = async () => {
       setIsLoading(true);
-      try {
-        const localRaw = localStorage.getItem(storageKey(userId)) || 
-          (legacyUserId !== userId ? localStorage.getItem(storageKey(legacyUserId)) : null);
-        const localItems: WardrobeItem[] = localRaw ? JSON.parse(localRaw) : [];
-        if (localItems.length) setItems(localItems);
+      const localItems = readLocalWardrobeItems({
+        uid: targetIdentity,
+        isGuest: targetIsGuest,
+        legacyEmail: userEmail
+      });
 
-        if (currentUid) {
-          const snap = await getDocs(query(collection(db, 'users', currentUid, 'wardrobe'), orderBy('dateAdded', 'desc')));
+      // Cancellation check before updating state (Requirement 5)
+      if (isCancelled || activeIdentityRef.current !== targetIdentity) return;
+      setItems(localItems);
+
+      // Keep Firestore reads scoped to authenticated user's UID (Requirement 6, 7)
+      if (!targetIsGuest && targetAuthUid) {
+        try {
+          const snap = await getDocs(
+            query(collection(db, 'users', targetAuthUid, 'wardrobe'), orderBy('dateAdded', 'desc'))
+          );
+          if (isCancelled || activeIdentityRef.current !== targetIdentity) return;
+
           const remote = snap.docs.map((entry) => ({ ...(entry.data() as WardrobeItem), id: entry.id }));
-          if (remote.length) {
-            const merged = remote.map((remoteItem) => {
-              const matchedLocal = localItems.find((l) => l.id === remoteItem.id);
-              return {
-                ...remoteItem,
-                generatedImage: remoteItem.generatedImage || matchedLocal?.generatedImage || '',
-                originalScan: remoteItem.originalScan || matchedLocal?.originalScan || ''
-              };
-            });
-            setItems(merged);
-            localStorage.setItem(storageKey(userId), JSON.stringify(merged));
+          
+          // Merge localStorage and Firestore within the user namespace
+          const merged = mergeWardrobeItems(remote, localItems);
+          if (isCancelled || activeIdentityRef.current !== targetIdentity) return;
+          setItems(merged);
+          saveLocalWardrobeItems(merged, { uid: targetIdentity, isGuest: false });
+
+          // Recovery & synchronization: upload any local items that are missing from cloud
+          // (e.g. saved during an offline session or when a prior sync encountered errors)
+          const remoteMap = new Map<string, WardrobeItem>(remote.map((r) => [r.id, r]));
+          const pendingSync = localItems.filter((local) => {
+            const remoteItem = remoteMap.get(local.id);
+            if (!remoteItem) return true; // entirely missing in Firestore
+            return !remoteItem.canonical && Boolean(local.canonical);
+          });
+
+          if (pendingSync.length > 0) {
+            for (const itemToSync of pendingSync) {
+              if (isCancelled || activeIdentityRef.current !== targetIdentity) break;
+              try {
+                const sanitized = sanitizeForFirestore(itemToSync);
+                await setDoc(doc(db, 'users', targetAuthUid, 'wardrobe', itemToSync.id), sanitized, { merge: true });
+              } catch (syncErr) {
+                console.warn(`[Wardrobe Sync] Auto-sync to cloud failed for ${itemToSync.id}:`, syncErr);
+              }
+            }
           }
+        } catch (err) {
+          if (isCancelled || activeIdentityRef.current !== targetIdentity) return;
+          console.warn('Failed to load wardrobe from cloud, using local fallback:', err);
         }
-      } catch (err) {
-        console.warn('Failed to load wardrobe from cloud, using local fallback:', err);
-        const localRaw = localStorage.getItem(storageKey(userId)) || 
-          (legacyUserId !== userId ? localStorage.getItem(storageKey(legacyUserId)) : null);
-        setItems(localRaw ? JSON.parse(localRaw) : []);
-      } finally {
+      }
+
+      if (!isCancelled && activeIdentityRef.current === targetIdentity) {
         setIsLoading(false);
       }
     };
+
     loadWardrobe();
-  }, [currentUid, userId, legacyUserId]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [effectiveIdentity, isGuestMode, authenticatedUid, userEmail]);
 
   useEffect(() => {
-    localStorage.setItem(profileKey(userId), JSON.stringify(profile));
-    accountService.upsertUserProfile(
-      {
-        uid: currentUid || userEmail || userId,
-        username,
-        name: userName || username,
-        email: userEmail,
-        gender: profile.gender,
-        size: profile.size
-      },
-      { wardrobeCount: items.length }
-    ).catch(() => undefined);
-  }, [currentUid, items.length, profile, userEmail, userId, userName, username]);
+    saveLocalWardrobeProfile(profile, { uid: effectiveIdentity, isGuest: isGuestMode });
+    if (!isGuestMode && authenticatedUid) {
+      accountService.upsertUserProfile(
+        {
+          uid: authenticatedUid,
+          username,
+          name: userName || username,
+          email: userEmail,
+          gender: profile.gender,
+          size: profile.size
+        },
+        { wardrobeCount: items.length }
+      ).catch(() => undefined);
+    }
+  }, [authenticatedUid, effectiveIdentity, isGuestMode, items.length, profile, userEmail, userName, username]);
 
   const categories = profile.gender === 'Male' ? maleCategories : femaleCategories;
   const categoryOptions = ['All', ...new Set(items.map((item) => item.category))];
@@ -277,7 +434,49 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
   const persistItems = (next: WardrobeItem[]) => {
     setItems(next);
-    localStorage.setItem(storageKey(userId), JSON.stringify(next));
+    saveLocalWardrobeItems(next, { uid: effectiveIdentity, isGuest: isGuestMode });
+  };
+
+  const triggerGeminiAnalysis = async (imageToAnalyze: string, categoryHint?: string) => {
+    if (!imageToAnalyze || isAnalyzingRef.current) return;
+    isAnalyzingRef.current = true;
+    setIsAnalyzingGarment(true);
+    setGarmentAiError(null);
+    setAnalysisSuccess(false);
+
+    try {
+      const res = await requestGarmentAnalysis(imageToAnalyze, categoryHint);
+      if (res.success && res.garment) {
+        const g = res.garment;
+        setDetectedGarment(g);
+        setAnalysisSuccess(true);
+        const mappedCat = resolveDisplayCategory(g.category, g.subcategory) || categoryHint || garmentCategory || selectedCategory || 'Top';
+        setGarmentCategory(mappedCat);
+        setGarmentColor(g.visual.primaryColor || '');
+        setFormPrimaryColor(g.visual.primaryColor || '');
+        setFormSecondaryColor(g.visual.secondaryColor || '—');
+        setFormPattern(g.visual.pattern || 'Not specified');
+        setFormFabric(g.material.fabric || 'Unknown');
+        setFormSleeveType(g.construction.sleeveType || (isBottomWear(mappedCat) ? 'Not Applicable' : 'Not specified'));
+        setFormNeckType(g.construction.neckType || (isBottomWear(mappedCat) ? 'Not Applicable' : 'Not specified'));
+        setFormFit(g.construction.fit || 'Not specified');
+        setFormStyle(g.style.primary || 'Casual');
+        setFormOccasions(g.usage.occasions && g.usage.occasions.length > 0 ? g.usage.occasions : ['Casual']);
+        setFormSeasons(g.usage.seasons && g.usage.seasons.length > 0 ? g.usage.seasons : ['All Season']);
+        setFormFormality(g.usage.formality || 'Casual');
+        setFormDescription(g.aiMetadata.description || '');
+        setSaveStatus('Garment details analyzed.');
+        window.setTimeout(() => setSaveStatus(null), 3000);
+      } else {
+        const errMsg = res.error || 'Garment analysis notice: please verify attributes below.';
+        setGarmentAiError(errMsg);
+      }
+    } catch (err: any) {
+      setGarmentAiError(err?.message || 'Analysis notice: please verify attributes below.');
+    } finally {
+      isAnalyzingRef.current = false;
+      setIsAnalyzingGarment(false);
+    }
   };
 
   const processBackgroundRemoval = async (file: File, category: string) => {
@@ -290,13 +489,13 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       }
       setProcessedImage(result.processed_image);
       setUseOriginalFallback(false);
-      setSaveStatus('Background removed successfully.');
-      window.setTimeout(() => setSaveStatus(null), 2000);
+      setSaveStatus('Garment isolated. Analyzing details...');
+      await triggerGeminiAnalysis(result.processed_image, category);
     } catch (err: any) {
-      console.error('Background removal failed:', err);
+      console.error('Garment processing failed:', err);
       const detail = err?.message || 'Server unreachable at http://127.0.0.1:8000';
       setProcessedImage(null);
-      setBgRemovalError(`Background removal failed: ${detail}`);
+      setBgRemovalError(`Garment processing notice: ${detail}`);
     } finally {
       setIsRemovingBg(false);
     }
@@ -332,39 +531,41 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     }
   };
 
-  const continueWithOriginal = () => {
+  const continueWithOriginal = async () => {
     if (!uploadedImage) return;
     setUseOriginalFallback(true);
     setProcessedImage(uploadedImage);
     setBgRemovalError(null);
-    setSaveStatus('Using original photo without background removal.');
-    window.setTimeout(() => setSaveStatus(null), 2500);
+    setSaveStatus('Using original photo. Analyzing garment details...');
+    await triggerGeminiAnalysis(uploadedImage, garmentCategory || selectedCategory || '');
+  };
+
+  const retryAiAnalysis = () => {
+    const targetImage = useOriginalFallback ? uploadedImage : (processedImage || uploadedImage);
+    if (targetImage) {
+      triggerGeminiAnalysis(targetImage, garmentCategory || selectedCategory || '');
+    }
   };
 
   const saveWardrobeItem = async (itemToSave: WardrobeItem) => {
     const next = [itemToSave, ...items.filter((item) => item.id !== itemToSave.id)];
     persistItems(next);
 
-    if (!currentUid) {
-      setSaveStatus('Saved locally (Guest mode — sign in to sync with cloud)');
-      setSelectedCategory(null);
-      setUploadedImage(null);
-      setUploadedFile(null);
-      setProcessedImage(null);
-      setBgRemovalError(null);
-      setUseOriginalFallback(false);
+    if (isGuestMode || !authenticatedUid) {
+      setSaveStatus(isGuestMode ? 'Saved locally (Guest mode — sign in to sync with cloud)' : 'Saved locally');
+      resetGarmentForm();
       window.setTimeout(() => setSaveStatus(null), 3000);
       return;
     }
 
     try {
       const sanitized = sanitizeForFirestore(itemToSave);
-      await setDoc(doc(db, 'users', currentUid, 'wardrobe', itemToSave.id), sanitized);
+      await setDoc(doc(db, 'users', authenticatedUid, 'wardrobe', itemToSave.id), sanitized);
       setSaveStatus('Saved to cloud wardrobe');
       try {
         await accountService.upsertUserProfile(
           {
-            uid: currentUid,
+            uid: authenticatedUid,
             username,
             name: userName || username,
             email: userEmail,
@@ -386,12 +587,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       );
     }
 
-    setSelectedCategory(null);
-    setUploadedImage(null);
-    setUploadedFile(null);
-    setProcessedImage(null);
-    setBgRemovalError(null);
-    setUseOriginalFallback(false);
+    resetGarmentForm();
     window.setTimeout(() => setSaveStatus(null), 3500);
   };
 
@@ -403,31 +599,81 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
       return;
     }
 
-    const finalCategory = garmentCategory || selectedCategory || 'Clothing';
-    const finalColor = garmentColor.trim() || 'Custom';
+    const finalCategory = garmentCategory || selectedCategory || 'Top';
+    const finalPrimaryColor = formPrimaryColor || (garmentColor && garmentColor !== 'Custom' ? garmentColor.trim() : '') || detectedGarment?.visual.primaryColor || 'Not specified';
+    const finalSubcategory = DISPLAY_TO_SUBCATEGORY_MAP[finalCategory] || detectedGarment?.subcategory || 'other';
+    const bodyCategory = SUBCATEGORY_TO_BODY_SECTION_MAP[finalSubcategory] || (isBottomWear(finalCategory) ? 'bottom' : (detectedGarment?.category || 'top'));
+
+    const finalCanonical: CanonicalGarmentData = {
+      schemaVersion: '1.0',
+      id: makeId(),
+      category: bodyCategory,
+      subcategory: finalSubcategory,
+      gender: profile.gender === 'Male' ? 'men' : profile.gender === 'Female' ? 'women' : 'unisex',
+      visual: {
+        primaryColor: finalPrimaryColor,
+        secondaryColor: formSecondaryColor === '—' ? null : formSecondaryColor,
+        colorFamily: detectedGarment?.visual.colorFamily || ['neutral'],
+        pattern: formPattern || detectedGarment?.visual.pattern || 'Not specified',
+        texture: detectedGarment?.visual.texture || null,
+        visibleDetails: detectedGarment?.visual.visibleDetails || []
+      },
+      construction: {
+        sleeveType: isBottomWear(finalCategory) ? 'Not Applicable' : (formSleeveType || detectedGarment?.construction.sleeveType || 'Not specified'),
+        neckType: isBottomWear(finalCategory) ? 'Not Applicable' : (formNeckType || detectedGarment?.construction.neckType || 'Not specified'),
+        fit: formFit || detectedGarment?.construction.fit || 'Not specified',
+        length: detectedGarment?.construction.length || 'regular',
+        silhouette: detectedGarment?.construction.silhouette || 'regular',
+        rise: isBottomWear(finalCategory) ? (detectedGarment?.construction.rise || 'mid') : null
+      },
+      material: {
+        fabric: formFabric || detectedGarment?.material.fabric || 'Unknown',
+        fabricConfidence: detectedGarment ? detectedGarment.material.fabricConfidence : 'inferred',
+        composition: detectedGarment?.material.composition || null
+      },
+      style: {
+        primary: formStyle || detectedGarment?.style.primary || 'Casual',
+        secondary: detectedGarment?.style.secondary || [],
+        tags: [formStyle.toLowerCase(), formPattern.toLowerCase(), finalCategory.toLowerCase()].filter(Boolean)
+      },
+      usage: {
+        occasions: formOccasions.length > 0 ? formOccasions : (detectedGarment?.usage.occasions || ['Casual']),
+        seasons: formSeasons.length > 0 ? formSeasons : (detectedGarment?.usage.seasons || ['All Season']),
+        formality: formFormality || detectedGarment?.usage.formality || 'Casual'
+      },
+      matching: {
+        compatibleCategories: detectedGarment?.matching.compatibleCategories || (isBottomWear(finalCategory) ? ['top', 'outerwear', 'footwear'] : ['bottom', 'outerwear', 'footwear']),
+        compatibleStyles: detectedGarment?.matching.compatibleStyles || [formStyle || 'Casual'],
+        colorCompatibility: detectedGarment?.matching.colorCompatibility || ['neutral']
+      },
+      aiMetadata: {
+        description: formDescription || detectedGarment?.aiMetadata.description || `${finalPrimaryColor} ${finalCategory}`,
+        searchTags: [finalPrimaryColor, finalCategory, formPattern, formFabric, formStyle].filter(Boolean).map((s) => s.toLowerCase()),
+        unknownFields: detectedGarment?.aiMetadata.unknownFields || [],
+        extractionSource: detectedGarment ? 'gemini' : 'manual',
+        schemaVersion: '1.0'
+      }
+    };
+
+    const displayAttrs = canonicalToDisplayAttributes(finalCanonical);
+
+    // Garment size: only set when user explicitly provided it; never default to user profile size
+    const finalSize = formSize && formSize.trim() && formSize !== 'Not specified' ? formSize.trim() : '';
 
     const newItem: WardrobeItem = {
-      id: makeId(),
+      id: finalCanonical.id!,
       category: finalCategory,
-      size: profile.size || 'M',
+      size: finalSize,
       generatedImage: finalImage,
       originalScan: uploadedImage || finalImage,
-      colors: [finalColor],
-      pattern: 'Solid',
-      fabric: 'Standard',
-      tags: [finalCategory, finalColor].filter(Boolean),
+      colors: [finalPrimaryColor, ...(finalCanonical.visual.secondaryColor ? [finalCanonical.visual.secondaryColor] : [])],
+      pattern: finalCanonical.visual.pattern,
+      fabric: finalCanonical.material.fabric,
+      tags: [finalCategory, finalPrimaryColor, formStyle, formPattern].filter(Boolean),
       dateAdded: new Date().toISOString(),
       timesWorn: 0,
-      attributes: {
-        category: finalCategory,
-        primaryColor: finalColor,
-        secondaryColor: '—',
-        pattern: 'Solid',
-        fabric: 'Standard',
-        style: 'Everyday',
-        neckType: 'Standard',
-        sleeveType: 'Standard'
-      }
+      canonical: finalCanonical,
+      attributes: displayAttrs as WardrobeDetectedAttributes
     };
 
     saveWardrobeItem(newItem);
@@ -438,19 +684,19 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     persistItems(next);
     setSelectedItem(null);
 
-    if (!currentUid) {
+    if (isGuestMode || !authenticatedUid) {
       setSaveStatus('Removed locally');
       window.setTimeout(() => setSaveStatus(null), 2000);
       return;
     }
 
     try {
-      await deleteDoc(doc(db, 'users', currentUid, 'wardrobe', item.id));
+      await deleteDoc(doc(db, 'users', authenticatedUid, 'wardrobe', item.id));
       setSaveStatus('Removed from cloud wardrobe');
       try {
         await accountService.upsertUserProfile(
           {
-            uid: currentUid,
+            uid: authenticatedUid,
             username,
             name: userName || username,
             email: userEmail,
@@ -472,7 +718,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     persistItems(next);
     setSelectedItem(item);
 
-    if (!currentUid) {
+    if (isGuestMode || !authenticatedUid) {
       setSaveStatus('Updated locally');
       window.setTimeout(() => setSaveStatus(null), 2000);
       return;
@@ -480,12 +726,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
     try {
       const sanitized = sanitizeForFirestore(item);
-      await setDoc(doc(db, 'users', currentUid, 'wardrobe', item.id), sanitized, { merge: true });
+      await setDoc(doc(db, 'users', authenticatedUid, 'wardrobe', item.id), sanitized, { merge: true });
       setSaveStatus('Updated in cloud wardrobe');
       try {
         await accountService.upsertUserProfile(
           {
-            uid: currentUid,
+            uid: authenticatedUid,
             username,
             name: userName || username,
             email: userEmail,
@@ -507,12 +753,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     const now = new Date().toISOString();
     const next = items.map((item) => wornIds.has(item.id) ? { ...item, timesWorn: (item.timesWorn || 0) + 1, lastWorn: now } : item);
     persistItems(next);
-    if (currentUid) {
+    if (!isGuestMode && authenticatedUid) {
       next
         .filter((item) => wornIds.has(item.id))
         .forEach((item) => {
           const sanitized = sanitizeForFirestore(item);
-          setDoc(doc(db, 'users', currentUid, 'wardrobe', item.id), sanitized, { merge: true }).catch(() => undefined);
+          setDoc(doc(db, 'users', authenticatedUid, 'wardrobe', item.id), sanitized, { merge: true }).catch(() => undefined);
         });
     }
     setSaveStatus('Fit saved as worn — nice choice.');
@@ -522,8 +768,14 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const openOutfitBuilder = (item: WardrobeItem) => {
     setSelectedItem(null);
     setOutfitSeed(item);
-    const complementary = topCategories.includes(item.category) ? bottoms : bottomCategories.includes(item.category) ? tops : items.filter((entry) => entry.id !== item.id);
-    setOutfitPartnerId(complementary[0]?.id || '');
+    const recs = generateWardrobeOutfits(items, { seedItemId: item.id, limit: 1 });
+    const smartPartner = recs.outfits[0]?.items.find((i) => i.id !== item.id);
+    if (smartPartner) {
+      setOutfitPartnerId(smartPartner.id);
+    } else {
+      const complementary = topCategories.includes(item.category) ? bottoms : bottomCategories.includes(item.category) ? tops : items.filter((entry) => entry.id !== item.id);
+      setOutfitPartnerId(complementary[0]?.id || '');
+    }
   };
 
   const saveCreatedOutfit = () => {
@@ -532,11 +784,9 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
     if (!partner && (topCategories.includes(outfitSeed.category) || bottomCategories.includes(outfitSeed.category))) {
       setSaveStatus('Add a matching top or bottom first.'); return;
     }
-    const key = outfitsKey(userId);
-    let saved: Array<{ id: string; itemIds: string[]; createdAt: string }> = [];
-    try { saved = JSON.parse(localStorage.getItem(key) || '[]'); } catch { /* Start a fresh local collection. */ }
+    const saved = readLocalWardrobeOutfits({ uid: effectiveIdentity, isGuest: isGuestMode, legacyEmail: userEmail });
     saved.unshift({ id: makeId(), itemIds: [outfitSeed.id, ...(partner ? [partner.id] : [])], createdAt: new Date().toISOString() });
-    localStorage.setItem(key, JSON.stringify(saved));
+    saveLocalWardrobeOutfits(saved, { uid: effectiveIdentity, isGuest: isGuestMode });
     setSavedOutfitCount(saved.length);
     setSaveStatus('Outfit saved to your closet.');
     window.setTimeout(() => setSaveStatus(null), 2400);
@@ -566,11 +816,78 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const tops = items.filter((item) => topCategories.includes(item.category));
   const bottoms = items.filter((item) => bottomCategories.includes(item.category));
   const onePieces = items.filter((item) => ['Dress', 'Saree', 'Co-ord Set', 'Ethnic Wear'].includes(item.category));
-  const outfitIdeas = [
-    ...tops.flatMap((top) => bottoms.map((bottom) => ({ title: `${top.colors[0]} ${top.category} + ${bottom.colors[0]} ${bottom.category}`, items: [top, bottom], note: 'A fresh pairing from your own closet.' }))),
-    ...onePieces.map((item) => ({ title: `${item.colors[0]} ${item.category}`, items: [item], note: 'An easy one-piece look to revisit.' }))
-  ].filter((idea, index, all) => all.findIndex((entry) => entry.title === idea.title) === index);
-  const currentOutfit = outfitIdeas[outfitIndex % Math.max(1, outfitIdeas.length)];
+  const outfitEngineResult = useMemo(() => {
+    return generateWardrobeOutfits(items, { limit: 10 });
+  }, [items]);
+
+  const outfitIdeas = useMemo(() => {
+    if (outfitEngineResult.outfits.length > 0) {
+      return outfitEngineResult.outfits.map((outfit) => ({
+        id: outfit.id,
+        title: outfit.title,
+        items: outfit.items,
+        note: outfit.explanations[0] || `${outfit.styleDescription} • ${outfit.suggestedOccasion}`,
+        score: outfit.compatibilityScore,
+        occasion: outfit.suggestedOccasion,
+        style: outfit.styleDescription,
+        breakdown: outfit.breakdown,
+        explanations: outfit.explanations,
+        structureType: outfit.structureType
+      }));
+    }
+    return [
+      ...tops.flatMap((top) => bottoms.map((bottom) => ({
+        id: `fallback_${top.id}_${bottom.id}`,
+        title: `${top.colors[0]} ${top.category} + ${bottom.colors[0]} ${bottom.category}`,
+        items: [top, bottom],
+        note: 'A fresh pairing from your own closet.',
+        score: undefined,
+        occasion: 'Casual',
+        style: 'Casual',
+        breakdown: undefined,
+        explanations: ['A fresh pairing from your own closet.'],
+        structureType: 'top_bottom_duo' as const
+      }))),
+      ...onePieces.map((item) => ({
+        id: `fallback_${item.id}`,
+        title: `${item.colors[0]} ${item.category}`,
+        items: [item],
+        note: 'An easy one-piece look to revisit.',
+        score: undefined,
+        occasion: 'Casual',
+        style: 'Casual',
+        breakdown: undefined,
+        explanations: ['An easy one-piece look to revisit.'],
+        structureType: 'partial' as const
+      }))
+    ];
+  }, [outfitEngineResult, tops, bottoms, onePieces]);
+
+  // Strict deduplication by sorted item IDs (Requirement 5: Do not show duplicate combinations in different orders)
+  const distinctOutfits = useMemo(() => {
+    const seen = new Set<string>();
+    return outfitIdeas.filter((outfit) => {
+      const key = outfit.items.map((i) => i.id).sort().join('_');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [outfitIdeas]);
+
+  const availableOccasions = useMemo(() => {
+    const occs = new Set<string>();
+    distinctOutfits.forEach((o) => {
+      if (o.occasion) occs.add(o.occasion);
+    });
+    return ['All', ...Array.from(occs)];
+  }, [distinctOutfits]);
+
+  const displayedOutfits = useMemo(() => {
+    if (outfitOccasionFilter === 'All') return distinctOutfits;
+    return distinctOutfits.filter((o) => o.occasion.toLowerCase() === outfitOccasionFilter.toLowerCase());
+  }, [distinctOutfits, outfitOccasionFilter]);
+
+  const currentOutfit = distinctOutfits[outfitIndex % Math.max(1, distinctOutfits.length)];
   const totalOutfits = savedOutfitCount;
 
   return (
@@ -597,7 +914,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
         <div className="mt-5 grid gap-3">
           {[
             ['photo_camera', 'Garment Photo Capture'],
-            ['content_cut', 'Automatic Background Removal'],
+            ['content_cut', 'Smart Garment Isolation'],
             ['checkroom', 'Organized Wardrobe'],
             ['auto_awesome', 'Outfit & Styling Assistant'],
             ['donut_large', 'Closet Insights']
@@ -843,18 +1160,233 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
             </div>
           </section>
 
-          <section className={`rounded-[28px] p-4 ${darkPanel}`}>
-            <div className="flex items-center justify-between gap-3">
-              <div><h2 className="text-lg font-black">New fits for you</h2><p className={`text-[11px] ${muted}`}>Made only from what you own</p></div>
-              {outfitIdeas.length > 1 && <button onClick={() => setOutfitIndex((index) => index + 1)} className={`rounded-lg px-3 py-2 text-[11px] font-black ${badgeSurface}`}>Shuffle</button>}
-            </div>
-            {currentOutfit ? (
-              <div className={`mt-3 rounded-2xl border p-3 ${subCard}`}>
-                <div className="flex gap-2">{currentOutfit.items.map((item) => <img key={item.id} src={item.generatedImage} alt={item.category} className={`h-20 w-16 rounded-xl object-contain p-1 ${innerSurface}`} />)}</div>
-                <p className="mt-3 text-sm font-black">{currentOutfit.title}</p><p className={`mt-1 text-xs ${muted}`}>{currentOutfit.note}</p>
-                <button onClick={() => markOutfitWorn(currentOutfit.items)} className={`mt-3 w-full rounded-xl py-2.5 text-xs font-black ${purpleButton}`}>I wore this fit</button>
+          <section data-tutorial-target="wardrobe-outfits-section" className={`rounded-[28px] p-4 sm:p-5 ${darkPanel}`}>
+            {/* Section Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-[#a855f7] dark:text-[#c084fc]">auto_awesome</span>
+                  <h2 className="text-lg sm:text-xl font-black tracking-tight">New fits for you</h2>
+                </div>
+                <p className={`mt-0.5 text-xs ${muted}`}>
+                  NOVA AI combinations • Made only from what you own ({distinctOutfits.length} available)
+                </p>
               </div>
-            ) : <div className={`mt-3 rounded-2xl border border-dashed p-4 text-center text-xs ${isDarkMode ? 'border-[#453066] text-slate-400' : 'border-[#E4DFF5] text-[#5E667A]'}`}>Add a top and a bottom to unlock outfit ideas.</div>}
+              {distinctOutfits.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-black ${badgeSurface}`}>
+                    {displayedOutfits.length} {displayedOutfits.length === 1 ? 'Look' : 'Looks'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Occasion Filter Pills (if multiple occasions present) */}
+            {availableOccasions.length > 2 && (
+              <div className="mt-3 flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+                {availableOccasions.map((occ) => (
+                  <button
+                    key={occ}
+                    onClick={() => setOutfitOccasionFilter(occ)}
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition-all ${
+                      outfitOccasionFilter === occ
+                        ? purpleButton
+                        : isDarkMode
+                          ? 'bg-[#1b1c2e] text-slate-300 hover:bg-[#25263d]'
+                          : 'bg-[#ECE7FF] text-[#553BE2] hover:bg-[#E2DBFE]'
+                    }`}
+                  >
+                    {occ} {occ !== 'All' && `(${distinctOutfits.filter(o => o.occasion.toLowerCase() === occ.toLowerCase()).length})`}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Quick jump anchor navigation if there are multiple outfits */}
+            {displayedOutfits.length > 3 && (
+              <div className="mt-2 flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-1 text-[11px]">
+                <span className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${muted}`}>Quick jump:</span>
+                {displayedOutfits.map((_, idx) => (
+                  <a
+                    key={idx}
+                    href={`#outfit-card-${idx}`}
+                    className={`shrink-0 rounded-lg px-2.5 py-0.5 font-bold transition ${
+                      isDarkMode ? 'bg-[#161726] hover:bg-[#23243a] text-slate-300' : 'bg-[#EFEAFF] hover:bg-[#E3DCFF] text-[#553BE2]'
+                    }`}
+                  >
+                    Fit {idx + 1}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Outfits List / Scrollable Feed */}
+            {displayedOutfits.length > 0 ? (
+              <div className="mt-4 space-y-5">
+                {displayedOutfits.map((outfit, index) => (
+                  <article
+                    key={outfit.id || index}
+                    id={`outfit-card-${index}`}
+                    className={`scroll-mt-6 rounded-3xl border p-4 sm:p-5 transition-all shadow-md ${
+                      isDarkMode
+                        ? 'border-[#2d2547] bg-[#121324]/90 hover:border-[#8b5cf6]/50'
+                        : 'border-[#E4DFF5] bg-white/95 hover:border-[#553BE2]/40 shadow-xs'
+                    }`}
+                  >
+                    {/* Outfit Card Top Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-black uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20">
+                          <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                          {outfit.style}
+                        </span>
+                        <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${badgeSurface}`}>
+                          {outfit.occasion}
+                        </span>
+                      </div>
+                      {outfit.score !== undefined && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-black text-emerald-400 border border-emerald-500/30">
+                          <span className="material-symbols-outlined text-sm">verified</span>
+                          {outfit.score}% Match
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Outfit Title */}
+                    <h3 className="mt-3 text-base sm:text-lg font-black leading-snug tracking-tight">
+                      {outfit.title}
+                    </h3>
+
+                    {/* Garment Images Showcase (Large, visually clear) */}
+                    <div className={`mt-4 grid gap-3 ${
+                      outfit.items.length === 2 ? 'grid-cols-2' :
+                      outfit.items.length === 3 ? 'grid-cols-3' :
+                      outfit.items.length === 4 ? 'grid-cols-2 sm:grid-cols-4' :
+                      'grid-cols-2 sm:grid-cols-3'
+                    }`}>
+                      {outfit.items.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => setSelectedItem(item)}
+                          className={`group relative flex flex-col items-center rounded-2xl border p-2 sm:p-3 transition-all cursor-pointer ${
+                            isDarkMode
+                              ? 'border-[#2d2448] bg-[#0c0d1a] hover:border-[#9333ea]/60 hover:bg-[#121324]'
+                              : 'border-[#E4DFF5] bg-[#F9F7FF] hover:border-[#553BE2]/40 hover:bg-[#F2EEFF]'
+                          }`}
+                          title={`Click to view ${item.category} details`}
+                        >
+                          {/* Garment Image */}
+                          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-transparent flex items-center justify-center">
+                            {item.generatedImage ? (
+                              <img
+                                src={item.generatedImage}
+                                alt={item.category}
+                                className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-slate-400">
+                                <span className="material-symbols-outlined text-3xl">checkroom</span>
+                                <span className="text-[10px] mt-1">{item.category}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Details below image */}
+                          <div className="mt-2 w-full text-center">
+                            <p className="truncate text-xs font-black tracking-tight">{item.category}</p>
+                            <div className="mt-0.5 flex items-center justify-center gap-1.5 text-[11px]">
+                              <span
+                                className="inline-block h-2 w-2 shrink-0 rounded-full border border-black/10 shadow-xs"
+                                style={{ backgroundColor: resolveColorHex(item.colors[0]) || '#888' }}
+                              />
+                              <span className={`truncate font-semibold ${muted}`}>
+                                {item.colors[0] || 'Custom'}
+                              </span>
+                            </div>
+                            {item.attributes?.fit && item.attributes.fit !== 'Regular' && (
+                              <span className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+                                isDarkMode ? 'bg-[#1b1c2e] text-slate-300' : 'bg-[#ECE7FF] text-[#553BE2]'
+                              }`}>
+                                {item.attributes.fit}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* AI Stylist Explanation Box */}
+                    <div className={`mt-4 rounded-2xl border p-3.5 sm:p-4 ${
+                      isDarkMode ? 'border-[#30264e] bg-[#0e0f1e]/80' : 'border-[#E4DFF5] bg-[#F6F3FF]'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm text-[#a855f7] dark:text-[#c084fc]">psychology</span>
+                        <span className="text-xs font-black uppercase tracking-wider text-[#a855f7] dark:text-[#c084fc]">
+                          NOVA AI Styling Analysis
+                        </span>
+                      </div>
+                      <div className="mt-2 space-y-1.5">
+                        {outfit.explanations && outfit.explanations.length > 0 ? (
+                          outfit.explanations.slice(0, 3).map((exp, expIdx) => (
+                            <p key={expIdx} className={`flex items-start gap-2 text-xs leading-relaxed ${muted}`}>
+                              <span className="text-[#a855f7] dark:text-[#c084fc] font-bold">•</span>
+                              <span>{exp}</span>
+                            </p>
+                          ))
+                        ) : (
+                          <p className={`text-xs leading-relaxed ${muted}`}>{outfit.note}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Footer */}
+                    <div className="mt-4 flex flex-col sm:flex-row items-center gap-2.5">
+                      <button
+                        onClick={() => markOutfitWorn(outfit.items)}
+                        className={`w-full sm:flex-1 rounded-xl py-3 text-xs font-black flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.99] ${purpleButton}`}
+                      >
+                        <span className="material-symbols-outlined text-base">checkroom</span>
+                        I wore this fit
+                      </button>
+                      <button
+                        onClick={() => openOutfitBuilder(outfit.items[0])}
+                        className={`w-full sm:w-auto rounded-xl border px-4 py-3 text-xs font-black transition ${
+                          isDarkMode
+                            ? 'border-[#3b2d5a] bg-[#171828] text-slate-200 hover:border-[#8b5cf6]'
+                            : 'border-[#E4DFF5] bg-white text-[#131426] hover:border-[#553BE2]'
+                        }`}
+                      >
+                        Customize look
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className={`mt-4 rounded-2xl border border-dashed p-6 text-center ${
+                isDarkMode ? 'border-[#453066] bg-[#141020] text-slate-400' : 'border-[#E4DFF5] bg-[#F2EEFF]/65 text-[#5E667A]'
+              }`}>
+                <div className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl ${
+                  isDarkMode ? 'bg-[#201733] text-[#c084fc]' : 'bg-[#F2EEFF] text-[#553BE2]'
+                }`}>
+                  <span className="material-symbols-outlined text-2xl">auto_awesome</span>
+                </div>
+                <p className="text-sm font-bold">
+                  {outfitEngineResult.statusMessage || 'Add a top and a bottom to your Virtual Wardrobe to unlock AI outfit combinations.'}
+                </p>
+                <p className={`mt-1 text-xs ${muted}`}>
+                  NOVA AI creates outfits only from genuine items in your closet.
+                </p>
+                <button
+                  onClick={() => onNavigate('scan-outfit')}
+                  className={`mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black ${purpleButton}`}
+                >
+                  <span className="material-symbols-outlined text-base">add_a_photo</span>
+                  Scan a garment
+                </button>
+              </div>
+            )}
           </section>
         </>
       )}
@@ -944,11 +1476,11 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                       <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${muted}`}>Garment Preview</span>
                       {isRemovingBg ? (
                         <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-500">
-                          Removing background...
+                          Processing...
                         </span>
                       ) : processedImage && !useOriginalFallback ? (
                         <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
-                          ✓ Background Removed
+                          ✓ Ready
                         </span>
                       ) : useOriginalFallback ? (
                         <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-400">
@@ -973,7 +1505,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                       {isRemovingBg ? (
                         <div className="flex flex-col items-center justify-center p-6 text-center">
                           <div className="h-10 w-10 animate-spin rounded-full border-3 border-[#553BE2] border-t-transparent" />
-                          <p className={`mt-3 text-xs font-black ${accentText}`}>Removing background with rembg...</p>
+                          <p className={`mt-3 text-xs font-black ${accentText}`}>Processing garment...</p>
                           <p className={`mt-1 text-[11px] ${muted}`}>Preserving garment silhouette</p>
                         </div>
                       ) : (
@@ -998,7 +1530,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                             onClick={retryBackgroundRemoval}
                             className="flex-1 rounded-lg bg-rose-500 px-3 py-1.5 text-[11px] font-bold text-white shadow hover:bg-rose-600"
                           >
-                            Retry Background Removal
+                            Retry Processing
                           </button>
                           <button 
                             type="button"
@@ -1027,54 +1559,321 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
 
               {/* Garment details configuration */}
               {uploadedImage && (
-                <div className={`mt-3 rounded-2xl border p-3 ${subCard}`}>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
-                        Category
-                      </label>
-                      <select 
-                        value={garmentCategory || selectedCategory || ''} 
-                        onChange={(e) => setGarmentCategory(e.target.value)}
-                        className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
-                          isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
-                        }`}
+                <>
+                  {isAnalyzingGarment && (
+                    <div className="mt-3 rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/30 to-indigo-950/30 p-4 text-center backdrop-blur">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined animate-spin text-purple-400">progress_activity</span>
+                        <span className={`text-xs font-black ${accentText}`}>Analyzing garment...</span>
+                      </div>
+                      <p className={`mt-1 text-[11px] ${muted}`}>Extracting colors, pattern, fabric, construction, and style tags...</p>
+                    </div>
+                  )}
+
+                  {analysisSuccess && (
+                    <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+                      <div className="flex items-center gap-2 text-emerald-400">
+                        <span className="material-symbols-outlined text-base">auto_awesome</span>
+                        <span className="font-bold">Garment Details Extracted</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={retryAiAnalysis}
+                        className="text-[10px] font-bold text-emerald-300 underline hover:text-emerald-200"
                       >
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
+                        Re-analyze
+                      </button>
                     </div>
-                    <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
-                        Color / Note
-                      </label>
-                      <input 
-                        type="text"
-                        value={garmentColor}
-                        onChange={(e) => setGarmentColor(e.target.value)}
-                        placeholder="e.g. Navy Blue"
-                        className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
-                          isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
-                        }`}
-                      />
+                  )}
+
+                  {garmentAiError && !isAnalyzingGarment && (
+                    <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+                      <div className="flex items-start gap-2 text-amber-400">
+                        <span className="material-symbols-outlined text-base">info</span>
+                        <div className="flex-1">
+                          <p className="font-bold">AI Analysis Notice</p>
+                          <p className="mt-0.5 text-[11px] opacity-90">{garmentAiError}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between pt-1">
+                        <span className="text-[10px] text-amber-300/80">You can adjust or verify the attributes below.</span>
+                        <button
+                          type="button"
+                          onClick={retryAiAnalysis}
+                          className="rounded-lg bg-amber-500/20 px-2 py-1 text-[10px] font-bold text-amber-300 hover:bg-amber-500/30"
+                        >
+                          Retry AI Analysis
+                        </button>
+                      </div>
                     </div>
+                  )}
+
+                  <div className={`mt-3 space-y-3 rounded-2xl border p-3.5 ${subCard}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-black uppercase tracking-wider ${accentText}`}>
+                        Garment Attributes
+                      </span>
+                      {detectedGarment && (
+                        <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-400">
+                          AI Verified
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Category
+                        </label>
+                        <select 
+                          value={garmentCategory || selectedCategory || ''} 
+                          onChange={(e) => setGarmentCategory(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                          {garmentCategory && !categories.includes(garmentCategory) && (
+                            <option value={garmentCategory}>{garmentCategory}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Size (Optional)
+                        </label>
+                        <select 
+                          value={formSize}
+                          onChange={(e) => setFormSize(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="">Not specified</option>
+                          {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'].map((sz) => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                          {formSize && !['', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'].includes(formSize) && (
+                            <option value={formSize}>{formSize}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Primary Color
+                        </label>
+                        <select 
+                          value={formPrimaryColor}
+                          onChange={(e) => setFormPrimaryColor(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="">Not specified</option>
+                          {CANONICAL_COLORS.map((col) => (
+                            <option key={col} value={col}>{col}</option>
+                          ))}
+                          {formPrimaryColor && !CANONICAL_COLORS.includes(formPrimaryColor as any) && (
+                            <option value={formPrimaryColor}>{formPrimaryColor}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Secondary Color
+                        </label>
+                        <select 
+                          value={formSecondaryColor}
+                          onChange={(e) => setFormSecondaryColor(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="—">None (—)</option>
+                          {CANONICAL_COLORS.map((col) => (
+                            <option key={col} value={col}>{col}</option>
+                          ))}
+                          {formSecondaryColor && formSecondaryColor !== '—' && !CANONICAL_COLORS.includes(formSecondaryColor as any) && (
+                            <option value={formSecondaryColor}>{formSecondaryColor}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Pattern
+                        </label>
+                        <select 
+                          value={formPattern}
+                          onChange={(e) => setFormPattern(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="Not specified">Not specified</option>
+                          {CANONICAL_PATTERNS.map((pat) => (
+                            <option key={pat} value={pat}>{pat}</option>
+                          ))}
+                          {formPattern && formPattern !== 'Not specified' && !CANONICAL_PATTERNS.includes(formPattern as any) && (
+                            <option value={formPattern}>{formPattern}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Fabric
+                        </label>
+                        <select 
+                          value={formFabric}
+                          onChange={(e) => setFormFabric(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="Unknown">Unknown</option>
+                          {CANONICAL_FABRICS.map((fab) => (
+                            <option key={fab} value={fab}>{fab}</option>
+                          ))}
+                          {formFabric && formFabric !== 'Unknown' && !CANONICAL_FABRICS.includes(formFabric as any) && (
+                            <option value={formFabric}>{formFabric}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Fit / Silhouette
+                        </label>
+                        <select 
+                          value={formFit}
+                          onChange={(e) => setFormFit(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="Not specified">Not specified</option>
+                          {CANONICAL_FITS.map((fit) => (
+                            <option key={fit} value={fit}>{fit}</option>
+                          ))}
+                          {formFit && formFit !== 'Not specified' && !CANONICAL_FITS.includes(formFit as any) && (
+                            <option value={formFit}>{formFit}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      {!isBottomWear(garmentCategory || selectedCategory || '') ? (
+                        <>
+                          <div>
+                            <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                              Sleeve Type
+                            </label>
+                            <select 
+                              value={formSleeveType}
+                              onChange={(e) => setFormSleeveType(e.target.value)}
+                              className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                                isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                              }`}
+                            >
+                              <option value="Not specified">Not specified</option>
+                              {CANONICAL_SLEEVE_TYPES.map((slv) => (
+                                <option key={slv} value={slv}>{slv}</option>
+                              ))}
+                              {formSleeveType && formSleeveType !== 'Not specified' && !CANONICAL_SLEEVE_TYPES.includes(formSleeveType as any) && (
+                                <option value={formSleeveType}>{formSleeveType}</option>
+                              )}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                              Neckline
+                            </label>
+                            <select 
+                              value={formNeckType}
+                              onChange={(e) => setFormNeckType(e.target.value)}
+                              className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                                isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                              }`}
+                            >
+                              <option value="Not specified">Not specified</option>
+                              {CANONICAL_NECK_TYPES.map((nck) => (
+                                <option key={nck} value={nck}>{nck}</option>
+                              ))}
+                              {formNeckType && formNeckType !== 'Not specified' && !CANONICAL_NECK_TYPES.includes(formNeckType as any) && (
+                                <option value={formNeckType}>{formNeckType}</option>
+                              )}
+                            </select>
+                          </div>
+                        </>
+                      ) : null}
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Primary Style
+                        </label>
+                        <select 
+                          value={formStyle}
+                          onChange={(e) => setFormStyle(e.target.value)}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          <option value="Casual">Casual</option>
+                          {CANONICAL_STYLES.map((sty) => (
+                            <option key={sty} value={sty}>{sty}</option>
+                          ))}
+                          {formStyle && !CANONICAL_STYLES.includes(formStyle as any) && (
+                            <option value={formStyle}>{formStyle}</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          Season
+                        </label>
+                        <select 
+                          value={formSeasons[0] || 'All Season'}
+                          onChange={(e) => setFormSeasons([e.target.value])}
+                          className={`mt-1 w-full rounded-xl border p-2 text-xs font-bold outline-none ${
+                            isDarkMode ? 'border-[#30264c] bg-[#1a1b2d] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        >
+                          {CANONICAL_SEASONS.map((sea) => (
+                            <option key={sea} value={sea}>{sea}</option>
+                          ))}
+                          {formSeasons[0] && !CANONICAL_SEASONS.includes(formSeasons[0] as any) && (
+                            <option value={formSeasons[0]}>{formSeasons[0]}</option>
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    {formDescription ? (
+                      <div className="pt-1">
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                          AI Garment Description
+                        </label>
+                        <p className={`mt-0.5 text-xs italic ${muted}`}>
+                          "{formDescription}"
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
+                </>
               )}
 
               {/* Action buttons */}
               <div className="mt-4 flex gap-3">
                 <button 
                   type="button"
-                  onClick={() => {
-                    setSelectedCategory(null);
-                    setUploadedImage(null);
-                    setUploadedFile(null);
-                    setProcessedImage(null);
-                    setBgRemovalError(null);
-                    setUseOriginalFallback(false);
-                  }} 
+                  onClick={resetGarmentForm} 
                   className={`flex-1 rounded-xl border py-3 text-xs font-black shadow-sm ${
                     isDarkMode ? 'border-[#30264c] bg-[#171827] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
                   }`}
@@ -1084,10 +1883,10 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 <button 
                   type="button"
                   onClick={handleSaveGarment} 
-                  disabled={!uploadedImage || isRemovingBg} 
+                  disabled={!uploadedImage || isRemovingBg || isAnalyzingGarment} 
                   className={`flex-1 rounded-xl py-3 text-xs font-black disabled:opacity-40 ${purpleButton}`}
                 >
-                  Save to Wardrobe
+                  {isAnalyzingGarment ? 'Analyzing...' : 'Save to Wardrobe'}
                 </button>
               </div>
             </motion.section>
@@ -1100,7 +1899,14 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3">
             <motion.section initial={{ y: 420 }} animate={{ y: 0 }} exit={{ y: 420 }} className={`max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border p-4 shadow-2xl ${modalSurface}`}>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-black">{selectedItem.category}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black">{selectedItem.category}</h2>
+                  {selectedItem.canonical && (
+                    <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-400">
+                      AI Verified
+                    </span>
+                  )}
+                </div>
                 <button onClick={() => { setEditDraft(null); setSelectedItem(null); }} className={`h-9 w-9 rounded-full ${isDarkMode ? 'bg-[#171827]' : 'bg-[#F2EEFF] text-[#5E667A]'}`}><span className="material-symbols-outlined text-base">close</span></button>
               </div>
               <div className={`rounded-[24px] p-4 ${innerSurface}`}>
@@ -1110,39 +1916,221 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
                 <div className={`mt-4 space-y-3 rounded-2xl border p-3 ${subCard}`}>
                   <p className={`text-xs font-black ${accentText}`}>Correct the scan details</p>
                   {[
-                    ['Category', 'category'], ['Primary color', 'primaryColor'], ['Secondary color', 'secondaryColor'],
-                    ['Pattern', 'pattern'], ['Fabric', 'fabric'], ['Neckline', 'neckType'], ['Sleeve', 'sleeveType']
+                    ['Category', 'category'],
+                    ['Primary color', 'primaryColor'],
+                    ['Secondary color', 'secondaryColor'],
+                    ['Pattern', 'pattern'],
+                    ['Fabric', 'fabric'],
+                    ['Neckline', 'neckType'],
+                    ['Sleeve', 'sleeveType'],
+                    ['Size', 'size']
                   ].map(([label, field]) => {
                     const attributeFields = ['primaryColor', 'secondaryColor', 'neckType', 'sleeveType'];
-                    const value = attributeFields.includes(field) ? editDraft.attributes[field as keyof WardrobeDetectedAttributes] : editDraft[field as keyof WardrobeItem] as string;
-                    return <label key={field} className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>{label}
-                      <input value={value || ''} onChange={(event) => setEditDraft((draft) => !draft ? draft : attributeFields.includes(field)
-                        ? { ...draft, attributes: { ...draft.attributes, [field]: event.target.value }, ...(field === 'primaryColor' ? { colors: [event.target.value, ...draft.colors.slice(1)] } : {}) }
-                        : { ...draft, [field]: event.target.value })} className={`mt-1 w-full rounded-lg border px-3 py-2 text-xs font-semibold normal-case outline-none focus:border-[#553BE2] ${
-                          isDarkMode ? 'border-[#37304d] bg-[#0d0f1a] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
-                        }`} />
-                    </label>;
+                    const value = field === 'size'
+                      ? (editDraft.size || '')
+                      : attributeFields.includes(field)
+                        ? editDraft.attributes?.[field as keyof WardrobeDetectedAttributes]
+                        : (editDraft[field as keyof WardrobeItem] as string);
+                    return (
+                      <label key={field} className={`block text-[10px] font-black uppercase tracking-wider ${muted}`}>
+                        {label}
+                        <input
+                          value={value || ''}
+                          placeholder={field === 'size' ? 'e.g. S, M, L (optional)' : ''}
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            setEditDraft((draft) => {
+                              if (!draft) return draft;
+                              if (field === 'size') {
+                                return { ...draft, size: val };
+                              }
+                              if (attributeFields.includes(field)) {
+                                return {
+                                  ...draft,
+                                  attributes: { ...draft.attributes, [field]: val },
+                                  ...(field === 'primaryColor' ? { colors: [val, ...draft.colors.slice(1)] } : {})
+                                };
+                              }
+                              return { ...draft, [field]: val };
+                            });
+                          }}
+                          className={`mt-1 w-full rounded-lg border px-3 py-2 text-xs font-semibold normal-case outline-none focus:border-[#553BE2] ${
+                            isDarkMode ? 'border-[#37304d] bg-[#0d0f1a] text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
+                          }`}
+                        />
+                      </label>
+                    );
                   })}
-                  <div className="grid grid-cols-2 gap-2 pt-1"><button onClick={() => setEditDraft(null)} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155]' : 'border-[#E4DFF5] bg-white text-[#5E667A]'}`}>Cancel</button><button onClick={() => { if (editDraft) { updateItem({ ...editDraft, colors: [editDraft.attributes.primaryColor, ...(editDraft.attributes.secondaryColor !== '—' ? [editDraft.attributes.secondaryColor] : [])], pattern: editDraft.pattern, fabric: editDraft.fabric }); setEditDraft(null); setSaveStatus('Garment details updated.'); } }} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Save changes</button></div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={() => setEditDraft(null)}
+                      className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155]' : 'border-[#E4DFF5] bg-white text-[#5E667A]'}`}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (editDraft) {
+                          const primaryCol = editDraft.attributes?.primaryColor || editDraft.colors[0] || 'Not specified';
+                          const secCol = editDraft.attributes?.secondaryColor && editDraft.attributes.secondaryColor !== '—'
+                            ? editDraft.attributes.secondaryColor
+                            : null;
+                          const updatedColors = [primaryCol, ...(secCol ? [secCol] : [])];
+
+                          const updatedCanonical: CanonicalGarmentData = editDraft.canonical ? {
+                            ...editDraft.canonical,
+                            category: SUBCATEGORY_TO_BODY_SECTION_MAP[DISPLAY_TO_SUBCATEGORY_MAP[editDraft.category] || 'other'] || (isBottomWear(editDraft.category) ? 'bottom' : 'top'),
+                            subcategory: DISPLAY_TO_SUBCATEGORY_MAP[editDraft.category] || editDraft.canonical.subcategory || 'other',
+                            visual: {
+                              ...editDraft.canonical.visual,
+                              primaryColor: primaryCol,
+                              secondaryColor: secCol,
+                              pattern: editDraft.pattern || editDraft.canonical.visual.pattern
+                            },
+                            construction: {
+                              ...editDraft.canonical.construction,
+                              neckType: editDraft.attributes?.neckType || editDraft.canonical.construction.neckType,
+                              sleeveType: editDraft.attributes?.sleeveType || editDraft.canonical.construction.sleeveType
+                            },
+                            material: {
+                              ...editDraft.canonical.material,
+                              fabric: editDraft.fabric || editDraft.canonical.material.fabric
+                            }
+                          } : {
+                            schemaVersion: '1.0',
+                            id: editDraft.id,
+                            category: isBottomWear(editDraft.category) ? 'bottom' : 'top',
+                            subcategory: DISPLAY_TO_SUBCATEGORY_MAP[editDraft.category] || 'other',
+                            gender: 'unisex',
+                            visual: {
+                              primaryColor: primaryCol,
+                              secondaryColor: secCol,
+                              colorFamily: ['neutral'],
+                              pattern: editDraft.pattern || 'Not specified',
+                              texture: null,
+                              visibleDetails: []
+                            },
+                            construction: {
+                              sleeveType: editDraft.attributes?.sleeveType || 'Not specified',
+                              neckType: editDraft.attributes?.neckType || 'Not specified',
+                              fit: editDraft.attributes?.fit || 'Not specified',
+                              length: 'regular',
+                              silhouette: 'regular',
+                              rise: null
+                            },
+                            material: {
+                              fabric: editDraft.fabric || 'Unknown',
+                              fabricConfidence: 'inferred',
+                              composition: null
+                            },
+                            style: {
+                              primary: editDraft.attributes?.style || 'Casual',
+                              secondary: [],
+                              tags: [editDraft.category.toLowerCase()]
+                            },
+                            usage: {
+                              occasions: editDraft.attributes?.occasions || ['Casual'],
+                              seasons: editDraft.attributes?.seasons || ['All Season'],
+                              formality: 'Casual'
+                            },
+                            matching: {
+                              compatibleCategories: isBottomWear(editDraft.category) ? ['top', 'outerwear'] : ['bottom', 'outerwear'],
+                              compatibleStyles: [editDraft.attributes?.style || 'Casual'],
+                              colorCompatibility: ['neutral']
+                            },
+                            aiMetadata: {
+                              description: `${primaryCol} ${editDraft.category}`,
+                              searchTags: [primaryCol, editDraft.category, editDraft.pattern, editDraft.fabric].filter(Boolean).map((s) => s.toLowerCase()),
+                              unknownFields: [],
+                              extractionSource: 'manual',
+                              schemaVersion: '1.0'
+                            }
+                          };
+
+                          updateItem({
+                            ...editDraft,
+                            size: editDraft.size ? editDraft.size.trim() : '',
+                            colors: updatedColors,
+                            pattern: editDraft.pattern,
+                            fabric: editDraft.fabric,
+                            canonical: updatedCanonical,
+                            attributes: {
+                              ...editDraft.attributes,
+                              category: editDraft.category,
+                              primaryColor: primaryCol,
+                              secondaryColor: secCol || '—',
+                              pattern: editDraft.pattern,
+                              fabric: editDraft.fabric
+                            }
+                          });
+                          setEditDraft(null);
+                          setSaveStatus('Garment details updated.');
+                        }
+                      }}
+                      className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}
+                    >
+                      Save changes
+                    </button>
+                  </div>
                 </div>
               ) : <>
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              {selectedItem.canonical?.aiMetadata?.description && (
+                <div className={`mt-3 rounded-xl border p-3 ${subCard}`}>
+                  <div className={`text-[10px] font-black uppercase tracking-wider ${accentText}`}>AI Description</div>
+                  <p className="mt-1 text-xs font-medium leading-relaxed">{selectedItem.canonical.aiMetadata.description}</p>
+                </div>
+              )}
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 {[
                   ['Category', selectedItem.category],
-                  ['Color', selectedItem.colors.join(', ')],
-                  ['Pattern', selectedItem.pattern],
-                  ['Fabric', selectedItem.fabric],
+                  [
+                    'Color',
+                    selectedItem.canonical?.visual?.primaryColor
+                      ? [selectedItem.canonical.visual.primaryColor, ...(selectedItem.canonical.visual.secondaryColor ? [selectedItem.canonical.visual.secondaryColor] : [])].join(', ')
+                      : selectedItem.colors.filter((c: string) => c && c !== 'Custom' && c !== '—').join(', ') || 'Not specified'
+                  ],
+                  [
+                    'Pattern',
+                    selectedItem.canonical?.visual?.pattern ||
+                    (selectedItem.pattern && selectedItem.pattern !== 'Solid' ? selectedItem.pattern : selectedItem.pattern || 'Not specified')
+                  ],
+                  [
+                    'Fabric',
+                    selectedItem.canonical?.material?.fabric ||
+                    (selectedItem.fabric && selectedItem.fabric !== 'Standard' ? selectedItem.fabric : 'Not specified')
+                  ],
                   ...(isBottomWear(selectedItem.category)
-                    ? [['Rise', selectedItem.attributes?.rise || 'Not specified'], ['Length', selectedItem.attributes?.length || 'Not specified']]
-                    : [['Neck', selectedItem.attributes?.neckType || 'Regular'], ['Sleeve', selectedItem.attributes?.sleeveType || 'Regular']]),
-                  ['Size', selectedItem.size],
+                    ? [
+                        ['Rise', selectedItem.canonical?.construction?.rise || selectedItem.attributes?.rise || 'Not specified'],
+                        ['Length', selectedItem.canonical?.construction?.length || selectedItem.attributes?.length || 'Not specified']
+                      ]
+                    : [
+                        [
+                          'Neck',
+                          selectedItem.canonical?.construction?.neckType ||
+                          (selectedItem.attributes?.neckType && selectedItem.attributes.neckType !== 'Standard' ? selectedItem.attributes.neckType : 'Not specified')
+                        ],
+                        [
+                          'Sleeve',
+                          selectedItem.canonical?.construction?.sleeveType ||
+                          (selectedItem.attributes?.sleeveType && selectedItem.attributes.sleeveType !== 'Standard' ? selectedItem.attributes.sleeveType : 'Not specified')
+                        ]
+                      ]),
+                  ['Fit', selectedItem.canonical?.construction?.fit || (selectedItem.attributes?.fit && selectedItem.attributes.fit !== 'Regular' ? selectedItem.attributes.fit : 'Not specified')],
+                  ['Style', selectedItem.canonical?.style?.primary || selectedItem.attributes?.style || 'Not specified'],
+                  ['Occasions', (selectedItem.canonical?.usage?.occasions || selectedItem.attributes?.occasions || ['Not specified']).join(', ')],
+                  ['Seasons', (selectedItem.canonical?.usage?.seasons || selectedItem.attributes?.seasons || ['Not specified']).join(', ')],
+                  ['Size', selectedItem.size && selectedItem.size.trim() ? selectedItem.size : 'Not specified'],
                   ['Date Added', new Date(selectedItem.dateAdded).toLocaleDateString()]
-                ].map(([label, value]) => (
-                  <div key={label} className={`rounded-xl border p-3 ${subCard}`}>
-                    <div className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>{label}</div>
-                    <div className="mt-1 text-xs font-black">{value}</div>
-                  </div>
-                ))}
+                ].map(([label, value]) => {
+                  const displayValue = (!value || value === 'Standard' || value === 'Custom') ? 'Not specified' : value;
+                  return (
+                    <div key={label} className={`rounded-xl border p-3 ${subCard}`}>
+                      <div className={`text-[10px] font-black uppercase tracking-wider ${muted}`}>{label}</div>
+                      <div className="mt-1 text-xs font-black">{displayValue}</div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button onClick={() => onNavigate('ar-tryon')} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Wear Virtually</button>

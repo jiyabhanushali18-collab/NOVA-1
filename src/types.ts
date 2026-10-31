@@ -145,6 +145,48 @@ export interface CartItem {
   size: string;
 }
 
+export interface NovaAiPersonalProfile {
+  bodyShape: 'Hourglass' | 'Pear' | 'Inverted Triangle' | 'Rectangle' | 'Apple' | 'Athletic' | 'Unknown' | string;
+  bodyShapeConfidence: number;
+  bodyShapeExplanation: string;
+  skinTone: 'Fair' | 'Light' | 'Medium' | 'Olive' | 'Tan' | 'Deep' | 'Unknown' | string;
+  undertone: 'Warm' | 'Cool' | 'Neutral' | 'Unknown' | string;
+  skinToneConfidence: number;
+  skinToneExplanation: string;
+  suggestedSize: 'XS' | 'S' | 'M' | 'L' | 'unknown';
+  sizeConfidence: number;
+  sizeExplanation: string;
+  userConfirmedBodyShape?: string;
+  userConfirmedSkinTone?: string;
+  userConfirmedUndertone?: string;
+  userConfirmedSize?: 'XS' | 'S' | 'M' | 'L';
+  analyzedAt: string;
+  photoPreview?: string;
+}
+
+export interface NovaAiProductRecommendation {
+  productId: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  price: number;
+  imageUrl: string;
+  colors: string[];
+  primaryColor: string;
+  fit?: string;
+  silhouette?: string;
+  availableSizes: string[];
+  recommendedSize: string;
+  sizeStatus: 'user_confirmed' | 'estimated' | 'size_not_confirmed';
+  sizeReason: string;
+  matchScore: number;
+  reasoning: {
+    summary: string;
+    colorHarmonies: string;
+    silhouetteHarmonies: string;
+  };
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -283,19 +325,36 @@ export type WardrobeGender = 'Male' | 'Female';
 export type WardrobeSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type WardrobeScanMethod = 'Live Scan' | 'Upload Photo';
 
+export * from './types/wardrobe';
+import type { CanonicalGarmentData } from './types/wardrobe';
+
 export interface WardrobeDetectedAttributes {
   category?: string;
+  subcategory?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  colorFamily?: string[];
   pattern?: string;
   sleeveType?: string;
   neckType?: string;
   fit?: string;
+  silhouette?: string;
   material?: string;
   fabric?: string;
+  fabricConfidence?: 'low' | 'medium' | 'high' | 'inferred';
   style?: string;
+  secondaryStyles?: string[];
+  occasions?: string[];
+  seasons?: string[];
+  formality?: string;
   rise?: string;
   length?: string;
+  visibleDetails?: string[];
+  compatibleCategories?: string[];
+  compatibleStyles?: string[];
+  colorCompatibility?: string[];
+  aiDescription?: string;
+  schemaVersion?: string;
 }
 
 export interface WardrobeItem {
@@ -314,6 +373,8 @@ export interface WardrobeItem {
   lastWorn?: string;
   timesWorn?: number;
   attributes: WardrobeDetectedAttributes;
+  /** Full canonical machine-readable garment intelligence for NOVA AI */
+  canonical?: CanonicalGarmentData;
 }
 
 export interface WardrobeProfile {

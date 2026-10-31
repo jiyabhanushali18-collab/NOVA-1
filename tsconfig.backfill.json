@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": false,
+    "types": ["node"]
+  },
+  "include": [
+    "server/productAiBackfill.ts",
+    "scripts/product-ai-backfill.ts",
+    "scripts/product-ai-pilot.ts",
+    "scripts/product-ai-backfill-dry-run.ts",
+    "scripts/product-ai-backfill.test.ts",
+    "src/types/wardrobe.ts"
+  ]
+}

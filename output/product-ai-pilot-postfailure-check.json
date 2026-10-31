@@ -1,0 +1,765 @@
+{
+  "mode": "dry-run",
+  "writesPerformed": 0,
+  "geminiRequestsPerformed": 0,
+  "batchSize": 5,
+  "concurrency": 2,
+  "modelConfiguration": {
+    "primaryModel": "gemini-2.5-flash",
+    "fallbackModels": [
+      "gemini-3.1-flash-lite"
+    ],
+    "defaultBatchSize": 5,
+    "defaultConcurrency": 2,
+    "minimumInterRequestDelayMs": 350
+  },
+  "generatedAt": "2026-10-30T18:21:02.408Z",
+  "summary": {
+    "discovered": 57,
+    "alreadyAnalysed": 0,
+    "requiringAnalysis": 55,
+    "missingUsableImages": 1,
+    "successful": 0,
+    "failed": 0,
+    "estimatedGeminiRequests": 55,
+    "skippedUnchangedImages": 0
+  },
+  "records": [
+    {
+      "productId": "56Lbo190pCQH3kZVIsRZ",
+      "name": "tshirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "6d85af17c6d809e1d673c8831757e7b0126a5f248c78aa82df1412889ee27b51",
+        "url": "[inline image/jpeg payload omitted]"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "BoCoOS6pSYGgNCXAw72V",
+      "name": null,
+      "image": null,
+      "aiAttributes": null,
+      "needsAnalysis": false,
+      "reason": "invalid_record"
+    },
+    {
+      "productId": "Casual Printed T-Shirt",
+      "name": "Casual Printed T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "1ecd2ee3a2b132b9a3d85efd1812d3361993a31334a0a95a4043039b2250d0d2",
+        "url": "https://i.ibb.co/yckG0F42/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "U3QIveqb5PppbwGDYvme",
+      "name": "tt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "0f549660608efb95228c2c6c67f1881192fb55e7907b967593008e62c9df8e60",
+        "url": "[inline image/jpeg payload omitted]"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "ahetSM0e9aWB40OCSvrI",
+      "name": "Sunglasses",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "55d17624c5f1b294cf6c1792bd80231393d14897fe841a4148da957be6d60c3e",
+        "url": "[inline image/jpeg payload omitted]"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "basic_tshirt",
+      "name": "Basic T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "e1d0a631568e4d09ca87adc7e6110305324a2bc4b906549485deccd55d91c691",
+        "url": "https://i.ibb.co/TM0WrGL1/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "cargo_pant",
+      "name": "Cargo_pant",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "4cf617f9e1fc061673770397aea9afef9a78063c4c5af945ffe4f0f689ba2043",
+        "url": "https://i.ibb.co/DHXFVxZc/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "casual_printed_tshirt2",
+      "name": "Casual Printed T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "875eacba442ca5c14fddb2057068c2a8eae2ff9fe5b10e18ac7fc1cedb893b9a",
+        "url": "https://i.ibb.co/QjFvGxfp/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "casual_printed_tshirt3",
+      "name": "Casual Printed T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "af74f828d1935e6ac203f0b37ad09b403f51801e10e7599d2f14b2f2a1924563",
+        "url": "https://i.ibb.co/gFJSSPB9/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "casual_shirt",
+      "name": "Casual Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "541159f3623506cd0713f0cd988aa34a1d8927fc648c51c011359b82c9e5e223",
+        "url": "https://i.ibb.co/F46C27Hs/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "casual_shoes",
+      "name": "Casual Shoes",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "392714062cccc8592d2a89cfe598b29f32419e05869e74f42fd785601dd364f8",
+        "url": "https://i.ibb.co/H6CHrHq/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "cnBPiCj0g7fBddZftz2u",
+      "name": "saree",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "c367a916ea386f7841dd4f55bfc1a338f9155c454c3dd56ad78638e85693fd55",
+        "url": "[inline image/jpeg payload omitted]"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "coord_set",
+      "name": "Co-ord Set",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "d55a5d529a35f8c7b95960ddf01426b62506889a0c34256ad2dd865cc544e0aa",
+        "url": "https://i.ibb.co/GffxVP83/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "crop_top",
+      "name": "Crop Top",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "820b1b4292e656fe1f75fd528d83b10413555674956cb998d03254691eb17271",
+        "url": "https://i.ibb.co/Dfnsm8Xq/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "denim_jacket",
+      "name": "Denim Jacket",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "ca0fe30b17c9ac12243be024446198946daeb3ff9a654a2fe041e0e0548c1c3f",
+        "url": "https://i.ibb.co/kF71krw/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "halter_neck_top",
+      "name": "Halter_neck_top",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "a5fd48d534604bcc880c337e0d69d90176d76adf47e32e53aedcc85674110439",
+        "url": "https://i.ibb.co/CjR5X1C/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "hoodie1",
+      "name": "Lavender Hoodie",
+      "image": {
+        "sourceField": "image",
+        "role": "primary",
+        "fingerprint": "d841bcb1993fd00d8ced2eef87778cea255e08d33ded6e33ba6df6a60904f983",
+        "url": "https://i.ibb.co/271jwh5s/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "jeans",
+      "name": "Jeans",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "610d886dd79198ac8e9ff80861850faa9b01b965998658b6105ef64fd4f1a2ac",
+        "url": "https://i.ibb.co/DHwpMgzx/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "joggers",
+      "name": "Joggers",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "ca24f9f956b884dbd6745436a174e74f4009a0b5e1d6676ee1a58ca1f9fdd8a3",
+        "url": "https://i.ibb.co/VWBTfcfd/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "kVSV5u9zy4VLoshvlOlu",
+      "name": "white tshirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "0f549660608efb95228c2c6c67f1881192fb55e7907b967593008e62c9df8e60",
+        "url": "[inline image/jpeg payload omitted]"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "kurti",
+      "name": "Kurti",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "8f5031c9ba210a5221c80fcc81950f30407de07c496ebfa96c2753699024255b",
+        "url": "https://i.ibb.co/zVRP0djX/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "leggings",
+      "name": "Leggings",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "9c3d3ca9307841510fc1900dc7a36ae654de9463397039a970624e5ad0cf621b",
+        "url": "https://i.ibb.co/kgb3kQwz/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "men_kurta",
+      "name": "Men's Kurta",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "317acad62fb8092d48d95ef4c4407aa9ea8a56d9a53177f00ce7c4ac709e5693",
+        "url": "https://i.ibb.co/23khSztQ/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "polo_tshirt",
+      "name": "Polo T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "1f6b72ab4c3b6049d3a359258419131adebd562e45394a1f010b7745eb68c9ea",
+        "url": "https://i.ibb.co/gMFnQJ0D/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_crop_top",
+      "name": "Printed Crop Top",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "a5d73c491f37c37568c7bb29da7bd2c59d51f20666fb3b746d643eb0f4959269",
+        "url": "https://i.ibb.co/pjSfM76d/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_crop_top2",
+      "name": "Printed Crop Top",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "d04106c3e05f9bde4dd4fa434ff56503baa636dc03937eff21edfc8bb36a6662",
+        "url": "https://i.ibb.co/F4VWbVLv/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_crop_top3",
+      "name": "Printed Crop Top",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "1e87ce67038c032ed33e65e43fe6f6749f428138541d139b186bf6c161517be9",
+        "url": "https://i.ibb.co/9mwS8LWG/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_hoodie",
+      "name": "Printed Hoodie",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "52118b1a7cb70654e76515204ee069fae970d5a4720f6d9005a97066ee9a82ae",
+        "url": "https://i.ibb.co/Xxxq0hv3/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_hoodie2",
+      "name": "Printed Hoodie",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "7b64b1ecc4e3f45e04a6f0db39b2f468e097bb954c599e3e122915d028ce9acf",
+        "url": "https://i.ibb.co/DHZSt9Zw/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_hoodie3",
+      "name": "printed_hoodie",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "d9cbac646c1f4616793a428b7fa19338e11904ab81e247dfa89a0c77b6d5257c",
+        "url": "https://i.ibb.co/0ppPnWKn/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_hoodie4",
+      "name": "Printed Hoodie",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "2b8982fe55b33aa4d46d511c927290c81631827aae15d30521a06fcfca2daead",
+        "url": "https://i.ibb.co/ffQSS4T/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurta",
+      "name": "Printed Kurta",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "5ce13b6ad066feba065c57801aa09a697c635e59296499b555dcc9cdfd29ce41",
+        "url": "https://i.ibb.co/p6SS3LYK/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurta2",
+      "name": "Printed Kurta",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "cd3aec3443000d12ebbe78c8de07ea375e80ee68e92402a2383b5f3759ce5dfb",
+        "url": "https://i.ibb.co/ZzF5S7QZ/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurta3",
+      "name": "Printed Kurta",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "83b17f3f8bda9b21a9ca053aad57b38f2a6fa951275612c3b4a75cffebd00f42",
+        "url": "https://i.ibb.co/PZwfkvSd/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurti",
+      "name": "Printed Kurti",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "506e65847df7843ddf759dad4ae0ea1f0c8fffba0db67e51a6a1756ab55a7135",
+        "url": "https://i.ibb.co/chx46v63/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurti2",
+      "name": "Printed Kurti",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "c77a705611c430ba0c4f2b10e13216725a17ce6fb279b2a75eb75fb81308d52a",
+        "url": "https://i.ibb.co/HDCX6T1G/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurti3",
+      "name": "Printed Kurti",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "4d36369460c838387b1ae13595ad44f8b98eb4c8d09c2a9941209b0121050e46",
+        "url": "https://i.ibb.co/xKzSCC1J/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurti4",
+      "name": "Printed Kurti",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "84b9154aefc035704c401aacc46f2e9f960b8f90db37c2f24d6a4009e08b9ac1",
+        "url": "https://i.ibb.co/tTVWxVWP/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_kurti5",
+      "name": "Printed Kurti",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "9eadc0d76b4056efb7a361b4e51bcfd1c7fe5aa271e45ee691b47423e1641328",
+        "url": "https://i.ibb.co/q2qs5JL/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_polo_tshirt",
+      "name": "Printed Polo T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "47271036494e8d529071505a068dce4bb602ee8ce49f36ca30ae271ac4a9862f",
+        "url": "https://i.ibb.co/zT1Mnfnj/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_polo_tshirt2",
+      "name": "Printed Polo T-Shirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "86d96b97abedae131d84d9b5c56b8c6af2ae7fa120793bc65c50425edbf448b0",
+        "url": "https://i.ibb.co/9kc802qD/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_sweatshirt",
+      "name": "Printed Sweatshirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "0d2f51dfd7115e5edef09fa8776eda7dfc639cc1bc23570dd35408eee66cfb81",
+        "url": "https://i.ibb.co/SDnpwF1H/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_sweatshirt2",
+      "name": "Printed Sweatshirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "1179c9d3a5e917c117c20c76e0f2c3761339bb9d303a63ac59c2523f34273aca",
+        "url": "https://i.ibb.co/7xB3cdSR/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_sweatshirt3",
+      "name": "Printed Sweatshirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "4f2f97ac1ddc5d805c4eef6626f12742ff9ad898581b4bd52c602a544d211dc9",
+        "url": "https://i.ibb.co/QFwRVPbD/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_tshirt_1",
+      "name": "Printed T-Shirt",
+      "image": {
+        "sourceField": "imageurl1",
+        "role": "primary",
+        "fingerprint": "154d272160a90c099ae7da7a2ca789e0c4e81852f8c7833d0174102e6010f244",
+        "url": "https://i.ibb.co/20wMc5yY/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_tshirt_2",
+      "name": "Graphic Printed T-Shirt",
+      "image": {
+        "sourceField": "imageurl",
+        "role": "primary",
+        "fingerprint": "a55564a99c9049ffc47658e18d28c176d352c6e48ce52e7106240b74fe58525b",
+        "url": "https://i.ibb.co/fzRK2Sg3/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_tshirt_3 VK",
+      "name": "Oversized Printed T-Shirt VK",
+      "image": {
+        "sourceField": "imageurl",
+        "role": "primary",
+        "fingerprint": "574c8892b753dc7d4486a9073ce12cb912115fff0dafb0b16e55cad268f2c3b0",
+        "url": "https://i.ibb.co/HD6gMSSk/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "printed_tshirt_4 HP",
+      "name": "Oversized Printed T-Shirt",
+      "image": {
+        "sourceField": "imageurl",
+        "role": "primary",
+        "fingerprint": "9a2440d4858716a6c79c691f44f6faa4c1d3f9896543e778931d55f2d6140cd8",
+        "url": "https://i.ibb.co/Zz2JyNrZ/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "qkEyvQN8zjCf1Pqa0yyq",
+      "name": "Classic T SHIRT CASUAL",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "1c669e4374880819727dd3dcc241fa89634fdc96246b045bdaca0d30f41b5d40",
+        "url": "[inline image/jpeg payload omitted]"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "skirt",
+      "name": null,
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "46aba43b94f9891490279603bcb65d71b0bbe45293b3bf20fb33e99a86f7d962",
+        "url": "https://i.ibb.co/Qv2NRS0x/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": false,
+      "reason": "invalid_record"
+    },
+    {
+      "productId": "sneakers",
+      "name": "Sneakers",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "a92e76ba1d4fac4f48d3794a4c41d1f36c4adf0a93f0ab7cdf468816c6c44c1c",
+        "url": "https://i.ibb.co/VpSVfXtP/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "summer_dress",
+      "name": "Summer Dress",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "94f2f9b5938694345cead25efa86637fed8fba80c716dfb7940c9909432dc1a1",
+        "url": "https://i.ibb.co/Z6LvkYDX/1.jpg"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "sunglasses",
+      "name": "Sunglasses",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "6df30b708ed2595f09d10a47427ad83543ed6427ab9bf5f48f46a18280d89f4a",
+        "url": "https://i.ibb.co/sdr5y647/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "sweatshirt",
+      "name": "Sweatshirt",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "e9c1cdc576f06018dae2aebc34c69092d75f3ce801dbaa671f5bbf3dd509c756",
+        "url": "https://i.ibb.co/5WBnfrqT/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "women_jacket",
+      "name": "Women's Jacket",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "12ae859338e954fc8063235ccdecce1e9505e688d00114e0891fde64e8a13345",
+        "url": "https://i.ibb.co/hFNXd6Rj/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "women_sneakers aesthetic",
+      "name": "Women's Sneakers",
+      "image": {
+        "sourceField": "imageUrl",
+        "role": "primary",
+        "fingerprint": "a8c13704e693f575ad0f43f27c5066ed0b3d38fd291027f940d7a4b05acd6b73",
+        "url": "https://i.ibb.co/zVCRz0ys/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    },
+    {
+      "productId": "women_sneakers plain",
+      "name": "Women's Sneakers",
+      "image": {
+        "sourceField": "imageurl",
+        "role": "primary",
+        "fingerprint": "327f11e6c00984477d87cb4830eeeb4219fe267c16660d641df08c9de58862b7",
+        "url": "https://i.ibb.co/nqWPXmSr/1.png"
+      },
+      "aiAttributes": null,
+      "needsAnalysis": true,
+      "reason": "missing_ai_attributes"
+    }
+  ]
+}

@@ -1,0 +1,311 @@
+{
+  "mode": "live-approved",
+  "writesPerformed": 52,
+  "geminiRequestsPerformed": 52,
+  "batchSize": 5,
+  "concurrency": 2,
+  "retryFailed": false,
+  "startedAt": "2026-10-30T19:30:28.124Z",
+  "summary": {
+    "discovered": 57,
+    "alreadyAnalysed": 3,
+    "requiringAnalysis": 52,
+    "missingUsableImages": 1,
+    "successful": 0,
+    "failed": 0,
+    "estimatedGeminiRequests": 52,
+    "skippedUnchangedImages": 3
+  },
+  "skipped": [
+    {
+      "productId": "56Lbo190pCQH3kZVIsRZ",
+      "name": "tshirt",
+      "reason": "already_current"
+    },
+    {
+      "productId": "BoCoOS6pSYGgNCXAw72V",
+      "name": null,
+      "reason": "invalid_record"
+    },
+    {
+      "productId": "ahetSM0e9aWB40OCSvrI",
+      "name": "Sunglasses",
+      "reason": "already_current"
+    },
+    {
+      "productId": "basic_tshirt",
+      "name": "Basic T-Shirt",
+      "reason": "already_current"
+    },
+    {
+      "productId": "skirt",
+      "name": null,
+      "reason": "invalid_record"
+    }
+  ],
+  "successful": [
+    {
+      "productId": "Casual Printed T-Shirt",
+      "name": "Casual Printed T-Shirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "U3QIveqb5PppbwGDYvme",
+      "name": "tt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "cargo_pant",
+      "name": "Cargo_pant",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "casual_printed_tshirt2",
+      "name": "Casual Printed T-Shirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "casual_printed_tshirt3",
+      "name": "Casual Printed T-Shirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "casual_shirt",
+      "name": "Casual Shirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "casual_shoes",
+      "name": "Casual Shoes",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "cnBPiCj0g7fBddZftz2u",
+      "name": "saree",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "coord_set",
+      "name": "Co-ord Set",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "crop_top",
+      "name": "Crop Top",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "halter_neck_top",
+      "name": "Halter_neck_top",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "denim_jacket",
+      "name": "Denim Jacket",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "jeans",
+      "name": "Jeans",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "hoodie1",
+      "name": "Lavender Hoodie",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "joggers",
+      "name": "Joggers",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "kVSV5u9zy4VLoshvlOlu",
+      "name": "white tshirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "kurti",
+      "name": "Kurti",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "men_kurta",
+      "name": "Men's Kurta",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "leggings",
+      "name": "Leggings",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_crop_top2",
+      "name": "Printed Crop Top",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_crop_top",
+      "name": "Printed Crop Top",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_crop_top3",
+      "name": "Printed Crop Top",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_hoodie2",
+      "name": "Printed Hoodie",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_hoodie",
+      "name": "Printed Hoodie",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_hoodie4",
+      "name": "Printed Hoodie",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_hoodie3",
+      "name": "printed_hoodie",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurta2",
+      "name": "Printed Kurta",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurta",
+      "name": "Printed Kurta",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurta3",
+      "name": "Printed Kurta",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurti2",
+      "name": "Printed Kurti",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurti",
+      "name": "Printed Kurti",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurti4",
+      "name": "Printed Kurti",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurti3",
+      "name": "Printed Kurti",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_kurti5",
+      "name": "Printed Kurti",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_polo_tshirt",
+      "name": "Printed Polo T-Shirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_polo_tshirt2",
+      "name": "Printed Polo T-Shirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_sweatshirt",
+      "name": "Printed Sweatshirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_sweatshirt3",
+      "name": "Printed Sweatshirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "printed_sweatshirt2",
+      "name": "Printed Sweatshirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "qkEyvQN8zjCf1Pqa0yyq",
+      "name": "Classic T SHIRT CASUAL",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "summer_dress",
+      "name": "Summer Dress",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "sneakers",
+      "name": "Sneakers",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "sunglasses",
+      "name": "Sunglasses",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "sweatshirt",
+      "name": "Sweatshirt",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "women_jacket",
+      "name": "Women's Jacket",
+      "model": "gemini-2.5-flash"
+    },
+    {
+      "productId": "women_sneakers aesthetic",
+      "name": "Women's Sneakers",
+      "model": "gemini-2.5-flash"
+    }
+  ],
+  "failed": [
+    {
+      "productId": "polo_tshirt",
+      "name": "Polo T-Shirt",
+      "error": "fetch failed"
+    },
+    {
+      "productId": "printed_tshirt_1",
+      "name": "Printed T-Shirt",
+      "error": "The operation was aborted due to timeout"
+    },
+    {
+      "productId": "printed_tshirt_2",
+      "name": "Graphic Printed T-Shirt",
+      "error": "The operation was aborted due to timeout"
+    },
+    {
+      "productId": "printed_tshirt_4 HP",
+      "name": "Oversized Printed T-Shirt",
+      "error": "The operation was aborted due to timeout"
+    },
+    {
+      "productId": "printed_tshirt_3 VK",
+      "name": "Oversized Printed T-Shirt VK",
+      "error": "The operation was aborted due to timeout"
+    },
+    {
+      "productId": "women_sneakers plain",
+      "name": "Women's Sneakers",
+      "error": "The operation was aborted due to timeout"
+    }
+  ],
+  "completedAt": "2026-10-30T19:42:26.502Z"
+}
