@@ -19,7 +19,6 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
   const { t } = useI18n();
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [flashMode, setFlashMode] = useState<'Auto' | 'On' | 'Off'>('Auto');
-  const [isFlipped, setIsFlipped] = useState(false);
   const [scans, setScans] = useState<OutfitScanRecord[]>(() => getScanHistory(userId));
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedScan, setSelectedScan] = useState<OutfitScanRecord | null>(null);
@@ -226,9 +225,7 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
         <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden bg-slate-950 border border-[#E4DFF5]/40 shadow-lg group">
           <img 
             alt="Live view finder showing model modeling purple hoodie" 
-            className={`w-full h-full object-cover opacity-90 transition-transform duration-500 ${
-              isFlipped ? '-scale-x-100' : 'scale-x-100'
-            }`}
+            className="w-full h-full object-cover opacity-90 transition-transform duration-500 scale-x-100"
             referrerPolicy="no-referrer"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdia_HqXhRPPWJ8XMJTw7O1jf11mbJ98clkO0jnPOZLTfr5BYOwcLpxOGUw5gPBtnkBZ_SZ1tV_BPrAo6IrHyOKOOUQ-yvImAuRcO-8P2ur6gf0qWRuG4QGqdqSP8Ce15oBmXPWbtEDUknshLX9HjybIOaM738IIOjn3GfeKaFLH0mt4C54sAFXmL7mdrYUYrEUS-wPeYwDe2ZOM9fXE4VOqm_7Jsan6Jhf2ZDGFzThhoj8vC2Sg9pcJmaoSZFKyF9TXNBXfDUc0K4"
           />
@@ -264,12 +261,12 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
             <span className="material-symbols-outlined text-[13.5px] text-[#ECE7FF] leading-none">share</span> Share
           </button>
 
-          <div className="absolute bottom-4 inset-x-0 w-full flex justify-center items-center gap-5 z-20 px-3">
+          <div className="absolute bottom-4 inset-x-0 w-full flex justify-center items-center gap-6 z-20 px-4">
             <button 
               type="button"
               onClick={() => onNavigate('camera-scan')}
               title="Upload photo from gallery"
-              className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer"
+              className="w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
             >
               <span className="material-symbols-outlined text-sm">image</span>
             </button>
@@ -277,19 +274,9 @@ export const ScanOutfitView: React.FC<ScanOutfitViewProps> = ({
               type="button"
               onClick={() => onNavigate('camera-scan')}
               title="Capture outfit scan"
-              className="w-12 h-12 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:scale-105 transition-transform active:scale-95 cursor-pointer shadow-lg"
+              className="w-13 h-13 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:scale-105 transition-transform active:scale-95 cursor-pointer shadow-xl"
             >
-              <div className="w-8 h-8 bg-white rounded-full shadow-inner"></div>
-            </button>
-            <button 
-              type="button"
-              onClick={() => setIsFlipped(!isFlipped)}
-              title="Flip camera"
-              className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer"
-            >
-              <span className={`material-symbols-outlined text-sm transition-transform duration-300 ${
-                isFlipped ? 'rotate-180' : ''
-              }`}>cameraswitch</span>
+              <div className="w-8.5 h-8.5 bg-white rounded-full shadow-inner"></div>
             </button>
           </div>
         </div>

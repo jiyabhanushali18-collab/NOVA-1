@@ -7,6 +7,7 @@ import {
   TUTORIAL_DEFINITIONS
 } from '../../data/tutorialDefinitions';
 import { tutorialService } from '../../services/tutorialService';
+import { useBackHandler } from '../../services/backButtonService';
 
 interface TutorialContextValue {
   activeTutorial: TutorialFeatureId | null;
@@ -83,6 +84,28 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({
   const openFeedback = useCallback(() => {
     setIsFeedbackOpen(true);
   }, []);
+
+  // Priority 1: Close active onboarding welcome or step backwards in tour
+  const hasTutorialOverlay = Boolean(isWelcomeOpen || isFeedbackOpen || activeTutorial);
+  useBackHandler('tutorial-overlays', () => {
+    if (isFeedbackOpen) {
+      closeFeedback();
+      return true;
+    }
+    if (isWelcomeOpen) {
+      closeWelcome();
+      return true;
+    }
+    if (activeTutorial) {
+      if (currentStepIndex > 0) {
+        prevStep();
+      } else {
+        exitTutorial();
+      }
+      return true;
+    }
+    return false;
+  }, 100, hasTutorialOverlay);
 
   const closeFeedback = useCallback(() => {
     setIsFeedbackOpen(false);

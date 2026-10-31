@@ -13,6 +13,7 @@ import {
 } from '../services/addressService';
 import { syncPreferencesUpdate, requestPushNotificationPermission, syncMarketingEmailPreference } from '../services/notificationClientService';
 import { useTutorial } from './onboarding';
+import { useBackHandler } from '../services/backButtonService';
 
 interface ProfileViewProps {
   onNavigate: (screen: ScreenId, opts?: any) => void;
@@ -466,6 +467,81 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Temporary address inputs states
   const [isAddingAddress, setIsAddingAddress] = useState(false);
+
+  // Global Android Back button integration: Close topmost Profile modal / sub-form first
+  const hasAnyProfileModal = Boolean(
+    isAccountModalOpen ||
+    isEditModalOpen ||
+    isProfileModalOpen ||
+    isPaymentModalOpen ||
+    isAddressesModalOpen ||
+    isPrivacyModalOpen ||
+    isNotificationsModalOpen ||
+    isLanguageModalOpen ||
+    isWishlistModalOpen ||
+    isSavedLooksModalOpen ||
+    selectedLookPreview ||
+    isAddingCard ||
+    isAddingUPI ||
+    isAddingAddress
+  );
+
+  useBackHandler('profile-modals', () => {
+    if (selectedLookPreview) {
+      setSelectedLookPreview(null);
+      return true;
+    }
+    if (isAddingCard || isAddingUPI) {
+      setIsAddingCard(false);
+      setIsAddingUPI(false);
+      return true;
+    }
+    if (isAddingAddress) {
+      setIsAddingAddress(false);
+      return true;
+    }
+    if (isAccountModalOpen) {
+      setIsAccountModalOpen(false);
+      return true;
+    }
+    if (isEditModalOpen) {
+      setIsEditModalOpen(false);
+      return true;
+    }
+    if (isProfileModalOpen) {
+      setIsProfileModalOpen(false);
+      return true;
+    }
+    if (isPaymentModalOpen) {
+      setIsPaymentModalOpen(false);
+      return true;
+    }
+    if (isAddressesModalOpen) {
+      setIsAddressesModalOpen(false);
+      return true;
+    }
+    if (isPrivacyModalOpen) {
+      setIsPrivacyModalOpen(false);
+      return true;
+    }
+    if (isNotificationsModalOpen) {
+      setIsNotificationsModalOpen(false);
+      return true;
+    }
+    if (isLanguageModalOpen) {
+      setIsLanguageModalOpen(false);
+      return true;
+    }
+    if (isWishlistModalOpen) {
+      setIsWishlistModalOpen(false);
+      return true;
+    }
+    if (isSavedLooksModalOpen) {
+      setIsSavedLooksModalOpen(false);
+      return true;
+    }
+    return false;
+  }, 100, hasAnyProfileModal);
   const [addrLabel, setAddrLabel] = useState('Home');
   const [addrName, setAddrName] = useState('');
   const [addrStreet, setAddrStreet] = useState('');

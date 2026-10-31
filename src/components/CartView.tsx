@@ -1,4 +1,5 @@
 import { useI18n } from '../i18n';
+import { useBackHandler } from '../services/backButtonService';
 import React, { useEffect, useState } from 'react';
 import { ScreenId, CartItem, DeliveryAddress, OrderRecord } from '../types';
 import { analytics } from '../services/analyticsService';
@@ -53,6 +54,28 @@ export const CartView: React.FC<CartViewProps> = ({
   const { t } = useI18n();
   const effectiveIsGuest = isGuestIdentity(userId, isGuest);
   const [step, setStep] = useState<'cart' | 'address' | 'payment' | 'completed'>('cart');
+
+  // Priority 2: Navigate back through checkout steps before exiting Cart
+  useBackHandler('cart-steps', () => {
+    if (step === 'completed') {
+      setStep('cart');
+      onNavigate('home');
+      return true;
+    }
+    if (step === 'payment') {
+      setStep('address');
+      return true;
+    }
+    if (step === 'address') {
+      setStep('cart');
+      return true;
+    }
+    if (step === 'cart') {
+      onNavigate('home');
+      return true;
+    }
+    return false;
+  }, 40, true);
   const [couponCode, setCouponCode] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
   const [addressChoice, setAddressChoice] = useState<'home' | 'work'>('home');

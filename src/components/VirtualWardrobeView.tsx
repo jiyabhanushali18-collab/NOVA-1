@@ -8,6 +8,7 @@ import aiService from "../services/aiService";
 import { findSimilarProductsByVector, getPairedItem, ProductMatch } from "../services/productMetadataService";
 import { resolveColorHex } from '../utils/colors';
 import { useI18n } from '../i18n';
+import { useBackHandler } from '../services/backButtonService';
 
 interface VirtualWardrobeViewProps {
   onNavigate: (screen: ScreenId) => void;
@@ -218,6 +219,24 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({ onNavi
   const [editDraft, setEditDraft] = useState<WardrobeItem | null>(null);
   const [outfitSeed, setOutfitSeed] = useState<WardrobeItem | null>(null);
   const [outfitPartnerId, setOutfitPartnerId] = useState<string>('');
+  // Priority 1: Close active item details, editing draft, or outfit seed overlays
+  const hasWardrobeOverlay = Boolean(selectedItem || editDraft || outfitSeed);
+  useBackHandler('virtual-wardrobe-overlays', () => {
+    if (editDraft) {
+      setEditDraft(null);
+      return true;
+    }
+    if (selectedItem) {
+      setSelectedItem(null);
+      return true;
+    }
+    if (outfitSeed) {
+      setOutfitSeed(null);
+      return true;
+    }
+    return false;
+  }, 100, hasWardrobeOverlay);
+
   const [savedOutfitCount, setSavedOutfitCount] = useState(() => {
     try { return JSON.parse(localStorage.getItem(outfitsKey(accountService.getUserDocId(userEmail))) || '[]').length; } catch { return 0; }
   });

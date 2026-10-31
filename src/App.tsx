@@ -51,6 +51,9 @@ import { useI18n } from './i18n';
 import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
 import { Capacitor } from '@capacitor/core';
 import { initializeDeepLinkHandler, getNativeAppSchemeUrl, DeepLinkDestination } from './services/deepLinkService';
+import { App as CapApp } from '@capacitor/app';
+import { backButtonService, useBackHandler } from './services/backButtonService';
+import { ExitConfirmationModal } from './components/ExitConfirmationModal';
 
 const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -981,8 +984,16 @@ export default function App() {
     }
 
     const handleBrowserBack = () => {
-      const historyStack = screenHistoryRef.current;
+      // Check if backButtonService handles an active modal or overlay first
+      const handled = backButtonService.executeBack();
+      if (handled) {
+        if (typeof window !== 'undefined') {
+          window.history.pushState({ novaScreen: screenRef.current }, '', window.location.href);
+        }
+        return;
+      }
 
+      const historyStack = screenHistoryRef.current;
       if (historyStack.length > 1) {
         historyStack.pop();
         const previousScreen = historyStack[historyStack.length - 1] || 'home';
@@ -1000,8 +1011,12 @@ export default function App() {
 
     window.addEventListener('popstate', handleBrowserBack);
 
+    // Initialize global Android hardware and gesture Back button listener
+    backButtonService.init();
+
     return () => {
       window.removeEventListener('popstate', handleBrowserBack);
+      backButtonService.destroy();
     };
   }, []);
   
@@ -1441,8 +1456,100 @@ export default function App() {
   const [isWishlistOpen, setIsWishlistOpen] = useState<boolean>(false);
   // NOVA Hub quick navigation bottom sheet
   const [isQuickHubOpen, setIsQuickHubOpen] = useState<boolean>(false);
+  // Android Global Back Button exit confirmation dialog state
+  const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
 
-  const handleToggleWishlist = (productId: string) => {
+  // =========================================================================
+  // GLOBAL ANDROID BACK BUTTON ROUTING & EXIT CONFIRMATION
+  // =========================================================================
+  // Priority 1: Top-level App modals
+  useBackHandler('app-wishlist-modal', () => {
+    setIsWishlistOpen(false);
+    return true;
+  }, 100, isWishlistOpen);
+
+  useBackHandler('app-quickhub-modal', () => {
+    setIsQuickHubOpen(false);
+    return true;
+  }, 100, isQuickHubOpen);
+
+  // Priority 2: Active feature sub-screens -> return one level backward
+  useBackHandler('app-nested-screens', () => {
+    const current = screenRef.current;
+    if (current === 'tryon-result') {
+      navigate('ar-tryon');
+      return true;
+    }
+    if (current === 'product-details') {
+      const history = screenHistoryRef.current;
+      const prev = history.length > 1 ? history[history.length - 2] : null;
+      if (prev && prev !== 'product-details' && prev !== 'splash' && prev !== 'onboarding') {
+        navigate(prev);
+      } else {
+        navigate('showroom');
+      }
+      return true;
+    }
+    if (current === 'scan-outfit') {
+      navigate('ar-tryon');
+      return true;
+    }
+    if (current === 'outfit-builder') {
+      navigate('wardrobe');
+      return true;
+    }
+    if (current === 'terms' || current === 'privacy' || current === 'faq') {
+      navigate('profile');
+      return true;
+    }
+    if (current === 'profile-analysis' || current === 'setup-preferences' || current === 'admin-campaigns') {
+      navigate('profile');
+      return true;
+    }
+    return false;
+  }, 30, true);
+
+  // Priority 3: Root Feature screens -> Navigate to Home
+  useBackHandler('app-root-features', () => {
+    const current = screenRef.current;
+    const rootFeatures: ScreenId[] = [
+      'ar-tryon',
+      'wardrobe',
+      'virtual-wardrobe',
+      'camera-scan',
+      'chat',
+      'showroom',
+      'profile',
+      'cart',
+      'login',
+      'signup',
+      'email-verification'
+    ];
+    if (rootFeatures.includes(current)) {
+      navigate('home');
+      return true;
+    }
+    return false;
+  }, 10, true);
+
+  // Priority 4: NOVA Home screen -> Show exit confirmation modal
+  useBackHandler('app-home-exit', () => {
+    const current = screenRef.current;
+    if (current === 'home' || current === 'splash' || current === 'onboarding' || current === 'onboarding-tour') {
+      setShowExitConfirm(true);
+      return true;
+    }
+    return false;
+  }, 0, true);
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    if (Capacitor.isNativePlatform()) {
+      CapApp.exitApp();
+    }
+  };
+
+    const handleToggleWishlist = (productId: string) => {
     const prod = productsData[productId] || products[productId] || { id: productId };
     setWishlist((prev) => {
       const isAdding = !prev.includes(productId);
@@ -1716,6 +1823,8 @@ export default function App() {
             onNavigate={navigate} 
             selectedGarment={selectedGarment}
             setSelectedGarment={setSelectedGarment}
+            selectedColor={selectedColor}
+            setSelectedColor={setSelectedColor}
             onSelectProductId={(id) => setSelectedProductId(id)}
             onCaptureImage={(captured, isLiveTryOn) => {
               setCapturedTryOnImage(captured);
@@ -2740,6 +2849,12 @@ export default function App() {
       )}
 
       {/* Interactive Feature Guide Overlay & Modals */}
+      <ExitConfirmationModal
+        isOpen={showExitConfirm}
+        onCancel={() => setShowExitConfirm(false)}
+        onConfirm={handleConfirmExit}
+        isDarkMode={isDarkMode}
+      />
       <OnboardingWelcome />
       <TutorialOverlay />
       <TryOnFeedbackModal onNavigate={navigate} />
