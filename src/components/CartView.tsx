@@ -501,11 +501,19 @@ export const CartView: React.FC<CartViewProps> = ({
                     
                     {/* Item Thumbnail */}
                     <div className="w-16 h-20 rounded-xl bg-[#F2EEFF] overflow-hidden shrink-0 border border-[#E4DFF5]">
-                      <img
-                        alt={`${item.product.name} in ${item.color}`}
-                        className="w-full h-full object-cover"
-                        src={getGarmentColorImage(item.product, item.color) || item.product.imageUrl}
-                      />
+                      {getGarmentColorImage(item.product, item.color) ? (
+                        <img
+                          alt={`${item.product.name} in ${item.color}`}
+                          className="h-full w-full object-cover"
+                          src={getGarmentColorImage(item.product, item.color)}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center px-1 text-center text-[9px] font-semibold text-slate-500">
+                          {item.color} photo unavailable
+                        </div>
+                      )}
                     </div>
 
                     {/* Details content row */}

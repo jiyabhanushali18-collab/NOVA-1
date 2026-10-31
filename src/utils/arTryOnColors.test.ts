@@ -52,6 +52,13 @@ const multiColorProduct: ProductItem = {
     'https://example.com/sky-blue-hoodie.jpg'
   ],
   colors: ['Lavender', 'Mint Green', 'Beige', 'Black', 'Sky Blue'],
+  variants: [
+    { id: 'lavender', colorName: 'Lavender', colorHex: '#C4B5FD', images: ['https://example.com/lavender-hoodie.jpg'], thumbnail: 'https://example.com/lavender-hoodie.jpg', isAvailable: true, displayOrder: 0 },
+    { id: 'mint', colorName: 'Mint Green', colorHex: '#34D399', images: ['https://example.com/mint-hoodie.jpg'], thumbnail: 'https://example.com/mint-hoodie.jpg', isAvailable: true, displayOrder: 1 },
+    { id: 'beige', colorName: 'Beige', colorHex: '#D6CDBA', images: ['https://example.com/beige-hoodie.jpg'], thumbnail: 'https://example.com/beige-hoodie.jpg', isAvailable: true, displayOrder: 2 },
+    { id: 'black', colorName: 'Black', colorHex: '#000000', images: ['https://example.com/black-hoodie.jpg'], thumbnail: 'https://example.com/black-hoodie.jpg', isAvailable: true, displayOrder: 3 },
+    { id: 'sky-blue', colorName: 'Sky Blue', colorHex: '#38BDF8', images: ['https://example.com/sky-blue-hoodie.jpg'], thumbnail: 'https://example.com/sky-blue-hoodie.jpg', isAvailable: true, displayOrder: 4 }
+  ],
   sizes: ['M', 'L'],
   inStock: true,
   details: [],
@@ -73,7 +80,7 @@ assert(typeof lavenderImg === 'string' && lavenderImg.length > 0, 'Lavender reso
 assert(typeof blackImg === 'string' && blackImg.length > 0, 'Black resolves to a valid variant image URL');
 assert(lavenderImg !== blackImg, 'Lavender and Black resolve to different variant images');
 
-// 5. Variant has NO specific image -> safely returns undefined so existing image is retained
+// 5. Variant has NO specific image -> no other color's product image is substituted
 const plainProduct: ProductItem = {
   id: 'plain-jacket',
   name: 'Plain Jacket',
@@ -86,9 +93,7 @@ const plainProduct: ProductItem = {
   details: [],
 };
 const missingImg = getGarmentColorImage(plainProduct, 'Navy Blue');
-// If Navy Blue has no variant-specific image or swatch, getGarmentColorImage returns undefined
-const safeFallback = missingImg || plainProduct.imageUrl;
-assert(safeFallback === 'https://example.com/plain-jacket.jpg', 'Missing variant image retains base product imageUrl safely');
+assert(missingImg === undefined, 'Missing variant image does not reuse another color or generic product image');
 
 // 6. Unavailable / Out-of-stock colours cannot be selected
 const productWithOutOfStockVariant: ProductItem = {

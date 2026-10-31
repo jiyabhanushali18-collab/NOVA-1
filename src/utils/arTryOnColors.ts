@@ -14,7 +14,7 @@ export interface GarmentColorOption {
 
 /**
  * Resolves the variant-specific garment image URL for a product and color.
- * If no specific image exists, returns undefined (caller safely retains existing image).
+ * Shared/default photos are not returned for a multi-color product.
  */
 export function getGarmentColorImage(
   product: ProductItem | undefined,
@@ -24,18 +24,27 @@ export function getGarmentColorImage(
   const targetKey = normalizeColorKey(colorName);
   if (!targetKey) return undefined;
 
-  // 1. Explicit variants array with image or thumbnail
+  const sharedImagesFromOtherColors = new Set<string>();
+  (product.variants || []).forEach((variant) => {
+    if (normalizeColorKey(variant.colorName || variant.color) === targetKey) return;
+    (variant.images || []).forEach((image) => sharedImagesFromOtherColors.add(image));
+    if (variant.thumbnail) sharedImagesFromOtherColors.add(variant.thumbnail);
+  });
+
+  // 1. Explicit variant images, excluding photos also assigned to other colors.
   if (Array.isArray(product.variants) && product.variants.length > 0) {
     const matched = product.variants.find((v) => {
       const vKey = normalizeColorKey(v.colorName || v.color);
       return vKey === targetKey;
     });
     if (matched) {
-      if (Array.isArray(matched.images) && matched.images.length > 0 && typeof matched.images[0] === 'string' && matched.images[0].trim()) {
-        return matched.images[0].trim();
-      }
-      if (typeof matched.thumbnail === 'string' && matched.thumbnail.trim()) {
-        return matched.thumbnail.trim();
+      const images = [...(matched.images || []), matched.thumbnail]
+        .filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
+        .filter((image) => !sharedImagesFromOtherColors.has(image));
+      if (images.length > 0) return images[0].trim();
+      if (product.defaultVariantId === matched.id) {
+        const defaultImage = matched.images?.[0] || matched.thumbnail;
+        if (defaultImage?.trim()) return defaultImage.trim();
       }
     }
   }
@@ -43,25 +52,13 @@ export function getGarmentColorImage(
   // 2. Product-level colorImages map
   if (product.colorImages) {
     const matchedImgs = findColorImages(product.colorImages, colorName);
-    if (matchedImgs.length > 0 && matchedImgs[0]) {
-      return matchedImgs[0];
-    }
+    const specific = matchedImgs.find((image) => !sharedImagesFromOtherColors.has(image));
+    if (specific) return specific;
   }
 
-  // 3. Parallel arrays: imageUrls and colors
-  if (
-    Array.isArray(product.imageUrls) &&
-    Array.isArray(product.colors) &&
-    product.imageUrls.length === product.colors.length
-  ) {
-    const idx = product.colors.findIndex((c) => normalizeColorKey(c) === targetKey);
-    if (idx !== -1 && product.imageUrls[idx]) {
-      return product.imageUrls[idx];
-    }
-  }
-
-  // 4. If this is the default/primary color, use product's main imageUrl
-  if (Array.isArray(product.colors) && product.colors.length > 0) {
+  // A legacy single-color record can use its default product image. A
+  // multi-color product must have a variant-specific image for this color.
+  if (Array.isArray(product.colors) && product.colors.length === 1) {
     if (normalizeColorKey(product.colors[0]) === targetKey) {
       return product.imageUrl || product.mainImage;
     }
@@ -113,7 +110,8 @@ export function getProductColorOptions(product: ProductItem | undefined): Garmen
       const hex = v.colorHex && isValidHexColor(v.colorHex)
         ? v.colorHex
         : getRequiredColorHex(name);
-      const img = (Array.isArray(v.images) && v.images.length > 0 ? v.images[0] : undefined) || v.thumbnail || getGarmentColorImage(product, name);
+      const img = getGarmentColorImage(product, name);
+      if (!img) continue;
 
       options.push({
         name,
@@ -151,6 +149,7 @@ export function getProductColorOptions(product: ProductItem | undefined): Garmen
       seen.add(key);
       const hex = getRequiredColorHex(name);
       const img = getGarmentColorImage(product, name);
+      if (!img) continue;
 
       options.push({
         name,

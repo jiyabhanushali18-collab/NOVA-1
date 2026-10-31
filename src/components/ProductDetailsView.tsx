@@ -89,6 +89,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number>(0);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const [imageRetryCount, setImageRetryCount] = useState(0);
+  const [failedImageUrl, setFailedImageUrl] = useState('');
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -182,18 +184,31 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       return Array.isArray(colorImage) ? colorImage.filter(Boolean) : [colorImage].filter(Boolean);
     }
 
-    if (mainProduct.imageUrls && mainProduct.colors && mainProduct.colors.length > 0 && mainProduct.imageUrls.length === mainProduct.colors.length) {
-      const colorIndex = mainProduct.colors.findIndex((color) => normalizeColor(color) === normalizeColor(selectedColor));
-      if (colorIndex !== -1 && mainProduct.imageUrls[colorIndex]) {
-        return [mainProduct.imageUrls[colorIndex]];
-      }
-    }
-
-    return (mainProduct.mainImage || mainProduct.imageUrl) ? [mainProduct.mainImage || mainProduct.imageUrl] : [];
+    return variantColors.length <= 1 && (mainProduct.mainImage || mainProduct.imageUrl)
+      ? [mainProduct.mainImage || mainProduct.imageUrl]
+      : [];
   };
 
-  const selectedColorImages = getSelectedColorImages();
-  const heroImageUrl = selectedColorImages[galleryIndex] || selectedColorImages[0] || mainProduct.imageUrl || '';
+  const candidateColorImages = getSelectedColorImages();
+  const sharedVariantImages = new Set<string>();
+  (mainProduct.variants || []).forEach((variant) => {
+    if (normalizeColor(variant.colorName || variant.color) === normalizeColor(selectedColor)) return;
+    (variant.images || []).forEach((image) => sharedVariantImages.add(image));
+    if (variant.thumbnail) sharedVariantImages.add(variant.thumbnail);
+  });
+  // Some legacy records assign the same default photo to every color. Never
+  // present that shared photo as if it were a verified color-specific image.
+  const isDefaultVariant = Boolean(selectedVariant && mainProduct.defaultVariantId === selectedVariant.id);
+  const selectedColorImages = isDefaultVariant
+    ? candidateColorImages
+    : candidateColorImages.filter((image) => !sharedVariantImages.has(image));
+  const heroImageUrl = selectedColorImages[galleryIndex] || selectedColorImages[0] || '';
+
+  React.useEffect(() => {
+    setHeroImageLoaded(false);
+    setImageRetryCount(0);
+    setFailedImageUrl('');
+  }, [heroImageUrl]);
 
   const handleLaunchAr = () => {
     if (mainProduct) {
@@ -287,11 +302,19 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       <section className={`relative w-full h-[380px] flex items-center justify-center overflow-hidden rounded-b-3xl border-b ${
         isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-[#ECE7FF] border-[#E4DFF5]'
       }`}>
-        <img 
-          key={`${selectedColor}-${galleryIndex}`}
+        {!heroImageUrl || failedImageUrl === heroImageUrl ? (
+          <div className={`absolute inset-0 flex flex-col items-center justify-center gap-3 ${isDarkMode ? 'bg-slate-900 text-slate-300' : 'bg-[#ECE7FF] text-[#5E667A]'}`}>
+            <span className="h-14 w-14 rounded-full border-4 border-white shadow-lg" style={{ backgroundColor: getRequiredColorHex(selectedColor) }} />
+            <span className="text-sm font-semibold">Photo unavailable for {selectedColor}</span>
+          </div>
+        ) : <img
+          key={`${selectedProductId}-${selectedColor}-${galleryIndex}-${imageRetryCount}-${heroImageUrl}`}
           alt={`${mainProduct.name} in ${getVariantLabel(selectedVariant) || selectedColor}`}
           className={`w-full h-full object-cover object-center absolute inset-0 cursor-pointer transition-opacity duration-200 ${heroImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           referrerPolicy="no-referrer"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           src={heroImageUrl}
           onLoad={() => setHeroImageLoaded(true)}
           onError={(event) => {
@@ -300,14 +323,18 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               setGalleryIndex(nextGalleryIndex);
               return;
             }
-            const fallback = mainProduct.mainImage || mainProduct.imageUrl;
-            if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+            setHeroImageLoaded(false);
+            if (imageRetryCount === 0) {
+              setImageRetryCount(1);
+            } else {
+              setFailedImageUrl(heroImageUrl);
+            }
           }}
           onClick={() => {
             if (selectedColorImages.length <= 1) return;
             setGalleryIndex((p) => (p + 1) % selectedColorImages.length);
           }}
-        />
+        />}
         {/* badges inside hero */}
         <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
           <button 
