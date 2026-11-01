@@ -365,20 +365,28 @@ export const requestGarmentAnalysis = async (
       })
     });
 
+    const rawText = await response.text().catch(() => '');
     let data: any = null;
-    try {
-      data = await response.json();
-    } catch {
-      const text = await response.text().catch(() => '');
+    if (rawText && rawText.trim()) {
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // Non-JSON response
+      }
+    }
+
+    if (!response.ok) {
+      const errorMsg = data?.error || data?.detail || rawText || ('Server returned HTTP ' + response.status + ' (' + (response.statusText || 'Error') + ')');
       return {
         success: false,
-        error: text || `Server returned HTTP ${response.status} (${response.statusText || 'No response body'})`
+        error: errorMsg
       };
     }
-    if (!response.ok || !data.success) {
+
+    if (!data || !data.success) {
       return {
         success: false,
-        error: data.error || `Analysis failed with status ${response.status}`
+        error: data?.error || 'Analysis service returned an incomplete response.'
       };
     }
 

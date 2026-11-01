@@ -1,4 +1,4 @@
-const AI_SERVER_URL = "http://127.0.0.1:8000";
+import { apiUrl } from './apiClient';
 
 export interface VisionAnalysisResponse {
   success?: boolean;
@@ -32,80 +32,112 @@ export interface VisionAnalysisResponse {
   };
 }
 
+/**
+ * Safely parses response JSON, avoiding 'Unexpected end of JSON input' on empty bodies.
+ */
+async function parseSafeJson<T = any>(response: Response): Promise<{ data: T | null; text: string }> {
+  const text = await response.text().catch(() => '');
+  if (!text || !text.trim()) {
+    return { data: null, text: '' };
+  }
+  try {
+    return { data: JSON.parse(text) as T, text };
+  } catch {
+    return { data: null, text };
+  }
+}
+
 export const aiService = {
   /**
-   * Health check to verify FastAPI backend connection
+   * Health check to verify AI backend service connection via Node backend gateway.
+   * Never exposes internal backend URLs or ports to the client.
    */
-  async checkConnection(): Promise<{ status: string } | null> {
+  async checkConnection(): Promise<{ status: string; service?: string } | null> {
     try {
-      const response = await fetch(`${AI_SERVER_URL}/`);
+      const response = await fetch(apiUrl('/api/wardrobe/ai-status'), {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+      });
+
       if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.warn("⚠️ AI Backend server unreachable at http://127.0.0.1:8000:", error);
-      return null;
+
+      const { data } = await parseSafeJson<{ status?: string; service?: string }>(response);
+      if (data && (data.status === 'healthy' || data.status === 'partial' || data.status?.includes('running'))) {
+        return { status: data.status, service: data.service || 'NOVA Wardrobe AI Service' };
+      }
+    } catch {
+      // Backend unreachable or offline
     }
+
+    return null;
   },
 
   /**
-   * Sends garment file to Python backend background-removal endpoint (/upload)
+   * Sends garment file to background-removal proxy endpoint on Node.js backend.
+   * Node.js handles communication with the Python FastAPI backend securely.
    */
   async uploadGarment(file: File, category = ''): Promise<VisionAnalysisResponse> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("category", category);
 
+    const targetUrl = apiUrl('/api/wardrobe/upload-garment');
+
+    let response: Response;
     try {
-      const response = await fetch(`${AI_SERVER_URL}/upload`, {
+      response = await fetch(targetUrl, {
         method: "POST",
         body: formData,
       });
-
-      if (!response.ok) {
-        let errorDetail = response.statusText;
-        try {
-          const errorJson = await response.json();
-          errorDetail = errorJson.detail || errorJson.error || errorDetail;
-        } catch {}
-        throw new Error(`Garment processor error (${response.status}): ${errorDetail}`);
-      }
-
-      const result = await response.json();
-      if (!result.success || !result.processed_image) {
-        throw new Error(result.error || "Garment processor did not return a processed image.");
-      }
-      return result;
-    } catch (error) {
-      console.error("❌ Error uploading garment to background-removal API:", error);
-      throw error;
+    } catch (networkErr: any) {
+      throw new Error(`Garment processing server unreachable: ${networkErr?.message || 'Network error'}`);
     }
+
+    const { data, text } = await parseSafeJson<any>(response);
+
+    if (!response.ok) {
+      const errorMsg = data?.detail || data?.error || text || `Server returned HTTP ${response.status} (${response.statusText})`;
+      throw new Error(`Garment processor error (${response.status}): ${errorMsg}`);
+    }
+
+    if (!data) {
+      throw new Error(`Garment processor returned an invalid or empty response.`);
+    }
+
+    if (!data.success || !data.processed_image) {
+      throw new Error(data.error || "Garment processor did not return a processed image.");
+    }
+
+    return data;
   },
 
   /**
-   * Generates a 128-dimensional embedding vector for visual matching
+   * Retrieves a high-dimensional visual embedding vector from the backend.
+   * Requirement 7: Never silently returns fake synthetic embeddings.
+   * Returns null if server embedding endpoint is offline or not configured.
    */
-  async getEmbedding(file: File): Promise<number[]> {
+  async getEmbedding(file: File): Promise<number[] | null> {
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await fetch(`${AI_SERVER_URL}/api/embedding`, {
+      const response = await fetch(apiUrl('/api/wardrobe/embedding'), {
         method: "POST",
         body: formData,
       });
 
       if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data.embedding)) {
+        const { data } = await parseSafeJson<{ embedding?: number[] }>(response);
+        if (data && Array.isArray(data.embedding)) {
           return data.embedding;
         }
       }
     } catch {
-      // Fallback embedding generator if server embedding endpoint isn't set up
+      // Endpoint offline or unreachable
     }
 
-    // Return synthetic 128-float normalized vector
-    return Array.from({ length: 128 }, () => Number((Math.random() * 2 - 1).toFixed(4)));
+    // Do not fabricate synthetic embeddings; report lack of embedding honestly
+    return null;
   }
 };
 

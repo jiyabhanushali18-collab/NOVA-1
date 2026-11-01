@@ -415,4 +415,110 @@ router.post('/wardrobe/outfit-recommendations', (req: Request, res: Response) =>
   }
 });
 
+
+
+/**
+ * GET /api/wardrobe/ai-status
+ * Health status probe for AI vision and garment processing services.
+ */
+router.get(['/wardrobe/ai-status', '/ai/health'], async (_req: Request, res: Response) => {
+  const aiBackendUrl = (process.env.AI_BACKEND_URL || 'http://127.0.0.1:8000').trim().replace(/\/$/, '');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const resp = await fetch(aiBackendUrl + '/health', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (resp.ok) {
+      const data = await resp.json().catch(() => ({ status: 'healthy' }));
+      return res.json({
+        status: 'healthy',
+        fastapi: data,
+        gemini: { configured: Boolean(process.env.GEMINI_API_KEY) }
+      });
+    }
+  } catch {
+    // FastAPI service currently offline
+  }
+
+  return res.json({
+    status: 'partial',
+    fastapi: { status: 'offline', note: 'Background removal offline; original photos will be used.' },
+    gemini: { configured: Boolean(process.env.GEMINI_API_KEY) }
+  });
+});
+
+/**
+ * POST /api/wardrobe/upload-garment
+ * Gateway proxy to Python FastAPI background removal & garment cropping.
+ */
+router.post(['/wardrobe/upload-garment', '/upload-garment'], async (req: Request, res: Response) => {
+  const aiBackendUrl = (process.env.AI_BACKEND_URL || 'http://127.0.0.1:8000').trim().replace(/\/$/, '');
+  const targetUrl = aiBackendUrl + '/upload';
+
+  try {
+    const parsedTarget = new URL(targetUrl);
+    const isHttps = parsedTarget.protocol === 'https:';
+    const client = isHttps ? await import('https') : await import('http');
+
+    const headers: Record<string, any> = { ...req.headers };
+    headers.host = parsedTarget.host;
+
+    const proxyReq = client.request({
+      protocol: parsedTarget.protocol,
+      hostname: parsedTarget.hostname,
+      port: parsedTarget.port || (isHttps ? 443 : 80),
+      path: parsedTarget.pathname + parsedTarget.search,
+      method: req.method,
+      headers: headers
+    }, (proxyRes) => {
+      const contentType = (proxyRes.headers['content-type'] || '').toLowerCase();
+      const chunks: Buffer[] = [];
+
+      proxyRes.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      proxyRes.on('end', () => {
+        const rawBody = Buffer.concat(chunks).toString('utf-8');
+        if (contentType.includes('application/json')) {
+          try {
+            const data = JSON.parse(rawBody);
+            // Requirement 5: Ensure returned image URLs are never localhost/loopback in production
+            if (data && typeof data.image_url === 'string') {
+              if (data.image_url.includes('127.0.0.1') || data.image_url.includes('localhost')) {
+                const publicBase = (process.env.PUBLIC_API_URL || 'https://nova-1-1.onrender.com').trim().replace(/\/$/, '');
+                data.image_url = data.image_url.replace(/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?/, publicBase);
+              }
+            }
+            return res.status(proxyRes.statusCode || 200).json(data);
+          } catch {
+            // If JSON parse failed, pass raw text
+            return res.status(proxyRes.statusCode || 200).send(rawBody);
+          }
+        }
+
+        res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
+        res.end(rawBody);
+      });
+    });
+
+    proxyReq.on('error', (err) => {
+      console.warn('[AI Proxy] Upstream FastAPI unreachable:', err.message);
+      if (!res.headersSent) {
+        res.status(503).json({
+          success: false,
+          error: 'AI background removal service is currently offline or starting up.'
+        });
+      }
+    });
+
+    req.pipe(proxyReq);
+  } catch (err: any) {
+    console.error('[AI Proxy] Request error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to proxy garment upload request.'
+      });
+    }
+  }
+});
+
 export default router;

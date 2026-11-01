@@ -1,3 +1,4 @@
+import gc
 from pathlib import Path
 from PIL import Image, ImageOps
 
@@ -11,7 +12,9 @@ def _remove(image):
     from rembg import new_session, remove
     if _session is None:
         _session = new_session("u2net_human_seg")
-    return remove(image, session=_session)
+    result = remove(image, session=_session)
+    gc.collect()
+    return result
 
 
 def remove_background(input_path, output_path):

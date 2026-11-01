@@ -33,13 +33,17 @@ const PORT = Number(process.env.PORT || 3000);
 // crop the selected garment. Start it with the development server so a raw
 // photo is never silently used as an AI-generated garment.
 const startGarmentProcessor = () => {
-  if (process.env.NOVA_DISABLE_AI === 'true') return;
-  const processor = spawn('python', ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000'], {
-    cwd: path.resolve(currentDirectory, 'server_ai'),
-    stdio: 'ignore',
-    windowsHide: true
-  });
-  processor.once('error', () => console.warn('NOVA garment processor could not start.'));
+  if (process.env.NOVA_DISABLE_AI === 'true' || process.env.RENDER === 'true') return;
+  try {
+    const processor = spawn('python', ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000'], {
+      cwd: path.resolve(currentDirectory, 'server_ai'),
+      stdio: 'ignore',
+      windowsHide: true
+    });
+    processor.once('error', (err) => console.warn('NOVA local garment processor could not start:', err?.message));
+  } catch (err: any) {
+    console.warn('NOVA garment processor spawn skipped:', err?.message);
+  }
 };
 
 async function start() {
@@ -91,6 +95,38 @@ async function start() {
     app.use('/api', addressRouter);
     app.use('/api', marketingEmailRouter);
     app.use('/api', wardrobeAnalyzerRouter);
+    // Proxy root /upload directly to wardrobe analyzer gateway for frontend compatibility
+    app.use('/upload', (req, res, next) => {
+      req.url = '/wardrobe/upload-garment';
+      wardrobeAnalyzerRouter(req, res, next);
+    });
+
+    // Proxy /output static files to Python backend
+    app.use('/output', async (req, res) => {
+      const aiBackendUrl = (process.env.AI_BACKEND_URL || 'http://127.0.0.1:8000').trim().replace(/\/$/, '');
+      const targetUrl = aiBackendUrl + '/output' + req.url;
+      try {
+        const parsedTarget = new URL(targetUrl);
+        const isHttps = parsedTarget.protocol === 'https:';
+        const client = isHttps ? await import('https') : await import('http');
+        const proxyReq = client.request({
+          protocol: parsedTarget.protocol,
+          hostname: parsedTarget.hostname,
+          port: parsedTarget.port || (isHttps ? 443 : 80),
+          path: parsedTarget.pathname,
+          method: 'GET'
+        }, (proxyRes) => {
+          res.writeHead(proxyRes.statusCode || 404, proxyRes.headers);
+          proxyRes.pipe(res);
+        });
+        proxyReq.on('error', () => {
+          if (!res.headersSent) res.status(404).end('Output image not found');
+        });
+        proxyReq.end();
+      } catch {
+        if (!res.headersSent) res.status(404).end('Output image not found');
+      }
+    });
     startNotificationScheduler();
     startMarketingEmailScheduler();
     decartKeyPool.validateStartup(32);

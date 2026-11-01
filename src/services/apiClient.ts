@@ -14,7 +14,6 @@ export const getApiBaseUrl = (): string => {
   // 2. Android APK / Native Capacitor Environment
   // On physical mobile devices, Capacitor's local webview runs at 'localhost' (https://localhost),
   // but there is no local backend server inside the phone. Native builds MUST connect to the production backend.
-  // Checking this FIRST avoids the false-positive localhost web check.
   if (Capacitor.isNativePlatform()) {
     return PRODUCTION_API_URL;
   }
@@ -30,7 +29,6 @@ export const getApiBaseUrl = (): string => {
   // 4. Production Web Deployment (Cloudflare Workers, Netlify, Vercel, or custom production host)
   // The web SPA is hosted on Cloudflare Workers (nova.nova-fashion.workers.dev),
   // while backend API routes are hosted on the Render server (nova-1-1.onrender.com).
-  // Non-localhost web environments MUST target the production backend.
   return PRODUCTION_API_URL;
 };
 
