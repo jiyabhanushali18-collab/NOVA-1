@@ -498,7 +498,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
     }
   };
 
-  const processBackgroundRemoval = async (file: File, category: string) => {
+  const processBackgroundRemoval = async (file: File, category: string, fallbackDataUrl?: string) => {
     setIsRemovingBg(true);
     setBgRemovalError(null);
     try {
@@ -511,10 +511,15 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
       setSaveStatus('Garment isolated. Analyzing details...');
       await triggerGeminiAnalysis(result.processed_image, category);
     } catch (err: any) {
-      console.error('Garment processing failed:', err);
-      const detail = err?.message || 'Server unreachable at http://127.0.0.1:8000';
-      setProcessedImage(null);
-      setBgRemovalError(`Garment processing notice: ${detail}`);
+      console.warn('Garment background removal unavailable or failed, automatically using original photo:', err);
+      // Automatically fallback to original photo without asking user
+      setUseOriginalFallback(true);
+      const originalToUse = fallbackDataUrl || uploadedImage;
+      if (originalToUse) {
+        setProcessedImage(originalToUse);
+        setSaveStatus('Analyzing garment details...');
+        await triggerGeminiAnalysis(originalToUse, category);
+      }
     } finally {
       setIsRemovingBg(false);
     }
@@ -533,7 +538,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
       setUploadedImage(normalized.dataUrl);
       setUploadedFile(normalized.file);
 
-      await processBackgroundRemoval(normalized.file, garmentCategory || selectedCategory || '');
+      await processBackgroundRemoval(normalized.file, garmentCategory || selectedCategory || '', normalized.dataUrl);
     } catch (err: any) {
       console.error('Image upload validation failed:', err);
       setBgRemovalError(err.message || 'Failed to process selected image.');
@@ -1536,33 +1541,7 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
                       )}
                     </div>
 
-                    {/* Error display with clear retry and fallback options */}
-                    {bgRemovalError && !isRemovingBg && (
-                      <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs">
-                        <div className="flex items-start gap-2 text-rose-500">
-                          <span className="material-symbols-outlined text-base">warning</span>
-                          <span className="font-semibold">{bgRemovalError}</span>
-                        </div>
-                        <div className="mt-2.5 flex gap-2">
-                          <button 
-                            type="button"
-                            onClick={retryBackgroundRemoval}
-                            className="flex-1 rounded-lg bg-rose-500 px-3 py-1.5 text-[11px] font-bold text-white shadow hover:bg-rose-600"
-                          >
-                            Retry Processing
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={continueWithOriginal}
-                            className={`flex-1 rounded-lg border px-3 py-1.5 text-[11px] font-bold ${
-                              isDarkMode ? 'border-white/20 bg-white/10 text-white' : 'border-[#E4DFF5] bg-white text-[#131426]'
-                            }`}
-                          >
-                            Use Original Photo
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {/* Background removal fallback handled automatically without asking user */}
 
                     <div className="mt-3 flex justify-end">
                       <label 
@@ -2151,11 +2130,12 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
                   );
                 })}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button onClick={() => onNavigate('ar-tryon')} className={`rounded-xl py-3 text-xs font-black ${purpleButton}`}>Wear Virtually</button>
-                <button onClick={() => openOutfitBuilder(selectedItem)} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#7041a8] text-white' : 'border-[#E4DFF5] bg-[#F2EEFF] text-[#553BE2]'}`}>Create Outfit</button>
-                <button onClick={() => setEditDraft({ ...selectedItem, attributes: { ...selectedItem.attributes }, colors: [...selectedItem.colors], tags: [...selectedItem.tags] })} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155] text-slate-200' : 'border-[#E4DFF5] bg-white text-[#131426]'}`}>Edit</button>
-                <button onClick={() => deleteItem(selectedItem)} className="rounded-xl border border-rose-500/35 bg-rose-500/10 py-3 text-xs font-black text-rose-500">Delete</button>
+              <div className="mt-4 flex flex-col gap-2">
+                <button onClick={() => openOutfitBuilder(selectedItem)} className={`w-full rounded-xl py-3 text-xs font-black ${purpleButton}`}>Create Outfit</button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setEditDraft({ ...selectedItem, attributes: { ...selectedItem.attributes }, colors: [...selectedItem.colors], tags: [...selectedItem.tags] })} className={`rounded-xl border py-3 text-xs font-black ${isDarkMode ? 'border-[#334155] text-slate-200' : 'border-[#E4DFF5] bg-white text-[#131426]'}`}>Edit</button>
+                  <button onClick={() => deleteItem(selectedItem)} className="rounded-xl border border-rose-500/35 bg-rose-500/10 py-3 text-xs font-black text-rose-500">Delete</button>
+                </div>
               </div>
               </>}
             </motion.section>
