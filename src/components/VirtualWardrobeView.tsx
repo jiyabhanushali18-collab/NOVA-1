@@ -1226,23 +1226,6 @@ export const VirtualWardrobeView: React.FC<VirtualWardrobeViewProps> = ({
               </div>
             )}
 
-            {/* Quick jump anchor navigation if there are multiple outfits */}
-            {displayedOutfits.length > 3 && (
-              <div className="mt-2 flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-1 text-[11px]">
-                <span className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${muted}`}>Quick jump:</span>
-                {displayedOutfits.map((_, idx) => (
-                  <a
-                    key={idx}
-                    href={`#outfit-card-${idx}`}
-                    className={`shrink-0 rounded-lg px-2.5 py-0.5 font-bold transition ${
-                      isDarkMode ? 'bg-[#161726] hover:bg-[#23243a] text-slate-300' : 'bg-[#EFEAFF] hover:bg-[#E3DCFF] text-[#553BE2]'
-                    }`}
-                  >
-                    Fit {idx + 1}
-                  </a>
-                ))}
-              </div>
-            )}
 
             {/* Outfits List / Scrollable Feed */}
             {displayedOutfits.length > 0 ? (
