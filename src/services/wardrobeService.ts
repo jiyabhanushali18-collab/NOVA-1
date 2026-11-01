@@ -1,3 +1,4 @@
+import { apiUrl } from './apiClient';
 import { CanonicalGarmentData, WardrobeItem, WardrobeProfile } from '../types';
 
 export const getUserDocId = (id: string) => {
@@ -354,7 +355,8 @@ export const requestGarmentAnalysis = async (
   garmentHint?: string
 ): Promise<GarmentAnalysisClientResponse> => {
   try {
-    const response = await fetch('/api/wardrobe/analyze-garment', {
+    const targetUrl = apiUrl('/api/wardrobe/analyze-garment');
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -363,7 +365,16 @@ export const requestGarmentAnalysis = async (
       })
     });
 
-    const data = await response.json();
+    let data: any = null;
+    try {
+      data = await response.json();
+    } catch {
+      const text = await response.text().catch(() => '');
+      return {
+        success: false,
+        error: text || `Server returned HTTP ${response.status} (${response.statusText || 'No response body'})`
+      };
+    }
     if (!response.ok || !data.success) {
       return {
         success: false,

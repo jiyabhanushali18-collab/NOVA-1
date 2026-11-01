@@ -20,8 +20,8 @@ import { generateWardrobeOutfits } from '../src/services/wardrobeOutfitEngine';
 
 const router = express.Router();
 export const MAX_IMAGE_PAYLOAD_BYTES = 6 * 1024 * 1024;
-export const DEFAULT_PRIMARY_MODEL = 'gemini-2.5-flash';
-export const DEFAULT_FALLBACK_MODELS = ['gemini-3.1-flash-lite'];
+export const DEFAULT_PRIMARY_MODEL = 'gemini-3.1-flash-lite';
+export const DEFAULT_FALLBACK_MODELS = ['gemini-2.5-flash'];
 export const GEMINI_MODEL = (process.env.GEMINI_MODEL || DEFAULT_PRIMARY_MODEL).trim();
 export const REQUEST_TIMEOUT_MS = 45000;
 export const MAX_TRANSIENT_RETRIES = 2;
