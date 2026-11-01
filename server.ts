@@ -59,7 +59,8 @@ async function start() {
       { default: marketingEmailRouter },
       { default: wardrobeAnalyzerRouter },
       { startNotificationScheduler },
-      { startMarketingEmailScheduler }
+      { startMarketingEmailScheduler },
+      { decartKeyPool }
     ] = await Promise.all([
       import('./server/authRouter.ts'),
       import('./server/chatRouter.ts'),
@@ -74,7 +75,8 @@ async function start() {
       import('./server/marketingEmailRouter.ts'),
       import('./server/wardrobeAnalyzer.ts'),
       import('./server/notificationScheduler.ts'),
-      import('./server/marketingEmailScheduler.ts')
+      import('./server/marketingEmailScheduler.ts'),
+      import('./server/decartKeyPool.ts')
     ]);
 
     app.use('/api', authRouter);
@@ -91,6 +93,7 @@ async function start() {
     app.use('/api', wardrobeAnalyzerRouter);
     startNotificationScheduler();
     startMarketingEmailScheduler();
+    decartKeyPool.validateStartup(32);
 
     const server = http.createServer(app);
 

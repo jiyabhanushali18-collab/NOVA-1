@@ -164,56 +164,7 @@ export const DEFAULT_MODELS: Record<string, string> = {
   Beige: publicAsset('garments/model-beige.jpg'),
 };
 
-/**
- * Emergency verified VTON credential pool for resilient direct client token minting.
- * Used when the remote backend is unreachable, cold-starting, or recovering.
- */
-const EMERGENCY_VTON_KEYS: string[] = [
-  'dct_novaps02_aydpxDGbObvHSoBwhKsPmpYzDBtitVHwlwAiBJPXvfrmsZublwXgiEXELiLrMNTK',
-  'dct_novaps03_YjmSidSOuiCFKbYwXfPAWdkhtZoFDvIwtRgjkvriMMejmYquccbCbvSDbypWCONo',
-  'dct_novaps04_kjnimNHEXcqcmduRPkRTtpDTUekIwsmBhgLUWkZpRqsmvBlnyAAFovitEcUmpVLI',
-  'dct_novaps05_loVOZBnmqvMNECAFQPQxdBZLqlaHeHLKCvXsegFvqAAteTjADUeOpiOtQyIPtAgi',
-  'dct_novaps06_rABAbGmlarZPiVWnWzPdorukdoCmbPWDPDekkmgXvJwwlPpgZtHtvIyVVNKOPWkP',
-  'dct_novaps07_FHwMZvgPUHRpqbXRsQBkUSwXbTzAXUOEvaJyNLtZvnomPTJKCwrefEBmnZjlzYpy',
-  'dct_novaps08_kEFKqCbXqDhpyAgcPYvmTUfmUHEBqxcfDOggKqkyBKkbCmSFyfKlKbPecMJZBzaa',
-  'dct_novaps09_CQgxvuooDcrMXbZSEdwjMVoSkKDXtsglAprBVuRUNjeazQOwSgawQsskZCprjiMy',
-  'dct_novaps10_YbgaItWbwiUGsSxMxFQpaEBoUYtnSSxxBoWQsjJusAlHwlfIccRNSoIkOVWvRHwh',
-  'dct_novaps11_XhgNNiGGPsZPZADZgUdBuklhQXgWWTNJJKdlGkGgMVtWsVSxuldJvYFhsSJBOzEW',
-  'dct_novaps12_AMvMfBASogSpNMDxDarJtzFKEpzdEQzuAjbKdCrLXLxHGUEBluPafDygbNJuKBjJ',
-  'dct_novaps13_frDnMIfyKftFcZbhZtFyMzzVMaRFQShgElrbZnNIEVPIhenkYcxnjrDeycOzfRww',
-  'dct_novaps14_LKTCQQngqxcmLLBjgyohDBNKEiNyxezwINVYDXLOAJwMmRZaJsAwScbpiribCwnj',
-  'dct_novaps15_eZhtqzUJjijxUkXkLKjIOCmKEUbUNLplqzxXKEfKgvbXyIgkFQKSSwNHRHZyhNwv',
-];
-let emergencyKeyIndex = 0;
 
-async function mintEmergencyClientToken(): Promise<string> {
-  const { createDecartClient } = await import('@decartai/sdk');
-  for (let attempt = 0; attempt < EMERGENCY_VTON_KEYS.length; attempt++) {
-    const key = EMERGENCY_VTON_KEYS[(emergencyKeyIndex + attempt) % EMERGENCY_VTON_KEYS.length];
-    try {
-      const directClient = createDecartClient({ apiKey: key });
-      const minted = await directClient.tokens.create({
-        expiresIn: 300,
-        allowedModels: ['lucy-vton-latest'],
-        constraints: { realtime: { maxSessionDuration: 300 } },
-      });
-      const token = minted?.apiKey || minted?.token;
-      if (token) {
-        emergencyKeyIndex = (emergencyKeyIndex + attempt + 1) % EMERGENCY_VTON_KEYS.length;
-        cachedLiveToken = {
-          token,
-          expiresAt: Date.now() + 120 * 1000,
-        };
-        activeTokenState = null;
-        console.log('[LiveTryOn] Successfully minted client token via direct emergency fallback.');
-        return token;
-      }
-    } catch (e: any) {
-      console.warn('[LiveTryOn] Emergency key attempt failed, trying next key:', e?.message);
-    }
-  }
-  throw new Error('Unable to connect to AI server. Tap Retry to connect.');
-}
 
 /**
  * Fetch a fresh mint client session token with single-flight deduplication
@@ -288,14 +239,7 @@ export async function getLiveTryOnToken(): Promise<string> {
         }
       }
 
-      // Secondary fallback: Direct client token minting via Decart SDK
-      // Ensures instant connection even if the backend is sleeping or encounters a transient issue
-      try {
-        console.warn('[LiveTryOn] Backend token endpoint unavailable, using direct emergency fallback...');
-        return await mintEmergencyClientToken();
-      } catch (fallbackError) {
-        console.error('[LiveTryOn] Emergency direct token mint failed:', fallbackError);
-      }
+      
 
       const friendlyMessage =
         lastError?.name === 'AbortError'

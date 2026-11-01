@@ -45,43 +45,16 @@ export interface ClassifiedError {
 
 export interface CredentialConfig {
   id?: string;
+  keyIdentifier?: string;
   apiKey: string;
   quotaGroup?: string;
   priority?: number;
   enabled?: boolean;
 }
 
-/**
- * Verified production fallback credentials.
- * If server environment variables are absent, misconfigured, or reference an exhausted key,
- * these active credentials ensure the live try-on pool always has ready-to-use capacity.
- */
-export const VERIFIED_PRODUCTION_POOL: CredentialConfig[] = [
-  { id: 'decart-key-2', apiKey: 'dct_novaps02_aydpxDGbObvHSoBwhKsPmpYzDBtitVHwlwAiBJPXvfrmsZublwXgiEXELiLrMNTK', quotaGroup: 'quota-group-2', priority: 10 },
-  { id: 'decart-key-3', apiKey: 'dct_novaps03_YjmSidSOuiCFKbYwXfPAWdkhtZoFDvIwtRgjkvriMMejmYquccbCbvSDbypWCONo', quotaGroup: 'quota-group-3', priority: 10 },
-  { id: 'decart-key-4', apiKey: 'dct_novaps04_kjnimNHEXcqcmduRPkRTtpDTUekIwsmBhgLUWkZpRqsmvBlnyAAFovitEcUmpVLI', quotaGroup: 'quota-group-4', priority: 10 },
-  { id: 'decart-key-5', apiKey: 'dct_novaps05_loVOZBnmqvMNECAFQPQxdBZLqlaHeHLKCvXsegFvqAAteTjADUeOpiOtQyIPtAgi', quotaGroup: 'quota-group-5', priority: 10 },
-  { id: 'decart-key-6', apiKey: 'dct_novaps06_rABAbGmlarZPiVWnWzPdorukdoCmbPWDPDekkmgXvJwwlPpgZtHtvIyVVNKOPWkP', quotaGroup: 'quota-group-6', priority: 10 },
-  { id: 'decart-key-7', apiKey: 'dct_novaps07_FHwMZvgPUHRpqbXRsQBkUSwXbTzAXUOEvaJyNLtZvnomPTJKCwrefEBmnZjlzYpy', quotaGroup: 'quota-group-7', priority: 10 },
-  { id: 'decart-key-8', apiKey: 'dct_novaps08_kEFKqCbXqDhpyAgcPYvmTUfmUHEBqxcfDOggKqkyBKkbCmSFyfKlKbPecMJZBzaa', quotaGroup: 'quota-group-8', priority: 10 },
-  { id: 'decart-key-9', apiKey: 'dct_novaps09_CQgxvuooDcrMXbZSEdwjMVoSkKDXtsglAprBVuRUNjeazQOwSgawQsskZCprjiMy', quotaGroup: 'quota-group-9', priority: 10 },
-  { id: 'decart-key-10', apiKey: 'dct_novaps10_YbgaItWbwiUGsSxMxFQpaEBoUYtnSSxxBoWQsjJusAlHwlfIccRNSoIkOVWvRHwh', quotaGroup: 'quota-group-10', priority: 10 },
-  { id: 'decart-key-11', apiKey: 'dct_novaps11_XhgNNiGGPsZPZADZgUdBuklhQXgWWTNJJKdlGkGgMVtWsVSxuldJvYFhsSJBOzEW', quotaGroup: 'quota-group-11', priority: 10 },
-  { id: 'decart-key-12', apiKey: 'dct_novaps12_AMvMfBASogSpNMDxDarJtzFKEpzdEQzuAjbKdCrLXLxHGUEBluPafDygbNJuKBjJ', quotaGroup: 'quota-group-12', priority: 10 },
-  { id: 'decart-key-13', apiKey: 'dct_novaps13_frDnMIfyKftFcZbhZtFyMzzVMaRFQShgElrbZnNIEVPIhenkYcxnjrDeycOzfRww', quotaGroup: 'quota-group-13', priority: 10 },
-  { id: 'decart-key-14', apiKey: 'dct_novaps14_LKTCQQngqxcmLLBjgyohDBNKEiNyxezwINVYDXLOAJwMmRZaJsAwScbpiribCwnj', quotaGroup: 'quota-group-14', priority: 10 },
-  { id: 'decart-key-15', apiKey: 'dct_novaps15_eZhtqzUJjijxUkXkLKjIOCmKEUbUNLplqzxXKEfKgvbXyIgkFQKSSwNHRHZyhNwv', quotaGroup: 'quota-group-15', priority: 10 },
-];
-
-/** Known exhausted credentials to ignore if present in environment variables */
-export const KNOWN_EXHAUSTED_KEYS = new Set([
-  'dct_-nova_VCBIUSgQdrTknjWwGgZtzvYlWbLrcTqBqfTsmgKeqKkfqnNfKMDtQhVDZSytW',
-  'dct_novaps01_VpXoekvEkmNsqYjFqXomKxTqKkOskfVknLqweRtYuIoPaSdFgHjKlZxcUPYTaR',
-  'dct_novaps16_kLzXcvBnmQweRtyUioPasDfgHjKlZxcVbnMqWeRtYuIoPaSdFgHjKlZxcVbnMZycwnj',
-]);
-
 export interface DecartCredential {
   id: string;
+  keyIdentifier: string; // e.g. "KEY_01" .. "KEY_32"
   apiKey: string;
   maskedKey: string;
   quotaGroup: string;
@@ -103,6 +76,7 @@ export interface DecartCredential {
 
 export interface SanitizedCredentialStatus {
   id: string;
+  keyIdentifier: string;
   maskedKey: string;
   quotaGroup: string;
   enabled: boolean;
@@ -130,6 +104,15 @@ export interface PoolStatusReport {
   totalTokensMinted: number;
   quotaGroups: Record<string, { exhausted: boolean; cooldownUntil: string | null }>;
   credentials: SanitizedCredentialStatus[];
+}
+
+export interface StartupValidationResult {
+  success: boolean;
+  totalConfigured: number;
+  totalActive: number;
+  missingSlots: string[];
+  invalidKeys: string[];
+  reportMessage: string;
 }
 
 export interface TokenMintOptions {
@@ -169,6 +152,15 @@ export function isPlaceholderKey(val: string): boolean {
 }
 
 /**
+ * Validates whether an API key has a valid format (e.g. starts with dct_ and meets length requirements).
+ */
+export function isValidKeyFormat(val: string): boolean {
+  if (!val || typeof val !== 'string') return false;
+  const clean = val.trim();
+  return clean.length >= 20 && !isPlaceholderKey(clean);
+}
+
+/**
  * Classifies Decart API responses and errors based on official HTTP status codes,
  * SDK error objects, and response message patterns.
  */
@@ -183,6 +175,16 @@ export function classifyDecartError(error: any): ClassifiedError {
     ''
   );
   const lowerMsg = rawMessage.toLowerCase();
+
+  // Check for Retry-After header
+  let retryAfterSeconds = 0;
+  const retryAfterHeader = error?.response?.headers?.['retry-after'] || error?.headers?.['retry-after'];
+  if (retryAfterHeader) {
+    const parsed = parseInt(String(retryAfterHeader), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      retryAfterSeconds = parsed;
+    }
+  }
 
   // 1. Credit exhaustion (HTTP 402 or explicit balance/credit exhaustion text)
   if (
@@ -208,12 +210,14 @@ export function classifyDecartError(error: any): ClassifiedError {
     };
   }
 
-  // 2. Authentication failure (HTTP 401 or invalid key)
+  // 2. Authentication failure (HTTP 401, 403 or invalid key)
   if (
     status === 401 ||
+    status === 403 ||
     lowerMsg.includes('invalid api key') ||
     lowerMsg.includes('invalid_api_key') ||
     lowerMsg.includes('unauthorized') ||
+    lowerMsg.includes('forbidden') ||
     lowerMsg.includes('authentication failed') ||
     lowerMsg.includes('api key not found') ||
     lowerMsg.includes('bad api key')
@@ -221,7 +225,7 @@ export function classifyDecartError(error: any): ClassifiedError {
     return {
       category: 'INVALID_API_KEY',
       message: 'Invalid API key or unauthorized request.',
-      statusCode: 401,
+      statusCode: status === 403 ? 403 : 401,
       retryable: true,
       cooldownMs: 24 * 60 * 60 * 1000, // Quarantined until administrative review
       quarantine: true
@@ -235,12 +239,15 @@ export function classifyDecartError(error: any): ClassifiedError {
     lowerMsg.includes('too many requests') ||
     lowerMsg.includes('rate_limit_exceeded')
   ) {
+    // Add 500-1500ms jitter to prevent thundering herd when cooldown expires
+    const jitter = Math.floor(Math.random() * 1000) + 500;
+    const baseCooldownMs = retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : 45 * 1000;
     return {
       category: 'RATE_LIMITED',
       message: 'Provider rate limit exceeded. Please wait a moment.',
       statusCode: 429,
       retryable: true,
-      cooldownMs: 45 * 1000, // 45 seconds cooldown
+      cooldownMs: baseCooldownMs + jitter,
       quarantine: false
     };
   }
@@ -252,35 +259,39 @@ export function classifyDecartError(error: any): ClassifiedError {
     lowerMsg.includes('concurrent_session_limit') ||
     lowerMsg.includes('1013 session limit')
   ) {
+    const jitter = Math.floor(Math.random() * 1000) + 500;
     return {
       category: 'CONCURRENT_SESSION_LIMIT',
       message: 'Provider concurrent session limit reached. Backing off briefly.',
       statusCode: 429,
       retryable: true,
-      cooldownMs: 20 * 1000, // 20 seconds cooldown
+      cooldownMs: 20 * 1000 + jitter,
       quarantine: false
     };
   }
 
-  // 5. Temporary provider capacity (capacity exceeded, Try Again Later)
+  // 5. Temporary provider capacity (capacity exceeded, Try Again Later, HTTP 503/504)
   if (
     lowerMsg.includes('capacity_exceeded') ||
     lowerMsg.includes('try again later') ||
     lowerMsg.includes('capacity refusal') ||
-    status === 503
+    status === 503 ||
+    status === 504
   ) {
+    const jitter = Math.floor(Math.random() * 1000) + 500;
     return {
       category: 'TEMPORARY_CAPACITY',
       message: 'Provider is temporarily at capacity. Please retry shortly.',
       statusCode: 503,
       retryable: true,
-      cooldownMs: 15 * 1000, // 15 seconds cooldown
+      cooldownMs: 15 * 1000 + jitter,
       quarantine: false
     };
   }
 
-  // 6. Network / handshake failure
+  // 6. Network / handshake failure (502, fetch failed, timeout, TLS)
   if (
+    status === 502 ||
     lowerMsg.includes('fetch failed') ||
     lowerMsg.includes('econnrefused') ||
     lowerMsg.includes('etimedout') ||
@@ -289,12 +300,13 @@ export function classifyDecartError(error: any): ClassifiedError {
     lowerMsg.includes('unable to verify the first certificate') ||
     lowerMsg.includes('tls')
   ) {
+    const jitter = Math.floor(Math.random() * 500);
     return {
       category: 'NETWORK_FAILURE',
       message: 'Network connection handshake with provider failed.',
       statusCode: 502,
       retryable: true,
-      cooldownMs: 5 * 1000, // 5 seconds cooldown
+      cooldownMs: 5 * 1000 + jitter,
       quarantine: false
     };
   }
@@ -323,12 +335,12 @@ export function classifyDecartError(error: any): ClassifiedError {
     };
   }
 
-  // 9. Unknown / unclassified error
+  // 9. Unknown / unclassified error (generic 500)
   return {
     category: 'UNKNOWN',
     message: rawMessage || 'An unexpected provider error occurred.',
     statusCode: status >= 400 && status < 600 ? status : 500,
-    retryable: false,
+    retryable: status >= 500,
     cooldownMs: 10 * 1000,
     quarantine: false
   };
@@ -336,7 +348,7 @@ export function classifyDecartError(error: any): ClassifiedError {
 
 /**
  * Manages an in-memory pool of Decart API credentials with quota tracking,
- * health status, atomic global round-robin selection, and bounded fallback.
+ * health status, atomic global round-robin selection, and bounded fallback across 32 keys.
  */
 export class DecartKeyPool {
   private credentials: Map<string, DecartCredential> = new Map();
@@ -355,11 +367,11 @@ export class DecartKeyPool {
   /**
    * Discovers and loads credentials from server environment variables.
    * Supports:
-   * - DECART_API_KEY_1, DECART_API_KEY_2, ... up to DECART_KEY_POOL_SIZE / 50
-   * - VTON_API_KEY_1, VTON_API_KEY_2, ...
-   * - DECART_API_KEY / VTON_API_KEY (backward compatible single key)
-   * - DECART_API_KEYS / VTON_API_KEYS (JSON array or comma-separated list)
-   * - DECART_ROTATION_POLICY (defaults to 'global_round_robin')
+   * - Numbered variables: DECART_API_KEY_01..DECART_API_KEY_32 and DECART_API_KEY_1..DECART_API_KEY_32
+   * - Legacy aliases: VTON_API_KEY_01..32 and VTON_API_KEY_1..32
+   * - Backward compatible single key: DECART_API_KEY / VTON_API_KEY
+   * - JSON array or delimiter-separated pool: DECART_API_KEYS / VTON_API_KEYS
+   * - Configured pool size: DECART_KEY_POOL_SIZE (defaults to 32)
    */
   public loadFromEnvironment(): void {
     const configs: CredentialConfig[] = [];
@@ -372,26 +384,34 @@ export class DecartKeyPool {
         ? parseInt(process.env.DECART_KEY_POOL_SIZE || process.env.VTON_KEY_POOL_SIZE || '', 10)
         : undefined;
 
-    const maxScanSlots = Math.max(50, configuredPoolSize || 20);
+    // Default target slots: 32 keys
+    const maxScanSlots = Math.max(32, configuredPoolSize || 32);
 
     const defaultQuotaGroup =
       process.env.DECART_QUOTA_GROUP ||
       process.env.VTON_QUOTA_GROUP ||
       'default-quota-group';
 
-    const addKey = (key: string, explicitId?: string, quotaGroup?: string, priority?: number) => {
+    const addKey = (
+      key: string,
+      explicitId?: string,
+      explicitKeyIdentifier?: string,
+      quotaGroup?: string,
+      priority?: number
+    ) => {
       if (!key) return;
       const cleanKey = key.trim();
       if (!cleanKey || isPlaceholderKey(cleanKey) || discoveredKeys.has(cleanKey)) return;
-      if (KNOWN_EXHAUSTED_KEYS.has(cleanKey)) {
-        console.warn(`[DecartKeyPool] Skipping known exhausted key: ${explicitId || 'unnamed'} (${maskApiKey(cleanKey)})`);
-        return;
-      }
+
       discoveredKeys.add(cleanKey);
 
-      const id = explicitId || `decart-key-${configs.length + 1}`;
+      const slotIndex = configs.length + 1;
+      const id = explicitId || `decart-key-${slotIndex}`;
+      const keyIdentifier = explicitKeyIdentifier || `KEY_${String(slotIndex).padStart(2, '0')}`;
+
       configs.push({
         id,
+        keyIdentifier,
         apiKey: cleanKey,
         quotaGroup: quotaGroup || defaultQuotaGroup,
         priority: priority ?? 1,
@@ -399,23 +419,50 @@ export class DecartKeyPool {
       });
     };
 
-    // 1. Check numbered variables: DECART_API_KEY_1 .. DECART_API_KEY_50
+    // 1. Check numbered variables: DECART_API_KEY_01..32, DECART_API_KEY_1..32, VTON_API_KEY_01..32, VTON_API_KEY_1..32
     for (let i = 1; i <= maxScanSlots; i++) {
-      const key = process.env[`DECART_API_KEY_${i}`] || process.env[`VTON_API_KEY_${i}`];
+      const paddedNum = String(i).padStart(2, '0');
+      const key =
+        process.env[`DECART_API_KEY_${paddedNum}`] ||
+        process.env[`DECART_API_KEY_${i}`] ||
+        process.env[`VTON_API_KEY_${paddedNum}`] ||
+        process.env[`VTON_API_KEY_${i}`];
+
       if (key) {
         const quotaGroup =
+          process.env[`DECART_QUOTA_GROUP_${paddedNum}`] ||
           process.env[`DECART_QUOTA_GROUP_${i}`] ||
+          process.env[`VTON_QUOTA_GROUP_${paddedNum}`] ||
           process.env[`VTON_QUOTA_GROUP_${i}`] ||
           process.env.DECART_QUOTA_GROUP ||
           process.env.VTON_QUOTA_GROUP ||
           `quota-group-${i}`;
-        const priorityStr = process.env[`DECART_PRIORITY_${i}`] || process.env[`VTON_PRIORITY_${i}`];
+
+        const priorityStr =
+          process.env[`DECART_PRIORITY_${paddedNum}`] ||
+          process.env[`DECART_PRIORITY_${i}`] ||
+          process.env[`VTON_PRIORITY_${paddedNum}`] ||
+          process.env[`VTON_PRIORITY_${i}`];
+
         const priority = priorityStr ? Number(priorityStr) : 1;
-        addKey(key, `decart-key-${i}`, quotaGroup, priority);
+        addKey(key, `decart-key-${i}`, `KEY_${paddedNum}`, quotaGroup, priority);
       }
     }
 
-    // 2. Check for JSON or comma-delimited pool in DECART_API_KEYS / VTON_API_KEYS
+    // 2. Dynamic environment variable scan for any DECART_API_KEY_N beyond maxScanSlots
+    for (const [envName, envVal] of Object.entries(process.env)) {
+      if (!envVal) continue;
+      const match = envName.match(/^(?:DECART|VTON)_API_KEY_(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxScanSlots) {
+          const paddedNum = String(num).padStart(2, '0');
+          addKey(envVal, `decart-key-${num}`, `KEY_${paddedNum}`, `quota-group-${num}`, 1);
+        }
+      }
+    }
+
+    // 3. Check for JSON or comma-delimited pool in DECART_API_KEYS / VTON_API_KEYS
     const multiKeyVar = process.env.DECART_API_KEYS || process.env.VTON_API_KEYS;
     if (multiKeyVar) {
       const trimmed = multiKeyVar.trim();
@@ -424,10 +471,11 @@ export class DecartKeyPool {
           const parsed = JSON.parse(trimmed);
           if (Array.isArray(parsed)) {
             parsed.forEach((item, index) => {
+              const paddedNum = String(index + 1).padStart(2, '0');
               if (typeof item === 'string') {
-                addKey(item, `pool-key-${index + 1}`);
+                addKey(item, `decart-key-${index + 1}`, `KEY_${paddedNum}`);
               } else if (item && typeof item === 'object' && item.apiKey) {
-                addKey(item.apiKey, item.id || `pool-key-${index + 1}`, item.quotaGroup, item.priority);
+                addKey(item.apiKey, item.id || `decart-key-${index + 1}`, item.keyIdentifier || `KEY_${paddedNum}`, item.quotaGroup, item.priority);
               }
             });
           }
@@ -439,20 +487,16 @@ export class DecartKeyPool {
       if (configs.length === 0) {
         trimmed.split(/[,;\n]/).forEach((entry, idx) => {
           const cleaned = entry.trim();
-          if (cleaned) addKey(cleaned, `pool-key-${idx + 1}`);
+          const paddedNum = String(idx + 1).padStart(2, '0');
+          if (cleaned) addKey(cleaned, `decart-key-${idx + 1}`, `KEY_${paddedNum}`);
         });
       }
     }
 
-    // 3. Fallback to existing single key for 100% backward compatibility
+    // 4. Fallback to existing single key for backward compatibility
     const singleKey = process.env.DECART_API_KEY || process.env.VTON_API_KEY;
-    if (singleKey) {
-      addKey(singleKey, 'primary-key', process.env.DECART_QUOTA_GROUP || process.env.VTON_QUOTA_GROUP || 'primary-account', 5);
-    }
-
-    // 4. Always ensure active verified credentials are fully populated in pool
-    for (const item of VERIFIED_PRODUCTION_POOL) {
-      addKey(item.apiKey, item.id, item.quotaGroup, item.priority);
+    if (singleKey && configs.length === 0) {
+      addKey(singleKey, 'decart-key-1', 'KEY_01', process.env.DECART_QUOTA_GROUP || process.env.VTON_QUOTA_GROUP || 'primary-account', 5);
     }
 
     const activeConfigs =
@@ -474,8 +518,11 @@ export class DecartKeyPool {
       const apiKey = cfg.apiKey ? cfg.apiKey.trim() : '';
       if (!apiKey || isPlaceholderKey(apiKey)) return;
 
-      const id = cfg.id || `decart-key-${index + 1}`;
-      const quotaGroup = cfg.quotaGroup || `account-${index + 1}`;
+      const slotIndex = index + 1;
+      const paddedNum = String(slotIndex).padStart(2, '0');
+      const id = cfg.id || `decart-key-${slotIndex}`;
+      const keyIdentifier = cfg.keyIdentifier || `KEY_${paddedNum}`;
+      const quotaGroup = cfg.quotaGroup || `account-${slotIndex}`;
       const priority = typeof cfg.priority === 'number' ? cfg.priority : 1;
       const enabled = cfg.enabled !== false;
 
@@ -486,6 +533,7 @@ export class DecartKeyPool {
 
       this.credentials.set(id, {
         id,
+        keyIdentifier,
         apiKey,
         maskedKey: maskApiKey(apiKey),
         quotaGroup,
@@ -514,7 +562,61 @@ export class DecartKeyPool {
       }
     });
 
-    console.log(`[DecartKeyPool] Initialized pool with ${this.credentials.size} credentials across ${this.quotaGroupStates.size} quota groups. Rotation Policy: ${this.rotationPolicy}`);
+    console.log(
+      `[DecartKeyPool] Initialized pool with ${this.credentials.size} credentials across ${this.quotaGroupStates.size} quota groups. Rotation Policy: ${this.rotationPolicy}`
+    );
+  }
+
+  /**
+   * Validates configuration during server startup and reports metrics without revealing secrets.
+   */
+  public validateStartup(targetSlots = 32): StartupValidationResult {
+    const missingSlots: string[] = [];
+    const invalidKeys: string[] = [];
+
+    for (let i = 1; i <= targetSlots; i++) {
+      const paddedNum = String(i).padStart(2, '0');
+      const val =
+        process.env[`DECART_API_KEY_${paddedNum}`] ||
+        process.env[`DECART_API_KEY_${i}`] ||
+        process.env[`VTON_API_KEY_${paddedNum}`] ||
+        process.env[`VTON_API_KEY_${i}`];
+
+      if (!val) {
+        missingSlots.push(`KEY_${paddedNum}`);
+      } else if (!isValidKeyFormat(val)) {
+        invalidKeys.push(`KEY_${paddedNum} (format invalid or placeholder)`);
+      }
+    }
+
+    const totalConfigured = this.credentials.size;
+    const totalActive = this.getEligibleCredentialsCount();
+    const success = totalConfigured > 0 && invalidKeys.length === 0;
+
+    const reportMessage = [
+      '================================================================',
+      '🔐 NOVA DECART AR TRY-ON API KEY MANAGER STARTUP VALIDATION',
+      '================================================================',
+      `Target Pool Slots:      ${targetSlots}`,
+      `Configured Valid Keys:  ${totalConfigured}`,
+      `Healthy & Active Keys:  ${totalActive}`,
+      `Missing Key Slots:      ${missingSlots.length > 0 ? missingSlots.join(', ') : 'None (All 32 slots defined)'}`,
+      `Invalid/Placeholder:    ${invalidKeys.length > 0 ? invalidKeys.join(', ') : 'None'}`,
+      `Rotation Policy:        ${this.rotationPolicy}`,
+      `Status:                 ${success ? '✓ INITIALIZED SUCCESSFULLY' : '⚠ WARNING - INCOMPLETE CONFIGURATION'}`,
+      '================================================================'
+    ].join('\n');
+
+    console.log(reportMessage);
+
+    return {
+      success,
+      totalConfigured,
+      totalActive,
+      missingSlots,
+      invalidKeys,
+      reportMessage
+    };
   }
 
   /**
@@ -533,7 +635,7 @@ export class DecartKeyPool {
     // 2. Refresh individual credentials
     for (const cred of this.credentials.values()) {
       if (cred.eligibility === 'invalid') {
-        // Invalid keys remain quarantined
+        // Invalid keys remain quarantined until administrative review
         continue;
       }
 
@@ -574,7 +676,7 @@ export class DecartKeyPool {
 
   /**
    * Atomically selects the next eligible credential using a priority-aware,
-   * quota-group-aware GLOBAL round-robin strategy shared by all users.
+   * quota-group-aware GLOBAL round-robin strategy across all 32 keys.
    */
   public selectEligibleCredential(excludeQuotaGroups: Set<string> = new Set()): DecartCredential | null {
     if (this.credentials.size === 0) {
@@ -607,7 +709,7 @@ export class DecartKeyPool {
 
       if (emergencyCandidates.length > 0) {
         console.warn(
-          `[DecartKeyPool] All keys in cooldown/exhausted. Using emergency fallback key: "${emergencyCandidates[0].id}".`
+          `[DecartKeyPool] All keys in cooldown/exhausted. Using emergency fallback key: "${emergencyCandidates[0].keyIdentifier || emergencyCandidates[0].id}".`
         );
         return emergencyCandidates[this.roundRobinIndex % emergencyCandidates.length];
       }
@@ -631,7 +733,7 @@ export class DecartKeyPool {
     selected.lastSelectedAt = Date.now();
 
     console.log(
-      `[DecartKeyPool] Rotation selected credential "${selected.id}" (${selected.maskedKey}, quota: ${selected.quotaGroup}, eligible: ${topTier.length}/${this.credentials.size}).`
+      `[DecartKeyPool] Rotation selected credential "${selected.keyIdentifier || selected.id}" (${selected.maskedKey}, quota: ${selected.quotaGroup}, eligible: ${topTier.length}/${this.credentials.size}).`
     );
 
     return selected;
@@ -659,7 +761,9 @@ export class DecartKeyPool {
       }
     }
 
-    console.warn(`[DecartKeyPool] Quota group "${quotaGroup}" marked EXHAUSTED for ${Math.round(cooldownMs / 60000)} minutes. Reason: ${reason}`);
+    console.warn(
+      `[DecartKeyPool] Quota group "${quotaGroup}" marked EXHAUSTED for ${Math.round(cooldownMs / 60000)} minutes. Reason: ${reason}`
+    );
   }
 
   /**
@@ -669,6 +773,7 @@ export class DecartKeyPool {
   public async generateClientToken(options: TokenMintOptions = {}): Promise<{
     token: any;
     credentialId: string;
+    keyIdentifier: string;
     quotaGroup: string;
     fallbackCount: number;
   }> {
@@ -676,7 +781,7 @@ export class DecartKeyPool {
       this.loadFromEnvironment();
     }
     if (this.credentials.size === 0) {
-      throw new Error('No Decart credentials configured on the server. Please configure DECART_API_KEY_1 or VTON_API_KEY.');
+      throw new Error('No Decart credentials configured on the server. Please configure DECART_API_KEY_01..32.');
     }
 
     const attemptedQuotaGroups = new Set<string>();
@@ -684,11 +789,15 @@ export class DecartKeyPool {
     let lastError: any = null;
     let lastClassified: ClassifiedError | null = null;
 
-    // Bounded attempts: up to available healthy credentials or configured max fallback attempts
+    // Bounded attempts: up to available healthy credentials or configured max fallback attempts (default 5)
     const configuredFallback = process.env.DECART_MAX_FALLBACK_ATTEMPTS
       ? parseInt(process.env.DECART_MAX_FALLBACK_ATTEMPTS, 10)
-      : this.credentials.size;
-    const maxAttempts = Math.max(1, Math.min(this.credentials.size, configuredFallback || this.credentials.size));
+      : undefined;
+
+    const maxAttempts = Math.max(
+      1,
+      Math.min(this.credentials.size, configuredFallback !== undefined ? configuredFallback : Math.min(this.credentials.size, 5))
+    );
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const cred = this.selectEligibleCredential(attemptedQuotaGroups);
@@ -699,7 +808,7 @@ export class DecartKeyPool {
       }
 
       console.log(
-        `[DecartKeyPool] Requesting live try-on token via "${cred.id}" (${cred.maskedKey}) [attempt ${attempt + 1}/${maxAttempts}].`
+        `[DecartKeyPool] Requesting live try-on token via "${cred.keyIdentifier || cred.id}" (${cred.maskedKey}) [attempt ${attempt + 1}/${maxAttempts}].`
       );
 
       try {
@@ -738,12 +847,13 @@ export class DecartKeyPool {
         cred.lastSuccessAt = Date.now();
 
         console.log(
-          `[DecartKeyPool] Token successfully minted via "${cred.id}" (${cred.maskedKey}). Total minted by key: ${cred.tokensMinted}.`
+          `[DecartKeyPool] Token successfully minted via "${cred.keyIdentifier || cred.id}" (${cred.maskedKey}). Total minted by key: ${cred.tokensMinted}.`
         );
 
         return {
           token,
           credentialId: cred.id,
+          keyIdentifier: cred.keyIdentifier,
           quotaGroup: cred.quotaGroup,
           fallbackCount
         };
@@ -759,7 +869,7 @@ export class DecartKeyPool {
         cred.lastErrorMessage = classified.message;
 
         console.warn(
-          `[DecartKeyPool] Token generation failed via "${cred.id}" (${cred.maskedKey}). Category: ${classified.category}, Status: ${classified.statusCode}. Action: ${classified.category === 'INVALID_API_KEY' ? 'quarantine' : `cooldown ${Math.round(classified.cooldownMs / 1000)}s`}.`
+          `[DecartKeyPool] Token generation failed via "${cred.keyIdentifier || cred.id}" (${cred.maskedKey}). Category: ${classified.category}, Status: ${classified.statusCode}. Action: ${classified.category === 'INVALID_API_KEY' ? 'quarantine' : `cooldown ${Math.round(classified.cooldownMs / 1000)}s`}.`
         );
 
         if (classified.category === 'INSUFFICIENT_CREDITS') {
@@ -769,7 +879,7 @@ export class DecartKeyPool {
         } else if (classified.category === 'INVALID_API_KEY') {
           cred.eligibility = 'invalid';
           cred.cooldownUntil = Date.now() + classified.cooldownMs;
-          console.error(`[DecartKeyPool] Credential "${cred.id}" (${cred.maskedKey}) REJECTED as invalid. Quarantining.`);
+          console.error(`[DecartKeyPool] Credential "${cred.keyIdentifier || cred.id}" (${cred.maskedKey}) REJECTED as invalid. Quarantining.`);
           fallbackCount++;
         } else if (classified.category === 'RATE_LIMITED') {
           cred.eligibility = 'rate_limited';
@@ -790,6 +900,12 @@ export class DecartKeyPool {
             break;
           }
         }
+
+        // Apply exponential backoff with jitter before next attempt
+        if (attempt < maxAttempts - 1) {
+          const backoffMs = Math.min(200 * Math.pow(1.5, attempt) + Math.floor(Math.random() * 200), 2000);
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
       }
     }
 
@@ -809,7 +925,7 @@ export class DecartKeyPool {
    * Processes client session feedback (e.g. terminal WebRTC disconnect reasons).
    */
   public recordSessionFeedback(credentialId: string, event: string, reason?: string): void {
-    const cred = this.credentials.get(credentialId);
+    const cred = this.credentials.get(credentialId) || Array.from(this.credentials.values()).find((c) => c.keyIdentifier === credentialId);
     if (!cred) return;
 
     const lowerReason = String(reason || '').toLowerCase();
@@ -830,7 +946,7 @@ export class DecartKeyPool {
     ) {
       cred.eligibility = 'in_cooldown';
       cred.cooldownUntil = Date.now() + 20 * 1000;
-      console.warn(`[DecartKeyPool] Credential "${credentialId}" placed in 20s cooldown due to session limit.`);
+      console.warn(`[DecartKeyPool] Credential "${cred.keyIdentifier || credentialId}" placed in 20s cooldown due to session limit.`);
     } else {
       // Any other session failure (stale connect attempt, network sync delay, disconnect)
       // Put in 3-minute cooldown so rotation immediately moves to the next healthy credential
@@ -838,7 +954,7 @@ export class DecartKeyPool {
       cred.cooldownUntil = Date.now() + 3 * 60 * 1000;
       cred.failureCount++;
       cred.consecutiveFailures++;
-      console.warn(`[DecartKeyPool] Credential "${credentialId}" placed in 3m cooldown due to session event: ${reason || event}`);
+      console.warn(`[DecartKeyPool] Credential "${cred.keyIdentifier || credentialId}" placed in 3m cooldown due to session event: ${reason || event}`);
     }
   }
 
@@ -847,7 +963,7 @@ export class DecartKeyPool {
    */
   public resetHealth(credentialId?: string): void {
     if (credentialId) {
-      const cred = this.credentials.get(credentialId);
+      const cred = this.credentials.get(credentialId) || Array.from(this.credentials.values()).find((c) => c.keyIdentifier === credentialId);
       if (cred) {
         cred.eligibility = 'healthy';
         cred.cooldownUntil = null;
@@ -883,7 +999,7 @@ export class DecartKeyPool {
    * Sets administrative enable/disable status for a credential.
    */
   public setCredentialEnabled(id: string, enabled: boolean): boolean {
-    const cred = this.credentials.get(id);
+    const cred = this.credentials.get(id) || Array.from(this.credentials.values()).find((c) => c.keyIdentifier === id);
     if (!cred) return false;
     cred.enabled = enabled;
     return true;
@@ -917,6 +1033,7 @@ export class DecartKeyPool {
 
       sanitizedList.push({
         id: cred.id,
+        keyIdentifier: cred.keyIdentifier,
         maskedKey: cred.maskedKey,
         quotaGroup: cred.quotaGroup,
         enabled: cred.enabled,

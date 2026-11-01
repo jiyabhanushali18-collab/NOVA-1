@@ -68,7 +68,7 @@ const verifyAdminAccess = (req: Request, res: Response, next: NextFunction) => {
 
 /**
  * Mint a client token for WebRTC connection to Live VTON AI.
- * Uses DecartKeyPool for atomic selection, quota tracking, and automatic fallback.
+ * Uses DecartKeyPool for atomic selection across 32 keys, quota tracking, and automatic fallback.
  */
 const handleTokenRequest = async (req: Request, res: Response) => {
   const clientOrigin = String(req.headers.origin || req.headers.referer || '');
@@ -83,11 +83,12 @@ const handleTokenRequest = async (req: Request, res: Response) => {
       origin: clientOrigin
     });
 
-    console.log(`[VTON Router] Token created successfully via "${result.credentialId}" (fallbackCount: ${result.fallbackCount}).`);
+    console.log(`[VTON Router] Token created successfully via "${result.keyIdentifier || result.credentialId}" (fallbackCount: ${result.fallbackCount}).`);
 
     return res.json({
       ...result.token,
       credentialId: result.credentialId,
+      keyIdentifier: result.keyIdentifier,
       quotaGroup: result.quotaGroup,
       fallbackCount: result.fallbackCount
     });
@@ -125,6 +126,22 @@ router.get(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, h
 router.post(['/vton/token', '/token', '/decart/token'], rateLimitTokenRequests, handleTokenRequest);
 
 /**
+ * Public health check for the AR Try-On subsystem.
+ * Returns overall operational readiness and available capacity without exposing keys.
+ */
+router.get(['/vton/health', '/decart/health'], (_req: Request, res: Response) => {
+  const eligible = decartKeyPool.getEligibleCredentialsCount();
+  const report = decartKeyPool.getStatusReport();
+  return res.json({
+    ok: eligible > 0,
+    status: eligible > 0 ? 'operational' : 'degraded',
+    availableKeys: eligible,
+    totalKeys: report.totalCredentials,
+    rotationPolicy: report.rotationPolicy
+  });
+});
+
+/**
  * Receives client-side session runtime events (such as WebRTC terminal close reasons)
  * to immediately adjust credential eligibility and quota group status.
  */
@@ -149,6 +166,14 @@ router.post(['/vton/session-event', '/decart/session-event'], async (req: Reques
 router.get('/vton/admin/pool-status', verifyAdminAccess, (_req: Request, res: Response) => {
   const status = decartKeyPool.getStatusReport();
   return res.json(status);
+});
+
+/**
+ * Admin: Run startup configuration validation on demand.
+ */
+router.get('/vton/admin/validate', verifyAdminAccess, (_req: Request, res: Response) => {
+  const validation = decartKeyPool.validateStartup(32);
+  return res.json(validation);
 });
 
 /**
