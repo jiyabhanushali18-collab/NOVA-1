@@ -469,7 +469,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ userName, products = {}, onS
         )}
 
         {/* Profile Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
+        <div className="flex flex-col gap-3.5 mt-4">
           {/* 1. Body Shape */}
           <div className="rounded-2xl p-4 bg-black/30 border border-white/10 flex flex-col justify-between min-w-0 shadow-sm">
             <div>

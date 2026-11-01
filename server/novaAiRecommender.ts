@@ -38,18 +38,49 @@ export interface NovaAiProductRecommendation {
 const WARM_COLORS = new Set([
   'beige', 'cream', 'camel', 'rust', 'mustard', 'brown', 'warm brown',
   'olive', 'olive green', 'khaki', 'terracotta', 'orange', 'yellow',
-  'gold', 'peach', 'coral', 'warm white', 'tan'
+  'gold', 'peach', 'coral', 'warm white', 'tan', 'red', 'multicolor'
 ]);
 
 const COOL_COLORS = new Set([
   'navy', 'navy blue', 'royal blue', 'blue', 'sky blue', 'cobalt',
   'emerald', 'emerald green', 'forest green', 'burgundy', 'wine', 'maroon',
-  'purple', 'lavender', 'lilac', 'charcoal', 'cool grey', 'grey', 'black', 'white'
+  'purple', 'lavender', 'lilac', 'charcoal', 'cool grey', 'grey', 'black', 'white', 'pink'
 ]);
 
 const NEUTRAL_COLORS = new Set([
   'black', 'white', 'off white', 'grey', 'charcoal', 'navy', 'navy blue',
   'cream', 'beige', 'taupe', 'denim'
+]);
+
+// Colors that provide striking, high-impact vibrancy or crisp contrast on Deep / Dark skin
+const DEEP_SKIN_BRIGHTS = new Set([
+  'white', 'off white', 'cream', 'ivory',
+  'red', 'crimson', 'scarlet',
+  'pink', 'magenta', 'fuchsia',
+  'yellow', 'gold', 'mustard',
+  'orange', 'coral', 'peach', 'terracotta',
+  'sky blue', 'light blue', 'cobalt', 'royal blue',
+  'emerald', 'emerald green', 'mint',
+  'multicolor'
+]);
+
+// Colors that provide sharp, defining contrast on Fair / Light skin without washing out
+const FAIR_SKIN_DEEPS = new Set([
+  'navy', 'navy blue', 'dark blue', 'royal blue', 'cobalt', 'blue',
+  'black', 'charcoal', 'dark grey',
+  'emerald', 'emerald green', 'forest green', 'olive', 'olive green',
+  'burgundy', 'wine', 'maroon', 'red', 'rust',
+  'light blue', 'lavender', 'lilac'
+]);
+
+// Pale / Nude shades that can wash out fair complexions if worn as flat monochrome
+const FAIR_SKIN_WASH_OUT = new Set([
+  'beige', 'cream', 'pale yellow', 'nude', 'tan', 'khaki', 'light grey'
+]);
+
+// Low contrast dark-on-dark shades for deep skin
+const DEEP_SKIN_LOW_CONTRAST = new Set([
+  'dark brown', 'deep brown', 'black', 'charcoal'
 ]);
 
 // Body shape silhouette compatibility guidelines
@@ -92,7 +123,8 @@ const BODY_SHAPE_SILHOUETTES: Record<string, { preferredFits: string[]; preferre
 function evaluateProductMatch(
   product: NormalizedProduct,
   effectiveBodyShape: string,
-  effectiveUndertone: string,
+  effectiveSkinTone: string = 'Medium',
+  effectiveUndertone: string = 'Warm',
   effectiveSize?: string
 ): {
   colorScore: number;
@@ -105,48 +137,103 @@ function evaluateProductMatch(
   sizeStatus: 'user_confirmed' | 'estimated' | 'size_not_confirmed';
   sizeReason: string;
 } {
-  // 1. Color Harmony Evaluation
-  const primary = (product.primaryColor || '').toLowerCase();
+  // 1. Color Harmony Evaluation: Skin Tone Depth & Undertone Temperature
   const rawAi = (product.raw?.aiAttributes as any)?.visual;
-  const aiPrimary = (rawAi?.primaryColor || '').toLowerCase();
-  const productColor = aiPrimary || primary;
+  const displayColor = product.primaryColor || rawAi?.primaryColor || 'selected';
+  const productColor = displayColor.toLowerCase().trim();
 
-  let colorScore = 20;
-  let colorReason = `The ${product.primaryColor || 'selected'} tone provides versatile styling.`;
+  const normTone = (effectiveSkinTone || '').toLowerCase();
+  const isDeep = normTone.includes('deep') || normTone.includes('dark');
+  const isFair = normTone.includes('fair') || normTone.includes('light');
 
-  const isWarm = WARM_COLORS.has(productColor);
-  const isCool = COOL_COLORS.has(productColor);
-  const isNeutral = NEUTRAL_COLORS.has(productColor);
+  let baseScore = 20;
+  let toneBonus = 0;
+  let undertoneBonus = 0;
+  let colorReason = `The ${displayColor} tone provides versatile styling.`;
 
-  if (effectiveUndertone === 'Warm') {
-    if (isWarm) {
-      colorScore = 38;
-      colorReason = `The warm ${product.primaryColor} shade naturally flatters your warm golden undertones.`;
-    } else if (isNeutral) {
-      colorScore = 34;
-      colorReason = `The neutral ${product.primaryColor} hue provides balanced contrast against warm undertones.`;
+  // 1a. Skin Tone Depth & Contrast
+  if (isDeep) {
+    const isBrightOrLight = DEEP_SKIN_BRIGHTS.has(productColor) ||
+      productColor.includes('white') || productColor.includes('red') || productColor.includes('pink') ||
+      productColor.includes('yellow') || productColor.includes('gold') || productColor.includes('coral') ||
+      productColor.includes('peach') || productColor.includes('cobalt') || productColor.includes('light blue') ||
+      productColor.includes('multi');
+
+    if (isBrightOrLight) {
+      toneBonus = 10;
+      if (productColor.includes('white') || productColor.includes('cream')) {
+        colorReason = `The crisp ${displayColor} creates striking high-contrast brightness that stands out brilliantly against deep skin tones.`;
+      } else if (productColor.includes('red') || productColor.includes('pink') || productColor.includes('multi')) {
+        colorReason = `The vibrant ${displayColor} shade pops with rich, radiant energy that beautifully flatters deep skin tones.`;
+      } else if (productColor.includes('blue') || productColor.includes('sky')) {
+        colorReason = `The dynamic ${displayColor} tone delivers radiant, luminous contrast for deep complexions.`;
+      } else {
+        colorReason = `The ${displayColor} hue complements deep skin tones with vibrant, flattering contrast.`;
+      }
+    } else if (DEEP_SKIN_LOW_CONTRAST.has(productColor) || productColor.includes('black') || productColor.includes('dark brown')) {
+      toneBonus = 2;
+      colorReason = `A classic ${displayColor} staple offering subtle, understated everyday styling.`;
     } else {
-      colorScore = 24;
-      colorReason = `Provides a striking cool contrast that stands out against warm undertones.`;
+      toneBonus = 6;
+      colorReason = `The ${displayColor} tone complements deep skin tones with balanced contrast.`;
     }
-  } else if (effectiveUndertone === 'Cool') {
-    if (isCool) {
-      colorScore = 38;
-      colorReason = `The cool ${product.primaryColor} tone creates clean, striking harmony with your cool undertones.`;
-    } else if (isNeutral) {
-      colorScore = 34;
-      colorReason = `The classic ${product.primaryColor} neutral complements cool undertones seamlessly.`;
+  } else if (isFair) {
+    const isDeepOrJewel = FAIR_SKIN_DEEPS.has(productColor) ||
+      productColor.includes('navy') || productColor.includes('dark blue') || productColor.includes('black') ||
+      productColor.includes('charcoal') || productColor.includes('burgundy') || productColor.includes('emerald');
+
+    const isWashOut = FAIR_SKIN_WASH_OUT.has(productColor) ||
+      productColor.includes('beige') || productColor.includes('cream') || productColor.includes('nude') || productColor.includes('tan');
+
+    if (isDeepOrJewel && !isWashOut) {
+      toneBonus = 10;
+      if (productColor.includes('navy') || productColor.includes('dark blue') || productColor.includes('black') || productColor.includes('charcoal')) {
+        colorReason = `The deep ${displayColor} tone delivers sharp, elegant definition that flatters fair skin without washing it out.`;
+      } else {
+        colorReason = `The rich ${displayColor} jewel tone creates healthy, radiant contrast with fair complexions.`;
+      }
+    } else if (isWashOut) {
+      toneBonus = 2;
+      colorReason = `A muted ${displayColor} tone; best styled with contrasting layers for fair complexions.`;
     } else {
-      colorScore = 24;
-      colorReason = `Adds warm visual vibrancy to balance cool undertones.`;
+      toneBonus = 6;
+      colorReason = `The ${displayColor} hue offers balanced everyday styling for fair skin.`;
     }
   } else {
-    // Neutral or Unknown undertone
-    if (isNeutral || isWarm || isCool) {
-      colorScore = 35;
-      colorReason = `The ${product.primaryColor} color pairs harmoniously with balanced, neutral undertones.`;
+    // Medium / Olive / Tan
+    if (productColor.includes('olive') || productColor.includes('khaki') || productColor.includes('terracotta') ||
+        productColor.includes('rust') || productColor.includes('mustard') || productColor.includes('navy') ||
+        productColor.includes('beige') || productColor.includes('white')) {
+      toneBonus = 9;
+      colorReason = `The warm ${displayColor} hue harmonizes naturally with the golden warmth of medium complexions.`;
+    } else {
+      toneBonus = 6;
+      colorReason = `The ${displayColor} tone provides an appealing, balanced aesthetic for medium complexions.`;
     }
   }
+
+  // 1b. Undertone Temperature Matching
+  if (effectiveUndertone === 'Warm') {
+    if (WARM_COLORS.has(productColor) || productColor.includes('beige') || productColor.includes('red') || productColor.includes('brown') || productColor.includes('multi')) {
+      undertoneBonus = 6;
+    } else if (NEUTRAL_COLORS.has(productColor) || productColor.includes('white') || productColor.includes('black') || productColor.includes('grey') || productColor.includes('navy')) {
+      undertoneBonus = 4;
+    } else {
+      undertoneBonus = 2;
+    }
+  } else if (effectiveUndertone === 'Cool') {
+    if (COOL_COLORS.has(productColor) || productColor.includes('navy') || productColor.includes('blue') || productColor.includes('black') || productColor.includes('white') || productColor.includes('pink')) {
+      undertoneBonus = 6;
+    } else if (NEUTRAL_COLORS.has(productColor)) {
+      undertoneBonus = 4;
+    } else {
+      undertoneBonus = 2;
+    }
+  } else {
+    undertoneBonus = 5;
+  }
+
+  const colorScore = Math.min(38, Math.max(20, baseScore + toneBonus + undertoneBonus));
 
   // 2. Silhouette & Body Shape Compatibility
   const shapeGuide = BODY_SHAPE_SILHOUETTES[effectiveBodyShape] || {
@@ -329,7 +416,7 @@ export async function getNovaAiRecommendations(
   // STEP 3: Pass ONLY eligible products to NOVA AI ranking
   // Rank using body shape, skin tone, undertone and size
   const scoredCandidates = candidateProducts.map((product) => {
-    const evaluation = evaluateProductMatch(product, effectiveBodyShape, effectiveUndertone, effectiveSize);
+    const evaluation = evaluateProductMatch(product, effectiveBodyShape, effectiveSkinTone, effectiveUndertone, effectiveSize);
     return {
       product,
       evaluation
@@ -347,8 +434,8 @@ export async function getNovaAiRecommendations(
     if (selected.length >= limit) break;
     const cat = item.product.category || 'Other';
     const count = categoryCounts.get(cat) || 0;
-    // Allow at most 3 items per category to ensure a diverse wardrobe assortment
-    if (count < 3) {
+    // Allow up to 5 items per category to balance tops and bottoms without suppressing tops
+    if (count < 5) {
       selected.push(item);
       categoryCounts.set(cat, count + 1);
     }
