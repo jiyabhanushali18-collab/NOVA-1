@@ -63,7 +63,7 @@ router.post("/chat/recommendations", async (req, res) => {
       });
     }
 
-    if (clothingPreference && !profile.clothingPreference) {
+    if (clothingPreference) {
       profile.clothingPreference = clothingPreference;
     }
 
