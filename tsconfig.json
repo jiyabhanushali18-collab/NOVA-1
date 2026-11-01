@@ -25,5 +25,8 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "scripts/check_orders.ts"
+  ]
 }

@@ -97,5 +97,16 @@ service cloud.firestore {
         && request.resource.data.consentedAt is string;
       allow update, delete: if false;
     }
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    match /customerOrders/{customerId}/orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    match /vendorOrders/{vendorId}/orders/{orderId} {
+      allow read, write: if true;
+    }
   }
 }

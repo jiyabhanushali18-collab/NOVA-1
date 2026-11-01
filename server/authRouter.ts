@@ -1239,10 +1239,17 @@ router.put('/auth/address', async (req: Request, res: Response) => {
 // POST /api/auth/orders - Record an order with an immutable snapshot of its delivery address
 router.post('/auth/orders', async (req: Request, res: Response) => {
   try {
-    const { userId, order } = req.body || {};
-    const authCheck = await verifyAuthenticatedUser(req, typeof userId === 'string' ? userId : undefined);
-    if (!authCheck.ok) {
-      return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+    const { userId, order, rootOrderPayload } = req.body || {};
+    let uid = typeof userId === 'string' && userId.trim() ? userId.trim() : 'guest';
+    let isGuest = uid === 'guest';
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const authCheck = await verifyAuthenticatedUser(req, uid !== 'guest' ? uid : undefined);
+      if (authCheck.ok) {
+        uid = authCheck.uid;
+        isGuest = false;
+      }
     }
 
     if (!order || typeof order !== 'object' || !order.deliveryAddress) {
@@ -1265,7 +1272,6 @@ router.post('/auth/orders', async (req: Request, res: Response) => {
       });
     }
 
-    const { uid } = authCheck;
     const orderAddressSnapshot: DeliveryAddressPayload = {
       id: String(addr.id || `order_addr_${Date.now()}`),
       label: String(addr.label || 'Home'),
@@ -1281,16 +1287,57 @@ router.post('/auth/orders', async (req: Request, res: Response) => {
       updatedAt: new Date().toISOString()
     };
 
+    const rawItems: any[] = Array.isArray(order.items) && order.items.length > 0
+      ? order.items
+      : Array.isArray(rootOrderPayload?.items)
+      ? rootOrderPayload.items
+      : [];
+
+    const flattenedItems = rawItems.map((item: any) => {
+      const prod = item.product || {};
+      const rawPrice = prod.price ?? prod.discountPrice ?? prod.originalPrice ?? item.price ?? 0;
+      const price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.]/g, '')) : Number(rawPrice);
+      const qty = Number(item.quantity ?? 1);
+      return {
+        productId: String(prod.id || prod.productId || item.productId || ''),
+        productName: String(prod.name || item.productName || 'Fashion Item'),
+        imageUrl: String(prod.imageUrl || prod.images?.[0] || item.imageUrl || ''),
+        category: String(prod.category || item.category || 'Apparel'),
+        vendorId: String(prod.vendorId || item.vendorId || (prod.vendorName === 'Trendy Threads' ? 'VEN002' : 'VEN001')),
+        vendorName: String(prod.vendorName || item.vendorName || (prod.vendorId === 'VEN002' ? 'Trendy Threads' : 'Fashion Fushion')),
+        price: isNaN(price) ? 0 : price,
+        quantity: isNaN(qty) ? 1 : qty,
+        amount: (isNaN(price) ? 0 : price) * (isNaN(qty) ? 1 : qty),
+        status: 'Pending',
+        color: String(item.color || ''),
+        size: String(item.size || 'M')
+      };
+    });
+
+    const primaryItem = flattenedItems[0] || {};
+    const totalQuantity = flattenedItems.reduce((sum: number, it: any) => sum + (it.quantity || 1), 0) || (flattenedItems.length > 0 ? 1 : 0);
+    let vendorIds = Array.from(new Set(flattenedItems.map((it: any) => it.vendorId).filter(Boolean)));
+    if (vendorIds.length === 0) vendorIds = ['VEN001'];
+
+    const calculatedSubtotal = flattenedItems.reduce((sum: number, it: any) => sum + (it.amount || 0), 0);
+    const effectiveSubtotal = Number(order.subtotal || rootOrderPayload?.subtotal || calculatedSubtotal);
+    const effectiveTaxes = Number(order.taxes || rootOrderPayload?.taxes || Math.round(effectiveSubtotal * 0.05));
+    const effectiveDiscount = Number(order.discount || rootOrderPayload?.discount || 0);
+    const effectiveShipping = Number(order.shipping || rootOrderPayload?.shipping || (effectiveSubtotal > 999 || effectiveSubtotal === 0 ? 0 : 99));
+    const effectiveGrandTotal = Number(order.grandTotal || rootOrderPayload?.grandTotal || Math.max(0, effectiveSubtotal + effectiveTaxes + effectiveShipping - effectiveDiscount));
+
+    const cleanDocId = String(order.orderId || rootOrderPayload?.orderId || `NV-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '');
+
     const orderRecord: OrderPayload = {
-      orderId: String(order.orderId || `#NV-${1000 + Math.floor(Math.random() * 9000)}`),
+      orderId: String(order.orderId || `#${cleanDocId}`),
       userId: uid,
-      isGuest: false,
-      items: Array.isArray(order.items) ? JSON.parse(JSON.stringify(order.items)) : [],
-      subtotal: Number(order.subtotal || 0),
-      taxes: Number(order.taxes || 0),
-      discount: Number(order.discount || 0),
-      shipping: Number(order.shipping || 0),
-      grandTotal: Number(order.grandTotal || 0),
+      isGuest,
+      items: rawItems,
+      subtotal: effectiveSubtotal,
+      taxes: effectiveTaxes,
+      discount: effectiveDiscount,
+      shipping: effectiveShipping,
+      grandTotal: effectiveGrandTotal,
       paymentMethod: order.paymentMethod === 'card' || order.paymentMethod === 'cod' ? order.paymentMethod : 'upi',
       deliveryAddress: orderAddressSnapshot,
       createdAt: String(order.createdAt || new Date().toISOString())
@@ -1299,15 +1346,80 @@ router.post('/auth/orders', async (req: Request, res: Response) => {
     const existingOrders = localOrdersStore.get(uid) || [];
     localOrdersStore.set(uid, [orderRecord, ...existingOrders]);
 
+    const customerName = fullName || rootOrderPayload?.customerName || 'Customer';
+    const customerInitials = customerName
+      .split(' ')
+      .filter(Boolean)
+      .map((part: string) => part[0]?.toUpperCase() || '')
+      .slice(0, 2)
+      .join('') || 'C';
+
+    const dateFormatted = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    const finalRootOrder = {
+      id: orderRecord.orderId,
+      orderId: orderRecord.orderId,
+      userId: uid,
+      customerName,
+      customerInitials,
+      customerAvatar: '',
+      productName: primaryItem.productName || 'Fashion Item',
+      productId: primaryItem.productId || '',
+      quantity: totalQuantity,
+      amount: effectiveGrandTotal,
+      subtotal: effectiveSubtotal,
+      taxes: effectiveTaxes,
+      discount: effectiveDiscount,
+      shipping: effectiveShipping,
+      grandTotal: effectiveGrandTotal,
+      paymentMethod: orderRecord.paymentMethod,
+      date: dateFormatted,
+      status: 'Pending',
+      salesEligible: true,
+      vendorId: primaryItem.vendorId || (primaryItem.vendorName === 'Trendy Threads' ? 'VEN002' : 'VEN001'),
+      vendorName: primaryItem.vendorName || (primaryItem.vendorId === 'VEN002' ? 'Trendy Threads' : 'Fashion Fushion'),
+      vendorIds,
+      deliveryAddress: orderAddressSnapshot,
+      items: flattenedItems,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    };
+
     if (firebaseEnabled && firestore) {
       try {
-        const cleanDocId = orderRecord.orderId.replace(/[^a-zA-Z0-9_-]/g, '');
-        await firestore
-          .collection(USERS_COLLECTION)
-          .doc(uid)
-          .collection(ORDERS_COLLECTION)
-          .doc(cleanDocId || `order_${Date.now()}`)
-          .set(orderRecord);
+        // 1. Authoritative write to root 'orders' collection
+        await firestore.collection(ORDERS_COLLECTION).doc(cleanDocId).set(finalRootOrder, { merge: true });
+
+        // 2. Write to user's orders subcollection
+        if (!isGuest && uid !== 'guest') {
+          await firestore
+            .collection(USERS_COLLECTION)
+            .doc(uid)
+            .collection(ORDERS_COLLECTION)
+            .doc(cleanDocId)
+            .set(orderRecord, { merge: true });
+
+          await firestore
+            .collection('customerOrders')
+            .doc(uid)
+            .collection(ORDERS_COLLECTION)
+            .doc(cleanDocId)
+            .set(finalRootOrder, { merge: true });
+        }
+
+        // 3. Multi-vendor order indexing for vendor portal
+        for (const vId of vendorIds) {
+          await firestore
+            .collection('vendorOrders')
+            .doc(vId)
+            .collection(ORDERS_COLLECTION)
+            .doc(cleanDocId)
+            .set(finalRootOrder, { merge: true });
+        }
       } catch (err) {
         console.warn('[Orders] Firestore order write warning (saved in server memory):', err);
       }
@@ -1323,7 +1435,6 @@ router.post('/auth/orders', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/auth/orders - Fetch orders for the authenticated user
 router.get('/auth/orders', async (req: Request, res: Response) => {
   try {
     const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : undefined;

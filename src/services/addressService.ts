@@ -582,19 +582,105 @@ export const createOrderSnapshot = async (params: {
   const effectiveUserId = params.user.uid || 'guest';
   const isGuest = isGuestIdentity(params.user.uid, params.user.isGuest);
 
+  const computedSubtotal = frozenItems.reduce((acc, curr) => {
+    const p = curr.product as any;
+    const rawPrice = p?.price ?? p?.discountPrice ?? p?.originalPrice ?? (curr as any).price ?? 0;
+    const price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.]/g, '')) : Number(rawPrice);
+    const qty = Number(curr.quantity || 1);
+    return acc + (isNaN(price) ? 0 : price) * (isNaN(qty) ? 1 : qty);
+  }, 0);
+
+  const effectiveSubtotal = params.subtotal > 0 ? params.subtotal : computedSubtotal;
+  const effectiveTaxes = params.taxes > 0 ? params.taxes : Math.round(effectiveSubtotal * 0.05);
+  const effectiveDiscount = params.discount || 0;
+  const effectiveShipping = params.shipping > 0 ? params.shipping : (effectiveSubtotal > 999 || effectiveSubtotal === 0 ? 0 : 99);
+  const effectiveGrandTotal = params.grandTotal > 0
+    ? params.grandTotal
+    : Math.max(0, effectiveSubtotal + effectiveTaxes + effectiveShipping - effectiveDiscount);
+
   const order: OrderRecord = {
     orderId: `#NV-${1000 + Math.floor(Math.random() * 9000)}`,
     userId: effectiveUserId,
     isGuest,
     items: frozenItems,
-    subtotal: params.subtotal,
-    taxes: params.taxes,
-    discount: params.discount,
-    shipping: params.shipping,
-    grandTotal: params.grandTotal,
+    subtotal: effectiveSubtotal,
+    taxes: effectiveTaxes,
+    discount: effectiveDiscount,
+    shipping: effectiveShipping,
+    grandTotal: effectiveGrandTotal,
     paymentMethod: params.paymentMethod,
     deliveryAddress: frozenAddress,
     createdAt: new Date().toISOString()
+  };
+
+  const cleanOrderDocId = order.orderId.replace(/[^a-zA-Z0-9_-]/g, '') || `NV-${Date.now()}`;
+  const customerName = frozenAddress.fullName || params.user.name || 'Customer';
+  const customerInitials = customerName
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .slice(0, 2)
+    .join('') || 'C';
+
+  const flattenedItems = frozenItems.map((item) => {
+    const prod = (item.product || {}) as any;
+    const rawPrice = prod?.price ?? prod?.discountPrice ?? prod?.originalPrice ?? (item as any).price ?? 0;
+    const price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.]/g, '')) : Number(rawPrice);
+    const qty = Number(item.quantity ?? 1);
+    return {
+      productId: String(prod.id || prod.productId || (item as any).productId || ''),
+      productName: String(prod.name || (item as any).productName || 'Fashion Item'),
+      imageUrl: String(prod.imageUrl || prod.images?.[0] || (item as any).imageUrl || ''),
+      category: String(prod.category || (item as any).category || 'Apparel'),
+      vendorId: String(prod.vendorId || (item as any).vendorId || 'VEN001'),
+      vendorName: String(prod.vendorName || (item as any).vendorName || 'Trendy Threads'),
+      price: isNaN(price) ? 0 : price,
+      quantity: isNaN(qty) ? 1 : qty,
+      amount: (isNaN(price) ? 0 : price) * (isNaN(qty) ? 1 : qty),
+      status: 'Pending',
+      color: String(item.color || ''),
+      size: String(item.size || 'M')
+    };
+  });
+
+  const primaryItem: any = flattenedItems[0] || {};
+  const totalQuantity = flattenedItems.reduce((sum, it) => sum + (it.quantity || 1), 0) || (flattenedItems.length > 0 ? 1 : 0);
+  let vendorIds = Array.from(new Set(flattenedItems.map((it) => it.vendorId).filter(Boolean)));
+  if (vendorIds.length === 0) vendorIds = ['VEN001'];
+
+  const dateFormatted = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  const rootOrderPayload = {
+    id: order.orderId,
+    orderId: order.orderId,
+    userId: effectiveUserId,
+    customerName,
+    customerInitials,
+    customerAvatar: '',
+    productName: primaryItem.productName || 'Fashion Item',
+    productId: primaryItem.productId || '',
+    quantity: totalQuantity,
+    amount: effectiveGrandTotal,
+    subtotal: effectiveSubtotal,
+    taxes: effectiveTaxes,
+    discount: effectiveDiscount,
+    shipping: effectiveShipping,
+    grandTotal: effectiveGrandTotal,
+    paymentMethod: params.paymentMethod,
+    date: dateFormatted,
+    status: 'Pending',
+    salesEligible: true,
+    vendorId: primaryItem.vendorId || 'VEN001',
+    vendorName: primaryItem.vendorName || 'Trendy Threads',
+    vendorIds,
+    deliveryAddress: frozenAddress,
+    items: flattenedItems,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 
   // Persist to per-user local orders history
@@ -606,33 +692,44 @@ export const createOrderSnapshot = async (params: {
     localStorage.setItem(key, JSON.stringify(updatedOrders));
   } catch {}
 
-  // For registered users, also persist to backend and Firestore
+  // 1. Direct Firestore root orders collection write
+  try {
+    await setDoc(doc(db, 'orders', cleanOrderDocId), rootOrderPayload);
+  } catch (err) {
+    console.warn('[Orders] Direct client root orders write warning:', err);
+  }
+
+  // 2. Direct Firestore user orders subcollection write
   if (!isGuest) {
     try {
-      const token = await ensureUserSessionToken(params.user);
-      if (token) {
-        await fetch(apiUrl('/api/auth/orders'), {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            userId: effectiveUserId,
-            order
-          })
-        });
-      }
-    } catch {}
-
-    try {
-      const cleanOrderDocId = order.orderId.replace(/[^a-zA-Z0-9_-]/g, '');
       await setDoc(
-        doc(db, 'users', effectiveUserId, 'orders', cleanOrderDocId || `order_${Date.now()}`),
+        doc(db, 'users', effectiveUserId, 'orders', cleanOrderDocId),
         order
       );
     } catch {}
+  }
+
+  // 3. Authoritative backend write via Admin SDK
+  try {
+    const token = await ensureUserSessionToken(params.user);
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    await fetch(apiUrl('/api/auth/orders'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        userId: effectiveUserId,
+        order,
+        rootOrderPayload
+      })
+    });
+  } catch (err) {
+    console.warn('[Orders] Backend order dispatch warning:', err);
   }
 
   return order;

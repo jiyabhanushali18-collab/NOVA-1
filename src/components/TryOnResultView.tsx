@@ -8,7 +8,7 @@ interface TryOnResultViewProps {
   onNavigate: (screen: ScreenId, opts?: { productId?: string; product?: ProductItem }) => void;
   selectedColor: string;
   setSelectedColor: (color: string) => void;
-  onAddToCart: (prodId: string, color: string, size: string) => void;
+  onAddToCart: (prodId: string, color: string, size: string, directProduct?: ProductItem) => void;
   selectedProductId?: string;
   onSubmitReview?: (productId: string, rating: number, text: string, source?: 'product' | 'tryon', color?: string) => Promise<void>;
   capturedImage?: string | null;
@@ -172,7 +172,7 @@ export const TryOnResultView: React.FC<TryOnResultViewProps> = ({
   const handleAddToCartClick = () => {
     const colorToAdd = selectedColor || currentProduct.colors?.[0] || 'Default';
     const sizeToAdd = currentProduct.sizes?.[0] || 'M';
-    onAddToCart(currentProduct.id, colorToAdd, sizeToAdd);
+    onAddToCart(currentProduct.id, colorToAdd, sizeToAdd, currentProduct);
     setToastMessage(`✓ Added 1x ${currentProduct.name} to Cart!`);
     setTimeout(() => setToastMessage(null), 3000);
   };

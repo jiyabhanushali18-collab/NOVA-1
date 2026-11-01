@@ -220,11 +220,16 @@ export const CartView: React.FC<CartViewProps> = ({
   };
 
   // Cart financial summaries
-  const subtotal = cartItems.reduce((acc, curr) => acc + curr.product.price * curr.quantity, 0);
+  const subtotal = cartItems.reduce((acc, curr) => {
+    const rawPrice = curr.product?.price ?? curr.product?.discountPrice ?? curr.product?.originalPrice ?? (curr as any).price ?? 0;
+    const price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.]/g, '')) : Number(rawPrice);
+    const qty = Number(curr.quantity || 1);
+    return acc + (isNaN(price) ? 0 : price) * (isNaN(qty) ? 1 : qty);
+  }, 0);
   const taxes = Math.round(subtotal * 0.05); // 5% GST
   const discount = discountApplied ? Math.round(subtotal * 0.1) : 0; // 10% coupon
   const shipping = subtotal > 999 || subtotal === 0 ? 0 : 99;
-  const grandTotal = subtotal + taxes + shipping - discount;
+  const grandTotal = Math.max(0, subtotal + taxes + shipping - discount);
 
   const handleApplyCoupon = () => {
     if (couponCode.toUpperCase() === 'NOVA10') {
@@ -256,11 +261,20 @@ export const CartView: React.FC<CartViewProps> = ({
   };
 
   const handleProceedToAddress = () => {
+    if (!cartItems || cartItems.length === 0) {
+      setAddressError('Your cart is empty. Please add items to your cart.');
+      return;
+    }
     analytics.trackCheckoutStarted(cartItems, grandTotal, cartItems.reduce((acc, curr) => acc + curr.quantity, 0));
     setStep('address');
   };
 
   const handleProceedToPayment = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      setAddressError('Your cart is empty. Please add items to your cart.');
+      setStep('cart');
+      return;
+    }
     setAddressError(null);
     setAddressSavedMessage(null);
     const currentAddress = buildCurrentCheckoutAddress();
@@ -300,6 +314,11 @@ export const CartView: React.FC<CartViewProps> = ({
 
   const handlePlaceOrder = async () => {
     if (isPlacingOrder) return;
+    if (!cartItems || cartItems.length === 0) {
+      setAddressError('Your cart is empty. Please add items to your cart before placing an order.');
+      setStep('cart');
+      return;
+    }
     setAddressError(null);
     const currentAddress = buildCurrentCheckoutAddress();
     const validation = validateDeliveryAddress(currentAddress);
@@ -363,6 +382,19 @@ export const CartView: React.FC<CartViewProps> = ({
 
   if (step === 'completed') {
     const orderDisplayAddr = confirmedOrder?.deliveryAddress || buildCurrentCheckoutAddress();
+    const orderTimestamp = confirmedOrder?.createdAt ? new Date(confirmedOrder.createdAt) : new Date();
+    const createdTimeStr = orderTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const packingTime = new Date(orderTimestamp.getTime() + 5 * 60 * 1000);
+    const packingTimeStr = packingTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const deliveryDate = new Date(orderTimestamp.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const deliveryDateStr = deliveryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const itemsList = confirmedOrder?.items || [];
+    const paymentLabel = confirmedOrder?.paymentMethod === 'cod'
+      ? 'Cash on Delivery (COD)'
+      : confirmedOrder?.paymentMethod === 'card'
+      ? 'Card Payment'
+      : 'UPI Payment';
+
     return (
       <div className="py-12 px-4 text-center space-y-6 animate-scale-up">
         {/* Success celebration icon */}
@@ -383,17 +415,20 @@ export const CartView: React.FC<CartViewProps> = ({
         </div>
 
         {/* Order specs tracker details */}
-        <div className={`border rounded-2xl p-4 max-w-sm mx-auto text-left space-y-3 shadow-sm ${
+        <div className={`border rounded-2xl p-4 max-w-sm mx-auto text-left space-y-3.5 shadow-sm ${
           isDarkMode
             ? 'bg-slate-800/30 border-slate-700/30'
             : 'bg-white border-[#E4DFF5]'
         }`}>
-          <div className="flex justify-between text-xs font-bold font-mono">
+          <div className="flex justify-between items-center text-xs font-bold font-mono">
             <span className={isDarkMode ? 'text-slate-500' : 'text-[#5E667A]'}>{t('cart.orderNo')}</span>
-            <span className={isDarkMode ? 'text-slate-100' : 'text-[#131426]'}>{confirmedOrder?.orderId || `#NV-${1000 + Math.floor(Math.random() * 9000)}`}</span>
+            <span className="text-[#553BE2] bg-[#F2EEFF] dark:bg-purple-950/40 px-2 py-0.5 rounded font-mono font-bold">
+              {confirmedOrder?.orderId || '#NV-7961'}
+            </span>
           </div>
           <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
 
+          {/* Delivery Address */}
           <div className="space-y-1">
             <p className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
               {t('cart.deliveryTo')} ({orderDisplayAddr.label || 'Home'})
@@ -406,12 +441,73 @@ export const CartView: React.FC<CartViewProps> = ({
             </p>
           </div>
 
+          {/* Ordered Items Preview */}
+          {itemsList.length > 0 && (
+            <>
+              <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
+              <div className="space-y-2">
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}`}>
+                  Ordered Items ({itemsList.length})
+                </p>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {itemsList.map((item, idx) => {
+                    const prod: any = item.product || {};
+                    const img = prod.imageUrl || prod.mainImage || (Array.isArray(prod.images) ? prod.images[0] : '');
+                    const itemPrice = Number(prod.price || 0);
+                    return (
+                      <div key={idx} className="flex items-center gap-3">
+                        {img ? (
+                          <img src={img} alt={prod.name || 'Product'} className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-purple-50 dark:bg-slate-800 flex items-center justify-center text-xs shrink-0">🛍️</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-bold truncate ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>
+                            {prod.name || 'Fashion Item'}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                            {item.color && <span className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{item.color}</span>}
+                            {item.size && <span className="bg-slate-100 dark:bg-slate-700 px-1 rounded">Size {item.size}</span>}
+                            <span>• Qty: {item.quantity || 1}</span>
+                          </div>
+                        </div>
+                        <div className={`text-xs font-bold font-mono ${isDarkMode ? 'text-slate-100' : 'text-[#131426]'}`}>
+                          ₹{(itemPrice * (item.quantity || 1)).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Payment & Amount */}
           <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
-          
-          <ul className={`text-xs space-y-1.5 font-bold font-sans ${isDarkMode ? 'text-slate-300' : 'text-[#131426]'}`}>
-            <li className="flex items-center gap-2 text-[11px]"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 10:35 AM — Order Created</li>
-            <li className="flex items-center gap-2 text-[11px]"><span className="w-1.5 h-1.5 rounded-full bg-[#553BE2] animate-pulse"></span> 10:40 AM — Packing shipment</li>
-            <li className="flex items-center gap-2 text-[11px] text-[#5E667A] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-[#E4DFF5]"></span> Courier dispatched (standard 2-3 days)</li>
+          <div className="flex justify-between items-center text-xs font-bold">
+            <span className={isDarkMode ? 'text-slate-400' : 'text-[#5E667A]'}>
+              Paid via {paymentLabel}
+            </span>
+            <span className="text-[#553BE2] font-mono text-sm">
+              ₹{(confirmedOrder?.grandTotal ?? grandTotal).toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          {/* Dynamic Live Timeline */}
+          <div className={`h-px ${isDarkMode ? 'bg-slate-700/30' : 'bg-[#E4DFF5]'}`}></div>
+          <ul className={`text-xs space-y-2 font-bold font-sans ${isDarkMode ? 'text-slate-300' : 'text-[#131426]'}`}>
+            <li className="flex items-center gap-2 text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+              <span>{createdTimeStr} — Order Created & Confirmed</span>
+            </li>
+            <li className="flex items-center gap-2 text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-[#553BE2] animate-pulse shrink-0"></span>
+              <span>{packingTimeStr} — Packing shipment</span>
+            </li>
+            <li className="flex items-center gap-2 text-[11px] text-[#5E667A] font-medium">
+              <span className="w-2 h-2 rounded-full bg-[#E4DFF5] shrink-0"></span>
+              <span>Courier dispatched (Est. delivery: {deliveryDateStr})</span>
+            </li>
           </ul>
         </div>
 
@@ -917,7 +1013,7 @@ export const CartView: React.FC<CartViewProps> = ({
               Back
             </button>
             <button 
-              disabled={isPlacingOrder}
+              disabled={isPlacingOrder || cartItems.length === 0}
               onClick={handlePlaceOrder}
               className="flex-[2] py-3.5 rounded-xl bg-[#553BE2] hover:opacity-95 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-[#553BE2]/20"
             >

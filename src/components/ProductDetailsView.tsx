@@ -35,7 +35,7 @@ interface ProductDetailsViewProps {
   onNavigate: (screen: ScreenId) => void;
   onTryOnProduct?: (product: ProductItem) => void;
   onSelectProduct?: (product: ProductItem) => void;
-  onAddToCart: (prodId: string, color: string, size: string) => void;
+  onAddToCart: (prodId: string, color: string, size: string, directProduct?: ProductItem) => void;
   onUpdateCartQuantity?: (prodId: string, color: string, size: string, delta: number) => void;
   cartItems?: CartItem[];
   selectedColor: string;
@@ -222,7 +222,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   };
 
   const handleAddToCart = (prodId: string, color: string, size: string) => {
-    onAddToCart(prodId, color, size);
+    onAddToCart(prodId, color, size, mainProduct);
     const productName = products[prodId]?.name || mainProduct?.name || 'Product';
     setToastMessage(`✓ Added 1x ${productName} (${color}, Size ${size}) to Cart!`);
     setTimeout(() => setToastMessage(null), 3500);
@@ -250,7 +250,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     if (onUpdateCartQuantity) {
       onUpdateCartQuantity(mainProduct.id, selectedColor, selectedSize, 1);
     } else {
-      onAddToCart(mainProduct.id, selectedColor, selectedSize);
+      onAddToCart(mainProduct.id, selectedColor, selectedSize, mainProduct);
     }
   };
 
