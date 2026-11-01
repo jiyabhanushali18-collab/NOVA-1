@@ -379,8 +379,7 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
   // Effective garment image URL respecting the selected colour variant
   const effectiveGarmentImage = useMemo(() => {
     if (selectedProduct && effectiveColorName) {
-      const variantImg = getGarmentColorImage(selectedProduct, effectiveColorName);
-      if (variantImg) return variantImg;
+      return getGarmentColorImage(selectedProduct, effectiveColorName) || '';
     }
     return activeGarmentObj?.file || activeGarmentObj?.img || initialGarmentImage || '';
   }, [selectedProduct, effectiveColorName, activeGarmentObj, initialGarmentImage]);
@@ -676,7 +675,9 @@ export const ArTryOnView: React.FC<ArTryOnViewProps> = ({
     setInternalSelectedColor(color.name);
     setSelectedColorProp?.(color.name);
 
-    const newImg = color.imageUrl || (selectedProduct ? getGarmentColorImage(selectedProduct, color.name) : undefined) || activeGarmentObj?.img;
+    const newImg = selectedProduct
+      ? getGarmentColorImage(selectedProduct, color.name)
+      : color.imageUrl || activeGarmentObj?.img;
     if (sessionRef.current && isLiveRef.current && newImg) {
       sessionRef.current.setGarment(newImg).catch((err) => {
         console.warn('Real-time garment color update error:', err);

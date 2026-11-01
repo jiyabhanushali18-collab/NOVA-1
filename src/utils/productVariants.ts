@@ -1,6 +1,27 @@
 import { ProductVariant } from '../types';
 import { getRequiredColorHex, isValidHexColor, normalizeColorKey } from './colors';
 
+const normalizeFieldKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+export const getProductField = (data: Record<string, any>, ...fieldNames: string[]): any => {
+  for (const fieldName of fieldNames) {
+    if (data[fieldName] !== undefined && data[fieldName] !== null && data[fieldName] !== '') return data[fieldName];
+  }
+  const expectedKeys = new Set(fieldNames.map(normalizeFieldKey));
+  const matched = Object.entries(data).find(([key, value]) =>
+    expectedKeys.has(normalizeFieldKey(key)) && value !== undefined && value !== null && value !== ''
+  );
+  return matched?.[1];
+};
+
+export const getProductVendorId = (data: Record<string, any>, documentId?: string): string | undefined => {
+  const value = getProductField(data, 'vendorId', 'vendorID', 'vendorCode', 'vendorRef');
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  // Older catalog exports encoded the short vendor code after the document ID.
+  const idSuffix = documentId?.match(/\s+([A-Za-z0-9]{2,8})$/)?.[1];
+  return idSuffix;
+};
+
 export const collectImageUrls = (value: unknown): string[] => {
   if (typeof value === 'string' && value.trim()) return [value.trim()];
   if (typeof value === 'number') return [String(value).trim()];
@@ -37,6 +58,61 @@ export const getVariantColor = (value: unknown): string => {
   const record = value as Record<string, unknown>;
   const candidate = record.colorName || record.color || record.name || record.label || record.colour;
   return typeof candidate === 'string' ? candidate.trim() : '';
+};
+
+export const getProductColorNames = (data: Record<string, any>): string[] => {
+  let values: string[] = [];
+  const colorsValue = getProductField(data, 'colors', 'colours', 'Collors');
+  if (Array.isArray(colorsValue)) {
+    values = colorsValue.map(getVariantColor).filter(Boolean);
+  } else if (typeof colorsValue === 'string' && colorsValue.trim()) {
+    const raw = colorsValue.trim();
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) values = parsed.map(getVariantColor).filter(Boolean);
+    } catch {
+      values = raw.split(',').map((color: string) => color.trim()).filter(Boolean);
+    }
+  }
+  if (!values.length && Array.isArray(data.variants)) {
+    values = data.variants.map(getVariantColor).filter(Boolean);
+  }
+  if (!values.length) return ['Standard'];
+  const seen = new Set<string>();
+  return values.filter((color) => {
+    const key = normalizeColorKey(color);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+export const getProductDefaultColor = (data: Record<string, any>, colors: string[]): string | undefined => {
+  const explicitColor = getProductField(data, 'defaultColorName', 'defaultColor', 'defaultColour', 'primaryColor');
+  if (typeof explicitColor === 'string') {
+    return colors.find((color) => normalizeColorKey(color) === normalizeColorKey(explicitColor));
+  }
+  const defaultVariantId = getProductField(data, 'defaultVariantId', 'defaultVariantID', 'defaultVariant');
+  if (typeof defaultVariantId === 'string' && Array.isArray(data.variants)) {
+    const variant = data.variants.find((entry: any) => String(entry?.id || entry?.variantId || '') === defaultVariantId);
+    const color = getVariantColor(variant);
+    if (color) return colors.find((name) => normalizeColorKey(name) === normalizeColorKey(color)) || color;
+  }
+
+  const namedColors = new Set<string>();
+  Object.entries(data)
+    .filter(([fieldName, value]) => /(image|photo|media|url|src)/i.test(fieldName) && collectImageUrls(value).length > 0)
+    .forEach(([fieldName]) => {
+    const colorKey = normalizeColorKey(fieldName.replace(/(image|photo|url|src|media)d*$/i, ''));
+    colors.forEach((color) => {
+      const normalizedColor = normalizeColorKey(color);
+      if (normalizedColor && colorKey && (colorKey === normalizedColor || colorKey.includes(normalizedColor) || normalizedColor.includes(colorKey))) {
+        namedColors.add(normalizedColor);
+      }
+    });
+  });
+  const unnamedColors = colors.filter((color) => !namedColors.has(normalizeColorKey(color)));
+  return namedColors.size > 0 && unnamedColors.length === 1 ? unnamedColors[0] : undefined;
 };
 
 const getVariantStock = (value: unknown): number | undefined => {
@@ -95,6 +171,7 @@ export const buildProductColorImages = (
   colors: string[]
 ): Record<string, string[]> => {
   const imagesByColor: Record<string, string[]> = {};
+  const namedImageColors = new Set<string>();
   const add = (colorValue: unknown, imageValue: unknown) => {
     const color = getVariantColor(colorValue);
     const key = normalizeColorKey(color);
@@ -127,39 +204,41 @@ export const buildProductColorImages = (
   });
 
   // Legacy catalog records store images in fields such as BlackImage,
-  // lavenderImage2, or NavyPhoto. Resolve those fields against the actual
+  // lavenderImage2, oliveGreenImage, or NavyPhoto. Resolve those fields against the actual
   // product colors so older Firestore products keep their uploaded photos.
   Object.entries(data)
     .filter(([fieldName]) => /(image|photo|media|url|src)/i.test(fieldName))
-    .forEach(([fieldName, value]) => {
-    const fieldKey = normalizeColorKey(fieldName);
-    if (!fieldKey) return;
-    colors.forEach((color) => {
-      const colorKey = normalizeColorKey(color);
-      if (colorKey && fieldKey.includes(colorKey)) add(color, value);
+    .forEach(([rawFieldName, value]) => {
+      if (!collectImageUrls(value).length) return;
+      const fieldName = rawFieldName.trim();
+      const cleanField = fieldName.toLowerCase().replace(/(image|photo|url|src|media)d*$/i, '');
+      const fieldKey = normalizeColorKey(cleanField);
+      if (!fieldKey) return;
+
+      colors.forEach((color) => {
+        const colorKey = normalizeColorKey(color);
+        if (!colorKey) return;
+        if (fieldKey === colorKey || fieldKey.includes(colorKey) || colorKey.includes(fieldKey)) {
+          namedImageColors.add(colorKey);
+          add(color, value);
+        }
+      });
     });
-    });
 
-
-  // Some existing catalog records store one image per color in parallel arrays.
-  const orderedImages = collectImageUrls(data.imageUrls).length === colors.length
-    ? collectImageUrls(data.imageUrls)
-    : collectImageUrls(data.images);
-  if (colors.length > 1 && orderedImages.length === colors.length) {
-    colors.forEach((color, index) => add(color, orderedImages[index]));
-  }
-
-  // Older products often use imageUrl/imageUrl2 for the primary color while
-  // naming the remaining color photos explicitly. Assign those generic image
-  // fields only to colors that still have no mapped image.
   const unmappedColors = colors.filter((color) => !imagesByColor[normalizeColorKey(color)]?.length);
   const genericImages = Object.entries(data)
-    .filter(([fieldName]) => /^(?:mainimage|image|imageurl|image\d+|imageurl\d+)$/i.test(fieldName))
+    .filter(([fieldName]) => /^(?:mainimage|image|imageurl|img)(?:[_-]?\d+)?$/i.test(fieldName.trim()))
     .flatMap(([, value]) => collectImageUrls(value));
-  if (unmappedColors.length === 1 && genericImages.length > 0) {
-    add(unmappedColors[0], genericImages);
-  } else if (unmappedColors.length > 1 && genericImages.length === unmappedColors.length) {
-    unmappedColors.forEach((color, index) => add(color, genericImages[index]));
+
+  // Assign the generic primary gallery only when schema metadata identifies
+  // its color, or when color-named fields leave exactly one color unaccounted for.
+  const inferredDefaultColor = getProductDefaultColor(data, colors);
+  const soleUnmappedColor = unmappedColors.length === 1 ? unmappedColors[0] : undefined;
+  const defaultColor = inferredDefaultColor || (namedImageColors.size > 0 && soleUnmappedColor);
+  if (defaultColor && genericImages.length > 0) {
+    add(defaultColor, genericImages);
+  } else if (colors.length === 1 && genericImages.length > 0) {
+    add(colors[0], genericImages);
   }
 
   return imagesByColor;
@@ -177,7 +256,9 @@ export const normalizeProductVariants = (
       const variantRecord = variant as Record<string, unknown>;
       const color = getVariantColor(variant);
       if (!color) return null;
-      const images = collectImageUrls(variant);
+      const explicitImages = collectImageUrls(variant);
+      const mappedColorImages = findColorImages(colorImages, color);
+      const images = mappedColorImages.length > 0 ? mappedColorImages : explicitImages;
       if (images.length === 0) return null;
       const stock = getVariantStock(variant);
       const displayOrder = getVariantDisplayOrder(variant, index);
@@ -235,12 +316,14 @@ export const normalizeProductVariants = (
     .map((color, index): ProductVariant | null => {
       const images = findColorImages(colorImages, color);
       const colorHex = getRequiredColorHex(color);
-      return images.length > 0 ? {
+      const legitimateFallback = collectImageUrls(data.mainImage || data.imageUrl || data.image);
+      const finalImages = images.length > 0 ? images : legitimateFallback;
+      return finalImages.length > 0 ? {
         id: `${normalizeColorKey(color) || 'variant'}-${index}`,
         colorName: color,
         colorHex,
-        images,
-        thumbnail: images[0],
+        images: finalImages,
+        thumbnail: finalImages[0],
         isAvailable: true,
         displayOrder: index,
         color

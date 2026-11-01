@@ -47,7 +47,7 @@ import {
 } from './services/addressService';
 import { PRIVACY_VERSION, TERMS_VERSION } from './legal/legalDocuments';
 import { EMAIL_FOR_SIGN_IN_KEY, PENDING_EMAIL_SIGNUP_KEY } from './services/emailLinkAuth';
-import { getVariantColor, normalizeProductVariants } from './utils/productVariants';
+import { buildProductColorImages, getProductColorNames, getProductDefaultColor, getProductField, getProductVendorId, normalizeProductVariants } from './utils/productVariants';
 import { getGarmentColorImage } from './utils/arTryOnColors';
 import { useI18n } from './i18n';
 import { syncPushTokenWithBackend, trackPushTap } from './services/notificationClientService';
@@ -61,39 +61,7 @@ const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
-  const candidate = record.imageUrl || record.url || record.src || record.image;
-  if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
-  return undefined;
-};
-
-const getTimestampMs = (value: any) => {
-  if (!value) return 0;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') return new Date(value).getTime() || 0;
-  if (typeof value.toMillis === 'function') return value.toMillis();
-  if (typeof value.seconds === 'number') return value.seconds * 1000;
-  return 0;
-};
-
-const getProductImageVersion = (data: Record<string, any>) => (
-  getTimestampMs(data.imageUpdatedAt)
-  || getTimestampMs(data.updatedAt)
-  || getTimestampMs(data.modifiedAt)
-  || getTimestampMs(data.createdAt)
-  || Number(data.version || 0)
-);
-
-const withImageVersion = (url: string, version: number) => {
-  if (!url || !version || url.startsWith('data:') || url.startsWith('blob:')) return url;
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}v=${encodeURIComponent(String(version))}`;
-};
-
-const getColorValue = (value: unknown): string | undefined => {
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const record = value as Record<string, unknown>;
-  const candidate = record.colorName || record.color || record.colour || record.name || record.label;
+  const candidate = getProductField(record, 'imageUrl', 'url', 'src', 'image');
   if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   return undefined;
 };
@@ -116,22 +84,6 @@ const asStringArray = (value: unknown): string[] => {
       .split(',')
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
-  }
-
-  return [];
-};
-
-const collectImageValues = (value: unknown): string[] => {
-  if (typeof value === 'string' && value.trim()) return [value.trim()];
-  if (typeof value === 'number') return [String(value).trim()];
-  if (Array.isArray(value)) {
-    return value.flatMap((item) => collectImageValues(item));
-  }
-
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    const candidates = [record.imageUrl, record.url, record.src, record.image, record.img, record.image1, record.imageUrl1];
-    return candidates.flatMap((item) => collectImageValues(item)).filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
   }
 
   return [];
@@ -198,201 +150,6 @@ const saveStoredProductReviews = (reviews: Record<string, ProductReview[]>) => {
   } catch {
     // ignore storage writing failures
   }
-};
-
-const addColorImage = (result: Record<string, string[]>, color: unknown, imageUrl: unknown) => {
-  const imageUrls = collectImageValues(imageUrl);
-  const colorString = getColorValue(color) || (typeof color === 'string' ? color.trim() : '');
-  const normalized = normalizeColor(colorString);
-
-  if (!normalized || imageUrls.length === 0) return;
-
-  imageUrls.forEach((imageUrlString) => {
-    if (!imageUrlString) return;
-    result[normalized] = result[normalized] || [];
-    if (!result[normalized].includes(imageUrlString)) result[normalized].push(imageUrlString);
-
-    if (colorString) {
-      result[colorString] = result[colorString] || [];
-      if (!result[colorString].includes(imageUrlString)) result[colorString].push(imageUrlString);
-    }
-  });
-};
-
-const processColorImageSource = (result: Record<string, string[]>, source: unknown) => {
-  if (!source) return;
-  if (Array.isArray(source)) {
-    source.forEach((entry) => {
-      if (!entry || typeof entry !== 'object') return;
-      addColorImage(result, (entry as any).colorName || (entry as any).color || (entry as any).colour || (entry as any).name || (entry as any).label, (entry as any).images || (entry as any).imageUrls || (entry as any).imageUrl || (entry as any).image || (entry as any).url || (entry as any).src || entry);
-    });
-    return;
-  }
-  if (typeof source === 'object') {
-    Object.entries(source).forEach(([key, value]) => {
-      addColorImage(result, key, value);
-    });
-  }
-};
-
-const buildColorImages = (data: Record<string, any>, colors: string[]) => {
-  const tmp: Record<string, string[]> = {};
-  const mapSources = [data.colorImages, data.imagesByColor, data.colorImageUrls, data.imageUrls, data.images];
-
-  mapSources.forEach((source) => processColorImageSource(tmp, source));
-
-  const variantSources = [data.variants, data.colorVariants, data.colorsData, data.colors];
-  variantSources.forEach((source) => {
-    if (!Array.isArray(source)) return;
-    source.forEach((variant) => {
-      if (!variant || typeof variant !== 'object') return;
-      addColorImage(
-        tmp,
-        (variant as any).colorName || (variant as any).color || (variant as any).colour || (variant as any).name || (variant as any).label,
-        [
-          (variant as any).images,
-          (variant as any).imageUrls,
-          (variant as any).imageUrl,
-          (variant as any).image,
-          (variant as any).url,
-          (variant as any).src
-        ]
-      );
-    });
-  });
-
-  // Vendors commonly save one image per color in the same order as `colors`.
-  // Preserve that association even when other colors already have explicit maps.
-  const imageUrls = asStringArray(data.imageUrls);
-  const imageGallery = asStringArray(data.images);
-  const orderedColorImages = imageUrls.length === colors.length ? imageUrls : imageGallery;
-  if (colors.length > 1 && orderedColorImages.length === colors.length) {
-    colors.forEach((color, index) => addColorImage(tmp, color, orderedColorImages[index]));
-  }
-
-  // Enhanced: scan all fields for color-based image naming (e.g., redImage, pinkImage, yellowImage)
-  Object.entries(data)
-    .filter(([fieldName]) => /image|photo|media|url|src/i.test(fieldName))
-    .forEach(([fieldName, value]) => {
-    const lowerField = fieldName.trim().toLowerCase();
-    const imageValues = collectImageValues(value);
-    if (imageValues.length === 0) return;
-
-    // Check if any word from the color name appears in the field name
-    colors.forEach((color) => {
-      const colorWords = color.toLowerCase().split(/\s+/).filter((word) => word.length > 0);
-      const matchesAnyWord = colorWords.some((word) => lowerField.includes(word));
-      
-      if (matchesAnyWord) {
-        imageValues.forEach((imageValue) => addColorImage(tmp, color, imageValue));
-      }
-    });
-    });
-
-  // convert tmp (arrays) into result where values are single string or array
-  const result: Record<string, string | string[]> = {};
-  Object.entries(tmp).forEach(([k, arr]) => {
-    if (!arr || arr.length === 0) return;
-    result[k] = arr.length === 1 ? arr[0] : arr.slice();
-  });
-
-  // If some colors have mappings but others don't, try to use numbered/global image fields
-  if (Object.keys(result).length > 0) {
-    const mappedColors = Object.keys(result).map((k) => normalizeColor(k));
-    const missing = colors.filter((c) => !mappedColors.includes(normalizeColor(c)));
-    if (missing.length > 0) {
-      // collect numbered/global images (imageUrl, imageUrl2, image2...)
-      let numbered: string[] = [];
-      const base = getStringValue(data.imageUrl) || getStringValue(data.image) || getStringValue(data.image1) || getStringValue(data.img1);
-      if (base) numbered.push(base);
-      for (let i = 2; i <= 8; i += 1) {
-        const candidates = [
-          `imageUrl${i}`,
-          `image${i}`,
-          `img${i}`,
-          `image_url${i}`,
-          `url${i}`
-        ];
-        for (const key of candidates) {
-          const val = getStringValue((data as any)[key]);
-          if (val && !numbered.includes(val)) {
-            numbered.push(val);
-            break;
-          }
-        }
-      }
-
-      if (numbered.length > 0) {
-        if (missing.length === 1) {
-          const colorKey = missing[0];
-          const norm = normalizeColor(colorKey);
-          result[colorKey] = numbered.length === 1 ? numbered[0] : numbered.slice();
-          if (!(norm in result)) result[norm] = result[colorKey];
-        } else {
-          // distribute images across missing colors in order
-          for (let i = 0; i < Math.min(missing.length, numbered.length); i += 1) {
-            const colorKey = missing[i];
-            const norm = normalizeColor(colorKey);
-            result[colorKey] = numbered[i];
-            if (!(norm in result)) result[norm] = numbered[i];
-          }
-        }
-      }
-    }
-
-    return result;
-  }
-
-  // Try common list field first
-  let imageUrlsArray = asStringArray(data.imageUrls);
-  // If not present, also collect numbered image fields like imageUrl2, image2, image_2, img2, etc.
-  if (imageUrlsArray.length === 0) {
-    const numbered: string[] = [];
-    // include base imageUrl if present
-    const base = getStringValue(data.imageUrl) || getStringValue(data.image) || getStringValue(data.image1) || getStringValue(data.img1);
-    if (base) numbered.push(base);
-    for (let i = 2; i <= 8; i += 1) {
-      const candidates = [
-        `imageUrl${i}`,
-        `image${i}`,
-        `img${i}`,
-        `image_url${i}`,
-        `url${i}`
-      ];
-      for (const key of candidates) {
-        const val = getStringValue((data as any)[key]);
-        if (val && !numbered.includes(val)) {
-          numbered.push(val);
-          break;
-        }
-      }
-    }
-    imageUrlsArray = numbered;
-  }
-  if (imageUrlsArray.length > 0 && colors.length > 0) {
-    const count = Math.min(colors.length, imageUrlsArray.length);
-    for (let idx = 0; idx < count; idx += 1) {
-      const key = normalizeColor(colors[idx]);
-      if (key && imageUrlsArray[idx]) {
-        result[key] = imageUrlsArray[idx];
-      }
-    }
-  }
-
-  if (Object.keys(result).length > 0) return result;
-
-  const imageUrl = getStringValue(data.imageUrl) || getStringValue(data.image) || '';
-  if (imageUrl && colors.length > 0) {
-    colors.forEach((color) => {
-      const key = normalizeColor(color);
-      if (key) {
-        result[key] = imageUrl;
-      }
-    });
-    return result;
-  }
-
-  return undefined;
 };
 
 const getFirebaseErrorCode = (error: unknown) => error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : undefined;
@@ -1350,87 +1107,74 @@ export default function App() {
           snapshot.forEach((doc: any) => {
             const data = doc.data() as any;
             const id = doc.id;
-            const colors = Array.isArray(data.colors)
-              ? data.colors
-                  .map((value: unknown) => getVariantColor(value) || (typeof value === 'string' ? value.trim() : ''))
-                  .filter((value: string) => value.length > 0)
-              : ['Standard'];
-            const imageVersion = getProductImageVersion(data);
+            const colors = getProductColorNames(data);
             const imageUrls = [
-              ...asStringArray(data.images),
-              ...asStringArray(data.imageUrls)
+              ...asStringArray(getProductField(data, 'images')),
+              ...asStringArray(getProductField(data, 'imageUrls'))
             ]
-              .map((value) => withImageVersion(value, imageVersion))
               .filter((value, index, array) => value && array.indexOf(value) === index);
-            const colorImages = buildColorImages({ ...data }, colors);
-            const versionedColorImages = colorImages
-              ? Object.fromEntries(Object.entries(colorImages).map(([key, value]) => [
-                  key,
-                  Array.isArray(value)
-                    ? value.map((item) => withImageVersion(item, imageVersion))
-                    : withImageVersion(value, imageVersion)
-                ]))
-              : undefined;
-            const variants = normalizeProductVariants(data, colors, versionedColorImages);
-            const versionedVariants = variants.map((variant) => ({
-              ...variant,
-              images: variant.images.map((image) => withImageVersion(image, imageVersion)),
-              thumbnail: withImageVersion(variant.thumbnail, imageVersion)
-            }));
-            const resolvedColorImages = versionedVariants.length > 0
-              ? Object.fromEntries(versionedVariants.map((variant) => [variant.colorName, variant.images]))
-              : versionedColorImages;
-            const variantImages = versionedVariants.flatMap((variant) => variant.images || []);
+            const colorImages = buildProductColorImages(data, colors);
+            const variants = normalizeProductVariants(data, colors, colorImages);
+            const requestedDefaultId = getProductField(data, 'defaultVariantId', 'defaultVariantID', 'defaultVariant');
+            const inferredDefaultColor = getProductDefaultColor(data, colors);
+            const defaultVariant = variants.find((variant) => variant.id === requestedDefaultId)
+              || variants.find((variant) => normalizeColor(variant.colorName) === normalizeColor(inferredDefaultColor))
+              || variants[0];
+            const resolvedColorImages = variants.length > 0
+              ? Object.fromEntries(variants.map((variant) => [variant.colorName, variant.images]))
+              : colorImages;
+            const variantImages = variants.flatMap((variant) => variant.images || []);
             const images = [
               ...imageUrls,
               ...variantImages
             ].filter((value, index, array) => value && array.indexOf(value) === index);
-            const rawImageUrl = getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || versionedVariants[0]?.images?.[0] || images[0] || '';
-            const imageUrl = withImageVersion(rawImageUrl, imageVersion);
-            const stock = data.stock !== undefined ? Number(data.stock) : undefined;
-            const vendorName = getStringValue(data.vendorName) || getStringValue(data.brandName) || getStringValue(data.companyName) || getStringValue(data.storeName);
-            const vendorLogoUrl = getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl);
+            const imageUrl = getStringValue(getProductField(data, 'mainImage')) || getStringValue(getProductField(data, 'imageUrl', 'image', 'imageurl')) || variants[0]?.images?.[0] || images[0] || '';
+            const stockValue = getProductField(data, 'stock');
+            const stock = stockValue !== undefined ? Number(stockValue) : undefined;
+            const vendorName = getStringValue(getProductField(data, 'vendorName', 'brandName', 'companyName', 'storeName'))
+              || getStringValue(getProductField(data, 'vendorCode', 'code'));
+            const vendorLogoUrl = getStringValue(getProductField(data, 'vendorLogoUrl', 'logoUrl', 'logo', 'imageUrl', 'imageurl'));
 
-            const productName = String(data.name || data.productName || '');
-            const productPrice = Number(data.discountPrice || data.price || 0);
+            const productName = String(getProductField(data, 'name', 'productName', 'namde') || '');
+            const productPrice = Number(getProductField(data, 'discountPrice', 'price') || 0);
             if (!productName || productName === 'Unnamed Product' || productPrice === 0 || !imageUrl) {
               return;
             }
 
             const nextProduct: ProductItem = {
               id,
-              productId: String(data.productId || id),
-              vendorId: data.vendorId ? String(data.vendorId) : undefined,
-              vendorName,
+              productId: String(getProductField(data, 'productId') || id),
+              vendorId: getProductVendorId(data, id),
+              vendorName: vendorName || getProductVendorId(data, id),
               vendorLogoUrl,
               name: productName,
-              category: String(data.category || 'Uncategorized'),
+              category: String(getProductField(data, 'category') || 'Uncategorized'),
               price: productPrice,
-              originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
-              discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
-              rating: Number(data.rating || 0),
-              reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
+              originalPrice: getProductField(data, 'originalPrice') !== undefined ? Number(getProductField(data, 'originalPrice')) : getProductField(data, 'discountPrice') !== undefined ? Number(getProductField(data, 'price') || 0) : undefined,
+              discountPrice: getProductField(data, 'discountPrice') !== undefined ? Number(getProductField(data, 'discountPrice')) : undefined,
+              rating: Number(getProductField(data, 'rating') || 0),
+              reviewsCount: Number(getProductField(data, 'reviewsCount', 'reviewCount') || 0),
               imageUrl,
               mainImage: imageUrl,
               images: images.length > 0 ? images : imageUrl ? [imageUrl] : undefined,
               imageUrls: images.length > 0 ? images : undefined,
               colorImages: resolvedColorImages,
-              variants: versionedVariants.length > 0 ? versionedVariants : undefined,
-              defaultVariantId: versionedVariants[0]?.id,
-              colors: versionedVariants.length > 0 ? versionedVariants.map((variant) => variant.colorName) : colors,
-              sizes: Array.isArray(data.sizes)
-                ? data.sizes
+              variants: variants.length > 0 ? variants : undefined,
+              defaultVariantId: defaultVariant?.id,
+              colors: variants.length > 0 ? variants.map((variant) => variant.colorName) : colors,
+              sizes: Array.isArray(getProductField(data, 'sizes'))
+                ? getProductField(data, 'sizes')
                     .map((value: unknown) => String(value))
                     .map((value: string) => value.trim())
                     .filter((value: string) => value.length > 0)
                 : ['One Size'],
-              inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
-              stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,
-              isTopRated: Boolean(data.isTopRated),
-              isFeatured: Boolean(data.isFeatured),
-              badge: data.badge ? String(data.badge) : data.isTopRated ? 'Top Pick' : undefined,
-              details: Array.isArray(data.details) ? data.details.map(String) : Array.isArray(data.description) ? data.description.map(String) : data.description ? [String(data.description)] : [],
-              createdAt: data.createdAt
+              inStock: getProductField(data, 'inStock') !== undefined ? Boolean(getProductField(data, 'inStock')) : stock !== undefined ? stock > 0 : true,
+              stockLeft: getProductField(data, 'stockLeft') !== undefined ? Number(getProductField(data, 'stockLeft')) : stock,
+              isTopRated: Boolean(getProductField(data, 'isTopRated')),
+              isFeatured: Boolean(getProductField(data, 'isFeatured')),
+              badge: getProductField(data, 'badge') ? String(getProductField(data, 'badge')) : getProductField(data, 'isTopRated') ? 'Top Pick' : undefined,
+              details: Array.isArray(getProductField(data, 'details')) ? getProductField(data, 'details').map(String) : Array.isArray(getProductField(data, 'description')) ? getProductField(data, 'description').map(String) : getProductField(data, 'description') ? [String(getProductField(data, 'description'))] : [],
+              createdAt: getProductField(data, 'createdAt')
             };
 
             const reviews = productReviewsRef.current[id] || [];

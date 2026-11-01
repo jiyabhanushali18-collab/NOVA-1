@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db, firebaseProjectId, waitForFirebaseAuthReady } from '../firebase';
 import { ProductItem, ProductReview, ScreenId, VendorItem } from '../types';
-import { buildProductColorImages, getVariantColor, normalizeProductVariants } from '../utils/productVariants';
+import { buildProductColorImages, getProductColorNames, getProductDefaultColor, getProductField, getProductVendorId, normalizeProductVariants } from '../utils/productVariants';
 import { analytics } from '../services/analyticsService';
 import { useI18n } from '../i18n';
 
@@ -32,7 +32,8 @@ const HIDDEN_VENDOR_KEYS = new Set([
   'urbanstylestudios',
   'vendorkickslab',
   'vendornordicapparel',
-  'vendorurbanstyle'
+  'vendorurbanstyle',
+  'atelierluxe'
 ]);
 const normalizeVendorKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 const isHiddenVendor = (vendor: VendorItem) =>
@@ -80,7 +81,7 @@ const getStringValue = (value: unknown): string | undefined => {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
-  const candidate = record.imageUrl || record.url || record.src || record.image;
+  const candidate = getProductField(record, 'imageUrl', 'url', 'src', 'image');
   return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : undefined;
 };
 
@@ -100,20 +101,6 @@ const getTimestampMs = (value: any) => {
   return 0;
 };
 
-const getProductImageVersion = (data: Record<string, any>) => (
-  getTimestampMs(data.imageUpdatedAt)
-  || getTimestampMs(data.updatedAt)
-  || getTimestampMs(data.modifiedAt)
-  || getTimestampMs(data.createdAt)
-  || Number(data.version || 0)
-);
-
-const withImageVersion = (url: string, version: number) => {
-  if (!url || !version || url.startsWith('data:') || url.startsWith('blob:')) return url;
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}v=${encodeURIComponent(String(version))}`;
-};
-
 const isValidProduct = (product: ProductItem): boolean => {
   // Filter out products without proper names
   if (!product.name || product.name === 'Unnamed Product' || product.name.trim() === '') {
@@ -131,23 +118,23 @@ const isValidProduct = (product: ProductItem): boolean => {
 };
 
 const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Record<string, VendorItem>): ProductItem => {
-  const imageVersion = getProductImageVersion(data);
   const images = [
-    ...asStringArray(data.images),
-    ...asStringArray(data.imageUrls)
+    ...asStringArray(getProductField(data, 'images')),
+    ...asStringArray(getProductField(data, 'imageUrls'))
   ]
-    .map((value) => withImageVersion(value, imageVersion))
     .filter((value, index, array) => value && array.indexOf(value) === index);
-  const vendorId = data.vendorId ? String(data.vendorId) : undefined;
-  const vendor = vendorId ? vendorsById[vendorId] : undefined;
-  const stock = data.stock !== undefined ? Number(data.stock) : undefined;
-  const colors = Array.isArray(data.colors) ? data.colors.map(getVariantColor).filter(Boolean) : ['Standard'];
+  const vendorId = getProductVendorId(data, id);
+  const vendor = vendorId ? vendorsById[vendorId] || vendorsById[normalizeVendorKey(vendorId)] : undefined;
+  const stockValue = getProductField(data, 'stock');
+  const stock = stockValue !== undefined ? Number(stockValue) : undefined;
+  const colors = getProductColorNames(data);
   const colorImages = buildProductColorImages(data, colors);
-  const variants = normalizeProductVariants(data, colors, colorImages).map((variant) => ({
-    ...variant,
-    images: variant.images.map((image) => withImageVersion(image, imageVersion)),
-    thumbnail: withImageVersion(variant.thumbnail, imageVersion)
-  }));
+  const variants = normalizeProductVariants(data, colors, colorImages);
+  const requestedDefaultId = getProductField(data, 'defaultVariantId', 'defaultVariantID', 'defaultVariant');
+  const inferredDefaultColor = getProductDefaultColor(data, colors);
+  const defaultVariant = variants.find((variant) => variant.id === requestedDefaultId)
+    || variants.find((variant) => normalizeVendorKey(variant.colorName) === normalizeVendorKey(inferredDefaultColor || ''))
+    || variants[0];
   const resolvedColorImages = variants.length > 0
     ? Object.fromEntries(variants.map((variant) => [variant.colorName, variant.images]))
     : colorImages;
@@ -155,54 +142,54 @@ const normalizeProduct = (id: string, data: Record<string, any>, vendorsById: Re
     ...images,
     ...variants.flatMap((variant) => variant.images || [])
   ].filter((value, index, array) => value && array.indexOf(value) === index);
-  const imageUrl = withImageVersion(getStringValue(data.mainImage) || getStringValue(data.imageUrl) || getStringValue(data.image) || variants[0]?.images?.[0] || allImages[0] || fallbackImage, imageVersion);
+  const imageUrl = getStringValue(getProductField(data, 'mainImage')) || getStringValue(getProductField(data, 'imageUrl', 'image', 'imageurl')) || variants[0]?.images?.[0] || allImages[0] || fallbackImage;
 
   return {
     id,
-    productId: String(data.productId || id),
+    productId: String(getProductField(data, 'productId') || id),
     vendorId,
-    vendorName: getStringValue(data.vendorName) || getStringValue(data.companyName) || getStringValue(data.storeName) || vendor?.vendorName || 'NOVA Vendor',
-    vendorLogoUrl: getStringValue(data.vendorLogoUrl) || getStringValue(data.logoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl) || vendor?.logoUrl,
-    name: String(data.name || data.productName || 'Unnamed Product'),
-    category: String(data.category || 'Curated'),
-    description: data.description ? String(data.description) : undefined,
-    price: Number(data.discountPrice || data.price || 0),
-    originalPrice: data.originalPrice !== undefined ? Number(data.originalPrice) : data.discountPrice !== undefined ? Number(data.price || 0) : undefined,
-    discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : undefined,
-    rating: Number(data.rating || 0),
-    reviewsCount: Number(data.reviewsCount || data.reviewCount || 0),
+    vendorName: getStringValue(getProductField(data, 'vendorName', 'companyName', 'storeName')) || getStringValue(getProductField(data, 'vendorCode', 'code')) || vendor?.vendorName || vendorId || 'NOVA Vendor',
+    vendorLogoUrl: getStringValue(getProductField(data, 'vendorLogoUrl', 'logoUrl', 'logo', 'imageUrl', 'imageurl')) || vendor?.logoUrl,
+    name: String(getProductField(data, 'name', 'productName', 'namde') || 'Unnamed Product'),
+    category: String(getProductField(data, 'category') || 'Curated'),
+    description: getProductField(data, 'description') ? String(getProductField(data, 'description')) : undefined,
+    price: Number(getProductField(data, 'discountPrice', 'price') || 0),
+    originalPrice: getProductField(data, 'originalPrice') !== undefined ? Number(getProductField(data, 'originalPrice')) : getProductField(data, 'discountPrice') !== undefined ? Number(getProductField(data, 'price') || 0) : undefined,
+    discountPrice: getProductField(data, 'discountPrice') !== undefined ? Number(getProductField(data, 'discountPrice')) : undefined,
+    rating: Number(getProductField(data, 'rating') || 0),
+    reviewsCount: Number(getProductField(data, 'reviewsCount', 'reviewCount') || 0),
     imageUrl,
     mainImage: imageUrl,
     images: allImages.length > 0 ? allImages : [imageUrl],
     imageUrls: allImages.length > 0 ? allImages : [imageUrl],
     colorImages: resolvedColorImages,
     variants: variants.length > 0 ? variants : undefined,
-    defaultVariantId: variants[0]?.id,
+    defaultVariantId: defaultVariant?.id,
     colors: variants.length > 0 ? variants.map((variant) => variant.colorName) : colors,
-    sizes: Array.isArray(data.sizes) ? data.sizes.map(String) : ['One Size'],
-    inStock: data.inStock !== undefined ? Boolean(data.inStock) : stock !== undefined ? stock > 0 : true,
-    stockLeft: data.stockLeft !== undefined ? Number(data.stockLeft) : stock,
-    isTopRated: Boolean(data.isTopRated) || Number(data.rating || 0) >= 4.7,
-    isFeatured: Boolean(data.isFeatured),
-    badge: data.badge ? String(data.badge) : Boolean(data.isTopRated) || Number(data.rating || 0) >= 4.7 ? 'Top Pick' : undefined,
-    details: Array.isArray(data.details) ? data.details.map(String) : data.description ? [String(data.description)] : [],
-    createdAt: data.createdAt
+    sizes: Array.isArray(getProductField(data, 'sizes')) ? getProductField(data, 'sizes').map(String) : ['One Size'],
+    inStock: getProductField(data, 'inStock') !== undefined ? Boolean(getProductField(data, 'inStock')) : stock !== undefined ? stock > 0 : true,
+    stockLeft: getProductField(data, 'stockLeft') !== undefined ? Number(getProductField(data, 'stockLeft')) : stock,
+    isTopRated: Boolean(getProductField(data, 'isTopRated')) || Number(getProductField(data, 'rating') || 0) >= 4.7,
+    isFeatured: Boolean(getProductField(data, 'isFeatured')),
+    badge: getProductField(data, 'badge') ? String(getProductField(data, 'badge')) : Boolean(getProductField(data, 'isTopRated')) || Number(getProductField(data, 'rating') || 0) >= 4.7 ? 'Top Pick' : undefined,
+    details: Array.isArray(getProductField(data, 'details')) ? getProductField(data, 'details').map(String) : getProductField(data, 'description') ? [String(getProductField(data, 'description'))] : [],
+    createdAt: getProductField(data, 'createdAt')
   };
 };
 
 const normalizeVendor = (id: string, data: Record<string, any>): VendorItem => ({
   id,
-  vendorId: String(data.vendorId || id),
-  vendorName: String(getStringValue(data.vendorName) || getStringValue(data.name) || getStringValue(data.companyName) || getStringValue(data.storeName) || 'NOVA Vendor'),
-  logoUrl: getStringValue(data.logoUrl) || getStringValue(data.vendorLogoUrl) || getStringValue(data.logo) || getStringValue(data.imageUrl) || getStringValue(data.avatarUrl) || '',
-  bannerUrl: getStringValue(data.bannerUrl),
-  description: data.description ? String(data.description) : undefined,
-  followers: data.followers !== undefined ? Number(data.followers) : undefined,
-  rating: data.rating !== undefined ? Number(data.rating) : undefined,
-  isVerified: Boolean(data.isVerified),
-  isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
-  createdAt: data.createdAt,
-  productCount: data.productCount !== undefined ? Number(data.productCount) : undefined
+  vendorId: String(getProductField(data, 'vendorId', 'vendorCode', 'code') || id),
+  vendorName: String(getStringValue(getProductField(data, 'vendorName', 'name', 'companyName', 'storeName')) || id),
+  logoUrl: getStringValue(getProductField(data, 'logoUrl', 'vendorLogoUrl', 'logo', 'imageUrl', 'avatarUrl')) || '',
+  bannerUrl: getStringValue(getProductField(data, 'bannerUrl')),
+  description: getProductField(data, 'description') ? String(getProductField(data, 'description')) : undefined,
+  followers: getProductField(data, 'followers') !== undefined ? Number(getProductField(data, 'followers')) : undefined,
+  rating: getProductField(data, 'rating') !== undefined ? Number(getProductField(data, 'rating')) : undefined,
+  isVerified: Boolean(getProductField(data, 'isVerified')),
+  isActive: getProductField(data, 'isActive') !== undefined ? Boolean(getProductField(data, 'isActive')) : true,
+  createdAt: getProductField(data, 'createdAt'),
+  productCount: getProductField(data, 'productCount') !== undefined ? Number(getProductField(data, 'productCount')) : undefined
 });
 
 const VendorLogo: React.FC<{ vendor?: Pick<VendorItem, 'vendorName' | 'logoUrl' | 'isVerified'>; size?: 'sm' | 'md' | 'lg'; isDarkMode?: boolean }> = ({ vendor, size = 'md', isDarkMode = false }) => {
@@ -308,7 +295,9 @@ const ProductCard = memo(({
         <img
           src={product.imageUrl || fallbackImage}
           alt={product.name}
-          loading="lazy"
+          loading={index < 4 ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={index < 4 ? 'high' : 'auto'}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           referrerPolicy="no-referrer"
         />
@@ -395,8 +384,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   const derivedVendors = useMemo(() => {
     const map = new Map<string, VendorItem>();
     collectionProducts.concat(products).forEach((product) => {
-      if (!product.vendorId || map.has(product.vendorId)) return;
-      map.set(product.vendorId, {
+      const vendorKey = normalizeVendorKey(product.vendorId || '');
+      if (!product.vendorId || map.has(vendorKey)) return;
+      map.set(vendorKey, {
         id: product.vendorId,
         vendorId: product.vendorId,
         vendorName: product.vendorName || product.vendorId,
@@ -412,9 +402,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
 
   const marketplaceVendors = useMemo(() => {
     const map = new Map<string, VendorItem>();
-    vendors.forEach((vendor) => map.set(vendor.vendorId, vendor));
+    vendors.forEach((vendor) => map.set(normalizeVendorKey(vendor.vendorId), vendor));
     derivedVendors.forEach((vendor) => {
-      if (!map.has(vendor.vendorId)) map.set(vendor.vendorId, vendor);
+      if (!map.has(normalizeVendorKey(vendor.vendorId))) map.set(normalizeVendorKey(vendor.vendorId), vendor);
     });
     return Array.from(map.values())
       .filter((vendor) => !isHiddenVendor(vendor))
@@ -425,6 +415,9 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     return vendors.reduce<Record<string, VendorItem>>((acc, vendor) => {
       acc[vendor.vendorId] = vendor;
       acc[vendor.id] = vendor;
+      acc[normalizeVendorKey(vendor.vendorId)] = vendor;
+      acc[normalizeVendorKey(vendor.id)] = vendor;
+      acc[normalizeVendorKey(vendor.vendorName)] = vendor;
       return acc;
     }, {});
   }, [vendors]);
@@ -433,15 +426,20 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     return marketplaceVendors.reduce<Record<string, VendorItem>>((acc, vendor) => {
       acc[vendor.vendorId] = vendor;
       acc[vendor.id] = vendor;
+      acc[normalizeVendorKey(vendor.vendorId)] = vendor;
+      acc[normalizeVendorKey(vendor.id)] = vendor;
+      acc[normalizeVendorKey(vendor.vendorName)] = vendor;
       return acc;
     }, {});
   }, [marketplaceVendors]);
 
   const productCountByVendor = useMemo(() => {
     const counts: Record<string, number> = {};
-    collectionProducts.concat(products).forEach((product) => {
+    const uniqueProducts = new Map(collectionProducts.concat(products).map((product) => [product.id, product]));
+    uniqueProducts.forEach((product) => {
       if (!product.vendorId) return;
-      counts[product.vendorId] = (counts[product.vendorId] || 0) + 1;
+      const key = normalizeVendorKey(product.vendorId);
+      counts[key] = (counts[key] || 0) + 1;
     });
     return counts;
   }, [collectionProducts, products]);
@@ -498,6 +496,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
 
     setCollectionLoading(true);
     setCollectionError(null);
+    setCollectionProducts([]);
     waitForFirebaseAuthReady().then(() => {
       if (cancelled) return;
       const baseCollection = collection(db, collectionName);
@@ -541,7 +540,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
 
   useEffect(() => {
     if (selectedVendor === ALL_VENDORS) return;
-    if (marketplaceVendors.length > 0 && !vendorsById[selectedVendor]) {
+    if (marketplaceVendors.length > 0 && !vendorsById[selectedVendor] && !vendorsById[normalizeVendorKey(selectedVendor)]) {
       setSelectedVendor(ALL_VENDORS);
     }
   }, [selectedVendor, marketplaceVendors.length, vendorsById]);
@@ -561,10 +560,17 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
   }, [marketplaceVendors, searchTerm]);
 
   const fallbackCollectionProducts = useMemo(() => {
-    if (selectedVendor === ALL_VENDORS) return products;
-    return products.filter((product) => product.vendorId === selectedVendor);
+    const eligibleProducts = products.filter((product) =>
+      !HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(product.vendorName || ''))
+      && !HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(product.vendorId || ''))
+    );
+    if (selectedVendor === ALL_VENDORS) return eligibleProducts;
+    return eligibleProducts.filter((product) => normalizeVendorKey(product.vendorId || '') === normalizeVendorKey(selectedVendor));
   }, [products, selectedVendor]);
-  const displayCollectionProducts = collectionProducts.length > 0 ? collectionProducts : fallbackCollectionProducts;
+  const displayCollectionProducts = Array.from(new Map(collectionProducts.concat(fallbackCollectionProducts)
+    .filter((product) => !HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(product.vendorName || ''))
+      && !HIDDEN_VENDOR_KEYS.has(normalizeVendorKey(product.vendorId || '')))
+    .map((product) => [product.id, product])).values());
   const blockingCollectionError = collectionError && displayCollectionProducts.length === 0 ? collectionError : null;
   const blockingProductsError = error && displayCollectionProducts.length === 0 ? error : null;
   const productCategories = useMemo(() => Array.from(new Set(
@@ -606,7 +612,10 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
     .filter((product) => isValidProduct(product) && (product.reviewsCount || 0) > 0)
     .sort((a, b) => (b.reviewsCount || 0) - (a.reviewsCount || 0) || (b.rating || 0) - (a.rating || 0))
     .slice(0, 8), [databaseProducts, productReviews]);
-  const selectedCount = selectedVendorItem?.productCount ?? (selectedVendor === ALL_VENDORS ? displayCollectionProducts.length : productCountByVendor[selectedVendor] || displayCollectionProducts.length);
+  const selectedVendorKey = normalizeVendorKey(selectedVendor);
+  const selectedCount = selectedVendor === ALL_VENDORS
+    ? displayCollectionProducts.length
+    : productCountByVendor[selectedVendorKey] ?? selectedVendorItem?.productCount ?? 0;
   const collectionTitle = selectedVendorItem ? `${selectedVendorItem.vendorName} Collection` : t('showroom.allProducts');
 
   const handleSelectVendor = (vendorId: string, vendorName?: string) => {
@@ -784,7 +793,7 @@ export const ShowroomView: React.FC<ShowroomViewProps> = ({
                 vendor={vendor}
                 selected={selectedVendor === vendor.vendorId}
                 label={vendor.vendorName}
-                productCount={vendor.productCount ?? productCountByVendor[vendor.vendorId]}
+                productCount={productCountByVendor[normalizeVendorKey(vendor.vendorId)] ?? vendor.productCount}
                 onClick={() => handleSelectVendor(vendor.vendorId, vendor.vendorName)}
                 isDarkMode={isDarkMode}
               />
