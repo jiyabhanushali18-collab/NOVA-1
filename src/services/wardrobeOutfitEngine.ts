@@ -27,28 +27,31 @@ export interface WardrobeOutfitEngineResult {
 }
 
 const TOP_CATEGORIES = new Set([
-  't-shirt', 't-shirts', 'tshirt', 'shirt', 'shirts', 'top', 'tops', 'wrap top',
-  'blouse', 'kurti', 'kurta', 'crop top', 'tank top', 'polo', 'polo shirt',
-  'sweatshirt', 'sweater', 'henley', 'hoodie'
+  'top', 'tops', 't-shirt', 't-shirts', 'tshirt', 'tshirts', 'shirt', 'shirts', 'wrap top',
+  'blouse', 'blouses', 'kurti', 'kurta', 'crop top', 'tank top', 'tank', 'polo', 'polo shirt',
+  'sweatshirt', 'sweatshirts', 'sweater', 'sweaters', 'henley', 'hoodie', 'hoodies', 'tee', 'tees'
 ]);
 
 const BOTTOM_CATEGORIES = new Set([
-  'jeans', 'pants', 'trousers', 'cargo pants', 'cargo', 'joggers', 'shorts',
-  'skirt', 'skirts', 'chinos', 'palazzo', 'leggings', 'dhoti', 'track pants'
+  'bottom', 'bottoms', 'jeans', 'jean', 'pants', 'pant', 'trousers', 'trouser', 'cargo pants', 'cargos', 'cargo',
+  'joggers', 'jogger', 'shorts', 'short', 'skirt', 'skirts', 'chinos', 'palazzo', 'leggings', 'legging',
+  'dhoti', 'track pants', 'trackpants'
 ]);
 
 const FOOTWEAR_CATEGORIES = new Set([
-  'sneakers', 'shoes', 'loafers', 'boots', 'sandals', 'heels', 'slides', 'footwear', 'flats'
+  'footwear', 'sneakers', 'sneaker', 'shoes', 'shoe', 'loafers', 'loafer', 'boots', 'boot',
+  'sandals', 'sandal', 'heels', 'heel', 'slides', 'slide', 'flats', 'flat'
 ]);
 
 const OUTERWEAR_CATEGORIES = new Set([
-  'jacket', 'jackets', 'blazer', 'blazers', 'nehru jacket', 'coat', 'coats',
-  'cardigan', 'outerwear', 'oversized hoodie', 'denim jacket', 'leather jacket'
+  'outerwear', 'jacket', 'jackets', 'blazer', 'blazers', 'nehru jacket', 'coat', 'coats',
+  'cardigan', 'cardigans', 'oversized hoodie', 'denim jacket', 'leather jacket', 'bomber', 'bomber jacket', 'shrug', 'vest', 'trench coat'
 ]);
 
 const FULLBODY_CATEGORIES = new Set([
-  'dress', 'dresses', 'saree', 'sari', 'jumpsuit', 'co-ord set', 'salwar suit',
-  'lehenga', 'ethnic wear', 'gown', 'suit', 'maxi dress', 'mini dress'
+  'one_piece', 'one-piece', 'fullbody', 'dress', 'dresses', 'saree', 'sari', 'jumpsuit', 'jumpsuits',
+  'co-ord set', 'co-ord', 'coord', 'salwar suit', 'salwar', 'lehenga', 'ethnic wear', 'gown', 'gowns',
+  'maxi dress', 'mini dress', 'suit'
 ]);
 
 const ACCESSORY_CATEGORIES = new Set([
@@ -92,25 +95,42 @@ interface ExtractedGarmentDetails {
   gender: string;
 }
 
-const classifyCategory = (category: string, subcategory?: string): ExtractedGarmentDetails['categoryType'] => {
-  const combined = `${category} ${subcategory || ''}`.toLowerCase();
+const classifyCategory = (
+  category: string,
+  subcategory?: string,
+  item?: WardrobeItem
+): ExtractedGarmentDetails['categoryType'] => {
+  const canonical = item?.canonical;
+  const cCat = (canonical?.category || '').toLowerCase().trim();
+  if (cCat === 'outerwear') return 'outerwear';
+  if (cCat === 'bottom') return 'bottom';
+  if (cCat === 'top') return 'top';
+  if (cCat === 'one_piece' || cCat === 'fullbody') return 'fullbody';
+  if (cCat === 'footwear') return 'footwear';
+  if (cCat === 'accessory') return 'accessory';
+
+  const subCat = (canonical?.subcategory || item?.attributes?.subcategory || subcategory || '').toLowerCase();
+  const rawCat = (category || item?.attributes?.category || item?.category || '').toLowerCase();
+  const tagsStr = (item?.tags || []).join(' ').toLowerCase();
+  const allClues = `${rawCat} ${subCat} ${cCat} ${tagsStr}`;
+
   for (const cat of OUTERWEAR_CATEGORIES) {
-    if (combined.includes(cat)) return 'outerwear';
+    if (allClues.includes(cat)) return 'outerwear';
   }
   for (const cat of FOOTWEAR_CATEGORIES) {
-    if (combined.includes(cat)) return 'footwear';
+    if (allClues.includes(cat)) return 'footwear';
   }
   for (const cat of FULLBODY_CATEGORIES) {
-    if (combined.includes(cat)) return 'fullbody';
-  }
-  for (const cat of TOP_CATEGORIES) {
-    if (combined.includes(cat)) return 'top';
+    if (allClues.includes(cat)) return 'fullbody';
   }
   for (const cat of BOTTOM_CATEGORIES) {
-    if (combined.includes(cat)) return 'bottom';
+    if (allClues.includes(cat)) return 'bottom';
+  }
+  for (const cat of TOP_CATEGORIES) {
+    if (allClues.includes(cat)) return 'top';
   }
   for (const cat of ACCESSORY_CATEGORIES) {
-    if (combined.includes(cat)) return 'accessory';
+    if (allClues.includes(cat)) return 'accessory';
   }
   return 'other';
 };
@@ -121,7 +141,7 @@ const extractGarmentDetails = (item: WardrobeItem): ExtractedGarmentDetails => {
 
   const rawCategory = canonical?.category || attributes.category || item.category || 'Top';
   const rawSubcategory = canonical?.subcategory || attributes.subcategory || '';
-  const categoryType = classifyCategory(rawCategory, rawSubcategory);
+  const categoryType = classifyCategory(rawCategory, rawSubcategory, item);
 
   const primaryColor = (
     canonical?.visual?.primaryColor ||
@@ -491,73 +511,63 @@ export const generateWardrobeOutfits = (
     candidateOutfits.push(scored);
   };
 
-  // 1. Structure: Top + Bottom + Footwear + Outerwear
-  if (tops.length > 0 && bottoms.length > 0 && footwear.length > 0 && outerwear.length > 0) {
+  // 1. Structure: Clean Top + Bottom looks (without jacket) - staple everyday outfits!
+  if (tops.length > 0 && bottoms.length > 0) {
     for (const top of tops) {
       for (const bottom of bottoms) {
-        for (const shoes of footwear) {
-          for (const jacket of outerwear) {
-            addOutfit([top, bottom, shoes, jacket], 'top_bottom_footwear_outerwear');
-          }
-        }
-      }
-    }
-  }
-
-  // 2. Structure: Top + Bottom + Footwear
-  if (tops.length > 0 && bottoms.length > 0 && footwear.length > 0) {
-    for (const top of tops) {
-      for (const bottom of bottoms) {
-        for (const shoes of footwear) {
-          addOutfit([top, bottom, shoes], 'top_bottom_footwear');
-        }
-      }
-    }
-  }
-
-  // 3. Structure: Full-body + Footwear + Accessories
-  if (fullBody.length > 0 && footwear.length > 0) {
-    for (const dress of fullBody) {
-      for (const shoes of footwear) {
-        if (accessories.length > 0) {
-          for (const acc of accessories) {
-            addOutfit([dress, shoes, acc], 'fullbody_footwear');
+        if (footwear.length > 0) {
+          for (const shoes of footwear) {
+            addOutfit([top, bottom, shoes], 'top_bottom_footwear');
           }
         } else {
-          addOutfit([dress, shoes], 'fullbody_footwear');
+          addOutfit([top, bottom], 'top_bottom_duo');
         }
       }
     }
   }
 
-  // 4. Fallback Structure: Top + Bottom + Outerwear (when user has outerwear but no footwear saved)
-  if (tops.length > 0 && bottoms.length > 0 && footwear.length === 0 && outerwear.length > 0) {
+  // 2. Structure: Layered Top + Bottom + Outerwear looks (when outerwear exists)
+  if (tops.length > 0 && bottoms.length > 0 && outerwear.length > 0) {
     for (const top of tops) {
       for (const bottom of bottoms) {
         for (const jacket of outerwear) {
-          addOutfit([top, bottom, jacket], 'top_bottom_footwear_outerwear');
+          if (footwear.length > 0) {
+            for (const shoes of footwear) {
+              addOutfit([top, bottom, shoes, jacket], 'top_bottom_footwear_outerwear');
+            }
+          } else {
+            addOutfit([top, bottom, jacket], 'top_bottom_footwear_outerwear');
+          }
         }
       }
     }
   }
 
-  // 5. Fallback Structure: Top + Bottom Duo (when user has no footwear saved)
-  if (tops.length > 0 && bottoms.length > 0 && candidateOutfits.length === 0) {
-    for (const top of tops) {
-      for (const bottom of bottoms) {
-        addOutfit([top, bottom], 'top_bottom_duo');
+  // 3. Structure: Full-body (Dresses / Jumpsuits / Co-ords)
+  if (fullBody.length > 0) {
+    for (const dress of fullBody) {
+      if (footwear.length > 0) {
+        if (accessories.length > 0) {
+          for (const acc of accessories) {
+            addOutfit([dress, footwear[0], acc], 'fullbody_footwear');
+          }
+        } else {
+          addOutfit([dress, footwear[0]], 'fullbody_footwear');
+        }
+      } else {
+        addOutfit([dress], 'partial');
+      }
+
+      // Layered dress with outerwear if jackets exist
+      if (outerwear.length > 0) {
+        for (const jacket of outerwear) {
+          addOutfit([dress, jacket], 'fullbody_footwear');
+        }
       }
     }
   }
 
-  // 6. Fallback Structure: Full-body single piece (when user has only dresses saved)
-  if (fullBody.length > 0 && candidateOutfits.length === 0) {
-    for (const dress of fullBody) {
-      addOutfit([dress], 'partial');
-    }
-  }
-
-  // 6. Wardrobe with too few pieces to form full looks
+  // 4. Wardrobe with too few pieces to form full looks
   if (candidateOutfits.length === 0) {
     let msg = 'Add more pieces to your wardrobe.';
     if (tops.length > 0 && bottoms.length === 0) {
@@ -573,11 +583,56 @@ export const generateWardrobeOutfits = (
     };
   }
 
-  // Sort by compatibility score descending
+  // Sort candidate outfits by compatibility score descending
   candidateOutfits.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
+  // If a specific seed item was requested (e.g. "Build Look for this item"), prioritize combinations with it
+  if (seedItemId) {
+    return {
+      outfits: candidateOutfits.slice(0, limit),
+      totalGenerated: candidateOutfits.length,
+      wardrobeItemCount: userWardrobeItems.length
+    };
+  }
+
+  // FAIR WARDROBE COVERAGE SELECTION
+  // Guarantees:
+  // 1. Every usable wardrobe piece (every jacket, top, skirt, bottom, dress) appears in recommended looks.
+  // 2. Balanced distribution between clean staple looks (no jacket) and layered looks (with jacket).
+  const selectedOutfits: WardrobeOutfitRecommendation[] = [];
+  const selectedKeys = new Set<string>();
+  const coveredItemIds = new Set<string>();
+
+  const pushOutfit = (outfit: WardrobeOutfitRecommendation): boolean => {
+    const key = outfit.itemIds.slice().sort().join('_');
+    if (!selectedKeys.has(key)) {
+      selectedKeys.add(key);
+      selectedOutfits.push(outfit);
+      outfit.itemIds.forEach((id) => coveredItemIds.add(id));
+      return true;
+    }
+    return false;
+  };
+
+  // Pass 1: Ensure every wardrobe piece has at least one top-recommended look
+  for (const item of userWardrobeItems) {
+    if (coveredItemIds.has(item.id)) continue;
+    const bestForThisItem = candidateOutfits.find(
+      (o) => o.itemIds.includes(item.id) && !selectedKeys.has(o.itemIds.slice().sort().join('_'))
+    );
+    if (bestForThisItem) {
+      pushOutfit(bestForThisItem);
+    }
+  }
+
+  // Pass 2: Fill remaining slots with the highest-scoring candidate outfits across diverse structures
+  for (const outfit of candidateOutfits) {
+    if (selectedOutfits.length >= limit) break;
+    pushOutfit(outfit);
+  }
+
   return {
-    outfits: candidateOutfits.slice(0, limit),
+    outfits: selectedOutfits.slice(0, limit),
     totalGenerated: candidateOutfits.length,
     wardrobeItemCount: userWardrobeItems.length
   };
